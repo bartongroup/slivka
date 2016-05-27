@@ -1,0 +1,92 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="runnerConfig">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="option" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+
+            <xs:sequence>
+              <xs:element name="name" type="xs:string" />
+              <xs:element name="description" type="xs:string" />
+              <xs:element name="param" type="param" />
+              <xs:element name="value">
+                <xs:complexType>
+                  <xs:choice>
+                    <xs:sequence>
+                      <xs:element name="integer" type="empty" />
+                      <xs:element name="min" type="xs:integer" minOccurs="0" />
+                      <xs:element name="max" type="xs:integer" minOccurs="0" />
+                      <xs:element name="default" type="xs:integer" minOccurs="0" />
+                    </xs:sequence>
+                    <xs:sequence>
+                      <xs:element name="decimal" type="empty" />
+                      <xs:choice minOccurs="0">
+                        <xs:element name="minInclusive" type="xs:decimal" />
+                        <xs:element name="minExclusive" type="xs:decimal" />
+                      </xs:choice>
+                      <xs:choice minOccurs="0">
+                        <xs:element name="maxInclusive" type="xs:decimal" />
+                        <xs:element name="maxExclusive" type="xs:decimal" />
+                      </xs:choice>
+                      <xs:element name="default" type="xs:decimal" minOccurs="0" />
+                    </xs:sequence>
+                    <xs:sequence>
+                      <xs:element name="file" type="empty" />
+                      <xs:element name="extension" type="extension" minOccurs="0" />
+                      <xs:element name="minSize" type="xs:positiveInteger" minOccurs="0" />
+                      <xs:element name="maxSize" type="xs:positiveInteger" minOccurs="0" />
+                      <xs:element name="default" type="xs:string" minOccurs="0" />
+                    </xs:sequence>
+                    <xs:sequence>
+                      <xs:element name="text" type="empty" />
+                      <xs:element name="minLength" type="xs:nonNegativeInteger" minOccurs="0" />
+                      <xs:element name="maxLength" type="xs:nonNegativeInteger" minOccurs="0" />
+                      <xs:element name="default" type="xs:string" minOccurs="0" />
+                    </xs:sequence>
+                    <xs:sequence>
+                      <xs:element name="boolean" type="empty" minOccurs="0" />
+                      <xs:element name="default" type="xs:boolean" minOccurs="0" />
+                    </xs:sequence>
+                  </xs:choice>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+
+            <xs:attribute name="id" type="idString" use="required" />
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+
+    <xs:unique name="uniqueIdForEachOption">
+      <xs:selector xpath="option" />
+      <xs:field xpath="@id" />
+    </xs:unique>
+
+  </xs:element>
+
+  <xs:simpleType name="idString">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="param">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="--?\w[\w-]*([ =]$\{value\})?" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="extension">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-zA-Z0-9]" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="empty">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="0" />
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

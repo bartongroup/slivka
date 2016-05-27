@@ -15,7 +15,7 @@ class CommandOption(object):
         self.name = option_element.find("name").text
         self.param = option_element.find("param").text
         value = option_element.find("value")
-        self.value_type = value.find("type").text
+        self.value_type = value[0].tag
         default = value.find("default")
         self.default_value = default.text if default is not None else None
         self.value = None
@@ -31,9 +31,7 @@ class CommandOption(object):
 
 
     @staticmethod
-    def load_from_param_file(service):
-        filename = "{0}Parameters.xml".format(service)
-        path = os.path.join('config', filename)
+    def load_from_param_file(path):
         parser = etree.XMLParser(remove_blank_text=True)
         runner_config = etree.parse(path, parser=parser).getroot()
         options = [CommandOption(option) for option in runner_config]
@@ -41,11 +39,18 @@ class CommandOption(object):
 
 
 def main():
+    path = os.path.join('config', "MuscleParameters.xml")
+
+    if not validate_param_file(path):
+        raise ValueError("Invalid parameters file.")
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input")
     args = parser.parse_args()
 
-    options = CommandOption.load_from_param_file("Muscle")
+    options = CommandOption.load_from_param_file(path)
+
+    print(options)
 
     if args.input is None:
         save_json(options, "MuscleOptions.json")
@@ -82,6 +87,11 @@ def build_command(options):
             args.extend([option.param, option.value])
     return args
 
+
+def validate_param_file(path):
+    xmlschema = etree.XMLSchema(file="./config/ParameterConfigSchema.xsd")
+    document = etree.parse(path)
+    return xmlschema.validate(document)
 
 if __name__ == "__main__":
     main()
