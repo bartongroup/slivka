@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+
+<runnerConfig>
+
+  <option id="input" required="false">
+    <name>Input file</name>
+    <description>Input fasta file</description>
+    <param>-in</param>
+    <value>
+      <type>file</type>
+    </value>
+  </option>
+
+  <option id="output" required="false">
+    <name>Output file</name>
+    <description>Output file</description>
+    <param>-out</param>
+    <value>
+      <type>file</type>
+      <default>output.fasta</default>
+    </value>
+  </option>
+
+  <option id="diagonals" required="false">
+    <name>Diagonals</name>
+    <description>Find diagonals</description>
+    <param>-diag</param>
+    <value>
+      <type>boolean</type>
+    </value>
+  </option>
+
+  <option id="maxiters" required="false">
+    <name>Max iterations</name>
+    <description>Maximum nunmber of iterations</description>
+    <param>-maxiters</param>
+    <value>
+      <type>integer</type>
+      <default>16</default>
+      <max>20</max>
+      <min>5</min>
+    </value>
+  </option>
+
+  <option id="version" required="false">
+    <name>Version</name>
+    <description>Display version information</description>
+    <param>-version</param>
+    <value>
+      <type>boolean</type>
+      <default>false</default>
+    </value>
+  </option>
+
+</runnerConfig>
