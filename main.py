@@ -74,18 +74,29 @@ class CommandOption(object):
     A single command option and value validator.
     """
     def __init__(self, option_element):
-        self.id = option_element.get("id")
-        self.name = option_element.find("name").text
-        self.param = option_element.find("param").text
-        value_element = option_element.find("value")
-        self.value_type = value_element[0].tag
-        default_element = value_element.find("default")
-        if default_element is None:
-            self.default_value = None
-        else:
-            self.default_value = default_element.text
+        self._parse_option_element(option_element)
         self.required = False
         self._value = None
+
+    def _parse_option_element(self, element):
+        self.id = element.get("id")
+        self.name = element.find("name").text
+        select = element.find("select")
+
+        if select is None:
+            # we have a param and value pair
+            self.param = element.find("param").text
+            value_element = element[3]
+            self.value_type = value_element.tag[:-5]
+            default_element = value_element.find("default")
+            if default_element is None:
+                self.default_value = None
+            else:
+                self.default_value = default_element.text
+        else:
+            self.value_type = "select"
+            self.param = "${value}"
+            self.default_value = None
 
     def get_command_option(self):
         """

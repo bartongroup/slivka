@@ -4,54 +4,74 @@
       <xs:sequence>
         <xs:element name="option" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType>
-
             <xs:sequence>
               <xs:element name="name" type="xs:string" />
               <xs:element name="description" type="xs:string" />
-              <xs:element name="param" type="param" />
-              <xs:element name="value">
-                <xs:complexType>
+              <xs:choice>
+                <xs:sequence>
+                  <xs:element name="param" type="param" />
                   <xs:choice>
-                    <xs:sequence>
-                      <xs:element name="integer" type="empty" />
-                      <xs:element name="min" type="xs:integer" minOccurs="0" />
-                      <xs:element name="max" type="xs:integer" minOccurs="0" />
-                      <xs:element name="default" type="xs:integer" minOccurs="0" />
-                    </xs:sequence>
-                    <xs:sequence>
-                      <xs:element name="decimal" type="empty" />
-                      <xs:choice minOccurs="0">
-                        <xs:element name="minInclusive" type="xs:decimal" />
-                        <xs:element name="minExclusive" type="xs:decimal" />
-                      </xs:choice>
-                      <xs:choice minOccurs="0">
-                        <xs:element name="maxInclusive" type="xs:decimal" />
-                        <xs:element name="maxExclusive" type="xs:decimal" />
-                      </xs:choice>
-                      <xs:element name="default" type="xs:decimal" minOccurs="0" />
-                    </xs:sequence>
-                    <xs:sequence>
-                      <xs:element name="file" type="empty" />
-                      <xs:element name="extension" type="extension" minOccurs="0" />
-                      <xs:element name="minSize" type="xs:positiveInteger" minOccurs="0" />
-                      <xs:element name="maxSize" type="xs:positiveInteger" minOccurs="0" />
-                      <xs:element name="default" type="xs:string" minOccurs="0" />
-                    </xs:sequence>
-                    <xs:sequence>
-                      <xs:element name="text" type="empty" />
-                      <xs:element name="minLength" type="xs:nonNegativeInteger" minOccurs="0" />
-                      <xs:element name="maxLength" type="xs:nonNegativeInteger" minOccurs="0" />
-                      <xs:element name="default" type="xs:string" minOccurs="0" />
-                    </xs:sequence>
-                    <xs:sequence>
-                      <xs:element name="boolean" type="empty" minOccurs="0" />
-                      <xs:element name="default" type="xs:boolean" minOccurs="0" />
-                    </xs:sequence>
+                    <xs:element name="integerValue">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="min" type="xs:integer" minOccurs="0" />
+                          <xs:element name="max" type="xs:integer" minOccurs="0" />
+                          <xs:element name="default" type="xs:integer" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="decimalValue">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:choice minOccurs="0">
+                            <xs:element name="minInclusive" type="xs:decimal" />
+                            <xs:element name="minExclusive" type="xs:decimal" />
+                          </xs:choice>
+                          <xs:choice minOccurs="0">
+                            <xs:element name="maxInclusive" type="xs:decimal" />
+                            <xs:element name="maxExclusive" type="xs:decimal" />
+                          </xs:choice>
+                          <xs:element name="default" type="xs:decimal" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="fileValue">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="extension" type="extension" minOccurs="0" />
+                          <xs:element name="minSize" type="xs:positiveInteger" minOccurs="0" />
+                          <xs:element name="maxSize" type="xs:positiveInteger" minOccurs="0" />
+                          <xs:element name="default" type="xs:string" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="textValue">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="minLength" type="xs:nonNegativeInteger" minOccurs="0" />
+                          <xs:element name="maxLength" type="xs:nonNegativeInteger" minOccurs="0" />
+                          <xs:element name="default" type="xs:string" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="booleanValue">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="default" type="xs:boolean" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
                   </xs:choice>
-                </xs:complexType>
-              </xs:element>
+                </xs:sequence>
+                <xs:element name="select">
+                  <xs:complexType>
+                    <xs:sequence minOccurs="1" maxOccurs="unbounded">
+                      <xs:element name="choice" type="param" />
+                    </xs:sequence>
+                  </xs:complexType>
+                </xs:element>
+              </xs:choice>
             </xs:sequence>
-
             <xs:attribute name="id" type="idString" use="required" />
           </xs:complexType>
         </xs:element>

@@ -6,50 +6,53 @@
     <name>Input file</name>
     <description>Input fasta file</description>
     <param>-in ${value}</param>
-    <value>
-      <file />
-    </value>
+    <fileValue/>
   </option>
 
   <option id="output">
     <name>Output file</name>
     <description>Output file</description>
     <param>-out ${value}</param>
-    <value>
-      <file />
+    <fileValue>
       <default>output.fasta</default>
-    </value>
+    </fileValue>
   </option>
 
   <option id="diagonals">
     <name>Diagonals</name>
     <description>Find diagonals</description>
     <param>-diag</param>
-    <value>
-      <boolean />
-    </value>
+    <booleanValue/>
   </option>
 
   <option id="maxiters">
     <name>Max iterations</name>
     <description>Maximum nunmber of iterations</description>
     <param>-maxiters ${value}</param>
-    <value>
-      <integer />
+    <integerValue>
       <min>5</min>
       <max>20</max>
       <default>16</default>
-    </value>
+    </integerValue>
   </option>
 
   <option id="version">
     <name>Version</name>
     <description>Display version information</description>
     <param>-version</param>
-    <value>
-      <boolean />
+    <booleanValue>
       <default>false</default>
-    </value>
+    </booleanValue>
+  </option>
+
+  <option id="method">
+    <name>Computation method</name>
+    <description>Choose wisely</description>
+    <select>
+      <choice>--fast</choice>
+      <choice>--cheap</choice>
+      <choice>--accurate</choice>
+    </select>
   </option>
 
 </runnerConfig>
