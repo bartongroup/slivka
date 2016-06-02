@@ -49,9 +49,17 @@
     <name>Computation method</name>
     <description>Choose wisely</description>
     <select>
-      <choice>--fast</choice>
-      <choice>--cheap</choice>
-      <choice>--accurate</choice>
+      <choice>
+        <description>As fast as possible</description>
+        <param>--fast</param>
+      </choice>
+      <choice>
+        <name>Cheap option</name>
+        <param>--cheap</param>
+      </choice>
+      <choice>
+        <param>--accurate</param>
+      </choice>
     </select>
   </option>
 

@@ -4,7 +4,7 @@ import argparse
 import json
 import os.path
 
-from command_runner import CommandRunner
+from command import CommandRunner
 
 
 def main():

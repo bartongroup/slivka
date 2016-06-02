@@ -7,6 +7,15 @@ from lxml import etree
 
 class CommandRunner(object):
     def __init__(self, param_file, values=None):
+        """
+        Creates a new CommandRunner instance bound to a parameter definition
+        file.
+        TODO:
+        takes a service as an argument and fetches the parameters config file
+        from the location specified in the configuration file
+        :param param_file: location of parameters definition file
+        :param values: initial values passed to the runner options
+        """
         xml_tree = self._validate_param_file(param_file)
         self._load_options(xml_tree)
         if values is not None:
@@ -15,7 +24,7 @@ class CommandRunner(object):
     @staticmethod
     def _validate_param_file(param_file):
         """
-        Validates parameters file agaist the parameter schema and parses the
+        Validates parameters file against the parameter schema and parses the
         document into an element tree
         :param param_file: path or a file-like object to parameters file
         :return: parsed document as an element tree
@@ -51,11 +60,11 @@ class CommandRunner(object):
         for option in self.options:
             option.value = values.get(option.id)
 
-    def run_command(self):
+    def run_command(self, cmd):
         """
         Runs a command with specified set of options.
         """
-        pass
+        return self
 
     def build_command(self):
         """
@@ -103,8 +112,7 @@ class CommandOption(object):
         value = self.value
         if (value is None or
                 (self.value_type == "boolean" and
-                    value == "false" or value is False)
-           ):
+                    value == "false" or value is False)):
             return ''
         template = string.Template(self.param)
         arg = template.substitute(value=value)
@@ -130,4 +138,3 @@ class CommandOption(object):
             return "{name}:{type}".format(name=self.name, type=self.value_type)
         else:
             return "{name}={value}".format(name=self.name, value=self.value)
-
