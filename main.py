@@ -3,39 +3,56 @@
 import argparse
 import json
 import os.path
+from configparser import ConfigParser
 
-from command import CommandRunner
+from command import CommandRunnerFactory
 
 
-def main():
-    path = os.path.join('config', "MuscleParameters.xml")
-    runner = CommandRunner(path)
+ROOT_DIR = os.path.dirname(__file__)
+SERVICE = "Dummy"
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input")
-    args = parser.parse_args()
 
-    if args.input is None:
-        print("no input file, saving to MuscleOptions.json")
-        options = runner.get_options()
-        save_json(options, "MuscleOptions.json")
-    else:
-        values = get_values_from_json(args.input)
-        runner.set_values(values)
-        print(runner.build_command())
+class Main(object):
+
+    def __init__(self):
+        cfg = ConfigParser()
+        cfg.read("./config/services.ini")
+        services = cfg.sections()
+        self.service_runner_factory = {}
+        for service in services:
+            params_path = os.path.join(ROOT_DIR, cfg.get(service, "parameters"))
+            bin_path = os.path.join(ROOT_DIR, cfg.get(service, "bin"))
+            self.service_runner_factory[service] = \
+                CommandRunnerFactory(bin_path, params_path)
+
+    def main(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-i", "--input")
+        args = parser.parse_args()
+
+        if args.input is None:
+            print("no input file, saving to %sOptions.json" % SERVICE)
+            options = self.service_runner_factory[SERVICE].options
+            save_json(options, "%sOptions.json" % SERVICE)
+        else:
+            values = get_values_from_json(args.input)
+            runner = self.service_runner_factory[SERVICE].get_command_runner()
+            runner.set_values(values)
+            res = runner.run_command()
+            print(res)
 
 
 def get_values_from_json(path):
     with open(path, "r") as f:
         obj = json.load(f)
-    return {id: o['value'] for (id, o) in obj.items()}
+    return {opt_id: o['value'] for (opt_id, o) in obj.items()}
 
 
 def save_json(options, path):
     obj = {
         option.id: {
             "name": option.name,
-            "value": option.default_value
+            "value": option.default
         }
         for option in options
     }
@@ -44,4 +61,5 @@ def save_json(options, path):
 
 
 if __name__ == "__main__":
-    main()
+    main = Main()
+    main.main()

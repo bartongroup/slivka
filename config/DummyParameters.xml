@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+
+<runnerConfig>
+
+    <option id="return">
+        <name>Return code</name>
+        <description>code returned by the program</description>
+        <param>--return ${value}</param>
+        <integerValue>
+            <default>0</default>
+        </integerValue>
+    </option>
+
+    <option id="long">
+        <name>Long computation</name>
+        <description>extends execution to 5 sec</description>
+        <param>--long</param>
+        <booleanValue>
+            <default>false</default>
+        </booleanValue>
+    </option>
+
+    <option id="very_long">
+        <name>Very long computation</name>
+        <description>extends execution to 30 seconds</description>
+        <param>--very-long</param>
+        <booleanValue>
+            <default>false</default>
+        </booleanValue>
+    </option>
+
+    <option id="foo">
+        <name>Foo</name>
+        <description>foo variable</description>
+        <param>-f</param>
+        <textValue>
+            <minLength>2</minLength>
+            <maxLength>10</maxLength>
+            <default>Foo</default>
+        </textValue>
+    </option>
+
+    <option id="error">
+        <name>Error</name>
+        <description>Generates an error</description>
+        <param>-e</param>
+        <booleanValue>
+            <default>true</default>
+        </booleanValue>
+    </option>
+
+</runnerConfig>
