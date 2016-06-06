@@ -22,8 +22,13 @@ class Main(object):
         for service in services:
             params_path = os.path.join(ROOT_DIR, cfg.get(service, "parameters"))
             bin_path = os.path.join(ROOT_DIR, cfg.get(service, "bin"))
+            env = {
+                param[4:]: value
+                for param, value in cfg.items(service)
+                if param[:3] == "env"
+            }
             self.service_runner_factory[service] = \
-                CommandRunnerFactory(bin_path, params_path)
+                CommandRunnerFactory(bin_path, params_path, env or None)
 
     def main(self):
         parser = argparse.ArgumentParser()

@@ -13,10 +13,11 @@ ServiceOutput = namedtuple("ServiceOutput", ["retcode", "stdout", "stderr"])
 
 class CommandRunnerFactory(object):
 
-    def __init__(self, binary_file, param_file):
+    def __init__(self, binary_file, param_file, env=None):
         xml_tree = self._validate_param_file(param_file)
         self._load_options(xml_tree)
         self.binary = binary_file
+        self.env = env
 
     @staticmethod
     def _validate_param_file(param_file):
@@ -78,7 +79,7 @@ class CommandRunnerFactory(object):
                  bound to it
         """
         options = deepcopy(self.options)
-        return CommandRunner(self.binary, options)
+        return CommandRunner(self.binary, options, self.env)
 
 
 class CommandRunner(object):
