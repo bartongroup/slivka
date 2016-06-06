@@ -1,2 +1,4 @@
-class WorkerMsg:
-    GET_JOB_STATUS=b"JOB STATUS"
+# credits to Alec Thomas and acjay (stackoverflow.com)
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), named)
+    return type("Enum", (), enums)

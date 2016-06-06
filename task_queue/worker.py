@@ -5,6 +5,8 @@ import uuid
 
 from socket import socket, AF_INET, SOCK_STREAM
 
+from utils import enum
+
 sys.path[0] = os.getcwd()
 
 
@@ -12,11 +14,9 @@ HOST = 'localhost'
 PORT = 9090
 
 
-class Worker:
+class Worker(object):
 
     def __init__(self, host=HOST, port=PORT):
-        self.host = host
-        self.port = port
         self._server_socket = socket(family=AF_INET, type=SOCK_STREAM)
         self._server_socket.bind((host, port))
         # self._server_socket.setblocking(False)
@@ -39,15 +39,21 @@ class Worker:
 
         conn.send(b'OK\x00\x00')
 
-        job_id = self._do_work(runnable, args, kwargs)
+        job_id = self._start_job(runnable, args, kwargs)
         conn.send(job_id.encode())
         conn.close()
 
-    def _start_job(self, callable, args, kwargs):
+    def _start_job(self, runnable, args, kwargs):
         print("Starting <{}> with args {} and kwargs {}"
               .format(callable.__name__, args, kwargs))
 
         return uuid.uuid4().hex
+
+
+WorkerMsg = enum(
+    GET_JOB_RESULT=b"JOB RESULT",
+    GET_JOB_STATUS=b"JOB STATUS"
+)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
 from socket import socket, AF_INET, SOCK_STREAM
 
-from task_queue.worker import HOST, PORT
-from task_queue.utils import WorkerMsg
+from task_queue.worker import HOST, PORT, WorkerMsg
 
 
 class DeferredResult:

@@ -5,37 +5,41 @@ import uuid
 
 from collections import namedtuple
 
+from .runnable_task import RunnableTask
 from .worker import HOST, PORT
+from .utils import enum
 
 
 class Job:
-    def __init__(self, func, args=None, kwargs=None):
+    def __init__(self, runnable, args=None, kwargs=None):
         """
-        :param func: target function to be executed bo the worker
-        :param args: arguments passed to the target function
-        :param kwargs: keyword arguments passed to the target funciton
+        :param runnable: runnable started by the worker
+        :param args: arguments passed to the runnable's start method
+        :param kwargs: keyword arguments passed to the runnable's start method
         """
+        if not isinstance(runnable, RunnableTask):
+            raise TypeError("Runnable must implement RunnableTask")
+        self.runnable = runnable
         self.status = JobStatus.PENDING
-        self.func = func
         self.args = args or ()
         self.kwargs = kwargs or {}
         self.id = uuid.uuid4().hex
         self._result = None
-        self._finished_slot = None
+        self.finished_slot = None
 
     def set_finished_slot(self, slot):
         """
         Sets the callable to be executed when the job is complete.
         :param slot: callable to be executed
         """
-        self._finished_slot = slot
+        self.finished_slot = slot
 
     def _send_finished_signal(self):
         """
         Sends a finished signal to the slot when the job is complete
         """
-        if self._finished_slot:
-            self._finished_slot()
+        if self.finished_slot:
+            self.finished_slot()
 
     def start(self):
         """
@@ -58,7 +62,7 @@ class Job:
         """
         self.status = JobStatus.RUNNING
         try:
-            self._result = self.func(*self.args, **self.kwargs)
+            self._result = self.runnable.start(*self.args, **self.kwargs)
         except Exception as e:
             self._exception = e
             self.status = JobStatus.FAILED
@@ -68,13 +72,19 @@ class Job:
         finally:
             self._send_finished_signal()
 
-    def terminate(self):
-        raise NotImplementedError()
+    def kill(self):
+        self.runnable.kill()
+
+    def suspend(self):
+        self.runnable.suspend()
+
+    def resume(self):
+        self.runnable.resume()
 
     @property
     def result(self):
         if not self.is_finished():
-            raise RuntimeWarning("Job is not finished")
+            return None
         return JobResult(self._result, self._exception)
 
     def is_finished(self):
@@ -88,11 +98,12 @@ class Job:
         return self.status == JobStatus.RUNNING
 
 
-class JobStatus:
-    PENDING = "PENDING",
-    RUNNING = "RUNNING",
-    COMPLETED = "COMPLETED",
-    FAILED = "FAILED"
+JobStatus = enum(
+    PENDING="PENDING",
+    RUNNING="RUNNING",
+    COMPLETED="COMPLETED",
+    FAILED="FAILED"
+)
 
 
 JobResult = namedtuple("JobResult", ["result", "error"])
