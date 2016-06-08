@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 class RunnableTask(object, metaclass=ABCMeta):
 
     @abstractmethod
-    def start(self, *args, **kwargs):
+    def run(self, *args, **kwargs):
         """
         Launches the task and returns it's result.
         Method should be blocking.
@@ -13,20 +13,20 @@ class RunnableTask(object, metaclass=ABCMeta):
         :return: task result
         """
 
-    @abstractmethod
     def kill(self):
         """
         Kills the execution of the task.
         """
+        raise NotImplementedError
 
-    @abstractmethod
     def suspend(self):
         """
         Blocks the execution of the task
         """
+        raise NotImplementedError
 
-    @abstractmethod
     def resume(self):
         """
         Resumes the execution of the suspended task
         """
+        raise NotImplementedError
