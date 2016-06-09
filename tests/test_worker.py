@@ -1,8 +1,8 @@
 import time
 import unittest
 
-from task_queue import queue_run, DeferredResult
-from task_queue.job import JobStatus, JobResult
+from scheduler.task_queue import JobStatus, JobResult
+from scheduler.task_queue import queue_run, DeferredResult
 from . import dummy_task
 
 

@@ -4,5 +4,5 @@ import sys
 
 
 if "--worker" in sys.argv:
-    from task_queue.worker import start_worker
+    from scheduler.task_queue import start_worker
     start_worker()

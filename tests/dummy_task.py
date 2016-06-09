@@ -1,6 +1,6 @@
 import time
 
-from task_queue import RunnableTask
+from scheduler.task_queue import RunnableTask
 
 
 class C(RunnableTask):
