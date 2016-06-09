@@ -71,7 +71,8 @@ class Signal(object):
 
 
 WorkerMsg = enum(
-    GET_JOB_RESULT=b"JOB RESULT",
-    GET_JOB_STATUS=b"JOB STATUS",
+    MSG_NEW_TASK=b"NEW TASK",
+    MSG_JOB_STATUS=b"JOB STAT",
+    MSG_JOB_RESULT=b"JOB RES ",
     STATUS_OK=b'OK  '
 )

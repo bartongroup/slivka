@@ -1,6 +1,7 @@
+import pickle
 import socket
 
-from .utils import WorkerMsg
+from .utils import WorkerMsg, bytetonum
 
 
 class DeferredResult:
@@ -11,21 +12,40 @@ class DeferredResult:
 
     @property
     def status(self):
+        """
+        Asks the server for the status of the job linked to this deferred
+        result instance.
+        :return: current job status
+        :rtype: job.JobStatus
+        """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(WorkerMsg.GET_JOB_STATUS)
-        job_status = client_socket.recv(16)
+        client_socket.send(WorkerMsg.MSG_JOB_STATUS)
+
+        client_socket.send(self.job_id.encode())
+        job_status = client_socket.recv(16).decode()
+        client_socket.shutdown(socket.SHUT_RDWR)
         client_socket.close()
         return job_status
 
     @property
     def result(self):
+        """
+        Asks the server for the result of the job associated with this
+        deferred result.
+        :return: job result or None if not finished
+        :rtype: job.JobResult
+        """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(WorkerMsg.GET_JOB_RESULT)
-        job_result = client_socket.recv(4096)
+        client_socket.send(WorkerMsg.MSG_JOB_RESULT)
+
+        client_socket.send(self.job_id.encode())
+        msg_length = bytetonum(client_socket.recv(4))
+        job_result = client_socket.recv(msg_length)
+        client_socket.shutdown(socket.SHUT_RDWR)
         client_socket.close()
-        return job_result
+        return pickle.loads(job_result)
 
     def __repr__(self):
         return ("<DeferredResult> {job_id} server: {addr[0]}:{addr[1]}"

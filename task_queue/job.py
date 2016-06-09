@@ -1,5 +1,3 @@
-import pickle
-import socket
 import sys
 import threading
 import uuid
@@ -37,27 +35,24 @@ class Job:
         """
         if not self.is_pending():
             raise RuntimeError("Job is already running or is completed")
-        thread = threading.Thread(
-            target=self._execute,
-            args=self.args,
-            kwargs=self.kwargs
-        )
+        thread = threading.Thread(target=self.run)
         thread.start()
 
-    def _execute(self):
+    def run(self):
         """
         Executes the target function and waits for completion.
         """
         self.status = JobStatus.RUNNING
+        # noinspection PyBroadException
         try:
             self._result = self.runnable.run(*self.args, **self.kwargs)
-        except RuntimeError:
+        except:
             self._exception = sys.exc_info()
             self.status = JobStatus.FAILED
         else:
             self.status = JobStatus.COMPLETED
         finally:
-            self.sig_finished()
+            self.sig_finished(self.id)
 
     def kill(self):
         """
@@ -114,6 +109,7 @@ JobStatus = enum(
     PENDING="PENDING",
     RUNNING="RUNNING",
     COMPLETED="COMPLETED",
+    COLLECTED="COLLECTED",
     FAILED="FAILED"
 )
 
