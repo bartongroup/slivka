@@ -113,10 +113,8 @@ class DecimalField(BaseField):
 
 class FileField(BaseField):
 
-    # file name validation:
-    # (alphanumeric or dot) followed by (any amount of alphanumeric, dashes or
-    # spaces) optionally ending with (dot)(1-7 alphanumeric)
-    filename_regex = re.compile(r"^[\w\.][\w -]*(?:\.[\w]{1,7})?$")
+    # file name validation: can't start or end with space
+    filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
 
     def __init__(self, default=None):
         super().__init__(default)
