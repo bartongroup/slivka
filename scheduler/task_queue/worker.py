@@ -39,9 +39,13 @@ class Worker(object):
             try:
                 (client_socket, address) = self._server_socket.accept()
             except socket.timeout:
+                continue
+            else:
+                if self._shutdown:
+                    client_socket.close()
+            finally:
                 if self._shutdown:
                     break
-                continue
             print("Received connection from {}".format(address))
             client_thread = threading.Thread(
                 target=self._handle_client,
@@ -163,7 +167,7 @@ def start_worker():
     queue_thread.start()
     try:
         while True:
-            time.sleep(0.5)
+            time.sleep(3600)
     except KeyboardInterrupt:
         worker.shutdown()
     server_thread.join()
