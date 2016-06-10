@@ -7,5 +7,5 @@ if "--worker" in sys.argv:
     from scheduler.task_queue import start_worker
     start_worker()
 elif "--server" in sys.argv:
-    from server.engine import app
+    from server.serverapp import app
     app.run(host='localhost', port=8080, debug=True)

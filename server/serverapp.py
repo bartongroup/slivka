@@ -1,6 +1,6 @@
 import configparser
 
-from flask import Flask, jsonify, request
+from flask import Flask, Response, json, jsonify, request
 
 from .config import services, service_info
 
@@ -32,8 +32,13 @@ def get_service_info(service):
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def echo():
-    return jsonify(
+    data = json.dumps(dict(
         method=request.method,
         args=request.args,
         form=request.form
+    ), indent=4)
+    return Response(
+        response=data,
+        status=200,
+        mimetype="application/json"
     )
