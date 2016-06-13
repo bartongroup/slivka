@@ -1,5 +1,7 @@
 import re
 
+from .exceptions import ValidationError
+
 
 class BaseField:
 
@@ -63,7 +65,7 @@ class BaseField:
         if self.is_valid:
             return self._cleaned_value
         else:
-            raise ValueError("Field is not valid")
+            raise ValidationError
 
     def _validate(self):
         """
