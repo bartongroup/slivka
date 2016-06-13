@@ -1,8 +1,10 @@
-import sqlalchemy
 import sqlalchemy.orm
 
-from .models import Base, Request, Option
+from .models import Base
 
 engine = sqlalchemy.create_engine('sqlite:///:memory:', echo=True)
 Session = sqlalchemy.orm.sessionmaker(bind=engine)
-Base.metadata.create_all(engine)
+
+
+def create_db():
+    Base.metadata.create_all(engine)
