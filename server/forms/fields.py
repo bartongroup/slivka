@@ -63,7 +63,7 @@ class BaseField:
         if self.is_valid:
             return self._cleaned_value
         else:
-            raise ValueError("Form is not valid")
+            raise ValueError("Field is not valid")
 
     def _validate(self):
         """
@@ -89,7 +89,7 @@ class IntegerField(BaseField):
         """
         try:
             self._cleaned_value = int(self.value)
-        except ValueError:
+        except (ValueError, TypeError):
             return False
         return True
 
@@ -106,7 +106,7 @@ class DecimalField(BaseField):
         """
         try:
             self._cleaned_value = float(self.value)
-        except ValueError:
+        except (ValueError, TypeError):
             return False
         return True
 
@@ -169,6 +169,10 @@ class BooleanField(BaseField):
 class SelectField(BaseField):
 
     def __init__(self, choices, default=None):
+        """
+        :param choices: an iterable of allowed choices
+        :param default: default value of the field
+        """
         super().__init__(default)
         self._choices = choices
 
