@@ -69,7 +69,7 @@
                       <xs:element name="choice">
                         <xs:complexType>
                           <xs:sequence>
-                            <xs:element name="name" minOccurs="0" type="xs:string" />
+                            <xs:element name="name" type="xs:string" />
                             <xs:element name="description" minOccurs="0" type="xs:string" />
                             <xs:element name="param" type="param" />
                           </xs:sequence>

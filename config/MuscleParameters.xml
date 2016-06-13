@@ -50,6 +50,7 @@
     <description>Choose wisely</description>
     <select>
       <choice>
+        <name>Superfast</name>
         <description>As fast as possible</description>
         <param>--fast</param>
       </choice>
@@ -58,6 +59,7 @@
         <param>--cheap</param>
       </choice>
       <choice>
+        <name>Accurate</name>
         <param>--accurate</param>
       </choice>
     </select>

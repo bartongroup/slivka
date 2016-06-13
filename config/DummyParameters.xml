@@ -49,4 +49,24 @@
         </booleanValue>
     </option>
 
+    <option id="choice">
+        <name>Choice</name>
+        <description>Choose wisely</description>
+        <select>
+            <choice>
+                <name>A</name>
+                <param>-a</param>
+            </choice>
+            <choice>
+                <name>B</name>
+                <description>Not a correct answer</description>
+                <param>-b</param>
+            </choice>
+            <choice>
+                <name>C</name>
+                <param>-c</param>
+            </choice>
+        </select>
+    </option>
+
 </runnerConfig>
