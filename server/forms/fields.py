@@ -5,15 +5,31 @@ from .exceptions import ValidationError
 
 class BaseField:
 
-    def __init__(self, default=None):
+    def __init__(self, option_id, default=None):
         """
         Initializes the values of the field and sets the default value.
         :param default: default value of the field
         """
+        self._id = option_id
         self._default = default
         self._value = None
         self._cleaned_value = None
         self._valid = None
+
+    @property
+    def id(self):
+        """
+        :return: option id
+        """
+        return self._id
+
+    @property
+    def type(self):
+        """
+        Get the type of the field based on the class name.
+        :return: string representation of field type
+        """
+        return self.__class__.__name__[:-5].lower()
 
     @property
     def default(self):
@@ -78,11 +94,12 @@ class BaseField:
         """
         raise NotImplementedError
 
+    def __repr__(self):
+        return ("<{} {}: {}>"
+                .format(self.__class__.__name__, self._id, self.value))
+
 
 class IntegerField(BaseField):
-
-    def __init__(self, default=None):
-        super().__init__(default)
 
     def _validate(self):
         """
@@ -97,9 +114,6 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
-
-    def __init__(self, default=None):
-        super().__init__(default)
 
     def _validate(self):
         """
@@ -118,9 +132,6 @@ class FileField(BaseField):
     # file name validation: can't start or end with space
     filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
 
-    def __init__(self, default=None):
-        super().__init__(default)
-
     def _validate(self):
         """
         Checks if the value is a valid file name and sets it to `_cleaned_data`
@@ -132,9 +143,6 @@ class FileField(BaseField):
 
 
 class TextField(BaseField):
-
-    def __init__(self, default=None):
-        super().__init__(default)
 
     def _validate(self):
         """
@@ -150,9 +158,6 @@ class TextField(BaseField):
 
 
 class BooleanField(BaseField):
-
-    def __init__(self, default=None):
-        super().__init__(default)
 
     def _validate(self):
         """
@@ -170,12 +175,12 @@ class BooleanField(BaseField):
 
 class SelectField(BaseField):
 
-    def __init__(self, choices, default=None):
+    def __init__(self, option_id, choices, default=None):
         """
         :param choices: an iterable of allowed choices
         :param default: default value of the field
         """
-        super().__init__(default)
+        super().__init__(option_id, default)
         self._choices = choices
 
     def _validate(self):

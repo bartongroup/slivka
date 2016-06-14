@@ -1,5 +1,8 @@
+from copy import deepcopy
 from lxml import etree
 
+from db.models import Request, Option
+from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, SelectField)
 
@@ -8,6 +11,11 @@ class BaseForm:
 
     _fields = {}
     _service = None
+
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
+        obj._fields = deepcopy(cls._fields)
+        return obj
 
     def __init__(self, values=None):
         """
@@ -25,22 +33,38 @@ class BaseForm:
 
     @property
     def fields(self):
+        """
+        :return: form fields
+        """
         return self._fields.values()
 
     def is_valid(self):
         """
         Checks if the form and its fields are valid.
-        :return: whether the form is valid
+        :return: boolean that indicates if the orm is valid
         """
         if self._is_valid is None:
             self._is_valid = all(field.is_valid for field in self.fields)
         return self._is_valid
 
-    def save(self):
+    def save(self, session):
         """
-        Saves the form data to the database as a new task request
+        Adds new request to the session and fills options from the form fields.
+        Session must be committed after calling this method.
+        :param session: a current database session
         """
-        raise NotImplementedError
+        if not self.is_valid():
+            raise ValidationError
+        request = Request(service=self._service)
+        request.options = [
+            Option(
+                option_id=field.id,
+                type=field.type,
+                value=field.cleaned_value
+            )
+            for field in self.fields
+        ]
+        session.add(request)
 
     def __repr__(self):
         return "<{}> bound={}".format(self.__class__.__name__, self._bound)
@@ -61,10 +85,10 @@ class FormFactory:
     def get_form_class(form_name, service, param_file):
         """
         Constructs a form class from a parameters configuration file
-        :param form_name:
-        :param service:
-        :param param_file:
-        :return:
+        :param form_name: name given to a new form class
+        :param service: service name the form is bound to
+        :param param_file: a path to xml file describing form fields
+        :return: new BaseForm subclass with fields loaded from the param file
         """
         xml_tree = FormFactory._validate_param_file(param_file)
         fields = FormFactory._load_fields(xml_tree)
@@ -120,7 +144,7 @@ class FormFactory:
             else:
                 default = default_element.text
             field_class = FormFactory.field_classes[value_type]
-            return opt_id, field_class(default=default)
+            return opt_id, field_class(opt_id, default=default)
         else:
             choices = [choice_el.findtext("param") for choice_el in select]
-            return opt_id, SelectField(choices)
+            return opt_id, SelectField(opt_id, choices)
