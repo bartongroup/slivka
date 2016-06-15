@@ -96,6 +96,7 @@
   <xs:simpleType name="idString">
     <xs:restriction base="xs:string">
       <xs:minLength value="2" />
+      <xs:maxLength value="16" />
     </xs:restriction>
   </xs:simpleType>
 

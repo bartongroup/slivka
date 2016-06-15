@@ -138,13 +138,40 @@ class FormFactory:
         if select is None:
             value_element = element[3]  # vulnerable part, crashes on comments
             value_type = value_element.tag[:-5]
-            default_element = value_element.find("default")
-            if default_element is None:
-                default = None
-            else:
-                default = default_element.text
+            kwargs = {
+                "default": value_element.findtext("default")
+            }
+            if value_type == "integer":
+                minimum = value_element.findtext("min")
+                if minimum is not None:
+                    kwargs["minimum"] = int(minimum)
+                maximum = value_element.findtext("max")
+                if maximum is not None:
+                    kwargs["maximum"] = int(maximum)
+            elif value_type == "decimal":
+                min_inclusive = value_element.findtext("minInclusive")
+                if min_inclusive is not None:
+                    kwargs["min_inclusive"] = float(min_inclusive)
+                min_exclusive = value_element.findtext("minExclusive")
+                if min_exclusive is not None:
+                    kwargs["min_exclusive"] = float(min_exclusive)
+                max_inclusive = value_element.findtext("maxInclusive")
+                if max_inclusive is not None:
+                    kwargs["max_inclusive"] = float(max_inclusive)
+                max_exclusive = value_element.findtext("maxExclusive")
+                if max_exclusive is not None:
+                    kwargs["max_exclusive"] = float(max_exclusive)
+            elif value_type == "file":
+                kwargs["extension"] = value_element.findtext("extension")
+            elif value_type == "text":
+                min_length = value_element.findtext("minLength")
+                if min_length is not None:
+                    kwargs["min_length"] = int(min_length)
+                max_length = value_element.findtext("maxLength")
+                if max_length is not None:
+                    kwargs["max_length"] = int(max_length)
             field_class = FormFactory.field_classes[value_type]
-            return opt_id, field_class(opt_id, default=default)
+            return opt_id, field_class(opt_id, **kwargs)
         else:
             choices = [choice_el.findtext("param") for choice_el in select]
-            return opt_id, SelectField(opt_id, choices)
+            return opt_id, SelectField(opt_id, choices=choices)

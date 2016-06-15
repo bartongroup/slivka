@@ -4,122 +4,166 @@ from server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
     TextField, BooleanField, SelectField
 )
+from server.forms.exceptions import ValidationError
 
 
 class TestBaseField(unittest.TestCase):
 
-    def setUp(self):
-        self.field = BaseField(default='foo')
-
     def test_default(self):
-        self.assertEqual(self.field.default, 'foo')
+        field = BaseField('', default='foo')
+        self.assertEqual(field.default, 'foo')
         with self.assertRaises(AttributeError):
-            self.field.default = 'bar'
+            field.default = 'bar'
+        self.assertEqual(field.value, 'foo')
 
     def test_value(self):
-        self.assertEqual(self.field.value, 'foo')
-        self.field.value = 'bar'
-        self.assertEqual(self.field.value, 'bar')
+        field = BaseField('')
+        field.value = 'bar'
+        self.assertEqual(field.value, 'bar')
 
     def test_invalidation(self):
-        self.field._valid = True
-        self.assertTrue(self.field.is_valid)
-        self.field.value = 'bar'
-        self.assertFalse(self.field._valid)
+        field = BaseField('', default='foo')
+        field._valid = True
+        self.assertTrue(field.is_valid)
+        field.value = 'bar'
+        self.assertFalse(field._valid)
 
 
 class TestIntegerField(unittest.TestCase):
 
-    def setUp(self):
-        self.field = IntegerField(default=4)
-
-    def test_is_valid(self):
-        self.field.value = 10
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "10"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "3.5"
-        self.assertFalse(self.field.is_valid)
-        self.field.value = "-4"
-        self.assertTrue(self.field.is_valid)
+    def test_is_valid_int(self):
+        field = IntegerField('')
+        field.value = 10
+        self.assertTrue(field.is_valid)
+        field.value = "10"
+        self.assertTrue(field.is_valid)
+        field.value = "3.5"
+        self.assertFalse(field.is_valid)
+        field.value = "-4"
+        self.assertTrue(field.is_valid)
+        
+    def test_is_valid_min(self):
+        field = IntegerField('', minimum=-10)
+        field.value = -10
+        self.assertTrue(field.is_valid)
+        field.value = -11
+        self.assertFalse(field.is_valid)
+        
+    def test_is_valid_max(self):
+        field = IntegerField('',maximum=20)
+        field.value = 20
+        self.assertTrue(field.is_valid)
+        field.value = 21
+        self.assertFalse(field.is_valid)
 
     def test_cleaned_data(self):
-        self.assertEqual(self.field.cleaned_value, 4)
-        self.field.value = "True"
-        with self.assertRaises(ValueError):
-            self.field.cleaned_value
-        self.field.value = '10'
-        self.assertEqual(self.field.cleaned_value, 10)
+        field = IntegerField('', default=4)
+        self.assertEqual(field.cleaned_value, 4)
+        field.value = "True"
+        with self.assertRaises(ValidationError):
+            field.cleaned_value
+        field.value = '10'
+        self.assertEqual(field.cleaned_value, 10)
 
 
 class TestDecimalField(unittest.TestCase):
 
-    def setUp(self):
-        self.field = DecimalField()
-
-    def test_is_valid(self):
-        self.field.value = 3.1415
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "3.5"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "abc"
-        self.assertFalse(self.field.is_valid)
-        self.field.value = "-2.71"
-        self.assertTrue(self.field.is_valid)
+    def test_is_valid_decimal(self):
+        field = DecimalField('')
+        field.value = 3.1415
+        self.assertTrue(field.is_valid)
+        field.value = "3.5"
+        self.assertTrue(field.is_valid)
+        field.value = "abc"
+        self.assertFalse(field.is_valid)
+        field.value = "-2.71"
+        self.assertTrue(field.is_valid)
 
     def test_cleaned_data(self):
-        self.field.value = 3.1415
-        self.assertAlmostEqual(self.field.cleaned_value, 3.1415)
-        self.field.value = "foobar"
+        field = DecimalField('')
+        field.value = 3.1415
+        self.assertAlmostEqual(field.cleaned_value, 3.1415)
+        field.value = "foobar"
         with self.assertRaises(ValueError):
-            self.field.cleaned_value
-        self.field.value = "0.12345678987654321"
-        self.assertAlmostEqual(self.field.cleaned_value, 0.12345678)
+            field.cleaned_value
+        field.value = "0.12345678987654321"
+        self.assertAlmostEqual(field.cleaned_value, 0.12345678)
+        
+    def test_is_valid_min_inclusive(self):
+        field = DecimalField('', min_inclusive=5)
+        field.value = 5
+        self.assertTrue(field.is_valid)
+        field.value = 4.99
+        self.assertFalse(field.is_valid)
+        
+    def test_is_valid_min_exclusive(self):
+        field = DecimalField('', min_exclusive=5)
+        field.value = 5
+        self.assertFalse(field.is_valid)
+        field.value = 4.99
+        self.assertFalse(field.is_valid)
+        field.value = 5.01
+        self.assertTrue(field.is_valid)
 
 
 class TestFileField(unittest.TestCase):
 
-    def setUp(self):
-        self.field = FileField()
+    def test_is_valid_filename(self):
+        field = FileField('')
+        for value in [".gitignore", "some_sample_file.fasta",
+                      "legal_character -.-", "dot.spaced.file.name"]:
+            field.value = value
+            self.assertTrue(field.is_valid, "Invalid for %r" % value)
 
-    def test_is_valid(self):
-        self.field.value = ".gitignore"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "some_sample_file.fasta"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "dot.spaced.file.name"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "illegal+character"
-        self.assertFalse(self.field.is_valid)
-        self.field.value = "legal_character -.-"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "  spaces"
-        self.assertFalse(self.field.is_valid)
+        for value in ["illegal+character", "  spaces"]:
+            field.value = value
+            self.assertFalse(field.is_valid, "Valid for %r" % value)
+
+    def test_is_valid_extension(self):
+        field = FileField('', extension='exe')
+        field.value = "runme.bat"
+        self.assertFalse(field.is_valid)
+        field.value = "executable.exe"
+        self.assertTrue(field.is_valid)
+        field.value = "myexec.mexe"
+        self.assertFalse(field.is_valid)
 
 
 class TestTextField(unittest.TestCase):
 
-    def setUp(self):
-        self.field = TextField(default="Qux")
-
     def test_is_valid(self):
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "abc"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = 123
-        self.assertTrue(self.field.is_valid)
+        field = TextField('')
+        field.value = "abc"
+        self.assertTrue(field.is_valid)
+        field.value = 123
+        self.assertTrue(field.is_valid)
 
     def test_cleaned_value(self):
-        self.field.value = "abc"
-        self.assertEqual(self.field.cleaned_value, "abc")
-        self.field.value = 123
-        self.assertEqual(self.field.cleaned_value, "123")
+        field = TextField('')
+        field.value = "abc"
+        self.assertEqual(field.cleaned_value, "abc")
+        field.value = 123
+        self.assertEqual(field.cleaned_value, "123")
+
+    def test_is_valid_max_length(self):
+        field = TextField('', max_length=10)
+        field.value = "some very long message goes here"
+        self.assertFalse(field.is_valid)
+        field.value = "short text"
+        self.assertTrue(field.is_valid)
+
+    def test_is_valid_min_length(self):
+        field = TextField('', min_length=10)
+        field.value = "tiny"
+        self.assertFalse(field.is_valid)
+        field.value = "short text"
+        self.assertTrue(field.is_valid)
 
 
 class TestBooleanField(unittest.TestCase):
 
     def setUp(self):
-        self.field = BooleanField()
+        self.field = BooleanField('')
 
     def test_is_valid(self):
         self.field.value = True
@@ -131,32 +175,35 @@ class TestBooleanField(unittest.TestCase):
         self.field.value = None
         self.assertTrue(self.field.is_valid)
 
-    def test_cleaned_data(self):
-        self.compare_values(0, False)
-        self.compare_values(1, True)
-        self.compare_values(False, False)
-        self.compare_values(True, True)
-        self.compare_values("false", False)
-        self.compare_values("true", True)
-        self.compare_values("yes", True)
-        self.compare_values("no", False)
-        self.compare_values("NULL", False)
-        self.compare_values("0", False)
-        self.compare_values("1", True)
-        self.compare_values("None", False)
+    def test_cleaned_data_true(self):
+        for value in [1, True, 'yes', 'true', 'TRUE', 'True', 'LOL', '1',
+                      object(), type('', (), {})]:
+            self.field.value = value
+            self.assertEqual(
+                self.field.cleaned_value, True,
+                "invalid value for %s" % value
+            )
 
-    def compare_values(self, field_value, expected_value):
-        self.field.value = field_value
-        self.assertEqual(self.field.cleaned_value, expected_value)
+    def test_cleaned_data_false(self):
+        for value in [0, False, 'no', 'false', 'FALSE', 'False', 'NULL',
+                      'none', '0', (), None]:
+            self.assertEqual(
+                self.field.cleaned_value, False,
+                "invalid value for %r" % (value, )
+            )
 
 
 class TestSelectField(unittest.TestCase):
 
     def setUp(self):
-        self.field = SelectField(("alpha", "beta", "gamma"))
+        self.field = SelectField('', choices=("alpha", "beta", "gamma"))
 
     def test_is_valid(self):
+        self.field.value = "alpha"
+        self.assertTrue(self.field.is_valid)
         self.field.value = "beta"
+        self.assertTrue(self.field.is_valid)
+        self.field.value = "gamma"
         self.assertTrue(self.field.is_valid)
         self.field.value = "delta"
         self.assertFalse(self.field.is_valid)
