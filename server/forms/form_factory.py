@@ -38,6 +38,15 @@ class BaseForm:
         """
         return self._fields.values()
 
+    @property
+    def cleaned_data(self):
+        if not self.is_valid():
+            raise ValidationError
+        return {
+            field.id: field.cleaned_value
+            for field in self.fields
+        }
+
     def is_valid(self):
         """
         Checks if the form and its fields are valid.
@@ -65,6 +74,19 @@ class BaseForm:
             for field in self.fields
         ]
         session.add(request)
+
+    def to_dict(self):
+        return {
+            "fields": [
+                {
+                    "id": opt_id,
+                    "type": field.type,
+                    "required": field.required,
+                    "default": field.default
+                }
+                for opt_id, field in self._fields.items()
+            ]
+        }
 
     def __repr__(self):
         return "<{}> bound={}".format(self.__class__.__name__, self._bound)

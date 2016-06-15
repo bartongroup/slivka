@@ -1,4 +1,3 @@
-#!usr/bin/env
 import string
 import subprocess
 

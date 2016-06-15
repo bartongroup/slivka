@@ -1,8 +1,8 @@
-import configparser
+from flask import Flask, Response, json, request, abort, jsonify
 
-from flask import Flask, Response, json, jsonify, request
-
-from .config import services, service_info
+from db import Session
+from server.forms import get_form
+import settings
 
 
 app = Flask('PyBioAS')
@@ -15,19 +15,47 @@ def index():
 
 @app.route('/api/services', methods=['GET'])
 def get_services():
-    return jsonify(
-        services=services
+    data = json.dumps({
+        "services": settings.SERVICES
+    }, indent=4)
+    return Response(
+        response=data,
+        status=200,
+        mimetype="application/json"
     )
 
 
-@app.route('/api/service/<service>/info')
-def get_service_info(service):
-    info = service_info.get(service)
-    if info is not None:
-        return jsonify(
-            name=service,
-            options=info.options
+@app.route('/api/service/<service>/form', methods=["GET"])
+def get_service_form(service):
+    if service not in settings.SERVICES:
+        abort(404)
+    form_cls = get_form(service)
+    form = form_cls()
+    data = json.dumps(form.to_dict(), indent=4)
+    return Response(
+        response=data,
+        status=200,
+        mimetype="application/json"
+    )
+
+
+@app.route('/api/service/<service>/form', methods=["POST"])
+def post_service_form(service):
+    if service not in settings.SERVICES:
+        abort(404)
+    form_cls = get_form(service)
+    form = form_cls(request.form)
+    if form.is_valid():
+        session = Session()
+        form.save(session)
+        session.commit()
+        return Response(
+            response=json.dumps({"form": form.cleaned_data}, indent=4),
+            status=200,
+            mimetype="application/json"
         )
+    else:
+        return str(form.fields)
 
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])

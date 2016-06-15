@@ -40,6 +40,10 @@ class BaseField:
         return self._default
 
     @property
+    def required(self):
+        return True
+
+    @property
     def value(self):
         """
         Returns field's value. If it wasn't set yet then returns default value.
@@ -95,13 +99,17 @@ class BaseField:
         raise NotImplementedError
 
     def __repr__(self):
-        return ("<{} {}: {:r}>"
+        return ("<{} {}: {!r}>"
                 .format(self.__class__.__name__, self._id, self.value))
 
 
 class IntegerField(BaseField):
 
     def __init__(self, option_id, default=None, minimum=None, maximum=None):
+        try:
+            default = int(default)
+        except (TypeError, ValueError):
+            raise AssertionError("Default is not an integer")
         super().__init__(option_id, default)
         self._min = minimum
         self._max = maximum
@@ -127,6 +135,10 @@ class DecimalField(BaseField):
 
     def __init__(self, option_id, default=None, min_inclusive=None,
                  min_exclusive=None, max_inclusive=None, max_exclusive=None):
+        try:
+            default = float(default)
+        except (TypeError, ValueError):
+            raise AssertionError("Default is not a decimal")
         super().__init__(option_id, default)
         if not (min_inclusive is None or min_exclusive is None):
             raise ValueError("You can't specify inclusive and exclusive "
@@ -243,6 +255,14 @@ class TextField(BaseField):
 
 class BooleanField(BaseField):
 
+    def __init__(self, option_id, default):
+        if (type(default) == str and
+                default.lower() in {'no', 'false', '0', 'null', 'none'}):
+            default = False
+        else:
+            default = bool(default)
+        super().__init__(option_id, default)
+
     def _validate(self):
         """
         Checks if the value is one of the "false" words and sets the
@@ -264,6 +284,7 @@ class SelectField(BaseField):
         :param choices: an iterable of allowed choices
         :param default: default value of the field
         """
+        assert default is None or default in choices, "Invalid default choice"
         super().__init__(option_id, default)
         self._choices = choices
 
