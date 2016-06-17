@@ -1,19 +1,21 @@
-from flask import Flask, Response, json, request, abort, jsonify
+import os.path
+
+from flask import Flask, Response, json, request, abort, redirect
 
 from db import Session
 from server.forms import get_form
 import settings
 
 
-app = Flask('PyBioAS')
+app = Flask('PyBioAS', root_path=os.path.dirname(__file__))
 
 
 @app.route('/')
 def index():
-    return "Hello, welcome to PyBioAS main page"
+    return redirect("/static/rest_api_specification.html")
 
 
-@app.route('/api/services', methods=['GET'])
+@app.route('/services', methods=['GET'])
 def get_services():
     data = json.dumps({
         "services": settings.SERVICES
@@ -25,7 +27,7 @@ def get_services():
     )
 
 
-@app.route('/api/service/<service>/form', methods=["GET"])
+@app.route('/service/<service>/form', methods=["GET"])
 def get_service_form(service):
     if service not in settings.SERVICES:
         abort(404)
@@ -39,7 +41,7 @@ def get_service_form(service):
     )
 
 
-@app.route('/api/service/<service>/form', methods=["POST"])
+@app.route('/service/<service>/form', methods=["POST"])
 def post_service_form(service):
     if service not in settings.SERVICES:
         abort(404)
@@ -47,15 +49,48 @@ def post_service_form(service):
     form = form_cls(request.form)
     if form.is_valid():
         session = Session()
-        form.save(session)
+        job_request = form.save(session)
         session.commit()
+        res = json.dumps({
+            "valid": True,
+            "fields": [
+                {
+                    "name": field.name,
+                    "value": field.cleaned_value
+                } for field in form.fields
+            ],
+            "task_id": job_request.uuid
+        }, indent=4)
+        session.close()
         return Response(
-            response=json.dumps({"form": form.cleaned_data}, indent=4),
-            status=200,
+            response= res,
+            status=202,
             mimetype="application/json"
         )
     else:
-        return str(form.fields)
+        fields = [
+            {
+                "name": field.name,
+                "value": field.value
+            }
+            for field in form.fields
+        ]
+        errors = [
+            {
+                "field": field.name,
+                "value": field.value,
+                "error_code": field.error.code,
+                "message": field.error.reason
+            }
+            for field in form.fields if field.error is not None
+        ]
+        return Response(
+            response=json.dumps({
+                "valid": False,
+                "fields": fields,
+                "errors": errors
+            }, indent=4)
+        )
 
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])

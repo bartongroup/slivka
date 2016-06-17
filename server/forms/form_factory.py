@@ -43,7 +43,7 @@ class BaseForm:
         if not self.is_valid():
             raise ValidationError
         return {
-            field.id: field.cleaned_value
+            field.name: field.cleaned_value
             for field in self.fields
         }
 
@@ -67,24 +67,25 @@ class BaseForm:
         request = Request(service=self._service)
         request.options = [
             Option(
-                option_id=field.id,
+                name=field.name,
                 type=field.type,
                 value=field.cleaned_value
             )
             for field in self.fields
         ]
         session.add(request)
+        return request
 
     def to_dict(self):
         return {
             "fields": [
                 {
-                    "id": opt_id,
+                    "name": field.name,
                     "type": field.type,
                     "required": field.required,
                     "default": field.default
                 }
-                for opt_id, field in self._fields.items()
+                for field in self.fields
             ]
         }
 

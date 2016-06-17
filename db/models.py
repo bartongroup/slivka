@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,6 +15,7 @@ class Request(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String)
+    uuid = Column(String(32), default=lambda: uuid.uuid4().hex)
 
     def __repr__(self):
         return ("<Request(id={id}, service={service})>"
@@ -25,7 +27,7 @@ class Option(Base):
     __tablename__ = "options"
 
     id = Column(Integer, primary_key=True)
-    option_id = Column(String(16))
+    name = Column(String(16))
     type = Column(String(8))
     value = Column(String)
     request_id = Column(Integer, ForeignKey('requests.id'))

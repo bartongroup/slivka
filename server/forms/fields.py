@@ -5,23 +5,28 @@ from .exceptions import ValidationError
 
 class BaseField:
 
-    def __init__(self, option_id, default=None):
+    def __init__(self, name, default=None):
         """
         Initializes the values of the field and sets the default value.
+        :param name: parameter id
         :param default: default value of the field
+        :raise ValidationError: default value is not valid
         """
-        self._id = option_id
+        self._name = name
+        if default is not None:
+            default = self.validate(default)
         self._default = default
         self._value = None
         self._cleaned_value = None
+        self._error = None
         self._valid = None
 
     @property
-    def id(self):
+    def name(self):
         """
         :return: option id
         """
-        return self._id
+        return self._name
 
     @property
     def type(self):
@@ -64,14 +69,28 @@ class BaseField:
         self._valid = None
 
     @property
+    def error(self):
+        if self._valid is False:
+            return self._error
+        else:
+            return None
+
+    @property
     def is_valid(self):
         """
         Checks if the field has a valid value by calling subclass' `_validate`
-        method.
+        method and catching ValidationError.
+        If the validation is successful it sets `_cleaned_value`.
         :return: whether the field is valid
         """
         if self._valid is None:
-            self._valid = self._validate()
+            try:
+                self._cleaned_value = self.validate(self.value)
+            except ValidationError as e:
+                self._error = e
+                self._valid = False
+            else:
+                self._valid = True
         return self._valid
 
     @property
@@ -80,72 +99,91 @@ class BaseField:
         Returns the value of the field after casting it into an appropriate
         form.
         :return: cleaned field value
-        :raise ValueError: form is not valid
+        :raise ValidationError: form is not valid
         """
         if self.is_valid:
             return self._cleaned_value
         else:
-            raise ValidationError
+            assert self._error, "Exception was not saved."
+            raise self._error
 
-    def _validate(self):
+    def validate(self, value):
         """
         Method validating the field value which has to be overridden in
         more specialised subclasses.
-        If the field is valid, this method should set the value of
-        `_cleaned_value` attribute. For invalid field, this attribute is
-        undefined.
-        :return: whether the field value is valid
+        If the field is valid, this method should return cleaned value;
+        otherwise, it raises ValidationError with error description.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
         raise NotImplementedError
 
     def __repr__(self):
         return ("<{} {}: {!r}>"
-                .format(self.__class__.__name__, self._id, self.value))
+                .format(self.__class__.__name__, self._name, self.value))
 
 
 class IntegerField(BaseField):
 
-    def __init__(self, option_id, default=None, minimum=None, maximum=None):
-        try:
-            default = int(default)
-        except (TypeError, ValueError):
-            raise AssertionError("Default is not an integer")
-        super().__init__(option_id, default)
+    def __init__(self, name, default=None, minimum=None, maximum=None):
+        """
+        :param name: parameter id
+        :param default: default value of the field
+        :param minimum: minimum accepted value (inclusive)
+        :param maximum: maximum accepted value (inclusive)
+        """
         self._min = minimum
         self._max = maximum
+        super().__init__(name, default)
 
-    def _validate(self):
+    def validate(self, value):
         """
-        Validates if the field value can be casted to an integer.
-        :return: whether the field's value has an integer representation
+        Validates if the field's value can be casted to an integer.
+        It check if the value meets minimum and maximum constraints.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
         try:
-            cleaned_value = int(self.value)
+            cleaned_value = int(value)
         except (ValueError, TypeError):
-            return False
+            raise ValidationError("type", "Not a valid integer.")
         if self._min is not None and cleaned_value < self._min:
-            return False
+            raise ValidationError(
+                "min", "Value must be greater than %d." % self._min
+            )
         if self._max is not None and cleaned_value > self._max:
-            return False
-        self._cleaned_value = cleaned_value
-        return True
+            raise ValidationError(
+                "max", "Value must be less than %d." % self._max
+            )
+        return cleaned_value
 
 
 class DecimalField(BaseField):
 
-    def __init__(self, option_id, default=None, min_inclusive=None,
+    def __init__(self, name, default=None, min_inclusive=None,
                  min_exclusive=None, max_inclusive=None, max_exclusive=None):
-        try:
-            default = float(default)
-        except (TypeError, ValueError):
-            raise AssertionError("Default is not a decimal")
-        super().__init__(option_id, default)
+        """
+        Sets the field and its constraints.
+        Inclusive and exclusive limits are mutually exclusive and at least
+        one in each pair must be None.
+        :param name: parameter id
+        :param default: default value of the field
+        :param min_inclusive: inclusive minimum accepted value
+        :param min_exclusive: exclusive minimum accepted value
+        :param max_inclusive: inclusive maximum accepted value
+        :param max_exclusive: exclusive maximum accepted value
+        :raise ValueError: inclusive and exclusive parameters are
+                           simultaneously set in the pair
+        :raise ValueError: maximum limit is lower than minimum limit
+        """
         if not (min_inclusive is None or min_exclusive is None):
             raise ValueError("You can't specify inclusive and exclusive "
-                             "minimum at the same time")
+                             "minimum at the same time.")
         if not (max_inclusive is None or max_inclusive is None):
             raise ValueError("You can't specify inclusive and exclusive "
-                             "maximum at the same time")
+                             "maximum at the same time.")
 
         if min_inclusive is not None:
             self._min = (min_inclusive, True)
@@ -161,35 +199,54 @@ class DecimalField(BaseField):
         else:
             self._max = None
 
-    def _validate(self):
+        if self._min and self._max and self._min[0] > self._max[0]:
+            raise ValueError("Minimum value can't be grater than maximum.")
+
+        super().__init__(name, default)
+
+    def validate(self, value):
         """
-        Validates if the value can be casted to a decimal number.
-        :return: whether the value is a correct decimal
+        Validates if the value can be casted to a decimal number and
+        meets all constraints.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
         try:
-            cleaned_value = float(self.value)
+            cleaned_value = float(value)
         except (ValueError, TypeError):
-            return False
+            raise ValidationError("type", "Not a valid decimal.")
         if self._min:
             if self._min[1]:
                 # cleaned value should be >= minimum
                 if cleaned_value < self._min[0]:
-                    return False
+                    raise ValidationError(
+                        "min",
+                        "Value must be less than %d." % self._min[0]
+                    )
             else:
                 # cleaned value should be > minimum
                 if cleaned_value <= self._min[0]:
-                    return False
+                    raise ValidationError(
+                        "min",
+                        "Value must be less or equal to %d." % self._min[0]
+                    )
         if self._max:
             if self._max[1]:
                 # cleaned value should be <= maximum
                 if cleaned_value > self._max[0]:
-                    return False
+                    raise ValidationError(
+                        "max",
+                        "Value must be greater than %d." % self._max[0]
+                    )
             else:
                 # cleaned value should be < maximum
                 if cleaned_value >= self._max[0]:
-                    return False
-        self._cleaned_value = cleaned_value
-        return True
+                    raise ValidationError(
+                        "max",
+                        "Value must be greater than %d." % self._max[0]
+                    )
+        return cleaned_value
 
 
 class FileField(BaseField):
@@ -197,31 +254,44 @@ class FileField(BaseField):
     # file name validation: can't start or end with space
     filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
 
-    def __init__(self, option_id, default=None, extension=None):
-        super().__init__(option_id, default)
+    def __init__(self, name, default=None, extension=None):
+        """
+        :param name: parameter id
+        :param default: default value of the field
+        :param extension: extension the file must have
+        """
         self._extension = extension
+        super().__init__(name, default)
 
-    def _validate(self):
+    def validate(self, value):
         """
-        Checks if the value is a valid file name and sets it to `_cleaned_data`
-        :return: if the value is a correct file name
+        Checks if the filename fits the regular expression and compares checks
+        its extension.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
-        match = self.filename_regex.match(self.value)
+        match = self.filename_regex.match(value)
         if not match:
-            return False
-        cleaned_value = match.group()
+            raise ValidationError("name", "Invalid file name.")
         if (self._extension and
-                not cleaned_value.endswith(".%s" % self._extension)):
-            return False
-        self._cleaned_value = cleaned_value
-        return True
+                not value.endswith(".%s" % self._extension)):
+            raise ValidationError("extension", "Invalid file extension.")
+        return value
 
 
 class TextField(BaseField):
 
-    def __init__(self, option_id, default=None, min_length=None,
+    def __init__(self, name, default=None, min_length=None,
                  max_length=None):
-        super().__init__(option_id, default)
+        """
+        :param name: parameter id
+        :param default: default value of the field
+        :param min_length: minimum length of the string
+        :param max_length: maximum length of the string
+        :raise ValueError: length constraint is negative
+        :raise ValueError: maximum limit is lower than minimum limit
+        """
         if ((min_length is not None and min_length < 0) or
                 (max_length is not None and max_length < 0)):
             raise ValueError("Length can't be negative")
@@ -232,70 +302,84 @@ class TextField(BaseField):
                              "length")
         self._min_length = min_length
         self._max_length = max_length
+        super().__init__(name, default)
 
-    def _validate(self):
+    def validate(self, value):
         """
-        Checks if the object has a string representation and sets it to the
-        `_cleaned_value`.
-        :return: whether the object has a string representation
+        Checks if the value can be casted to string and checks if the
+        length of that string fits into the limits.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
         try:
-            cleaned_value = str(self.value)
+            cleaned_value = str(value)
         except TypeError:
-            return False
+            raise ValidationError(
+                "type",
+                "Value has no string representation."
+            )
         if (self._min_length is not None and
                 len(cleaned_value) < self._min_length):
-            return False
+            raise ValidationError(
+                "min_length",
+                "Value is too short (min %d)." % self._min_length
+            )
         if (self._max_length is not None and
                 len(cleaned_value) > self._max_length):
-            return False
-        self._cleaned_value = cleaned_value
-        return True
+            raise ValidationError(
+                "max_length",
+                "Value is too long (max %d)." % self._max_length
+            )
+        return cleaned_value
 
 
 class BooleanField(BaseField):
 
-    def __init__(self, option_id, default):
-        if (type(default) == str and
-                default.lower() in {'no', 'false', '0', 'null', 'none'}):
-            default = False
-        else:
-            default = bool(default)
-        super().__init__(option_id, default)
+    false_literals = {'no', 'false', '0', 'null', 'none'}
 
-    def _validate(self):
+    def __init__(self, name, default):
         """
-        Checks if the value is one of the "false" words and sets the
-        `_cleaned_value` to False. Otherwise, value is evaluated as a boolean.
-        :return: True (every object is a valid boolean)
+        :param name: parameter id
+        :param default: default value of the field
         """
-        if (type(self.value) == str and
-                self.value.lower() in {'no', 'false', '0', 'null', 'none'}):
-            self._cleaned_value = False
+        super().__init__(name, default)
+
+    def validate(self, value):
+        """
+        Compares if the value is one of the string literals indicating false.
+        Returns False if so; otherwise evaluates value as a boolean.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
+        """
+        if (type(value) == str and
+                value.lower() in self.false_literals):
+            cleaned_value = False
         else:
-            self._cleaned_value = bool(self.value)
-        return True
+            cleaned_value = bool(value)
+        return cleaned_value
 
 
 class SelectField(BaseField):
 
-    def __init__(self, option_id, default=None, choices=()):
+    def __init__(self, name, default=None, choices=()):
         """
-        :param choices: an iterable of allowed choices
+        :param name: parameter id
         :param default: default value of the field
+        :param choices: an iterable of allowed choices
         """
-        assert default is None or default in choices, "Invalid default choice"
-        super().__init__(option_id, default)
         self._choices = choices
+        super().__init__(name, default)
 
-    def _validate(self):
+    def validate(self, value):
         """
-        Checks if the value is one of the choices and sets `_cleaned_value`
-        to it.
-        :return: whether the value is a valid choice
+        Checks if the value is one of the specified choices.
+        :param value: value to be validated and cleaned
+        :return: cleaned value
+        :raise ValidationError: field value is invalid
         """
-        if self.value in self._choices:
-            self._cleaned_value = self.value
-            return True
+        if value not in self._choices:
+            raise ValidationError("choice", "Invalid choice.")
         else:
-            return False
+            return value
