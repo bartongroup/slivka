@@ -165,8 +165,8 @@
               <tbody>
               
                 <tr>
-                  <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>Service <code>{service}</code> does not exist.</td>
                 </tr>
               
@@ -332,8 +332,8 @@
               <tbody>
               
                 <tr>
-                  <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>Service <code>{service}</code> does not exist.</td>
                 </tr>
               
@@ -445,27 +445,9 @@
                 </tr>
               
                 <tr>
-                  <td><code>download_url</code></td>
-                  <td><pre>url</pre></td>
-                  <td>Location where the file can be downloaded from.</td>
-                </tr>
-              
-                <tr>
-                  <td><code>get_url</code></td>
-                  <td><pre>url</pre></td>
-                  <td>Location where the file metadata can be viewed.</td>
-                </tr>
-              
-                <tr>
-                  <td><code>edit_url</code></td>
-                  <td><pre>url</pre></td>
-                  <td>Url where the file metadata can be updated.</td>
-                </tr>
-              
-                <tr>
-                  <td><code>delete_url</code></td>
-                  <td><pre>url</pre></td>
-                  <td>Url where the file can be deleted.</td>
+                  <td><code>filename</code></td>
+                  <td><pre>string</pre></td>
+                  <td>Name of the file.</td>
                 </tr>
               
               </tbody>
@@ -475,6 +457,50 @@
             <li>
             <table>
               <caption><code class="status-code">400</code></caption>
+              <thead>
+              <tr>
+                <td>Name</td>
+                <td>Value</td>
+                <td>Description</td>
+              </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td><code>error</code></td>
+                  <td><pre>&#34;no mime-type&#34;</pre></td>
+                  <td>No mime type proveded.</td>
+                </tr>
+              
+              </tbody>
+            </table>
+            </li>
+          
+            <li>
+            <table>
+              <caption><code class="status-code">400</code></caption>
+              <thead>
+              <tr>
+                <td>Name</td>
+                <td>Value</td>
+                <td>Description</td>
+              </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td><code>error</code></td>
+                  <td><pre>&#34;no file&#34;</pre></td>
+                  <td>No file specified.</td>
+                </tr>
+              
+              </tbody>
+            </table>
+            </li>
+          
+            <li>
+            <table>
+              <caption><code class="status-code">415</code></caption>
               <thead>
               <tr>
                 <td>Name</td>
@@ -505,7 +531,7 @@
       
       <section>
         <h4>Description</h4>
-        <p>Gets the file metadata or its content. If <code>content</code> parameter is false or not specified, it returns file metadata. Otherwise, it returns downloadable file content.</p>
+        <p>Gets the file metadata.</p>
       </section>
       
       
@@ -533,17 +559,6 @@
               </tr>
             
           
-            <tr>
-              <td colspan="3" class="section">Query parameters</td>
-            </tr>
-            
-              <tr>
-                <td><code>content</code></td>
-                <td><pre>boolean</pre></td>
-                <td>Whether the file content will be downloaded. <em>(optional)</em></td>
-              </tr>
-            
-          
           </tbody>
           </table>
         
@@ -553,28 +568,6 @@
       <section>
         <h4>Responses</h4>
         <ul class="options">
-          
-            <li>
-            <table>
-              <caption><code class="status-code">200</code></caption>
-              <thead>
-              <tr>
-                <td>Name</td>
-                <td>Value</td>
-                <td>Description</td>
-              </tr>
-              </thead>
-              <tbody>
-              
-                <tr>
-                  <td><code></code></td>
-                  <td><pre>file</pre></td>
-                  <td>Downloadable file content.</td>
-                </tr>
-              
-              </tbody>
-            </table>
-            </li>
           
             <li>
             <table>
@@ -612,6 +605,12 @@
                   <td>File mime-type.</td>
                 </tr>
               
+                <tr>
+                  <td><code>filename</code></td>
+                  <td><pre>string</pre></td>
+                  <td>File name.</td>
+                </tr>
+              
               </tbody>
             </table>
             </li>
@@ -629,8 +628,101 @@
               <tbody>
               
                 <tr>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
+                  <td>File with id <code>{file_id}</code> does not exist.</td>
+                </tr>
+              
+              </tbody>
+            </table>
+            </li>
+          
+        </ul>
+      </section>
+      </li>
+    
+      <li class="path get">
+      <header>
+        <div class="http-method"> GET /file/{file_id}/download</div>
+      </header>
+      
+      <section>
+        <h4>Description</h4>
+        <p>Download the file.</p>
+      </section>
+      
+      
+      <section>
+        <h4>Parameters</h4>
+        
+          <table>
+          <thead>
+          <tr>
+            <td>Name</td>
+            <td>Value</td>
+            <td>Description</td>
+          </tr>
+          </thead>
+          <tbody>
+          
+            <tr>
+              <td colspan="3" class="section">Path parameters</td>
+            </tr>
+            
+              <tr>
+                <td><code>file_id</code></td>
+                <td><pre>string</pre></td>
+                <td>Unique file identification number.</td>
+              </tr>
+            
+          
+          </tbody>
+          </table>
+        
+      </section>
+      
+      
+      <section>
+        <h4>Responses</h4>
+        <ul class="options">
+          
+            <li>
+            <table>
+              <caption><code class="status-code">200</code></caption>
+              <thead>
+              <tr>
+                <td>Name</td>
+                <td>Value</td>
+                <td>Description</td>
+              </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
                   <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><pre>file</pre></td>
+                  <td>Downloadable file content.</td>
+                </tr>
+              
+              </tbody>
+            </table>
+            </li>
+          
+            <li>
+            <table>
+              <caption><code class="status-code">404</code></caption>
+              <thead>
+              <tr>
+                <td>Name</td>
+                <td>Value</td>
+                <td>Description</td>
+              </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>File with id <code>{file_id}</code> does not exist.</td>
                 </tr>
               
@@ -689,8 +781,14 @@
             
               <tr>
                 <td><code>description</code></td>
-                <td><pre></pre></td>
+                <td><pre>string</pre></td>
                 <td>New description of the file. <em>(optional)</em></td>
+              </tr>
+            
+              <tr>
+                <td><code>filename</code></td>
+                <td><pre>string</pre></td>
+                <td>New name of the file. <em>(optional)</em></td>
               </tr>
             
           
@@ -740,6 +838,12 @@
                   <td>File mime-type.</td>
                 </tr>
               
+                <tr>
+                  <td><code>filename</code></td>
+                  <td><pre>string</pre></td>
+                  <td>File name.</td>
+                </tr>
+              
               </tbody>
             </table>
             </li>
@@ -779,8 +883,8 @@
               <tbody>
               
                 <tr>
-                  <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>File with id <code>{signed_file_id}</code> does not exist.</td>
                 </tr>
               
@@ -872,8 +976,8 @@
               <tbody>
               
                 <tr>
-                  <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>File with id <code>{signed_file_id}</code> does not exist.</td>
                 </tr>
               
@@ -981,8 +1085,8 @@
               <tbody>
               
                 <tr>
-                  <td><code></code></td>
-                  <td><pre></pre></td>
+                  <td><code>error</code></td>
+                  <td><pre>not found</pre></td>
                   <td>Task with id <code>{task_id}</code> does not exist.</td>
                 </tr>
               

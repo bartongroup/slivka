@@ -15,7 +15,7 @@ class Request(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String)
-    uuid = Column(String(32), default=lambda: uuid.uuid4().hex)
+    uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
 
     def __repr__(self):
         return ("<Request(id={id}, service={service})>"
@@ -38,5 +38,19 @@ class Option(Base):
         return ("<Option(type={type}, value={value}>"
                 .format(type=self.type, value=self.value))
 
-
 Request.options = relationship("Option", back_populates="request")
+
+
+class File(Base):
+
+    __tablename__ = "files"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    title = Column(String(32))
+    description = Column(String)
+    mimetype = Column(String(32))
+    filename = Column(String(32))
+
+    def __repr__(self):
+        return ("<File(id={id}, title={title}, filename={filename}"
+                .format(id=self.id, title=self.title, filename=self.filename))
