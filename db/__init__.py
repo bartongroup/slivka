@@ -17,3 +17,14 @@ def drop_db():
         os.remove('sqlite3.db')
     except FileNotFoundError as e:
         print(str(e))
+
+
+class start_session:
+
+    def __enter__(self):
+        self._session = Session()
+        return self._session
+
+    # noinspection PyUnusedLocal
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._session.close()
