@@ -1,13 +1,24 @@
+import logging
 import pickle
 import queue
 import socket
 import time
 import threading
 
-from .deferred_result import DeferredResult
 from .job import Job
-from .runnable_task import RunnableTask
-from .utils import bytetonum, numtobyte, WorkerMsg
+from .utils import bytetonum, numtobyte
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    "%(asctime)s %(name)s %(levelname)s: %(message)s",
+    "%d %b %H:%M:%S"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 HOST = 'localhost'
@@ -15,6 +26,11 @@ PORT = 9090
 
 
 class Worker(object):
+
+    MSG_NEW_TASK = b"NEW TASK"
+    MSG_JOB_STATUS = b"JOB STAT"
+    MSG_JOB_RESULT = b"JOB RES "
+    STATUS_OK = b'OK  '
 
     def __init__(self, host=HOST, port=PORT):
         self._shutdown = False
@@ -33,7 +49,7 @@ class Worker(object):
         Listens to incoming connections and starts a client thread.
         :return:
         """
-        print("Worker is ready to accept connections on {}:{}"
+        print("Worker is ready to accept connections on {}:{}."
               .format(self.host, self.port))
         while True:
             try:
@@ -46,33 +62,39 @@ class Worker(object):
             finally:
                 if self._shutdown:
                     break
-            print("Received connection from {}".format(address))
+            logger.info("received connection from {}".format(address))
             client_thread = threading.Thread(
                 target=self._handle_client,
                 args=(client_socket,)
             )
             client_thread.start()
         self._server_socket.close()
-        print("Socket closed.")
+        logger.info("socket closed.")
 
     def _handle_client(self, conn):
         """
-        Processes client connection and retrieves task from them
+        Processes client connection and retrieves messages from them.
+        This function runs in a parallel thread to the server socket.
         :param conn: client socket handler
         """
         conn.settimeout(5)
         try:
             msg = conn.recv(8)
-            print("msg: {}".format(msg))
+            logger.info("got message: {}".format(msg))
+            if msg == Worker.MSG_NEW_TASK:
+                self._new_task_request(conn)
+            elif msg == Worker.MSG_JOB_STATUS:
+                self._job_status_request(conn)
+            elif msg == Worker.MSG_JOB_RESULT:
+                self._job_result_request(conn)
         except socket.timeout:
-            return
-        if msg == WorkerMsg.MSG_NEW_TASK:
-            self._new_task_request(conn)
-        elif msg == WorkerMsg.MSG_JOB_STATUS:
-            self._job_status_request(conn)
-        elif msg == WorkerMsg.MSG_JOB_RESULT:
-            self._job_result_request(conn)
-        print("Client handling done")
+            logger.warning("client socket timed out")
+        except ConnectionAbortedError as e:
+            logger.warning(str(e))
+        finally:
+            conn.shutdown(socket.SHUT_RDWR)
+            conn.close()
+        logger.info("client handling done")
 
     def _new_task_request(self, conn):
         """
@@ -85,14 +107,16 @@ class Worker(object):
             msg_length = bytetonum(conn.recv(4))
             runnable_string = conn.recv(msg_length)
         except socket.timeout:
-            conn.close()
-            raise ConnectionAbortedError("Client did not respond.")
-        runnable = pickle.loads(runnable_string)
-        if not conn.send(WorkerMsg.STATUS_OK):
-            conn.close()
-            raise ConnectionAbortedError("Connection aborted by the client")
+            raise ConnectionAbortedError("client did not respond.")
+        try:
+            runnable = pickle.loads(runnable_string)
+        except pickle.PickleError:
+            logger.error("serialized object is invalid")
+            return
+        if not conn.send(Worker.STATUS_OK):
+            raise ConnectionAbortedError("connection aborted by the client")
         job = Job(runnable)
-        print("Spawned job {}".format(job))
+        logger.info("spawned job {}".format(job))
         conn.send(job.id.encode())
         conn.shutdown(socket.SHUT_RDWR)
         conn.close()
@@ -138,7 +162,7 @@ class Worker(object):
         Callback slot activated when the job is finished.
         :param job_id: id of the job which sent the signal
         """
-        print('{} finished'.format(self.jobs[job_id]))
+        logger.info('{} finished'.format(self.jobs[job_id]))
 
     def process_queue(self):
         """
@@ -148,9 +172,9 @@ class Worker(object):
         while True:
             try:
                 job = self._jobs_queue.get(timeout=5)
-                print("Retrieved {} from the queue".format(job))
+                logger.info("retrieved {} from the queue".format(job))
                 job.start()
-                print("{} started".format(job))
+                logger.info("{} started".format(job))
             except queue.Empty:
                 if self._shutdown:
                     break
@@ -169,34 +193,8 @@ def start_worker():
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
+        logger.info("received shutdown signal")
         worker.shutdown()
+    print("Waiting for threads to join.")
     server_thread.join()
     queue_thread.join()
-
-
-def queue_run(runnable):
-    """
-    Sends the task to the worker which enqueues it a new job.
-    :param runnable: runnable task instance to be scheduled
-    :return: DeferredResult associated with the job
-    :raise ConnectionError
-    """
-    if not isinstance(runnable, RunnableTask):
-        raise TypeError("Runnable must implement RunnableTask")
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((HOST, PORT))
-    client_socket.send(WorkerMsg.MSG_NEW_TASK)
-
-    runnable_string = pickle.dumps(runnable)
-
-    client_socket.send(numtobyte(len(runnable_string), 4))
-    client_socket.send(runnable_string)
-    status_code = client_socket.recv(4)
-    if status_code != WorkerMsg.STATUS_OK:
-        raise ConnectionError("Worker returned code: {0}"
-                              .format(status_code.decode()))
-    job_id = client_socket.recv(32).decode()
-    client_socket.shutdown(socket.SHUT_RDWR)
-    client_socket.close()
-
-    return DeferredResult(job_id, (HOST, PORT))

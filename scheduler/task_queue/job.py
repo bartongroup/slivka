@@ -5,10 +5,11 @@ import uuid
 from collections import namedtuple
 
 from .runnable_task import RunnableTask
-from .utils import enum, Signal
+from .utils import Signal
 
 
 class Job:
+
     def __init__(self, runnable, args=None, kwargs=None):
         """
         Initialize a new job which executes start method of the runnable
@@ -19,11 +20,11 @@ class Job:
         """
         if not isinstance(runnable, RunnableTask):
             raise TypeError("Runnable must implement RunnableTask")
-        self.runnable = runnable
+        self._runnable = runnable
         self.id = uuid.uuid4().hex
-        self.status = JobStatus.PENDING
-        self.args = args or ()
-        self.kwargs = kwargs or {}
+        self.status = JobStatus.QUEUED
+        self._args = args or ()
+        self._kwargs = kwargs or {}
         self._result = None
         self._exception = None
         self.sig_finished = Signal()
@@ -45,9 +46,9 @@ class Job:
         self.status = JobStatus.RUNNING
         # noinspection PyBroadException
         try:
-            self._result = self.runnable.run(*self.args, **self.kwargs)
-        except:
-            self._exception = sys.exc_info()
+            self._result = self._runnable.run(*self._args, **self._kwargs)
+        except Exception as exc:
+            self._exception = exc
             self.status = JobStatus.FAILED
         else:
             self.status = JobStatus.COMPLETED
@@ -58,19 +59,19 @@ class Job:
         """
         Orders the running task to kill its process
         """
-        self.runnable.kill()
+        self._runnable.kill()
 
     def suspend(self):
         """
         Tells the running task to suspend execution
         """
-        self.runnable.suspend()
+        self._runnable.suspend()
 
     def resume(self):
         """
         Tells the running task to resume suspended execution
         """
-        self.runnable.resume()
+        self._runnable.resume()
 
     @property
     def result(self):
@@ -93,7 +94,7 @@ class Job:
         """
         Checks if the job is pending execution
         """
-        return self.status == JobStatus.PENDING
+        return self.status == JobStatus.QUEUED
 
     def is_running(self):
         """
@@ -105,13 +106,12 @@ class Job:
         return "<Job> {id} - {status}".format(id=self.id, status=self.status)
 
 
-JobStatus = enum(
-    PENDING="PENDING",
-    RUNNING="RUNNING",
-    COMPLETED="COMPLETED",
-    COLLECTED="COLLECTED",
+class JobStatus:
+    QUEUED="QUEUED"
+    RUNNING="RUNNING"
+    COMPLETED="COMPLETED"
+    COLLECTED="COLLECTED"
     FAILED="FAILED"
-)
 
 
 JobResult = namedtuple("JobResult", ["result", "error"])

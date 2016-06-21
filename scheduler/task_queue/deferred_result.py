@@ -1,12 +1,27 @@
 import pickle
 import socket
 
-from .utils import WorkerMsg, bytetonum
+from .utils import bytetonum
+from .worker import Worker
 
 
 class DeferredResult:
+    """
+    Deferred result instances are intermediate objects which communicates
+    between client and the task queue. When the job is queued, it returns
+    Deferred result instead of job result which is not available yet.
+    It allows asynchronous execution of the task and retrieving the result
+    when the job is complete.
+
+    DeferredResult should not be instantiated directly, but through calling
+    `scheduler.task_queue.queue_run`.
+    """
 
     def __init__(self, job_id, server_address):
+        """
+        :param job_id: identification of the task.
+        :param server_address: tuple of address and port of the worker server
+        """
         self.job_id = job_id
         self.server_address = server_address
 
@@ -20,7 +35,7 @@ class DeferredResult:
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(WorkerMsg.MSG_JOB_STATUS)
+        client_socket.send(Worker.MSG_JOB_STATUS)
 
         client_socket.send(self.job_id.encode())
         job_status = client_socket.recv(16).decode()
@@ -34,11 +49,11 @@ class DeferredResult:
         Asks the server for the result of the job associated with this
         deferred result.
         :return: job result or None if not finished
-        :rtype: job.JobResult
+        :rtype: scheduler.task_queue.job.JobResult
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(WorkerMsg.MSG_JOB_RESULT)
+        client_socket.send(Worker.MSG_JOB_RESULT)
 
         client_socket.send(self.job_id.encode())
         msg_length = bytetonum(client_socket.recv(4))

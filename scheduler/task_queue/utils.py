@@ -1,20 +1,5 @@
 import inspect
-import itertools
 import weakref
-
-
-# credits to Alec Thomas and acjay (stackoverflow.com)
-def enum(*sequential, **named):
-    """
-    Generates on the fly an enum class-object with specified fields.
-    Sequential parameters will be assigned consecutive numbers.
-    Named parameters will be added on key-value basis
-    :param sequential: parameters assigned to natural numbers
-    :param named: parameters assigned to a specific variables
-    :return: enumeration class with given parameters
-    """
-    enums = dict(zip(sequential, itertools.count()), **named)
-    return type("Enum", (), enums)
 
 
 def bytetonum(byte_string):
@@ -68,11 +53,3 @@ class Signal(object):
             self._methods.add(weakref.WeakMethod(slot))
         else:
             self._functions.add(slot)
-
-
-WorkerMsg = enum(
-    MSG_NEW_TASK=b"NEW TASK",
-    MSG_JOB_STATUS=b"JOB STAT",
-    MSG_JOB_RESULT=b"JOB RES ",
-    STATUS_OK=b'OK  '
-)

@@ -10,12 +10,18 @@ Base = declarative_base()
 
 class Request(Base):
 
+    STATUS_PENDING = "PENDING"
+    STATUS_QUEUED = "QUEUED"
+    STATUS_RUNNING = "RUNNING"
+    STATUS_FINISHED = "FINISHED"
+
     __tablename__ = "requests"
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String)
     uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
+    status = Column(String, default=STATUS_PENDING)
 
     def __repr__(self):
         return ("<Request(id={id}, service={service})>"
@@ -35,8 +41,8 @@ class Option(Base):
     request = relationship("Request", back_populates="options")
 
     def __repr__(self):
-        return ("<Option(type={type}, value={value}>"
-                .format(type=self.type, value=self.value))
+        return ("<Option(name={name}, value={value}>"
+                .format(name=self.name, value=self.value))
 
 Request.options = relationship("Option", back_populates="request")
 
