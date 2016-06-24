@@ -1,0 +1,63 @@
+---
+options:
+  - name: return
+    type: integer
+    param: --return ${value}
+
+  - name: long
+    type: boolean
+    param: --long
+
+  - name: very_long
+    type: boolean
+    param: --very-long
+
+  - name: foo
+    type: text
+    param: -f ${value}
+
+  - name: error
+    type: boolean
+    param: -e
+
+  - name: choice
+    type: select
+    param: ${value}
+
+outputs:
+  - type: result
+    name: plain_result
+    form:
+      type: stdout
+      value: null
+
+  - type: result
+    name: multifile
+    form:
+      type: file_pattern
+      value: part[0-9a-h]{4}.txt
+
+  - type: result
+    name: bunch_of_files
+    form:
+      type: dir_param
+      value: --dir=${value}
+
+  - type: log
+    name: job_status
+    form:
+      type: file_param
+      value: --log ${value}
+
+  - type: log
+    name: return_code
+    form:
+      type: return_code
+      value: null
+
+  - type: error
+    name: console_error
+    form:
+      type: stderr
+      value: null
+...

@@ -1,8 +1,5 @@
-import sys
 import threading
 import uuid
-
-from collections import namedtuple
 
 from .runnable_task import RunnableTask
 from .utils import Signal
@@ -18,8 +15,7 @@ class Job:
         :param args: arguments passed to the runnable's start method
         :param kwargs: keyword arguments passed to the runnable's start method
         """
-        if not isinstance(runnable, RunnableTask):
-            raise TypeError("Runnable must implement RunnableTask")
+        assert isinstance(runnable, RunnableTask)
         self._runnable = runnable
         self.id = uuid.uuid4().hex
         self.status = JobStatus.QUEUED
@@ -107,11 +103,16 @@ class Job:
 
 
 class JobStatus:
-    QUEUED="QUEUED"
-    RUNNING="RUNNING"
-    COMPLETED="COMPLETED"
-    COLLECTED="COLLECTED"
-    FAILED="FAILED"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    COLLECTED = "COLLECTED"
+    FAILED = "FAILED"
 
 
-JobResult = namedtuple("JobResult", ["result", "error"])
+class JobResult:
+    __slots__ = ["result", "error"]
+
+    def __init__(self, result, error):
+        self.result = result
+        self.error = error

@@ -11,4 +11,4 @@ except FileExistsError:
 
 SECRET_KEY = 'ftjMYc2DkqK8ljq9y7I8QhtyNac4ZYPg'
 
-SERVICES = "Dummy", "Muscle"
+SERVICES = "Dummy",

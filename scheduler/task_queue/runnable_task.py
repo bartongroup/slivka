@@ -1,9 +1,5 @@
-from abc import ABCMeta, abstractmethod
+class RunnableTask(object):
 
-
-class RunnableTask(object, metaclass=ABCMeta):
-
-    @abstractmethod
     def run(self, *args, **kwargs):
         """
         Launches the task and returns it's result.
@@ -12,6 +8,7 @@ class RunnableTask(object, metaclass=ABCMeta):
         :param kwargs: task's positional arguments
         :return: task result
         """
+        raise NotImplementedError
 
     def kill(self):
         """

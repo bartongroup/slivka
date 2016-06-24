@@ -1,7 +1,7 @@
 from copy import deepcopy
-from lxml import etree
 
 from db.models import Request, Option
+from utils import validate_form_file
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, SelectField)
@@ -9,6 +9,7 @@ from .fields import (IntegerField, DecimalField, FileField, TextField,
 
 class BaseForm:
 
+    # TODO: fields should be a list of fields
     _fields = {}
     _service = None
 
@@ -68,7 +69,6 @@ class BaseForm:
         request.options = [
             Option(
                 name=field.name,
-                type=field.type,
                 value=field.cleaned_value
             )
             for field in self.fields
@@ -113,29 +113,12 @@ class FormFactory:
         :param param_file: a path to xml file describing form fields
         :return: new BaseForm subclass with fields loaded from the param file
         """
-        xml_tree = FormFactory._validate_param_file(param_file)
+        xml_tree = validate_form_file(param_file)
         fields = FormFactory._load_fields(xml_tree)
         return type(
             form_name, (BaseForm, ),
             {"_fields": dict(fields), "_service": service}
         )
-
-    @staticmethod
-    def _validate_param_file(param_file):
-        """
-        Validates parameters file against the parameter schema and parses the
-        document into an element tree
-        :param param_file: path or a file-like object to parameters file
-        :return: parsed document as an element tree
-        :raise ValueError: parameter file is invalid
-        """
-        xmlschema = etree.XMLSchema(file="./config/ParameterConfigSchema.xsd")
-        xml_parser = etree.XMLParser(remove_blank_text=True)
-        xml_tree = etree.parse(param_file, parser=xml_parser)
-        if not xmlschema.validate(xml_tree):
-            raise ValueError("Specified parameter file is invalid")
-        else:
-            return xml_tree
 
     @staticmethod
     def _load_fields(xml_tree):
@@ -144,22 +127,25 @@ class FormFactory:
         :param xml_tree: service parameter description element tree
         :return: iterable of field objects
         """
-        runner_config = xml_tree.getroot()
-        for option_element in runner_config:
-            yield FormFactory._parse_option_element(option_element)
+        form = xml_tree.getroot()
+        for field in form:
+            yield FormFactory._parse_field_element(field)
 
     @staticmethod
-    def _parse_option_element(element):
+    def _parse_field_element(element):
         """
         Parses the option tan and constructs Field from ir
         :param element: xml node of option element
-        :return: BaseField's subclass according to the value type
+        :return: name of the field and BaseField's subclass according to the
+                 value type
+        :rtype: tuple(string, BaseField)
         """
-        opt_id = element.get("id")
+        name = element.get("name")
         select = element.find("select")
 
         if select is None:
-            value_element = element[3]  # vulnerable part, crashes on comments
+            value_element = element.xpath(
+                "*[substring(name(),string-length(name())-4)='Value']")[0]
             value_type = value_element.tag[:-5]
             kwargs = {
                 "default": value_element.findtext("default")
@@ -194,7 +180,7 @@ class FormFactory:
                 if max_length is not None:
                     kwargs["max_length"] = int(max_length)
             field_class = FormFactory.field_classes[value_type]
-            return opt_id, field_class(opt_id, **kwargs)
+            return name, field_class(name, **kwargs)
         else:
-            choices = [choice_el.findtext("param") for choice_el in select]
-            return opt_id, SelectField(opt_id, choices=choices)
+            choices = [choice_el.findtext("value") for choice_el in select]
+            return name, SelectField(name, choices=choices)

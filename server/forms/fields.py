@@ -181,7 +181,7 @@ class DecimalField(BaseField):
         if not (min_inclusive is None or min_exclusive is None):
             raise ValueError("You can't specify inclusive and exclusive "
                              "minimum at the same time.")
-        if not (max_inclusive is None or max_inclusive is None):
+        if not (max_inclusive is None or max_exclusive is None):
             raise ValueError("You can't specify inclusive and exclusive "
                              "maximum at the same time.")
 
@@ -271,6 +271,7 @@ class FileField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        # TODO cleaning converts file id to file path
         match = self.filename_regex.match(value)
         if not match:
             raise ValidationError("name", "Invalid file name.")
@@ -338,7 +339,7 @@ class BooleanField(BaseField):
 
     false_literals = {'no', 'false', '0', 'null', 'none'}
 
-    def __init__(self, name, default):
+    def __init__(self, name, default=None):
         """
         :param name: parameter id
         :param default: default value of the field

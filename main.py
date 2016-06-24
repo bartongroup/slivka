@@ -19,6 +19,12 @@ def worker():
 
 
 @click.command()
+def runscheduler():
+    from scheduler.scheduler import start_scheduler
+    start_scheduler()
+
+
+@click.command()
 def runserver():
     from server.serverapp import app
     app.run(host='localhost', port=8080, debug=True)
@@ -38,6 +44,7 @@ def dropdb():
 
 
 main.add_command(worker)
+main.add_command(runscheduler)
 main.add_command(runserver)
 main.add_command(initdb)
 main.add_command(dropdb)

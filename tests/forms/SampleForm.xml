@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+
+<form>
+
+    <field name="alpha">
+        <label>Alpha</label>
+        <description>Alpha field</description>
+        <integerValue>
+            <min>0</min>
+            <max>30</max>
+            <default>10</default>
+        </integerValue>
+    </field>
+
+    <field name="beta">
+        <label>Beta</label>
+        <description>Beta field</description>
+        <decimalValue>
+            <minInclusive>0.0</minInclusive>
+            <maxExclusive>10.0</maxExclusive>
+            <default>2.5</default>
+        </decimalValue>
+    </field>
+
+    <field name="gamma">
+        <label>Gamma</label>
+        <description>Gamma field</description>
+        <decimalValue>
+            <minExclusive>-5.0</minExclusive>
+            <maxInclusive>20.0</maxInclusive>
+            <default>0.0</default>
+        </decimalValue>
+    </field>
+
+    <field name="delta">
+        <label>Delta</label>
+        <description>Delta field</description>
+        <textValue>
+            <minLength>2</minLength>
+            <maxLength>10</maxLength>
+            <default>Foo</default>
+        </textValue>
+    </field>
+
+    <field name="epsilon">
+        <label>Epsilon</label>
+        <description>Epsilon field</description>
+        <booleanValue>
+            <default>true</default>
+        </booleanValue>
+    </field>
+
+    <field name="zeta">
+        <label>Zeta</label>
+        <description>Zeta choice</description>
+        <select>
+            <choice>
+                <label>A</label>
+                <value>-a</value>
+            </choice>
+            <choice>
+                <label>B</label>
+                <description>Answer B</description>
+                <value>--b</value>
+            </choice>
+            <choice>
+                <label>C</label>
+                <value>--ccc</value>
+            </choice>
+        </select>
+    </field>
+
+</form>

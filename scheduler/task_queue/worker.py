@@ -92,7 +92,6 @@ class Worker(object):
         except ConnectionAbortedError as e:
             logger.warning(str(e))
         finally:
-            conn.shutdown(socket.SHUT_RDWR)
             conn.close()
         logger.info("client handling done")
 
@@ -162,7 +161,7 @@ class Worker(object):
         Callback slot activated when the job is finished.
         :param job_id: id of the job which sent the signal
         """
-        logger.info('{} finished'.format(self.jobs[job_id]))
+        logger.debug('{} finished'.format(self.jobs[job_id]))
 
     def process_queue(self):
         """
@@ -172,9 +171,9 @@ class Worker(object):
         while True:
             try:
                 job = self._jobs_queue.get(timeout=5)
-                logger.info("retrieved {} from the queue".format(job))
+                logger.debug("picked {} from the queue".format(job))
+                logger.debug("{} started".format(job))
                 job.start()
-                logger.info("{} started".format(job))
             except queue.Empty:
                 if self._shutdown:
                     break
@@ -185,10 +184,16 @@ class Worker(object):
 
 def start_worker():
     worker = Worker()
-    server_thread = threading.Thread(target=worker.listen)
-    server_thread.start()
-    queue_thread = threading.Thread(target=worker.process_queue)
+    server_thread = threading.Thread(
+        target=worker.listen,
+        name="ServerThread"
+    )
+    queue_thread = threading.Thread(
+        target=worker.process_queue,
+        name="QueueThread"
+    )
     queue_thread.start()
+    server_thread.start()
     try:
         while True:
             time.sleep(3600)

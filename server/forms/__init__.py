@@ -2,7 +2,6 @@ from .exceptions import ValidationError
 from .form_factory import FormFactory
 
 import configparser
-import os.path
 import sys
 
 import settings
@@ -14,7 +13,6 @@ def _init_forms(config_file):
     automagically builds form classes. Forms are dynamically added to the forms
     module.
     :param config_file:
-    :return:
     """
     config = configparser.ConfigParser()
     with open(config_file, 'r') as f:
@@ -24,10 +22,9 @@ def _init_forms(config_file):
     module = sys.modules[__name__]
     for service in settings.SERVICES:
         form_name = get_form_name(service)
-        param_file = config.get(service, "param_file")
-        full_path = os.path.join(settings.BASE_DIR, *param_file.split('/'))
+        form_file = config.get(service, "form_file")
         form_class = \
-            FormFactory.get_form_class(form_name, service, full_path)
+            FormFactory.get_form_class(form_name, service, form_file)
         setattr(module, form_name, form_class)
 
 
@@ -48,4 +45,5 @@ def get_form_name(service):
     return service.capitalize() + "Form"
 
 
+# TODO this shouldn't be loaded into module on module init.
 _init_forms(settings.SERVICE_CONFIG)
