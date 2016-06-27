@@ -1,0 +1,65 @@
+options:
+  - name: alpha
+    label: Alpha
+    description: Alpha field description
+    parameter: --alpha ${value}
+    value:
+      type: integer
+      min: 0
+      max: 30
+      default: 10
+
+  - name: beta
+    label: Beta
+    description: Beta field description
+    parameter: -b ${value}
+    value:
+      type: decimal
+      min: 0.0
+      max: 10.0
+      minExclusive: no
+      maxExclusive: yes
+      default: 2.5
+
+  - name: gamma
+    label: Gamma
+    description: Gamma field
+    parameter: -g ${value}
+    value:
+      type: decimal
+      min: -5.0
+      max: 20.0
+      minExclusive: yes
+      maxExclusive: no
+      default: 0.0
+
+  - name: delta
+    label: Delta
+    description: Delta field
+    parameter: --delta=${value}
+    value:
+      type: text
+      minLength: 2
+      maxLength: 10
+      default: Foo
+
+  - name: epsilon
+    label: Epsilon
+    description: Epsilon field
+    parameter: ${value}
+    value:
+      type: boolean
+      value: -e
+      default: true
+
+  - name: zeta
+    label: Zeta
+    description: Zeta choice
+    parameter: ${value}
+    value:
+      type: choice
+      choices:
+        choice-a: -a
+        choice-b: --b
+        choice-c: -ccc
+      default: -a

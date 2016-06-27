@@ -162,51 +162,26 @@ class IntegerField(BaseField):
 
 class DecimalField(BaseField):
 
-    def __init__(self, name, default=None, min_inclusive=None,
-                 min_exclusive=None, max_inclusive=None, max_exclusive=None):
+    def __init__(self, name, default=None, minimum=None, maximum=None,
+                 min_exclusive=False, max_exclusive=False):
         """
         Sets the field and its constraints.
         Inclusive and exclusive limits are mutually exclusive and at least
         one in each pair must be None.
         :param name: parameter id
         :param default: default value of the field
-        :param min_inclusive: inclusive minimum accepted value
-        :param min_exclusive: exclusive minimum accepted value
-        :param max_inclusive: inclusive maximum accepted value
-        :param max_exclusive: exclusive maximum accepted value
-        :raise ValueError: inclusive and exclusive parameters are
-                           simultaneously set in the pair
-        :raise ValueError: maximum limit is lower than minimum limit
+        :param minimum: minimum accepted value
+        :param maximum: maximum accepted value
+        :param min_exclusive: whether minimum value is exclusive
+        :param max_exclusive: whether maximum value is exclusive
         """
-        if not (min_inclusive is None or min_exclusive is None):
-            raise ValueError("You can't specify inclusive and exclusive "
-                             "minimum at the same time.")
-        if not (max_inclusive is None or max_exclusive is None):
-            raise ValueError("You can't specify inclusive and exclusive "
-                             "maximum at the same time.")
-
-        if min_inclusive is not None:
-            self._min = (min_inclusive, True)
-        elif min_exclusive is not None:
-            self._min = (min_exclusive, False)
-        else:
-            self._min = None
-
-        if max_inclusive is not None:
-            self._max = (max_inclusive, True)
-        elif max_exclusive is not None:
-            self._max = (max_exclusive, False)
-        else:
-            self._max = None
-
-        if self._min and self._max and self._min[0] > self._max[0]:
-            raise ValueError("Minimum value can't be grater than maximum.")
-
+        self._min = (minimum, min_exclusive)
+        self._max = (maximum, max_exclusive)
         super().__init__(name, default)
 
     def validate(self, value):
         """
-        Validates if the value can be casted to a decimal number and
+        Validates if the value can be casted to a float number and
         meets all constraints.
         :param value: value to be validated and cleaned
         :return: cleaned value
@@ -216,32 +191,32 @@ class DecimalField(BaseField):
             cleaned_value = float(value)
         except (ValueError, TypeError):
             raise ValidationError("type", "Not a valid decimal.")
-        if self._min:
+        if self._min[0] is not None:
             if self._min[1]:
-                # cleaned value should be >= minimum
-                if cleaned_value < self._min[0]:
-                    raise ValidationError(
-                        "min",
-                        "Value must be less than %d." % self._min[0]
-                    )
-            else:
                 # cleaned value should be > minimum
                 if cleaned_value <= self._min[0]:
                     raise ValidationError(
                         "min",
                         "Value must be less or equal to %d." % self._min[0]
                     )
-        if self._max:
+            else:
+                # cleaned value should be >= minimum
+                if cleaned_value < self._min[0]:
+                    raise ValidationError(
+                        "min",
+                        "Value must be less than %d." % self._min[0]
+                    )
+        if self._max[0] is not None:
             if self._max[1]:
-                # cleaned value should be <= maximum
-                if cleaned_value > self._max[0]:
+                # cleaned value should be < maximum
+                if cleaned_value >= self._max[0]:
                     raise ValidationError(
                         "max",
-                        "Value must be greater than %d." % self._max[0]
+                        "Value must be greater or equal to %d." % self._max[0]
                     )
             else:
                 # cleaned value should be < maximum
-                if cleaned_value >= self._max[0]:
+                if cleaned_value > self._max[0]:
                     raise ValidationError(
                         "max",
                         "Value must be greater than %d." % self._max[0]
@@ -254,13 +229,25 @@ class FileField(BaseField):
     # file name validation: can't start or end with space
     filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
 
-    def __init__(self, name, default=None, extension=None):
+    def __init__(self, name, default=None, mimetype=None, extension=None,
+                 max_size=None):
         """
         :param name: parameter id
         :param default: default value of the field
         :param extension: extension the file must have
+        :raise ValueError: invalid `max_size` format
         """
+        self._mimetype = mimetype
         self._extension = extension
+        if max_size is not None:
+            match = re.match(r"(\d+)\s*([kMGT]?)B$", max_size)
+            if not match:
+                raise ValueError("Invalid max_size format %s" % max_size)
+            size_val = int(match.group(1))
+            size_multiplier = {"": 1, "k": 1024, "M": 1048576, "G": 1073741824,
+                               "T": 1099511627776}[match.group(2)]
+            max_size = size_val * size_multiplier
+        self._max_size = max_size
         super().__init__(name, default)
 
     def validate(self, value):
@@ -362,7 +349,7 @@ class BooleanField(BaseField):
         return cleaned_value
 
 
-class SelectField(BaseField):
+class ChoiceField(BaseField):
 
     def __init__(self, name, default=None, choices=()):
         """
@@ -370,7 +357,7 @@ class SelectField(BaseField):
         :param default: default value of the field
         :param choices: an iterable of allowed choices
         """
-        self._choices = choices
+        self._choices = list(choices)
         super().__init__(name, default)
 
     def validate(self, value):
@@ -381,6 +368,8 @@ class SelectField(BaseField):
         :raise ValidationError: field value is invalid
         """
         if value not in self._choices:
-            raise ValidationError("choice", "Invalid choice.")
+            raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return value
+
+SelectField = ChoiceField

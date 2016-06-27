@@ -67,11 +67,10 @@ def post_service_form(service):
                 "value": field.value
             } for field in form.fields],
             "errors": [{
-                "field": field.name,
-                "value": field.value,
-                "error_code": field.error.code,
-                "message": field.error.reason
-            } for field in form.fields if field.error is not None]
+                "field": name,
+                "error_code": error.code,
+                "message": error.reason
+            } for name, error in form.errors.items()]
         }, status=200)
     return response
 
