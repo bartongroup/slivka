@@ -1,10 +1,13 @@
 from copy import deepcopy
 
+import jsonschema
+import yaml
+
 from db.models import Request, Option
-from utils import validate_form_file
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
-                     BooleanField, SelectField)
+                     BooleanField, ChoiceField)
+from utils import COMMAND_SCHEMA
 
 
 class BaseForm:
@@ -42,11 +45,20 @@ class BaseForm:
     @property
     def cleaned_data(self):
         if not self.is_valid():
-            raise ValidationError
+            raise ValidationError('form', "Form invalid.")
         return {
             field.name: field.cleaned_value
             for field in self.fields
         }
+
+    @property
+    def errors(self):
+        if not self.is_valid():
+            return{
+                field.name: field.error
+                for field in self.fields
+                if field.error is not None
+            }
 
     def is_valid(self):
         """
@@ -95,92 +107,107 @@ class BaseForm:
 
 class FormFactory:
 
-    field_classes = {
-        "integer": IntegerField,
-        "decimal": DecimalField,
-        "file": FileField,
-        "text": TextField,
-        "boolean": BooleanField,
-        "select": SelectField
-    }
-
     @staticmethod
-    def get_form_class(form_name, service, param_file):
+    def get_form_class(form_name, service, command_file):
         """
         Constructs a form class from a parameters configuration file
         :param form_name: name given to a new form class
         :param service: service name the form is bound to
-        :param param_file: a path to xml file describing form fields
+        :param command_file: a path to json file describing form fields
         :return: new BaseForm subclass with fields loaded from the param file
+        :raise jsonschema.exceptions.ValidationError:
         """
-        xml_tree = validate_form_file(param_file)
-        fields = FormFactory._load_fields(xml_tree)
+        with open(command_file, "r") as f:
+            instance = yaml.load(f)
+        jsonschema.validate(instance, COMMAND_SCHEMA)
+        fields = list(FormFactory._load_fields(instance['options']))
         return type(
             form_name, (BaseForm, ),
-            {"_fields": dict(fields), "_service": service}
+            {
+                "_fields": dict(fields),
+                "_service": service
+            }
         )
 
     @staticmethod
-    def _load_fields(xml_tree):
+    def _load_fields(fields):
         """
-        Loads the list of form fields from the xml tree.
-        :param xml_tree: service parameter description element tree
+        Loads the list of form fields from the json description.
+        :param fields: list of field descriptions
         :return: iterable of field objects
         """
-        form = xml_tree.getroot()
-        for field in form:
-            yield FormFactory._parse_field_element(field)
+        for field in fields:
+            factory = FormFactory.field_factory[field['value']['type']].__func__
+            yield (field['name'], factory(field))
 
     @staticmethod
-    def _parse_field_element(element):
-        """
-        Parses the option tan and constructs Field from ir
-        :param element: xml node of option element
-        :return: name of the field and BaseField's subclass according to the
-                 value type
-        :rtype: tuple(string, BaseField)
-        """
-        name = element.get("name")
-        select = element.find("select")
+    def _get_integer_field(field):
+        value = field['value']
+        assert value['type'] == 'integer'
+        return IntegerField(
+            field['name'],
+            minimum=value.get("min"),
+            maximum=value.get("max"),
+            default=value.get("default")
+        )
 
-        if select is None:
-            value_element = element.xpath(
-                "*[substring(name(),string-length(name())-4)='Value']")[0]
-            value_type = value_element.tag[:-5]
-            kwargs = {
-                "default": value_element.findtext("default")
-            }
-            if value_type == "integer":
-                minimum = value_element.findtext("min")
-                if minimum is not None:
-                    kwargs["minimum"] = int(minimum)
-                maximum = value_element.findtext("max")
-                if maximum is not None:
-                    kwargs["maximum"] = int(maximum)
-            elif value_type == "decimal":
-                min_inclusive = value_element.findtext("minInclusive")
-                if min_inclusive is not None:
-                    kwargs["min_inclusive"] = float(min_inclusive)
-                min_exclusive = value_element.findtext("minExclusive")
-                if min_exclusive is not None:
-                    kwargs["min_exclusive"] = float(min_exclusive)
-                max_inclusive = value_element.findtext("maxInclusive")
-                if max_inclusive is not None:
-                    kwargs["max_inclusive"] = float(max_inclusive)
-                max_exclusive = value_element.findtext("maxExclusive")
-                if max_exclusive is not None:
-                    kwargs["max_exclusive"] = float(max_exclusive)
-            elif value_type == "file":
-                kwargs["extension"] = value_element.findtext("extension")
-            elif value_type == "text":
-                min_length = value_element.findtext("minLength")
-                if min_length is not None:
-                    kwargs["min_length"] = int(min_length)
-                max_length = value_element.findtext("maxLength")
-                if max_length is not None:
-                    kwargs["max_length"] = int(max_length)
-            field_class = FormFactory.field_classes[value_type]
-            return name, field_class(name, **kwargs)
-        else:
-            choices = [choice_el.findtext("value") for choice_el in select]
-            return name, SelectField(name, choices=choices)
+    @staticmethod
+    def _get_decimal_field(field):
+        value = field['value']
+        assert value['type'] == "decimal"
+        return DecimalField(
+            field['name'],
+            default=value.get("default"),
+            minimum=value.get("min"), maximum=value.get("max"),
+            min_exclusive=value.get("minExclusive", False),
+            max_exclusive=value.get("maxExclusive", False)
+        )
+
+    @staticmethod
+    def _get_text_field(field):
+        value = field['value']
+        assert value['type'] == 'text'
+        return TextField(
+            field["name"],
+            default=value.get("default"),
+            min_length=value.get("minLength"),
+            max_length=value.get("maxLength")
+        )
+
+    @staticmethod
+    def _get_boolean_field(field):
+        value = field["value"]
+        assert value["type"] == "boolean"
+        return BooleanField(
+            field["name"],
+            default=value.get("default")
+        )
+
+    @staticmethod
+    def _get_choice_field(field):
+        value = field['value']
+        assert value['type'] == 'choice'
+        return ChoiceField(
+            field["name"],
+            default=value.get("default"),
+            choices=value.get("choices", {}).values()
+        )
+
+    @staticmethod
+    def _get_file_field(field):
+        value = field['value']
+        assert value["type"] == "file"
+        return FileField(
+            field["name"],
+            default=value.get("default"),
+            extension=value.get("extension")
+        )
+
+    field_factory = {
+        "integer": _get_integer_field,
+        "decimal": _get_decimal_field,
+        "text": _get_text_field,
+        "boolean": _get_boolean_field,
+        "choice": _get_choice_field,
+        "file": _get_file_field
+    }

@@ -109,19 +109,35 @@ class TestDecimalField(unittest.TestCase):
         self.assertAlmostEqual(field.cleaned_value, 0.12345678)
         
     def test_is_valid_min_inclusive(self):
-        field = DecimalField('', min_inclusive=5)
+        field = DecimalField('', minimum=5, min_exclusive=False)
         field.value = 5
         self.assertTrue(field.is_valid)
         field.value = 4.99
         self.assertFalse(field.is_valid)
         
     def test_is_valid_min_exclusive(self):
-        field = DecimalField('', min_exclusive=5)
+        field = DecimalField('', minimum=5, min_exclusive=True)
         field.value = 5
         self.assertFalse(field.is_valid)
         field.value = 4.99
         self.assertFalse(field.is_valid)
         field.value = 5.01
+        self.assertTrue(field.is_valid)
+
+    def test_is_valid_max_inclusive(self):
+        field = DecimalField('', maximum=5, max_exclusive=False)
+        field.value = 5
+        self.assertTrue(field.is_valid)
+        field.value = 5.01
+        self.assertFalse(field.is_valid)
+
+    def test_is_valid_exclusive(self):
+        field = DecimalField('', maximum=5, max_exclusive=True)
+        field.value = 5
+        self.assertFalse(field.is_valid)
+        field.value = 5.01
+        self.assertFalse(field.is_valid)
+        field.value = 4.99
         self.assertTrue(field.is_valid)
 
 

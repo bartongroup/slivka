@@ -1,0 +1,58 @@
+---
+options:
+  - name: return
+    label: Return code
+    description: Code returned by the program.
+    parameter: "--return ${value}"
+    value:
+      type: integer
+      default: 0
+
+  - name: long
+    label: Long computation
+    description: Extends execution by 5 seconds.
+    parameter: "${value}"
+    value:
+      type: boolean
+      value: "--long"
+      default: false
+
+  - name: very_long
+    label: Very long computation
+    description: Extends execution by 30 seconds.
+    parameter: "${value}"
+    value:
+      type: boolean
+      value: "--very-long"
+      default: false
+
+  - name: foo
+    label: Foo
+    description: Foo variable.
+    parameter: "-f ${value}"
+    value:
+      type: text
+      minLength: 2
+      maxLength: 10
+      default: Foo
+
+  - name: error
+    label: Error
+    description: Generates an error.
+    parameter: "${value}"
+    value:
+      type: boolean
+      value: "-e"
+      default: false
+
+  - name: choice
+    label: Choice
+    description: Choose wisely
+    parameter: "${value}"
+    value:
+      type: choice
+      choices:
+        A: "-a"
+        B: "-b"
+        C: "-c"
+...

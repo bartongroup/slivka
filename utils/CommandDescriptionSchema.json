@@ -1,0 +1,136 @@
+{
+  "type": "object",
+  "properties": {
+    "options": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/field"},
+      "additionalItems": false
+    }
+  },
+  "additionalProperties": false,
+
+  "definitions": {
+    "field": {
+      "title": "form field validation schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "[\\w\\d-]{1,16}"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "parameter": {
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {"$ref": "#/definitions/integerField"},
+            {"$ref": "#/definitions/decimalField"},
+            {"$ref": "#/definitions/textField"},
+            {"$ref": "#/definitions/booleanField"},
+            {"$ref": "#/definitions/choiceField"},
+            {"$ref": "#/definitions/fileField"}
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "label", "parameter", "value"]
+    },
+
+    "integerField": {
+      "title": "integer value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["integer"]},
+        "min": {"type": "integer"},
+        "max": {"type": "integer"},
+        "default": {"type": "integer"}
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+
+    "decimalField": {
+      "title": "decimal value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["decimal", "float"]},
+        "min": {"type": "number"},
+        "max": {"type": "number"},
+        "minExclusive": {"type": "boolean"},
+        "maxExclusive": {"type": "boolean"},
+        "default": {"type": "number"}
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+
+    "textField": {
+      "title": "text value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["text"]},
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "default": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+
+    "booleanField": {
+      "title": "boolean value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["boolean"]},
+        "value": {"type": "string"},
+        "default": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "required": ["type", "value"]
+    },
+
+    "choiceField": {
+      "title": "choice value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["choice"]},
+        "choices": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "minProperties": 1
+        },
+        "default": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+
+    "fileField": {
+      "title": "file value validation schema",
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["file"]},
+        "mimetype": {"type": "string"},
+        "extension": {"type": "string"},
+        "maxSize": {
+          "type": "string",
+          "pattern": "^\\d+\\s*(|k|M|G|T)B$"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    }
+  }
+}
