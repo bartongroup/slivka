@@ -1,13 +1,14 @@
+import json
 import logging
-import pickle
 import queue
 import socket
-import time
 import threading
+import time
 
+from scheduler.command.command_factory import CommandFactory
+from .exceptions import ConnectionAbortedError
 from .job import Job
-from .utils import bytetonum, numtobyte
-
+from .utils import send_json, recv_json
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -27,14 +28,16 @@ PORT = 9090
 
 class Worker(object):
 
-    MSG_NEW_TASK = b"NEW TASK"
-    MSG_JOB_STATUS = b"JOB STAT"
-    MSG_JOB_RESULT = b"JOB RES "
-    STATUS_OK = b'OK  '
+    HEAD_NEW_TASK = b"NEW TASK"
+    HEAD_JOB_STATUS = b"JOB STAT"
+    HEAD_JOB_RESULT = b"JOB RES "
+    STATUS_OK = b'OK      '
+    STATUS_ERROR = b'ERROR   '
 
-    def __init__(self, host=HOST, port=PORT):
+    def __init__(self, host, port):
         self._shutdown = False
         self._jobs_queue = queue.Queue()
+        self._commands = {}
         self.jobs = dict()
         self.host, self.port = host, port
         self._server_socket = socket.socket(
@@ -49,8 +52,8 @@ class Worker(object):
         Listens to incoming connections and starts a client thread.
         :return:
         """
-        print("Worker is ready to accept connections on {}:{}."
-              .format(self.host, self.port))
+        logger.info("Worker is ready to accept connections on {}:{}."
+                    .format(self.host, self.port))
         while True:
             try:
                 (client_socket, address) = self._server_socket.accept()
@@ -58,6 +61,7 @@ class Worker(object):
                 continue
             else:
                 if self._shutdown:
+                    client_socket.shutdown(socket.SHUT_RDWR)
                     client_socket.close()
             finally:
                 if self._shutdown:
@@ -79,13 +83,13 @@ class Worker(object):
         """
         conn.settimeout(5)
         try:
-            msg = conn.recv(8)
-            logger.info("got message: {}".format(msg))
-            if msg == Worker.MSG_NEW_TASK:
+            head = conn.recv(8)
+            logger.debug("got head: {}".format(head))
+            if head == Worker.HEAD_NEW_TASK:
                 self._new_task_request(conn)
-            elif msg == Worker.MSG_JOB_STATUS:
+            elif head == Worker.HEAD_JOB_STATUS:
                 self._job_status_request(conn)
-            elif msg == Worker.MSG_JOB_RESULT:
+            elif head == Worker.HEAD_JOB_RESULT:
                 self._job_result_request(conn)
         except socket.timeout:
             logger.warning("client socket timed out")
@@ -103,27 +107,30 @@ class Worker(object):
         :raise pickle.UnpicklingError
         """
         try:
-            msg_length = bytetonum(conn.recv(4))
-            runnable_string = conn.recv(msg_length)
+            try:
+                data = recv_json(conn)
+            except json.JSONDecodeError:
+                logger.warning("invalid json format")
+                conn.send(self.STATUS_ERROR)
+                raise
+            else:
+                conn.send(self.STATUS_OK)
+            command_cls = \
+                CommandFactory.get_local_command_class(data["service"])
+            command = command_cls(data['options'], data.get("cwd"))
+            job = Job(command)
+            logger.info("spawned job {}".format(job))
+            send_json(conn, {"jobId": job.id})
+            conn.shutdown(socket.SHUT_RDWR)
         except socket.timeout:
             raise ConnectionAbortedError("client did not respond.")
-        try:
-            runnable = pickle.loads(runnable_string)
-        except pickle.PickleError:
-            logger.error("serialized object is invalid")
-            return
-        if not conn.send(Worker.STATUS_OK):
-            raise ConnectionAbortedError("connection aborted by the client")
-        job = Job(runnable)
-        logger.info("spawned job {}".format(job))
-        conn.send(job.id.encode())
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+        finally:
+            conn.close()
         self._queue_job(job)
 
     def _queue_job(self, job):
         """
-        Adds a new job to the queue.
+        Adds a new job to the queue and registers "finished" signal.
         :param job: new job
         """
         job.sig_finished.register(self._on_job_finished)
@@ -132,29 +139,32 @@ class Worker(object):
 
     def _job_status_request(self, conn):
         """
-        Handles job status request from the client.
-        Receives job id from the socket and sends back the status of the job
         :param conn: client socket handler
         """
-        job_id = conn.recv(32).decode()
-        status = self.jobs[job_id].status
-        conn.send(status.encode())
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+        try:
+            data = recv_json(conn)
+            status = self.jobs[data["jobId"]].status
+            conn.send(self.STATUS_OK)
+            send_json(conn, {"status": status})
+        except socket.timeout:
+            raise ConnectionAbortedError("client did not respond")
+        finally:
+            conn.close()
 
     def _job_result_request(self, conn):
         """
-        Handles job result request from the client.
-        Exchanges job if for the serialised JobResult fetched from the job.
         :param conn: client socket handler
         """
-        job_id = conn.recv(32).decode()
-        result = self.jobs[job_id].result
-        result_bytes = pickle.dumps(result)
-        conn.send(numtobyte(len(result_bytes), 4))
-        conn.send(result_bytes)
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+        try:
+            data = recv_json(conn)
+            result = self.jobs[data["jobId"]].result
+            conn.send(self.STATUS_OK)
+            send_json(conn, result)
+            conn.shutdown(socket.SHUT_RDWR)
+        except socket.timeout:
+            raise ConnectionAbortedError("client did not respond")
+        finally:
+            conn.close()
 
     def _on_job_finished(self, job_id):
         """
@@ -167,7 +177,7 @@ class Worker(object):
         """
         A main loop where the worker scans the queue for tasks.
         """
-        print("Worker is ready to process the queue.")
+        logger.info("Worker is ready to process the queue.")
         while True:
             try:
                 job = self._jobs_queue.get(timeout=5)
@@ -182,8 +192,8 @@ class Worker(object):
         self._shutdown = True
 
 
-def start_worker():
-    worker = Worker()
+def start_worker(host=HOST, port=PORT):
+    worker = Worker(host, port)
     server_thread = threading.Thread(
         target=worker.listen,
         name="ServerThread"
@@ -200,6 +210,6 @@ def start_worker():
     except KeyboardInterrupt:
         logger.info("received shutdown signal")
         worker.shutdown()
-    print("Waiting for threads to join.")
+    logger.info("Waiting for threads to join.")
     server_thread.join()
     queue_thread.join()

@@ -1,10 +1,9 @@
-from .exceptions import ValidationError
-from .form_factory import FormFactory
-
 import configparser
 import sys
 
 import settings
+from .exceptions import ValidationError
+from .form_factory import FormFactory
 
 
 def _init_forms(config_file):
@@ -22,7 +21,7 @@ def _init_forms(config_file):
     module = sys.modules[__name__]
     for service in settings.SERVICES:
         form_name = get_form_name(service)
-        form_file = config.get(service, "form_file")
+        form_file = config.get(service, "command_file")
         form_class = \
             FormFactory.get_form_class(form_name, service, form_file)
         setattr(module, form_name, form_class)

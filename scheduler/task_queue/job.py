@@ -1,7 +1,7 @@
 import threading
+import traceback
 import uuid
 
-from .runnable_task import RunnableTask
 from .utils import Signal
 
 
@@ -15,7 +15,6 @@ class Job:
         :param args: arguments passed to the runnable's start method
         :param kwargs: keyword arguments passed to the runnable's start method
         """
-        assert isinstance(runnable, RunnableTask)
         self._runnable = runnable
         self.id = uuid.uuid4().hex
         self.status = JobStatus.QUEUED
@@ -44,7 +43,7 @@ class Job:
         try:
             self._result = self._runnable.run(*self._args, **self._kwargs)
         except Exception as exc:
-            self._exception = exc
+            self._exception = traceback.format_exc()
             self.status = JobStatus.FAILED
         else:
             self.status = JobStatus.COMPLETED
@@ -77,7 +76,7 @@ class Job:
         """
         if not self.is_finished():
             return None
-        return JobResult(self._result, self._exception)
+        return self._result or self._exception
 
     def is_finished(self):
         """
@@ -108,11 +107,3 @@ class JobStatus:
     COMPLETED = "COMPLETED"
     COLLECTED = "COLLECTED"
     FAILED = "FAILED"
-
-
-class JobResult:
-    __slots__ = ["result", "error"]
-
-    def __init__(self, result, error):
-        self.result = result
-        self.error = error

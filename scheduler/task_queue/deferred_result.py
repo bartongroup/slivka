@@ -1,7 +1,7 @@
-import pickle
 import socket
 
-from .utils import bytetonum
+from . import utils
+from .exceptions import ConnectionError
 from .worker import Worker
 
 
@@ -31,37 +31,39 @@ class DeferredResult:
         Asks the server for the status of the job linked to this deferred
         result instance.
         :return: current job status
-        :rtype: job.JobStatus
+        :rtype: enum job.JobStatus value
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(Worker.MSG_JOB_STATUS)
 
-        client_socket.send(self.job_id.encode())
-        job_status = client_socket.recv(16).decode()
-        client_socket.shutdown(socket.SHUT_RDWR)
+        client_socket.send(Worker.HEAD_JOB_STATUS)
+        utils.send_json(client_socket, {"jobId": self.job_id})
+        status = client_socket.recv(8)
+        if status != Worker.STATUS_OK:
+            raise ConnectionError("something bad happened")
+        data = utils.recv_json(client_socket)
         client_socket.close()
-        return job_status
+        return data['status']
 
     @property
     def result(self):
         """
         Asks the server for the result of the job associated with this
         deferred result.
-        :return: job result or None if not finished
-        :rtype: scheduler.task_queue.job.JobResult
+        :return: job result or exception traceback if failed
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-        client_socket.send(Worker.MSG_JOB_RESULT)
 
-        client_socket.send(self.job_id.encode())
-        msg_length = bytetonum(client_socket.recv(4))
-        job_result = client_socket.recv(msg_length)
-        client_socket.shutdown(socket.SHUT_RDWR)
+        client_socket.send(Worker.HEAD_JOB_RESULT)
+        utils.send_json(client_socket, {"jobId": self.job_id})
+        status = client_socket.recv(8)
+        if status != Worker.STATUS_OK:
+            raise ConnectionError("something bad happened")
+        data = utils.recv_json(client_socket)
         client_socket.close()
-        return pickle.loads(job_result)
+        return data
 
     def __repr__(self):
-        return ("<DeferredResult> {job_id} server: {addr[0]}:{addr[1]}"
+        return ("<DeferredResult {job_id} server={addr[0]}:{addr[1]}>"
                 .format(job_id=self.job_id, addr=self.server_address))

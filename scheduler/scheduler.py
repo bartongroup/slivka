@@ -11,7 +11,6 @@ from .command.command_factory import CommandFactory
 from .task_queue import queue_run
 from .task_queue.job import JobStatus
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
@@ -36,7 +35,10 @@ class Scheduler:
         }
 
     def database_poll_loop(self):
-        print("Scheduler starts watching database.")
+        """
+        Keeps checking database for new Request records.
+        """
+        logger.info("Scheduler starts watching database.")
         while not self._shutdown:
             with start_session() as session:
                 self._poll_database(session)
@@ -54,30 +56,28 @@ class Scheduler:
             session.commit()
 
     def queue_task(self, request):
-        command_cls = self._command_class[request.service]
         options = {
             option.name: option.value
             for option in request.options
         }
-        command = command_cls(options)
         with self._tasks_lock:
-            deferred_result = queue_run(command)
+            deferred_result = queue_run(request.service, options)
             self._tasks.add(Task(deferred_result, request))
             request.status = request.STATUS_QUEUED
 
     def collector_loop(self):
-        print("Scheduler starts collecting tasks from worker.")
+        logger.info("Scheduler starts collecting tasks from worker.")
         while not self._shutdown:
             with start_session() as session:
                 for task in self._collect_finished():
                     session.query(Request). \
                             filter(Request.id == task.request_id). \
                             update({"status": Request.STATUS_COMPLETED})
-                    result = task.deferred_result.result.result
+                    return_code, stdout, stderr = task.deferred_result.result
                     res = Result(
-                        return_code=result.retcode,
-                        stdout=result.stdout,
-                        stderr=result.stderr,
+                        return_code=return_code,
+                        stdout=stdout,
+                        stderr=stderr,
                         request_id=task.request_id
                     )
                     session.add(res)
@@ -130,8 +130,8 @@ def start_scheduler():
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
-        logger.info("received shutdown signal")
+        logger.debug("received shutdown signal")
         scheduler.shutdown()
-    print("Waiting for threads to join.")
+    logger.info("Waiting for threads to join.")
     collector_thread.join()
     poll_thread.join()
