@@ -1,0 +1,51 @@
+---
+options:
+  - name: message
+    label: Message
+    description: Message sent to stdout.
+    parameter: -m ${value}
+    value:
+      type: text
+
+  - name: error
+    label: Error
+    description: Message sent to stderr.
+    parameter: -e ${value}
+    value:
+      type: text
+
+  - name: return_code
+    label: Return code
+    description: Code returned by the script.
+    parameter: -r ${value}
+    value:
+      type: integer
+      default: 0
+
+  - name: number
+    label: Number of files
+    description: Specifies the number of files produced.
+    parameter: -n ${value}
+    value:
+      type: integer
+      default: 1
+
+outputs:
+  - type: result
+    method: stdout
+
+  - type: error
+    method: stderr
+
+  - type: result
+    method: file
+    filename: "DefaultOutput.txt"
+
+  - type: result
+    method: file
+    parameter: "-o ${value}"
+
+  - type: result
+    method: file
+    pattern: "part[0-9]{3}.txt"
+...

@@ -210,15 +210,19 @@ def get_task(task_id):
                            one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
-        return JsonResponse({
+        response = {
             "status": job_request.status,
             "ready": job_request.is_finished,
-            "output": {
+            "output": None
+        }
+        if job_request.is_finished:
+            response['output'] = {
                 "returnCode": job_request.result.return_code,
                 "stdout": job_request.result.stdout,
-                "stderr": job_request.result.stderr
+                "stderr": job_request.result.stderr,
+                "files": [file.id for file in job_request.result.output_files]
             }
-        })
+        return JsonResponse(response)
 
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])

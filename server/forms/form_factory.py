@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 
 import jsonschema
 import yaml
@@ -18,10 +18,7 @@ class BaseForm:
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
-        obj._fields = {
-            name: copy(field)
-            for name, field in cls._fields.items()
-        }
+        obj._fields = deepcopy(cls._fields)
         return obj
 
     def __init__(self, values=None):

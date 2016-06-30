@@ -55,4 +55,11 @@ options:
         A: "-a"
         B: "-b"
         C: "-c"
+
+outputs:
+  - type: result
+    method: stdout
+
+  - type: error
+    method: stderr
 ...
