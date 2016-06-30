@@ -1,29 +1,27 @@
 import os
 import subprocess
+import uuid
+
+import settings
 
 
 class LocalCommand:
     """
-    Class used for local command execution. It's subclassed by the
-    CommandFactory
+    Class used for local command execution. It's subclasses are constructed by
+    the CommandFactory
     """
 
     _env = None
     _binary = None
     _options = None
+    _output_files = None
 
-    def __init__(self, options, cwd=None):
+    def __init__(self, options):
         """
         :param options: values passed to the command runner
         :type options: dictionary of option name value pairs
-        :param cwd: working directory of the application
         """
         self._values = options
-        self._cwd = os.path.abspath(cwd)
-        try:
-            os.makedirs(self._cwd)
-        except FileExistsError:
-            pass
         self._process = None
 
     def run(self):
@@ -31,22 +29,33 @@ class LocalCommand:
 
     def run_command(self):
         """
-        Executed the command locally as a new subprocess.
-        :return: ServiceOutput tuple
+        Executes the command locally as a new subprocess.
         """
-        stdout = stderr = ""
+        stdout = stderr = b""
+        cwd = os.path.join(settings.WORK_DIR, uuid.uuid4().hex)
+        os.mkdir(cwd)
+
         try:
             self._process = subprocess.Popen(
                 self.get_full_cmd(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=self.env,
-                cwd=self._cwd
+                cwd=cwd
             )
             stdout, stderr = self._process.communicate()
         finally:
             return_code = self._process and self._process.returncode
-            return return_code, stdout.decode(), stderr.decode()
+            return {
+                "return_code": return_code,
+                "stdout": stdout.decode(),
+                "stderr": stderr.decode(),
+                "files": [
+                    filename
+                    for output in self._output_files
+                    for filename in output.get_files_paths(cwd)
+                ]
+            }
 
     def get_full_cmd(self):
         return "{bin} {opt}".format(
@@ -71,6 +80,12 @@ class LocalCommand:
         if self._options is None:
             raise AttributeError("options are not set")
         return self._options
+
+    @property
+    def output_files(self):
+        if self._output_files is None:
+            raise AttributeError("output files are not set")
+        return self._output_files
 
     @property
     def env(self):

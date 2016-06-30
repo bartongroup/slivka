@@ -101,10 +101,10 @@ class Worker(object):
 
     def _new_task_request(self, conn):
         """
-        Receives a new task from the client and spawns a new job
+        Receives a new task from the client and spawns a new job.
         :param conn: client socket handler
         :raise ConnectionAbortedError
-        :raise pickle.UnpicklingError
+        :raise json.JSONDecodeError
         """
         try:
             try:
@@ -117,7 +117,7 @@ class Worker(object):
                 conn.send(self.STATUS_OK)
             command_cls = \
                 CommandFactory.get_local_command_class(data["service"])
-            command = command_cls(data['options'], data.get("cwd"))
+            command = command_cls(data['options'])
             job = Job(command)
             logger.info("spawned job {}".format(job))
             send_json(conn, {"jobId": job.id})

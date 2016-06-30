@@ -1,5 +1,5 @@
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -68,6 +68,10 @@ class Result(Base):
     output_files = relationship("File", back_populates="result")
 
 
+# TODO store file id, file name and file path
+# file id - identification used to access the file
+# file name - human readable name when downloaded
+# file path - real path in a filesystem
 class File(Base):
 
     __tablename__ = "files"

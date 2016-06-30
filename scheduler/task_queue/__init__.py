@@ -6,12 +6,11 @@ from .exceptions import ConnectionError
 from .worker import HOST, PORT, Worker
 
 
-def queue_run(service, values, cwd=None):
+def queue_run(service, values):
     """
     Sends the task to the worker which enqueues it as a new job.
     :param service:
     :param values:
-    :param cwd:
     :return: DeferredResult associated with the job
     :raise ConnectionError:
     """
@@ -21,8 +20,7 @@ def queue_run(service, values, cwd=None):
 
     utils.send_json(client_socket, {
         "service": service,
-        "options": values,
-        "cwd": cwd
+        "options": values
     })
     status = client_socket.recv(8)
     if status != Worker.STATUS_OK:

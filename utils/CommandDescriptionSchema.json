@@ -5,6 +5,16 @@
       "type": "array",
       "items": {"$ref": "#/definitions/field"},
       "additionalItems": false
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "#/definitions/pipeOutput"},
+          {"$ref": "#/definitions/fileOutput"}
+        ]
+      },
+      "additionalItems": false
     }
   },
   "additionalProperties": false,
@@ -131,6 +141,38 @@
       },
       "additionalProperties": false,
       "required": ["type"]
+    },
+    "pipeOutput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["result", "error", "log"]
+        },
+        "method": {
+          "enum": ["stdout", "stderr"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileOutput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["result", "error", "log"]
+        },
+        "method": {
+          "enum": ["file"]
+        },
+        "filename": {"type": "string"},
+        "pattern": {"type": "string"},
+        "parameter": {"type": "string"}
+      },
+      "oneOf": [
+        {"required": ["filename"]},
+        {"required": ["parameter"]},
+        {"required": ["pattern"]}
+      ],
+      "additionalParameters": false
     }
   }
 }

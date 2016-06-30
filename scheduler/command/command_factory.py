@@ -1,5 +1,8 @@
 import configparser
+import os.path
+import re
 import string
+import uuid
 
 import jsonschema
 import yaml
@@ -30,7 +33,9 @@ class CommandOption:
         """
         if value is None:
             value = self._default
-        if value is None or value is False:
+        if value is None:
+            return ""
+        elif value is False:
             return self._param_template.substitute(value="")
         return self._param_template.substitute(value=value)
 
@@ -40,6 +45,30 @@ class CommandOption:
 
     def __repr__(self):
         return "<Option {0}>".format(self._name)
+
+
+class FileOutput:
+
+    def __init__(self, name):
+        self._name = name
+
+    def get_files_paths(self, cwd):
+        return [os.path.abspath(os.path.join(cwd, self._name))]
+
+
+class PatternFileOutput(FileOutput):
+
+    def __init__(self, pattern):
+        super().__init__(None)
+        self._regex = re.compile(pattern)
+
+    def get_files_paths(self, cwd):
+        files = os.listdir(cwd)
+        return [
+            os.path.abspath(os.path.join(cwd, name))
+            for name in files
+            if self._regex.match(name)
+        ]
 
 
 class CommandFactory:
@@ -66,6 +95,7 @@ class CommandFactory:
             jsonschema.validate(data, utils.COMMAND_SCHEMA)
             binary = parser.get(service, "bin")
             options = CommandFactory._parse_options(data['options'])
+            outputs = CommandFactory._parse_outputs(data['outputs'], options)
             env = {
                 key[4:]: value
                 for key, value in parser.items(service)
@@ -77,6 +107,7 @@ class CommandFactory:
                 {
                     "_binary": binary,
                     "_options": options,
+                    "_output_files": outputs,
                     "_env": env
                 }
             )
@@ -100,3 +131,30 @@ class CommandFactory:
             )
             for option in options
         ]
+
+    @staticmethod
+    def _parse_outputs(outputs, options):
+        """
+
+        :param outputs:
+        :param options:
+        :return:
+        :raise KeyError:
+        """
+        res = []
+        for out in outputs:
+            if out["method"] == "file":
+                if "filename" in out:
+                    res.append(FileOutput(out["filename"]))
+                elif "parameter" in out:
+                    filename = uuid.uuid4().hex + ".pybioas"
+                    res.append(FileOutput(filename))
+                    options.append(
+                        CommandOption("", out["parameter"], filename)
+                    )
+                elif "pattern" in out:
+                    res.append(PatternFileOutput(out["pattern"]))
+                else:
+                    raise KeyError("None of the keys 'filename', "
+                                   "'parameter', 'pattern' found.")
+        return res

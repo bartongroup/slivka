@@ -1,12 +1,15 @@
 import logging
+import os.path
+import shutil
 import threading
 import time
+import uuid
 
 from sqlalchemy.orm import joinedload
 
 import settings
 from db import start_session
-from db.models import Request, Result
+from db.models import Request, Result, File
 from .command.command_factory import CommandFactory
 from .task_queue import queue_run
 from .task_queue.job import JobStatus
@@ -73,13 +76,14 @@ class Scheduler:
                     session.query(Request). \
                             filter(Request.id == task.request_id). \
                             update({"status": Request.STATUS_COMPLETED})
-                    return_code, stdout, stderr = task.deferred_result.result
+                    result = task.deferred_result.result
                     res = Result(
-                        return_code=return_code,
-                        stdout=stdout,
-                        stderr=stderr,
+                        return_code=result["return_code"],
+                        stdout=result["stdout"],
+                        stderr=result["stderr"],
                         request_id=task.request_id
                     )
+                    res.output_files = list(self._save_files(result["files"]))
                     session.add(res)
                 session.commit()
             time.sleep(5)
@@ -101,6 +105,13 @@ class Scheduler:
             self._tasks = self._tasks.difference(finished)
         logger.debug("found {} tasks".format(len(finished)))
         return finished
+
+    @staticmethod
+    def _save_files(files):
+        for path in files:
+            filename = uuid.uuid4().hex
+            shutil.copy(path, os.path.join(settings.UPLOAD_DIR, filename))
+            yield File(id=filename)
 
     def shutdown(self):
         self._shutdown = True
