@@ -1,10 +1,10 @@
 import unittest
 
-from server.forms.fields import (
+from pybioas.server.forms import ValidationError
+from pybioas.server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
-    TextField, BooleanField, SelectField
+    TextField, BooleanField, ChoiceField
 )
-from server.forms.exceptions import ValidationError
 
 
 class TestBaseFieldValid(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestBaseFieldValid(unittest.TestCase):
     def setUp(self):
         self.BaseFieldWrapper = type(
             'BaseField', (BaseField,),
-            {"validate": lambda self, value: value}
+            {"validate": lambda s, value: value}
         )
 
     def test_type(self):
@@ -69,7 +69,7 @@ class TestIntegerField(unittest.TestCase):
         self.assertFalse(field.is_valid)
         
     def test_is_valid_max(self):
-        field = IntegerField('',maximum=20)
+        field = IntegerField('', maximum=20)
         field.value = 20
         self.assertTrue(field.is_valid)
         field.value = 21
@@ -80,6 +80,7 @@ class TestIntegerField(unittest.TestCase):
         self.assertEqual(field.cleaned_value, 4)
         field.value = "True"
         with self.assertRaises(ValidationError):
+            # noinspection PyStatementEffect
             field.cleaned_value
         field.value = '10'
         self.assertEqual(field.cleaned_value, 10)
@@ -104,6 +105,7 @@ class TestDecimalField(unittest.TestCase):
         self.assertAlmostEqual(field.cleaned_value, 3.1415)
         field.value = "foobar"
         with self.assertRaises(ValueError):
+            # noinspection PyStatementEffect
             field.cleaned_value
         field.value = "0.12345678987654321"
         self.assertAlmostEqual(field.cleaned_value, 0.12345678)
@@ -231,7 +233,7 @@ class TestBooleanField(unittest.TestCase):
 class TestSelectField(unittest.TestCase):
 
     def setUp(self):
-        self.field = SelectField('', choices=("alpha", "beta", "gamma"))
+        self.field = ChoiceField('', choices=("alpha", "beta", "gamma"))
 
     def test_is_valid(self):
         self.field.value = "alpha"

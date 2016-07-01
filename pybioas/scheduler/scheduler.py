@@ -7,9 +7,9 @@ import uuid
 
 from sqlalchemy.orm import joinedload
 
-import settings
-from db import start_session
-from db.models import Request, Result, File
+import pybioas.settings
+from pybioas.db import start_session
+from pybioas.db.models import Request, Result, File
 from .command.command_factory import CommandFactory
 from .task_queue import queue_run
 from .task_queue.job import JobStatus
@@ -34,7 +34,7 @@ class Scheduler:
         self._tasks_lock = threading.Lock()
         self._command_class = {
             service: CommandFactory.get_local_command_class(service)
-            for service in settings.SERVICES
+            for service in pybioas.settings.SERVICES
         }
 
     def database_poll_loop(self):
@@ -110,7 +110,9 @@ class Scheduler:
     def _save_files(files):
         for path in files:
             filename = uuid.uuid4().hex
-            shutil.copy(path, os.path.join(settings.UPLOAD_DIR, filename))
+            shutil.copy(
+                path, os.path.join(pybioas.settings.UPLOAD_DIR, filename)
+            )
             yield File(id=filename)
 
     def shutdown(self):

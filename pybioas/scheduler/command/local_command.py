@@ -2,7 +2,7 @@ import os
 import subprocess
 import uuid
 
-import settings
+import pybioas.settings
 
 
 class LocalCommand:
@@ -32,7 +32,7 @@ class LocalCommand:
         Executes the command locally as a new subprocess.
         """
         stdout = stderr = b""
-        cwd = os.path.join(settings.WORK_DIR, uuid.uuid4().hex)
+        cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
 
         try:

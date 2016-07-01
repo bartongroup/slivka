@@ -1,4 +1,10 @@
 .idea/
-uploads/
-sqlite3.db
 **/__pycache__/
+
+build/
+PyBioAS.egg-info/
+dist/
+
+uploads/
+workDir
+sqlite3.db

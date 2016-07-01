@@ -7,9 +7,9 @@ import uuid
 import jsonschema
 import yaml
 
-import settings
-import utils
-from scheduler.command.local_command import LocalCommand
+import pybioas.settings
+import pybioas.utils
+from pybioas.scheduler.command.local_command import LocalCommand
 
 
 class CommandOption:
@@ -78,7 +78,7 @@ class CommandFactory:
     @classmethod
     def get_local_command_class(cls, service):
         """
-        Constructs a local command class from the config file data.
+        Constructs a local command class from the conf file data.
         Values are taken from the section corresponding to the service name.
         :param service: name of the service
         :return: command class subclassing LocalCommand
@@ -87,12 +87,12 @@ class CommandFactory:
             command_cls = cls._commands[service]
         except KeyError:
             parser = configparser.ConfigParser()
-            with open(settings.SERVICE_CONFIG) as f:
+            with open(pybioas.settings.SERVICE_CONFIG) as f:
                 parser.read_file(f)
             command_file = parser.get(service, "command_file")
             with open(command_file) as f:
                 data = yaml.load(f)
-            jsonschema.validate(data, utils.COMMAND_SCHEMA)
+            jsonschema.validate(data, pybioas.utils.COMMAND_SCHEMA)
             binary = parser.get(service, "bin")
             options = CommandFactory._parse_options(data['options'])
             outputs = CommandFactory._parse_outputs(data['outputs'], options)

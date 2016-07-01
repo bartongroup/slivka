@@ -3,11 +3,11 @@ from copy import deepcopy
 import jsonschema
 import yaml
 
-from db.models import Request, Option
+from pybioas.db.models import Request, Option
+from pybioas.utils import COMMAND_SCHEMA
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, ChoiceField)
-from utils import COMMAND_SCHEMA
 
 
 class BaseForm:
