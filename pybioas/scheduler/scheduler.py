@@ -7,7 +7,7 @@ import uuid
 
 from sqlalchemy.orm import joinedload
 
-import pybioas.settings
+import pybioas
 from pybioas.db import start_session
 from pybioas.db.models import Request, Result, File
 from .command.command_factory import CommandFactory

@@ -7,7 +7,7 @@ import werkzeug.exceptions
 import werkzeug.utils
 from flask import Flask, Response, json, request, abort, redirect
 
-import pybioas.settings
+import pybioas
 from pybioas.db import Session, models, start_session
 from pybioas.server.forms import get_form
 

@@ -1,0 +1,3 @@
+import pybioas
+
+pybioas.main()

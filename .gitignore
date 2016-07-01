@@ -6,5 +6,5 @@ PyBioAS.egg-info/
 dist/
 
 uploads/
-workDir
+work_dir/
 sqlite3.db

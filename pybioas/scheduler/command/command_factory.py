@@ -7,7 +7,7 @@ import uuid
 import jsonschema
 import yaml
 
-import pybioas.settings
+import pybioas
 import pybioas.utils
 from pybioas.scheduler.command.local_command import LocalCommand
 
@@ -78,7 +78,7 @@ class CommandFactory:
     @classmethod
     def get_local_command_class(cls, service):
         """
-        Constructs a local command class from the conf file data.
+        Constructs a local command class from the config file data.
         Values are taken from the section corresponding to the service name.
         :param service: name of the service
         :return: command class subclassing LocalCommand

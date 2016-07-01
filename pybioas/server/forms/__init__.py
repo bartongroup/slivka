@@ -2,7 +2,7 @@ import configparser
 import os
 import sys
 
-import pybioas.settings
+import pybioas
 from .exceptions import ValidationError
 from .form_factory import FormFactory
 

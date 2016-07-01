@@ -2,7 +2,7 @@ import os
 import subprocess
 import uuid
 
-import pybioas.settings
+import pybioas
 
 
 class LocalCommand:

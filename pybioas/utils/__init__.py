@@ -1,7 +1,7 @@
 import json
 import os.path
 
-import pybioas.settings
+import pybioas
 
 command_description_schema_path = os.path.join(
     pybioas.settings.BASE_DIR,

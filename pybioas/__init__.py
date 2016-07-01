@@ -1,10 +1,27 @@
 #!usr/bin/env
+import os
 
 import click
 
+import pybioas.config.settings
+
+
+settings = pybioas.config.settings.Settings(
+    type(
+        "DummySettings", (),
+        {
+            "BASE_DIR": os.path.dirname(__file__),
+            "SECRET_KEY": b"abc",
+            "SERVICE_CONFIG": os.path.join("data", "config", "services.ini"),
+            "SERVICES": ("PyDummy", )
+        }
+    )
+)
+
 
 @click.group()
-def main(): pass
+def main():
+    pass
 
 
 @click.command()
@@ -44,6 +61,3 @@ main.add_command(runserver)
 main.add_command(initdb)
 main.add_command(dropdb)
 
-
-if __name__ == '__main__':
-    main()
