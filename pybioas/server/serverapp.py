@@ -15,7 +15,7 @@ from pybioas.server.forms import get_form
 app = Flask('pybioas', root_path=os.path.dirname(__file__))
 app.config.update(
     DEBUG=True,
-    UPLOAD_DIR=pybioas.settings.UPLOAD_DIR,
+    MEDIA_DIR=pybioas.settings.MEDIA_DIR,
     SECRET_KEY=pybioas.settings.SECRET_KEY
 )
 
@@ -100,7 +100,7 @@ def file_upload():
         session.add(file_record)
         session.commit()
         file_id = file_record.id
-    file.save(os.path.join(app.config['UPLOAD_DIR'], file_id))
+    file.save(os.path.join(app.config['MEDIA_DIR'], file_id))
     return JsonResponse({
         "id": file_id,
         "signed_id":
@@ -142,7 +142,7 @@ def file_download(file_id):
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
         return flask.send_from_directory(
-            directory=app.config["UPLOAD_DIR"],
+            directory=app.config["MEDIA_DIR"],
             filename=file_id,
             attachment_filename=filename,
             mimetype=mimetype
@@ -195,7 +195,7 @@ def delete_file(signed_file_id):
             raise abort(404)
         session.commit()
     try:
-        os.remove(os.path.join(app.config["UPLOAD_DIR"], file_id))
+        os.remove(os.path.join(app.config["MEDIA_DIR"], file_id))
     except FileNotFoundError:
         raise abort(404)
     return Response(status=204)

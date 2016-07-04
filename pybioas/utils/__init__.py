@@ -37,3 +37,12 @@ def copytree(src, dst):
     if errors:
         raise shutil.Error(errors)
     return dst
+
+
+class Bunch:
+    """
+    An utility class which creates the object with attributes given
+    to constructor.
+    """
+    def __init__(self, **kwargs):
+        self.__dict__.update(**kwargs)

@@ -1,4 +1,4 @@
 import pybioas.config
 
-# initialize dummmy settings for testilg purposes
+# initialize dummmy settings
 settings = pybioas.config.Settings

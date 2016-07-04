@@ -111,7 +111,7 @@ class Scheduler:
         for path in files:
             filename = uuid.uuid4().hex
             shutil.copy(
-                path, os.path.join(pybioas.settings.UPLOAD_DIR, filename)
+                path, os.path.join(pybioas.settings.MEDIA_DIR, filename)
             )
             yield File(id=filename)
 

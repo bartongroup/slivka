@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from pybioas.server.forms import ValidationError
@@ -5,6 +7,7 @@ from pybioas.server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
     TextField, BooleanField, ChoiceField
 )
+from pybioas.utils import Bunch
 
 
 class TestBaseFieldValid(unittest.TestCase):
@@ -145,25 +148,56 @@ class TestDecimalField(unittest.TestCase):
 
 class TestFileField(unittest.TestCase):
 
-    def test_is_valid_filename(self):
+    temp_dir = None
+
+    @classmethod
+    def setUpClass(cls):
+        import pybioas.config
+        from pybioas.db import models, start_session, create_db
+
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        settings = Bunch(
+            BASE_DIR = cls.temp_dir.name,
+            MEDIA_DIR = ".",
+            SECRET_KEY = b'\x00',
+            SERVICE_INI = None
+        )
+        with open(os.path.join(cls.temp_dir.name, "foo"), "w") as f:
+            f.write("bar bar")
+        pybioas.settings = pybioas.config.Settings(settings)
+        create_db()
+        with start_session() as session:
+            file = models.File(id="foo")
+            session.add(file)
+            session.commit()
+
+    def test_file_not_exist(self):
         field = FileField('')
-        for value in [".gitignore", "some_sample_file.fasta",
-                      "legal_character -.-", "dot.spaced.file.name"]:
-            field.value = value
-            self.assertTrue(field.is_valid, "Invalid for %r" % value)
-
-        for value in ["illegal+character", "  spaces"]:
-            field.value = value
-            self.assertFalse(field.is_valid, "Valid for %r" % value)
-
-    def test_is_valid_extension(self):
-        field = FileField('', extension='exe')
-        field.value = "runme.bat"
+        field.value = "bar"
         self.assertFalse(field.is_valid)
-        field.value = "executable.exe"
+
+    def test_file_exists(self):
+        field = FileField('')
+        field.value = "foo"
         self.assertTrue(field.is_valid)
-        field.value = "myexec.mexe"
-        self.assertFalse(field.is_valid)
+
+    def test_file_path(self):
+        field = FileField('')
+        field.value = "foo"
+        print(field.cleaned_value)
+        self.assertEqual(
+            os.path.dirname(field.cleaned_value), self.temp_dir.name
+        )
+        self.assertEqual(
+            os.path.basename(field.cleaned_value), "foo"
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        from pybioas.db import drop_db
+
+        drop_db()
+        cls.temp_dir.cleanup()
 
 
 class TestTextField(unittest.TestCase):

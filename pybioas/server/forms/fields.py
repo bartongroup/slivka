@@ -1,10 +1,12 @@
+import os
 import re
 
+import pybioas
+from pybioas.db import start_session, models
 from .exceptions import ValidationError
 
 
 class BaseField:
-
     def __init__(self, name, default=None):
         """
         Initializes the values of the field and sets the default value.
@@ -125,7 +127,6 @@ class BaseField:
 
 
 class IntegerField(BaseField):
-
     def __init__(self, name, default=None, minimum=None, maximum=None):
         """
         :param name: parameter id
@@ -161,7 +162,6 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
-
     def __init__(self, name, default=None, minimum=None, maximum=None,
                  min_exclusive=False, max_exclusive=False):
         """
@@ -225,9 +225,11 @@ class DecimalField(BaseField):
 
 
 class FileField(BaseField):
-
     # file name validation: can't start or end with space
     filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
+    size_multiplier = {
+        "": 1, "k": 1024, "M": 1048576, "G": 1073741824, "T": 1099511627776
+    }
 
     def __init__(self, name, default=None, mimetype=None, extension=None,
                  max_size=None):
@@ -244,9 +246,7 @@ class FileField(BaseField):
             if not match:
                 raise ValueError("Invalid max_size format %s" % max_size)
             size_val = int(match.group(1))
-            size_multiplier = {"": 1, "k": 1024, "M": 1048576, "G": 1073741824,
-                               "T": 1099511627776}[match.group(2)]
-            max_size = size_val * size_multiplier
+            max_size = size_val * self.size_multiplier[match.group(2)]
         self._max_size = max_size
         super().__init__(name, default)
 
@@ -258,18 +258,16 @@ class FileField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
-        # TODO cleaning converts file id to file path
-        match = self.filename_regex.match(value)
-        if not match:
-            raise ValidationError("name", "Invalid file name.")
-        if (self._extension and
-                not value.endswith(".%s" % self._extension)):
-            raise ValidationError("extension", "Invalid file extension.")
-        return value
+        with start_session() as session:
+            num_files = (session.query(models.File)
+                         .filter(models.File.id == value)
+                         .count())
+        if num_files == 0:
+            raise ValidationError("file", "File does not exist.")
+        return os.path.abspath(os.path.join(pybioas.settings.MEDIA_DIR, value))
 
 
 class TextField(BaseField):
-
     def __init__(self, name, default=None, min_length=None,
                  max_length=None):
         """
@@ -284,7 +282,7 @@ class TextField(BaseField):
                 (max_length is not None and max_length < 0)):
             raise ValueError("Length can't be negative")
         if (min_length is not None and
-                max_length is not None and
+            max_length is not None and
                 min_length > max_length):
             raise ValueError("Maximum length must be greater than minimum "
                              "length")
@@ -323,7 +321,6 @@ class TextField(BaseField):
 
 
 class BooleanField(BaseField):
-
     false_literals = {'no', 'false', '0', 'null', 'none'}
 
     def __init__(self, name, default=None):
@@ -350,7 +347,6 @@ class BooleanField(BaseField):
 
 
 class ChoiceField(BaseField):
-
     def __init__(self, name, default=None, choices=()):
         """
         :param name: parameter id
@@ -371,4 +367,3 @@ class ChoiceField(BaseField):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return value
-
