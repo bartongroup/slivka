@@ -81,7 +81,10 @@ def runscheduler():
 @click.command()
 def runserver():
     """Starts server."""
+    from pybioas.server.forms import init_forms
     from pybioas.server.serverapp import app
+
+    init_forms(pybioas.settings.SERVICE_INI)
     app.run(host='localhost', port=8080, debug=True)
 
 

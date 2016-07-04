@@ -7,7 +7,7 @@ from .exceptions import ValidationError
 from .form_factory import FormFactory
 
 
-def _init_forms(config_file):
+def init_forms(config_file):
     """
     Loads services and their parameter files from configuration and
     automagically builds form classes. Forms are dynamically added to the forms
@@ -43,7 +43,3 @@ def get_form_name(service):
     :return: form name for the given service
     """
     return service.capitalize() + "Form"
-
-
-# TODO this shouldn't be loaded into module on module init.
-_init_forms(pybioas.settings.SERVICE_INI)
