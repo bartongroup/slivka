@@ -1,0 +1,5 @@
+include ez_setup.py
+include MANIFEST.in
+include requirements.pip
+graft pybioas/server/static
+graft pybioas/data

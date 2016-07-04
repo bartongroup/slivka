@@ -46,4 +46,4 @@ def get_form_name(service):
 
 
 # TODO this shouldn't be loaded into module on module init.
-_init_forms(pybioas.settings.SERVICE_CONFIG)
+_init_forms(pybioas.settings.SERVICE_INI)

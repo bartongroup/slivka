@@ -87,7 +87,7 @@ class CommandFactory:
             command_cls = cls._commands[service]
         except KeyError:
             parser = configparser.ConfigParser()
-            with open(pybioas.settings.SERVICE_CONFIG) as f:
+            with open(pybioas.settings.SERVICE_INI) as f:
                 parser.read_file(f)
             command_file = parser.get(service, "command_file")
             with open(command_file) as f:

@@ -1,3 +1,4 @@
-import pybioas
+import pybioas.command
 
-pybioas.main()
+if __name__ == "__main__":
+    pybioas.command.setup()
