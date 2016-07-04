@@ -23,13 +23,13 @@ def setup(name, examples):
     # copy pybioas.py template
     with open(os.path.join(project_dir, "manage.py"), "wb") as f:
         f.write(pkg_resources.resource_string(
-            "pybioas", "data/template/manage.py.tpl"
+            "pybioas", "data/template/manage.py.jinja2"
         ))
 
     # copy settings.py template
     settings_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/settings.py.tpl"
+            "pybioas", "data/template/settings.py.jinja2"
         ).decode()
     )
     tpl_stream = settings_tpl.stream(
@@ -42,7 +42,7 @@ def setup(name, examples):
     # copy services.ini template
     services_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/services.ini.tpl"
+            "pybioas", "data/template/services.ini.jinja2"
         ).decode()
     )
     tpl_stream = services_tpl.stream(
