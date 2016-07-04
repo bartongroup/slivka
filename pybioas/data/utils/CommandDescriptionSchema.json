@@ -136,7 +136,7 @@
         "extension": {"type": "string"},
         "maxSize": {
           "type": "string",
-          "pattern": "^\\d+\\s*(|k|M|G|T)B$"
+          "pattern": "^\\d+\\s*(|K|M|G|T)B$"
         }
       },
       "additionalProperties": false,

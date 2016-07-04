@@ -200,7 +200,9 @@ class FormFactory:
         return FileField(
             field["name"],
             default=value.get("default"),
-            extension=value.get("extension")
+            extension=value.get("extension"),
+            mimetype=value.get("mimetype"),
+            max_size=value.get("maxSize")
         )
 
     field_factory = {

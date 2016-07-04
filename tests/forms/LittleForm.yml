@@ -1,0 +1,7 @@
+options:
+  - name: alpha
+    label: Alpha
+    description: Alpha field description
+    parameter: --alpha ${value}
+    value:
+      type: integer

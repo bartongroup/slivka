@@ -69,12 +69,20 @@ class TestOptionElementParser(unittest.TestCase):
         self.assertIsInstance(field, ChoiceField)
         self.assertSetEqual(set(field._choices), {"-a", "--b", "-ccc"})
 
+    def test_file_field(self):
+        eta_field = [f for f in self.fields if f['name'] == 'eta'][0]
+        field = FormFactory._get_file_field(eta_field)
+        self.assertIsInstance(field, FileField)
+        self.assertEqual(field._mimetype, "text/plain")
+        self.assertEqual(field._extension, "txt")
+        self.assertEqual(field._max_size, 1024*20)
+
 
 class TestForm(unittest.TestCase):
 
     def setUp(self):
         form_file = os.path.join(
-            os.path.dirname(__file__), "SampleForm.yml"
+            os.path.dirname(__file__), "LittleForm.yml"
         )
         with open(form_file) as f:
             instance = yaml.load(f)
@@ -86,4 +94,4 @@ class TestForm(unittest.TestCase):
     def test_separate_option_instances(self):
         form1 = self.SampleForm({"alpha": 5})
         self.SampleForm({"alpha": 8})
-        assert form1.cleaned_data['alpha'] == 5
+        self.assertEqual(form1.cleaned_data['alpha'], 5)

@@ -63,3 +63,13 @@ options:
         choice-b: --b
         choice-c: -ccc
       default: -a
+
+  - name: eta
+    label: Eta
+    description: Eta file
+    parameter: --eta-input ${value}
+    value:
+      type: file
+      mimetype: text/plain
+      extension: txt
+      maxSize: 20KB

@@ -183,13 +183,12 @@ class TestFileField(unittest.TestCase):
 
     def test_file_path(self):
         field = FileField('')
-        field.value = "foo"
-        print(field.cleaned_value)
+        cleaned = field.validate("foo")
         self.assertEqual(
-            os.path.dirname(field.cleaned_value), self.temp_dir.name
+            os.path.dirname(cleaned), self.temp_dir.name
         )
         self.assertEqual(
-            os.path.basename(field.cleaned_value), "foo"
+            os.path.basename(cleaned), "foo"
         )
 
     @classmethod

@@ -228,7 +228,7 @@ class FileField(BaseField):
     # file name validation: can't start or end with space
     filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
     size_multiplier = {
-        "": 1, "k": 1024, "M": 1048576, "G": 1073741824, "T": 1099511627776
+        "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
     }
 
     def __init__(self, name, default=None, mimetype=None, extension=None,
@@ -242,7 +242,7 @@ class FileField(BaseField):
         self._mimetype = mimetype
         self._extension = extension
         if max_size is not None:
-            match = re.match(r"(\d+)\s*([kMGT]?)B$", max_size)
+            match = re.match(r"(\d+)\s*([KMGT]?)B$", max_size)
             if not match:
                 raise ValueError("Invalid max_size format %s" % max_size)
             size_val = int(match.group(1))
