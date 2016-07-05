@@ -1,15 +1,15 @@
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
     import ez_setup
     ez_setup.use_setuptools()
-    from setuptools import setup
+    from setuptools import setup, find_packages
 
 
 setup(
     name="PyBioAS",
     version="0.0.dev1",
-    packages=["pybioas"],
+    packages=find_packages(),
     install_requires=[
         "click==6.6",
         "Flask==0.11.1",

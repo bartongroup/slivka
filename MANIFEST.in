@@ -1,5 +1,9 @@
 include ez_setup.py
 include MANIFEST.in
+include README.md
 include requirements.pip
+
 graft pybioas/server/static
 graft pybioas/data
+
+global-exclude *.py[co]
