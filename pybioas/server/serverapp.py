@@ -187,7 +187,7 @@ def delete_file(signed_file_id):
         file_id = signer.unsign(signed_file_id).decode('utf-8')
     except itsdangerous.BadSignature:
         return JsonResponse({'error': "invalid signature"}, 403)
-    with start_session as session:
+    with start_session() as session:
         num_deleted = (session.query(models.File).
                        filter(models.File.id == file_id).
                        delete())
