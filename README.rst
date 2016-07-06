@@ -28,6 +28,7 @@ are:
 - MarkupSafe (0.23)
 - PyYAML (3.11)
 - SQLAlchemy (1.0.13)
+- Werkzeug (0.11.10)
 
 It's recommended to install PyBioAS inside a virtual environment.
 Get virtualenv with ``pip install virtualenv`` (on some Linux distributions
