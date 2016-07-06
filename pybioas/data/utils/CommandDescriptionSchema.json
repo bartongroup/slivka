@@ -69,7 +69,7 @@
       "title": "decimal value validation schema",
       "type": "object",
       "properties": {
-        "type": {"enum": ["decimal", "float"]},
+        "type": {"enum": ["decimal"]},
         "min": {"type": "number"},
         "max": {"type": "number"},
         "minExclusive": {"type": "boolean"},
