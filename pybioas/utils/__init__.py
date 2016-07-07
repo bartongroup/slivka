@@ -1,8 +1,10 @@
 import json
 import os
+import re
 import shutil
 
 import pkg_resources
+
 
 COMMAND_SCHEMA = json.loads(
     pkg_resources.resource_string(
@@ -46,3 +48,24 @@ class Bunch:
     """
     def __init__(self, **kwargs):
         self.__dict__.update(**kwargs)
+
+
+def snake_to_camel(name):
+    """
+    Converts snake_case name to lowercase camelCase
+    :param name: name to convert
+    :return: camelCase name
+    """
+    comp = name.split('_')
+    return comp[0] + ''.join(map(str.capitalize, comp[1:]))
+
+
+def camel_to_snake(name):
+    """
+    Converts camelCase name to snake_case
+    :param name: name to convert
+    :return: snake_case name
+    """
+    s = re.sub('([A-Z])([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+
