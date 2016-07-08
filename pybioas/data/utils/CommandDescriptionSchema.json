@@ -59,7 +59,12 @@
         "type": {"enum": ["integer"]},
         "min": {"type": "integer"},
         "max": {"type": "integer"},
-        "default": {"type": "integer"}
+        "default": {
+          "type": "integer"
+        },
+        "required": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false,
       "required": ["type"]
@@ -74,7 +79,12 @@
         "max": {"type": "number"},
         "minExclusive": {"type": "boolean"},
         "maxExclusive": {"type": "boolean"},
-        "default": {"type": "number"}
+        "default": {
+          "type": "number"
+        },
+        "required": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false,
       "required": ["type"]
@@ -93,7 +103,12 @@
           "type": "integer",
           "minimum": 0
         },
-        "default": {"type": "string"}
+        "default": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false,
       "required": ["type"]
@@ -105,7 +120,12 @@
       "properties": {
         "type": {"enum": ["boolean"]},
         "value": {"type": "string"},
-        "default": {"type": "boolean"}
+        "default": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false,
       "required": ["type", "value"]
@@ -121,7 +141,12 @@
           "additionalProperties": {"type": "string"},
           "minProperties": 1
         },
-        "default": {"type": "string"}
+        "default": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false,
       "required": ["type"]
@@ -137,6 +162,9 @@
         "maxSize": {
           "type": "string",
           "pattern": "^\\d+\\s*(|K|M|G|T)B$"
+        },
+        "required": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

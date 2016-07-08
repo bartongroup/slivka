@@ -87,11 +87,21 @@ class TestForm(unittest.TestCase):
         with open(form_file) as f:
             instance = yaml.load(f)
         jsonschema.validate(instance, COMMAND_SCHEMA)
-        self.SampleForm = FormFactory.get_form_class(
-            "SampleForm", "Sample", form_file
+        self.LittleForm = FormFactory.get_form_class(
+            "LittleForm", "Little", form_file
         )
 
     def test_separate_option_instances(self):
-        form1 = self.SampleForm({"alpha": 5})
-        self.SampleForm({"alpha": 8})
+        form1 = self.LittleForm({"alpha": 5})
+        self.LittleForm({"alpha": 8})
         self.assertEqual(form1.cleaned_data['alpha'], 5)
+
+    def test_required_field(self):
+        form = self.LittleForm()
+        field = [f for f in form.fields][0]
+        self.assertTrue(field.required)
+
+    def test_not_required_field(self):
+        form = self.LittleForm()
+        field = [f for f in form.fields][1]
+        self.assertFalse(field.required)

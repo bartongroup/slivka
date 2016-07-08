@@ -1,7 +1,14 @@
 options:
   - name: alpha
     label: Alpha
-    description: Alpha field description
     parameter: --alpha ${value}
     value:
       type: integer
+      required: yes
+
+  - name: beta
+    label: Beta
+    parameter: --beta ${value}
+    value:
+      type: integer
+      required: no

@@ -135,7 +135,8 @@ class FormFactory:
             field['name'],
             minimum=value.get("min"),
             maximum=value.get("max"),
-            default=value.get("default")
+            default=value.get("default"),
+            required=value.get("required", True)
         )
 
     @staticmethod
@@ -145,6 +146,7 @@ class FormFactory:
         return DecimalField(
             field['name'],
             default=value.get("default"),
+            required=value.get("required", True),
             minimum=value.get("min"), maximum=value.get("max"),
             min_exclusive=value.get("minExclusive", False),
             max_exclusive=value.get("maxExclusive", False)
@@ -157,6 +159,7 @@ class FormFactory:
         return TextField(
             field["name"],
             default=value.get("default"),
+            required=value.get("required", True),
             min_length=value.get("minLength"),
             max_length=value.get("maxLength")
         )
@@ -167,7 +170,8 @@ class FormFactory:
         assert value["type"] == "boolean"
         return BooleanField(
             field["name"],
-            default=value.get("default")
+            default=value.get("default"),
+            required=value.get("required", True)
         )
 
     @staticmethod
@@ -177,6 +181,7 @@ class FormFactory:
         return ChoiceField(
             field["name"],
             default=value.get("default"),
+            required=value.get("required", True),
             choices=value.get("choices", {}).values()
         )
 
@@ -187,6 +192,7 @@ class FormFactory:
         return FileField(
             field["name"],
             default=value.get("default"),
+            required=value.get("required", True),
             extension=value.get("extension"),
             mimetype=value.get("mimetype"),
             max_size=value.get("maxSize")

@@ -162,6 +162,8 @@ class IntegerField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
+        if value is None:
+            return None
         try:
             cleaned_value = int(value)
         except (ValueError, TypeError):
@@ -210,6 +212,8 @@ class DecimalField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
+        if value is None:
+            return None
         try:
             cleaned_value = float(value)
         except (ValueError, TypeError):
@@ -288,6 +292,8 @@ class FileField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
+        if value is None:
+            return None
         with start_session() as session:
             num_files = (session.query(models.File)
                          .filter(models.File.id == value)
@@ -336,6 +342,8 @@ class TextField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
+        if value is None:
+            return None
         try:
             cleaned_value = str(value)
         except TypeError:
@@ -365,7 +373,7 @@ class TextField(BaseField):
 
 
 class BooleanField(BaseField):
-    false_literals = {'no', 'false', '0', 'null', 'none'}
+    false_literals = {'no', 'false', '0'}
 
     def __init__(self, name, default=None, required=True):
         """
@@ -383,7 +391,9 @@ class BooleanField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
-        if (type(value) == str and
+        if value is None:
+            cleaned_value = None
+        elif (type(value) == str and
                 value.lower() in self.false_literals):
             cleaned_value = False
         else:
