@@ -7,7 +7,7 @@ from .exceptions import ValidationError
 
 
 class BaseField:
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, required=True):
         """
         Initializes the values of the field and sets the default value.
         :param name: parameter id
@@ -18,6 +18,7 @@ class BaseField:
         if default is not None:
             default = self.validate(default)
         self._default = default
+        self._required = required
         self._value = None
         self._cleaned_value = None
         self._error = None
@@ -48,16 +49,15 @@ class BaseField:
 
     @property
     def required(self):
-        return True
+        return self._required
 
     @property
     def constraints(self):
-        L = self.get_constraints_list()
         return [
             {"name": name, "value": value}
-            for (name, value) in L
+            for (name, value) in self.get_constraints_list()
             if value is not None
-            ]
+        ]
 
     def get_constraints_list(self):
         return []
@@ -123,7 +123,7 @@ class BaseField:
 
     def validate(self, value):
         """
-        Method validating the field value which has to be overridden in
+        Method validating the field value which should be overridden in
         more specialised subclasses.
         If the field is valid, this method should return cleaned value;
         otherwise, it raises ValidationError with error description.
@@ -131,7 +131,9 @@ class BaseField:
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
-        raise NotImplementedError
+        if value is None and self.required:
+            raise ValidationError("required", "This field is required")
+        return value
 
     def __repr__(self):
         return ("<{} {}: {!r}>"
@@ -139,7 +141,8 @@ class BaseField:
 
 
 class IntegerField(BaseField):
-    def __init__(self, name, default=None, minimum=None, maximum=None):
+    def __init__(self, name, default=None, required=True, minimum=None,
+                 maximum=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -148,7 +151,7 @@ class IntegerField(BaseField):
         """
         self._min = minimum
         self._max = maximum
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -158,6 +161,7 @@ class IntegerField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        value = super().validate(value)
         try:
             cleaned_value = int(value)
         except (ValueError, TypeError):
@@ -180,8 +184,8 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
-    def __init__(self, name, default=None, minimum=None, maximum=None,
-                 min_exclusive=False, max_exclusive=False):
+    def __init__(self, name, required=True, default=None, minimum=None,
+                 maximum=None, min_exclusive=False, max_exclusive=False):
         """
         Sets the field and its constraints.
         Inclusive and exclusive limits are mutually exclusive and at least
@@ -195,7 +199,7 @@ class DecimalField(BaseField):
         """
         self._min = (minimum, min_exclusive)
         self._max = (maximum, max_exclusive)
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -205,6 +209,7 @@ class DecimalField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        value = super().validate(value)
         try:
             cleaned_value = float(value)
         except (ValueError, TypeError):
@@ -255,8 +260,8 @@ class FileField(BaseField):
         "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
     }
 
-    def __init__(self, name, default=None, mimetype=None, extension=None,
-                 max_size=None):
+    def __init__(self, name, default=None, required=True, mimetype=None,
+                 extension=None, max_size=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -272,7 +277,7 @@ class FileField(BaseField):
             size_val = int(match.group(1))
             max_size = size_val * self.size_multiplier[match.group(2)]
         self._max_size = max_size
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -282,6 +287,7 @@ class FileField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        value = super().validate(value)
         with start_session() as session:
             num_files = (session.query(models.File)
                          .filter(models.File.id == value)
@@ -299,7 +305,7 @@ class FileField(BaseField):
 
 
 class TextField(BaseField):
-    def __init__(self, name, default=None, min_length=None,
+    def __init__(self, name, default=None, required=True, min_length=None,
                  max_length=None):
         """
         :param name: parameter id
@@ -319,7 +325,7 @@ class TextField(BaseField):
                              "length")
         self._min_length = min_length
         self._max_length = max_length
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -329,6 +335,7 @@ class TextField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        value = super().validate(value)
         try:
             cleaned_value = str(value)
         except TypeError:
@@ -360,12 +367,12 @@ class TextField(BaseField):
 class BooleanField(BaseField):
     false_literals = {'no', 'false', '0', 'null', 'none'}
 
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, required=True):
         """
         :param name: parameter id
         :param default: default value of the field
         """
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -375,6 +382,7 @@ class BooleanField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
+        value = super().validate(value)
         if (type(value) == str and
                 value.lower() in self.false_literals):
             cleaned_value = False
@@ -384,14 +392,15 @@ class BooleanField(BaseField):
 
 
 class ChoiceField(BaseField):
-    def __init__(self, name, default=None, choices=()):
+    def __init__(self, name, default=None, required=True, choices=()):
         """
+        :param required:
         :param name: parameter id
         :param default: default value of the field
         :param choices: an iterable of allowed choices
         """
         self._choices = list(choices)
-        super().__init__(name, default)
+        super().__init__(name, default, required)
 
     def validate(self, value):
         """
@@ -400,7 +409,8 @@ class ChoiceField(BaseField):
         :return: cleaned value
         :raise ValidationError: field value is invalid
         """
-        if value not in self._choices:
+        value = super().validate(value)
+        if not(value in self._choices or value is None):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return value
