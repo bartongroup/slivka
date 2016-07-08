@@ -440,7 +440,7 @@ or remove it manually fom the file system.
 Next, you need to launch three processes for each module. Http server is
 launched with ::
 
-  python manage.py runserver
+  python manage.py server
 
 Then, you can start the worker process with ::
 
@@ -448,7 +448,7 @@ Then, you can start the worker process with ::
 
 and scheduler ::
 
-  python manage.py runscheduler
+  python manage.py scheduler
 
 To stop the process, send the ``SIG_TERM`` or ``SIG_KILL`` signal to that
 process.

@@ -72,14 +72,14 @@ def worker():
 
 
 @click.command()
-def runscheduler():
+def scheduler():
     """Starts job scheduler."""
     from pybioas.scheduler.scheduler import start_scheduler
     start_scheduler()
 
 
 @click.command()
-def runserver():
+def server():
     """Starts server."""
     from pybioas.server.forms import init_forms
     from pybioas.server.serverapp import app
@@ -104,7 +104,7 @@ def dropdb():
 
 
 admin.add_command(worker)
-admin.add_command(runscheduler)
-admin.add_command(runserver)
+admin.add_command(scheduler)
+admin.add_command(server)
 admin.add_command(initdb)
 admin.add_command(dropdb)
