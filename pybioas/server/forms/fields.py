@@ -41,7 +41,7 @@ class BaseField:
     @property
     def default(self):
         """
-        Set `default` as a read-only property.
+        Make `default` as a read-only property.
         :return: default value of the field
         """
         return self._default
@@ -49,6 +49,18 @@ class BaseField:
     @property
     def required(self):
         return True
+
+    @property
+    def constraints(self):
+        L = self.get_constraints_list()
+        return [
+            {"name": name, "value": value}
+            for (name, value) in L
+            if value is not None
+            ]
+
+    def get_constraints_list(self):
+        return []
 
     @property
     def value(self):
@@ -160,6 +172,12 @@ class IntegerField(BaseField):
             )
         return cleaned_value
 
+    def get_constraints_list(self):
+        return [
+            ("min", self._min),
+            ("max", self._max)
+        ]
+
 
 class DecimalField(BaseField):
     def __init__(self, name, default=None, minimum=None, maximum=None,
@@ -223,10 +241,16 @@ class DecimalField(BaseField):
                     )
         return cleaned_value
 
+    def get_constraints_list(self):
+        return [
+            ("min", self._min[0]),
+            ("min_exclusive", bool(self._min[1])),
+            ("max", self._max[0]),
+            ("max_exclusive", bool(self._max[1]))
+        ]
+
 
 class FileField(BaseField):
-    # file name validation: can't start or end with space
-    filename_regex = re.compile(r"^[\w\.-](?:[\w \.-]*[\w\.-])?$")
     size_multiplier = {
         "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
     }
@@ -265,6 +289,13 @@ class FileField(BaseField):
         if num_files == 0:
             raise ValidationError("file", "File does not exist.")
         return os.path.abspath(os.path.join(pybioas.settings.MEDIA_DIR, value))
+
+    def get_constraints_list(self):
+        return [
+            ("mimetype", self._mimetype),
+            ("extension", self._extension),
+            ("max_size", self._max_size)
+        ]
 
 
 class TextField(BaseField):
@@ -319,6 +350,12 @@ class TextField(BaseField):
             )
         return cleaned_value
 
+    def get_constraints_list(self):
+        return [
+            ("min_length", self._min_length),
+            ("max_length", self._max_length)
+        ]
+
 
 class BooleanField(BaseField):
     false_literals = {'no', 'false', '0', 'null', 'none'}
@@ -367,3 +404,8 @@ class ChoiceField(BaseField):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return value
+
+    def get_constraints_list(self):
+        return [
+            ("choices", self._choices)
+        ]

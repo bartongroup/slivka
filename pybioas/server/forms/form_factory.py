@@ -88,19 +88,6 @@ class BaseForm:
         session.add(request)
         return request
 
-    def to_dict(self):
-        return {
-            "fields": [
-                {
-                    "name": field.name,
-                    "type": field.type,
-                    "required": field.required,
-                    "default": field.default
-                }
-                for field in self.fields
-            ]
-        }
-
     def __repr__(self):
         return "<{}> bound={}".format(self.__class__.__name__, self._bound)
 

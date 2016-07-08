@@ -5,12 +5,12 @@ import itsdangerous
 import sqlalchemy.orm.exc
 import werkzeug.exceptions
 import werkzeug.utils
-from flask import Flask, Response, json, request, abort, redirect
+from flask import Flask, Response, json, request, abort
 
 import pybioas
 from pybioas.db import Session, models, start_session
 from pybioas.server.forms import get_form
-
+from pybioas.utils import snake_to_camel
 
 app = Flask('pybioas', root_path=os.path.dirname(__file__))
 app.config.update(
@@ -22,27 +22,58 @@ app.config.update(
 signer = itsdangerous.Signer(app.config["SECRET_KEY"])
 
 
-@app.route('/')
-def index():
-    return redirect("/static/rest_api_specification.html")
-
-
 @app.route('/services', methods=['GET'])
 def get_services():
+    """
+    GET /services
+    Returns the list of services.
+    :return: JSON response with list of service names
+    """
     return JsonResponse({"services": pybioas.settings.SERVICES})
 
 
 @app.route('/service/<service>/form', methods=["GET"])
 def get_service_form(service):
+    """
+    GET /service/{service}/form
+    Gets service request form.
+    :param service: service name
+    :return: JSON response with service form
+    """
     if service not in pybioas.settings.SERVICES:
         raise abort(404)
     form_cls = get_form(service)
     form = form_cls()
-    return JsonResponse(response=form.to_dict(), status=200)
+    response = {
+        "form": form_cls.__name__,
+        "service": service,
+        "fields": [
+            {
+                "name": field.name,
+                "type": field.type,
+                "required": field.required,
+                "default": field.default,
+                "constraints": [
+                    {
+                        "name": snake_to_camel(constraint['name']),
+                        "value": constraint['value']
+                    }
+                    for constraint in field.constraints
+                ]
+            }
+            for field in form.fields
+        ]
+    }
+    return JsonResponse(response=response, status=200)
 
 
 @app.route('/service/<service>/form', methods=["POST"])
 def post_service_form(service):
+    """
+    POST /service/{service}/form
+    Sends form data and starts new task.
+    :param service: service name
+    """
     if service not in pybioas.settings.SERVICES:
         raise abort(404)
     form_cls = get_form(service)
@@ -52,39 +83,33 @@ def post_service_form(service):
             job_request = form.save(session)
             session.commit()
             response = JsonResponse({
-                "valid": True,
-                "fields": [{
-                    "name": field.name,
-                    "value": field.cleaned_value
-                } for field in form.fields],
                 "task_id": job_request.uuid
             }, status=202)
     else:
         response = JsonResponse({
-            "valid": False,
-            "fields": [{
-                "name": field.name,
-                "value": field.value
-            } for field in form.fields],
             "errors": [{
                 "field": name,
                 "error_code": error.code,
                 "message": error.reason
             } for name, error in form.errors.items()]
-        }, status=200)
+        }, status=420)
     return response
 
 
 @app.route('/file', methods=["POST"])
 def file_upload():
+    """
+    POST /file
+    Uploads the file to the server.
+    """
     title = request.form.get("title", "")
     description = request.form.get("description", "")
     try:
         mimetype = request.form["mime-type"]
     except KeyError:
-        return JsonResponse({"error": "no mime-type"}, 400)
+        return JsonResponse({"error": "no mimetype"}, 400)
     if not mimetype.startswith("text/"):
-        return JsonResponse({"error": "invalid mime-type"}, 415)
+        return JsonResponse({"error": "invalid mimetype"}, 415)
     try:
         file = request.files["file"]
     except KeyError:
@@ -103,17 +128,22 @@ def file_upload():
     file.save(os.path.join(app.config['MEDIA_DIR'], file_id))
     return JsonResponse({
         "id": file_id,
-        "signed_id":
+        "signedId":
             signer.sign(itsdangerous.want_bytes(file_id)).decode('utf-8'),
         "title": title,
         "description": description,
-        "mime-type": mimetype,
+        "mimetype": mimetype,
         "filename": filename
     }, status=203)
 
 
 @app.route('/file/<file_id>', methods=["GET"])
 def get_file_meta(file_id):
+    """
+    GET /file/{file_id}
+    Gets file metadata.
+    :param file_id: file identifier
+    """
     session = Session()
     try:
         file = (session.query(models.File).
@@ -127,13 +157,19 @@ def get_file_meta(file_id):
         "id": file.id,
         "title": file.title,
         "description": file.description,
-        "mime-type": file.mimetype,
+        "mimetype": file.mimetype,
         "filename": file.filename
-    })
+    }, status=200)
 
 
 @app.route('/file/<file_id>/download', methods=["GET"])
 def file_download(file_id):
+    """
+    GET /file/{file_id}/download
+    Downloads file contents.
+    :param file_id: file identifier
+    :return: file contents
+    """
     with start_session() as session:
         query = (session.query(models.File.filename, models.File.mimetype).
                  filter(models.File.id == file_id))
@@ -151,6 +187,11 @@ def file_download(file_id):
 
 @app.route('/file/<signed_file_id>', methods=["PUT"])
 def set_file_meta(signed_file_id):
+    """
+    PUT /file/{signed_file_id}
+    Updates file metadata.
+    :param signed_file_id: signed file identifier
+    """
     try:
         file_id = signer.unsign(signed_file_id).decode('utf-8')
     except itsdangerous.BadSignature:
@@ -176,13 +217,18 @@ def set_file_meta(signed_file_id):
             "id": file.id,
             "title": file.title,
             "description": file.description,
-            "mime-type": file.mimetype,
+            "mimetype": file.mimetype,
             "filename": file.filename
-        })
+        }, status=200)
 
 
 @app.route('/file/<signed_file_id>', methods=["DELETE"])
 def delete_file(signed_file_id):
+    """
+    DELETE /file/{signed_file_id}
+    Deletes file from the database and filesystem.
+    :param signed_file_id: signed file identifier
+    """
     try:
         file_id = signer.unsign(signed_file_id).decode('utf-8')
     except itsdangerous.BadSignature:
@@ -203,6 +249,11 @@ def delete_file(signed_file_id):
 
 @app.route('/task/<task_id>', methods=["GET"])
 def get_task(task_id):
+    """
+    GET /task/{task_id}
+    Gets the status of the running taks.
+    :param task_id: task identifier
+    """
     with start_session() as session:
         try:
             job_request = (session.query(models.Request).

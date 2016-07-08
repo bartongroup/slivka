@@ -5,7 +5,6 @@ import shutil
 
 import pkg_resources
 
-
 COMMAND_SCHEMA = json.loads(
     pkg_resources.resource_string(
         "pybioas",
@@ -68,4 +67,3 @@ def camel_to_snake(name):
     """
     s = re.sub('([A-Z])([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
-
