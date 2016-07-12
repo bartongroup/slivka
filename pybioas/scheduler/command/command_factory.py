@@ -1,6 +1,7 @@
 import configparser
 import os.path
 import re
+import shlex
 import string
 import uuid
 
@@ -37,7 +38,7 @@ class CommandOption:
             return ""
         elif value is False:
             return self._param_template.substitute(value="")
-        return self._param_template.substitute(value=value)
+        return self._param_template.substitute(value=shlex.quote(str(value)))
 
     @property
     def name(self):

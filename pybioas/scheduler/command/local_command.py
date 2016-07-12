@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 import uuid
 
@@ -16,12 +17,12 @@ class LocalCommand:
     _options = None
     _output_files = None
 
-    def __init__(self, options):
+    def __init__(self, values=None):
         """
-        :param options: values passed to the command runner
-        :type options: dictionary of option name value pairs
+        :param values: values passed to the command runner
+        :type values: dictionary of option name value pairs
         """
-        self._values = options
+        self._values = values or {}
         self._process = None
 
     def run(self):
@@ -58,22 +59,19 @@ class LocalCommand:
             }
 
     def get_full_cmd(self):
-        return "{bin} {opt}".format(
-            bin=self.binary, opt=self.build_command_options()
-        )
-
-    def build_command_options(self):
-        """
-        Joins all option command segments into one string.
-        :return: command options string
-        """
-        return " ".join(
-            filter(
+        base = shlex.split(self.binary)
+        options = [
+            token
+            for opt in filter(
                 None,
-                (option.get_cmd_option(self._values.get(option.name))
-                 for option in self.options)
+                (
+                    option.get_cmd_option(self._values.get(option.name))
+                    for option in self.options
+                )
             )
-        )
+            for token in shlex.split(opt)
+            ]
+        return base + options
 
     @property
     def options(self):
