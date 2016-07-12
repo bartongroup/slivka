@@ -98,10 +98,10 @@ class TestForm(unittest.TestCase):
 
     def test_required_field(self):
         form = self.LittleForm()
-        field = [f for f in form.fields][0]
+        field = [f for f in form.fields if f.name == 'alpha'][0]
         self.assertTrue(field.required)
 
     def test_not_required_field(self):
         form = self.LittleForm()
-        field = [f for f in form.fields][1]
+        field = [f for f in form.fields if f.name == 'beta'][0]
         self.assertFalse(field.required)
