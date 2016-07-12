@@ -9,7 +9,7 @@ except ImportError:
 setup(
     name="PyBioAS",
     version="0.0.dev1",
-    packages=find_packages(include=["pybioas"]),
+    packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
         "click==6.6",
         "Flask==0.11.1",
@@ -32,7 +32,7 @@ setup(
     url="https://github.com/warownia1/pyBioAS",
     download_url="https://github.com/warownia1/pyBioAS/archive/master.zip",
 
-    classifiers = [
+    classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Programming Language :: Python :: 3.2",
         "Programming Language :: Python :: 3.3",
