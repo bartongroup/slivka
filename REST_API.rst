@@ -120,11 +120,11 @@ Post new job request.
 +-------------+--------+------------------------------+
 | Name        | Value  | Description                  |
 +=============+========+==============================+
-| *Path parameters*                                  |
+| *Path parameters*                                   |
 +-------------+--------+------------------------------+
 | ``service`` | string | Service name.                |
 +-------------+--------+------------------------------+
-| *Query parameters*                                 |
+| *Query parameters*                                  |
 +-------------+--------+------------------------------+
 | (field)     | string | Field name and value as they |
 |             |        | were specified in the form   |
@@ -180,7 +180,7 @@ used to access or refer to the file.
 **Parameters**
 
 +-----------------+--------+---------------------------------------+
-| Name            |	Value	 | Description                           |
+| Name            | Value  | Description                           |
 +=================+========+=======================================+
 | *Query parameters*                                               |
 +-----------------+--------+---------------------------------------+
@@ -290,7 +290,7 @@ Download the file
 **Parameters**
 
 +------------+--------+-----------------+
-| Name	     | Value	| Description     |
+| Name       | Value  | Description     |
 +============+========+=================+
 | *Path parameters*                     |
 +------------+--------+-----------------+
@@ -319,7 +319,7 @@ Updates file metadata. Can be used for annotating job results.
 **Parameters**
 
 +--------------------+--------+-------------------------------------------+
-| Name	             | Value  | Description                               |
+| Name               | Value  | Description                               |
 +====================+========+===========================================+
 | *Path parameters*                                                       |
 +--------------------+--------+-------------------------------------------+
@@ -379,7 +379,7 @@ All tasks associated with this file will fail to execute.
 **Parameters**
 
 +--------------------+--------+------------------------------------+
-| Name	             | Value  | Description                        |
+| Name               | Value  | Description                        |
 +====================+========+====================================+
 | *Path parameters*                                                |
 +--------------------+--------+------------------------------------+

@@ -64,7 +64,7 @@ def get_service_form(service):
             for field in form.fields
         ]
     }
-    return JsonResponse(response=response, status=200)
+    return JsonResponse(response, status=200)
 
 
 @app.route('/service/<service>/form', methods=["POST"])
@@ -105,7 +105,7 @@ def file_upload():
     title = request.form.get("title", "")
     description = request.form.get("description", "")
     try:
-        mimetype = request.form["mime-type"]
+        mimetype = request.form["mimetype"]
     except KeyError:
         return JsonResponse({"error": "no mimetype"}, 400)
     if not mimetype.startswith("text/"):
@@ -307,16 +307,16 @@ def server_error_500(e):
 
 
 # noinspection PyPep8Naming
-def JsonResponse(response, status=200, **kwargs):
+def JsonResponse(content, status=200, **kwargs):
     """
     A helper function creating json response
-    :param response: dictionary representing response content
+    :param content: dictionary representing response content
     :param status: HTTP response status code
     :param kwargs: arguments passed to the Response object
     :return: JSON response object
     """
     return Response(
-        response=json.dumps(response, indent=4),
+        response=json.dumps(content, indent=4),
         status=status,
         mimetype="application/json",
         **kwargs
