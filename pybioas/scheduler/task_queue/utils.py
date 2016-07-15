@@ -3,36 +3,6 @@ import json
 import weakref
 
 
-def bytetonum(byte_string):
-    """
-    Converts bytes string to the integer number. First byte is the most
-    significant byte. Each byte is a digit and uses a numeric system of
-    base 256.
-    :param byte_string: string of bytes to be translated to number
-    :return: number represented in a 256 base bytes string
-    """
-    msb = len(byte_string)
-    return sum(
-        b * (256 ** n)
-        for (b, n) in zip(bytearray(byte_string), reversed(range(msb)))
-    )
-
-
-def numtobyte(number, length=0):
-    """
-    Converts a number into a byte string of digits using the 256 base system.
-    :param number: converted number
-    :param length: the length the string will be extended to if shorter
-    :return: string of bytes encoding the number using 256 base system
-    """
-    digits = []
-    while number > 0:
-        digits.append(number % 256)
-        number //= 256
-    b = bytes(reversed(digits))
-    return b'\x00' * (length - len(b)) + b
-
-
 def recv_json(conn):
     """
     Receives json data from the socket. Json must be sent using complementary
@@ -42,7 +12,7 @@ def recv_json(conn):
     :raise json.JSONDecodeError: content can't be decoded
     :raise socket.timeout: connection timed out
     """
-    content_length = bytetonum(conn.recv(4))
+    content_length = int.from_bytes(conn.recv(8), 'big')
     content = conn.recv(content_length).decode()
     return json.loads(content)
 
@@ -58,7 +28,7 @@ def send_json(conn, data):
     """
     content = json.dumps(data).encode()
     content_length = len(content)
-    conn.send(numtobyte(content_length, 4))
+    conn.send(content_length.to_bytes(8, 'big'))
     return conn.send(content)
 
 
