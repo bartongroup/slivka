@@ -83,13 +83,13 @@ def post_service_form(service):
             job_request = form.save(session)
             session.commit()
             response = JsonResponse({
-                "task_id": job_request.uuid
+                "taskId": job_request.uuid
             }, status=202)
     else:
         response = JsonResponse({
             "errors": [{
                 "field": name,
-                "error_code": error.code,
+                "errorCode": error.code,
                 "message": error.reason
             } for name, error in form.errors.items()]
         }, status=420)
