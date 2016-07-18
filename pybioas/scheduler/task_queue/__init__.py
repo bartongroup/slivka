@@ -3,7 +3,7 @@ import socket
 from . import utils
 from .deferred_result import DeferredResult
 from .exceptions import ConnectionError
-from .worker import HOST, PORT, Worker
+from .task_queue import TaskQueue, HOST, PORT
 
 
 def queue_run(service, values):
@@ -16,14 +16,14 @@ def queue_run(service, values):
     """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((HOST, PORT))
-    client_socket.send(Worker.HEAD_NEW_TASK)
+    client_socket.send(TaskQueue.HEAD_NEW_TASK)
 
     utils.send_json(client_socket, {
         "service": service,
         "options": values
     })
     status = client_socket.recv(8)
-    if status != Worker.STATUS_OK:
+    if status != TaskQueue.STATUS_OK:
         raise ConnectionError("something bad happened")
     data = utils.recv_json(client_socket)
     job_id = data["jobId"]

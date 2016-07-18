@@ -10,3 +10,11 @@ class ConnectionAbortedError(ConnectionError):
     """ Connection aborted. """
     def __init__(self, *args, **kwargs):
         pass
+
+
+# noinspection PyShadowingBuiltins
+class ConnectionResetError(ConnectionError):
+    """ Connection reset. """
+
+    def __init__(self, *args, **kwargs):
+        pass

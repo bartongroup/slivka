@@ -1,5 +1,3 @@
-import threading
-import traceback
 import uuid
 
 from .utils import Signal
@@ -24,27 +22,16 @@ class Job:
         self._exception = None
         self.sig_finished = Signal()
 
-    def start(self):
-        """
-        Launches a new thread where the runnable is executed
-        :return: id of the job
-        """
-        if not self.is_pending():
-            raise RuntimeError("Job is already running or is completed")
-        thread = threading.Thread(target=self.run)
-        thread.start()
-
     def run(self):
         """
         Executes the target function and waits for completion.
         """
         self.status = JobStatus.RUNNING
-        # noinspection PyBroadException
         try:
             self._result = self._runnable.run(*self._args, **self._kwargs)
-        except Exception as exc:
-            self._exception = traceback.format_exc()
+        except:
             self.status = JobStatus.FAILED
+            raise
         else:
             self.status = JobStatus.COMPLETED
         finally:
