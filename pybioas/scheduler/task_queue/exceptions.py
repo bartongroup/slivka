@@ -18,3 +18,7 @@ class ConnectionResetError(ConnectionError):
 
     def __init__(self, *args, **kwargs):
         pass
+
+
+class ServerError(Exception):
+    """ Internal server error """

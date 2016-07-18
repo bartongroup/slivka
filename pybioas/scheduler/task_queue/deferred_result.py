@@ -1,8 +1,8 @@
 import socket
 
 from . import utils
-from .exceptions import ConnectionError
-from .worker import Worker
+from .exceptions import ServerError
+from .task_queue import TaskQueue
 
 
 class DeferredResult:
@@ -36,11 +36,11 @@ class DeferredResult:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
 
-        client_socket.send(Worker.HEAD_JOB_STATUS)
+        client_socket.send(TaskQueue.HEAD_JOB_STATUS)
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
-        if status != Worker.STATUS_OK:
-            raise ConnectionError("something bad happened")
+        if status != TaskQueue.STATUS_OK:
+            raise ServerError("something bad happened")
         data = utils.recv_json(client_socket)
         client_socket.close()
         return data['status']
@@ -55,11 +55,11 @@ class DeferredResult:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
 
-        client_socket.send(Worker.HEAD_JOB_RESULT)
+        client_socket.send(TaskQueue.HEAD_JOB_RESULT)
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
-        if status != Worker.STATUS_OK:
-            raise ConnectionError("something bad happened")
+        if status != TaskQueue.STATUS_OK:
+            raise ServerError("something bad happened")
         data = utils.recv_json(client_socket)
         client_socket.close()
         return data

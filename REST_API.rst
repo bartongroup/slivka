@@ -184,10 +184,6 @@ used to access or refer to the file.
 +=================+========+=======================================+
 | *Query parameters*                                               |
 +-----------------+--------+---------------------------------------+
-| ``title``       | string | Title of a new file. *(optional)*     |
-+-----------------+--------+---------------------------------------+
-| ``description`` | string | Description of the file. *(optional)* |
-+-----------------+--------+---------------------------------------+
 | ``mimetype``    | string | Mime type of the file.                |
 +-----------------+--------+---------------------------------------+
 | ``file``        | file   | File content                          |
@@ -209,10 +205,8 @@ used to access or refer to the file.
 ===============  ========================
 ``id``           Unique file identifier.
 ``signedId``     Signed file identifier.
-``title``        Title of a new file.
-``description``  Description of the file.
+``title``        Title of the new file.
 ``mimetype``     Mime type of the file.
-``filename``     Name of the file.
 ===============  ========================
 
 400 ::
@@ -259,17 +253,13 @@ Get file metadata
   {
     "id": string,
     "title": string,
-    "description": string,
-    "mimetype": string,
-    "filename": string
+    "mimetype": string
   }
 
 ===============  =================
 ``id``           File identifier.
 ``title``        File title.
-``description``  File description.
 ``mimetype``     File mime-type.
-``filename``     File name.
 ===============  =================
 
 404
@@ -329,10 +319,6 @@ Updates file metadata. Can be used for annotating job results.
 +--------------------+--------+-------------------------------------------+
 | ``title``          | string | New title of the file. *(optional)*       |
 +--------------------+--------+-------------------------------------------+
-| ``description``    | string | New description of the file. *(optional)* |
-+--------------------+--------+-------------------------------------------+
-| ``filename``       | string | New name of the file. *(optional)*        |
-+--------------------+--------+-------------------------------------------+
 
 **Responses**
 
@@ -342,17 +328,13 @@ Updates file metadata. Can be used for annotating job results.
   {
     "id": string,
     "title": string,
-    "description": string,
-    "mimetype": string,
-    "filename": string
+    "mimetype": string
   }
 
 ===============  =================
 ``id``           File identifier.
 ``title``        File title.
-``description``  File description.
 ``mimetype``     File mime type.
-``filename``     File name.
 ===============  =================
 
 403 - Identifier signature is invalid.::

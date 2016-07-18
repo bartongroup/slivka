@@ -178,12 +178,13 @@ class TestFileField(unittest.TestCase):
             SECRET_KEY=b'\x00',
             SERVICE_INI=None
         )
-        with open(os.path.join(cls.temp_dir.name, "foo"), "w") as f:
+        path = os.path.join(cls.temp_dir.name, "foo")
+        with open(path, "w") as f:
             f.write("bar bar")
         pybioas.settings = pybioas.config.Settings(settings)
         create_db()
         with start_session() as session:
-            file = models.File(id="foo")
+            file = models.File(id="foo", path=path)
             session.add(file)
             session.commit()
 

@@ -68,19 +68,14 @@ class Result(Base):
     output_files = relationship("File", back_populates="result")
 
 
-# TODO store file id, file name and file path
-# file id - identification used to access the file
-# file name - human readable name when downloaded
-# file path - real path in a filesystem
 class File(Base):
 
     __tablename__ = "files"
 
     id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
     title = Column(String(32))
-    description = Column(String)
+    path = Column(String(256), nullable=False)
     mimetype = Column(String(32))
-    filename = Column(String(32))
     result_id = Column(Integer,
                        ForeignKey("results.id", ondelete="SET NULL"),
                        nullable=True, default=None)
@@ -88,5 +83,5 @@ class File(Base):
     result = relationship("Result", back_populates="output_files")
 
     def __repr__(self):
-        return ("<File(id={id}, title={title}, filename={filename}"
-                .format(id=self.id, title=self.title, filename=self.filename))
+        return ("<File(id={id}, title={title}>"
+                .format(id=self.id, title=self.title))

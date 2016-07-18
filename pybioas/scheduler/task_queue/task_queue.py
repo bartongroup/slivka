@@ -32,6 +32,7 @@ class TaskQueue:
     HEAD_NEW_TASK = b'NEW TASK'
     HEAD_JOB_STATUS = b'JOB STAT'
     HEAD_JOB_RESULT = b'JOB RES '
+    HEAD_PING = b'PING    '
     STATUS_OK = b'OK      '
     STATUS_ERROR = b'ERROR   '
 
@@ -63,7 +64,7 @@ class TaskQueue:
         self._workers = [
             Worker(self._queue)
             for _ in range(num)
-            ]
+        ]
 
     def start(self):
         """
@@ -153,6 +154,8 @@ class TaskQueue:
                 self._job_status_request(conn)
             elif head == self.HEAD_JOB_RESULT:
                 self._job_result_request(conn)
+            elif head == self.HEAD_PING:
+                conn.send(self.STATUS_OK)
             else:
                 logger.warning("Invalid header: \"{}\"".format(head.decode()))
         except socket.timeout:
@@ -236,10 +239,22 @@ class TaskQueue:
         """
         logger.debug('{} finished'.format(self._jobs[job_id]))
 
+    @staticmethod
+    def check_connection(host=HOST, port=PORT):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            conn.send(TaskQueue.HEAD_PING)
+            response = conn.recv(8)
+        except OSError:
+            return False
+        if response != TaskQueue.STATUS_OK:
+            return False
+        else:
+            return True
+
 
 _counter = itertools.count(1)
-
-
 def _worker_name():
     return "Worker-%d" % next(_counter)
 

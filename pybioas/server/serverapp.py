@@ -1,4 +1,5 @@
 import os.path
+import tempfile
 
 import flask
 import itsdangerous
@@ -102,38 +103,33 @@ def file_upload():
     POST /file
     Uploads the file to the server.
     """
-    title = request.form.get("title", "")
-    description = request.form.get("description", "")
     try:
         mimetype = request.form["mimetype"]
     except KeyError:
         return JsonResponse({"error": "no mimetype"}, 400)
-    if not mimetype.startswith("text/"):
-        return JsonResponse({"error": "invalid mimetype"}, 415)
     try:
         file = request.files["file"]
     except KeyError:
         return JsonResponse({"error": "no file"}, 400)
     filename = werkzeug.utils.secure_filename(file.filename)
+    with tempfile.NamedTemporaryFile(
+            dir=app.config['MEDIA_DIR'], delete=False) as tf:
+        file.save(tf)
     file_record = models.File(
-        title=title,
-        description=description,
+        title=filename,
         mimetype=mimetype,
-        filename=filename
+        path=tf.name
     )
     with start_session() as session:
         session.add(file_record)
         session.commit()
         file_id = file_record.id
-    file.save(os.path.join(app.config['MEDIA_DIR'], file_id))
     return JsonResponse({
         "id": file_id,
         "signedId":
             signer.sign(itsdangerous.want_bytes(file_id)).decode('utf-8'),
-        "title": title,
-        "description": description,
-        "mimetype": mimetype,
-        "filename": filename
+        "title": filename,
+        "mimetype": mimetype
     }, status=203)
 
 
@@ -156,9 +152,7 @@ def get_file_meta(file_id):
     return JsonResponse({
         "id": file.id,
         "title": file.title,
-        "description": file.description,
-        "mimetype": file.mimetype,
-        "filename": file.filename
+        "mimetype": file.mimetype
     }, status=200)
 
 
@@ -171,17 +165,17 @@ def file_download(file_id):
     :return: file contents
     """
     with start_session() as session:
-        query = (session.query(models.File.filename, models.File.mimetype).
+        query = (session.query(models.File).
                  filter(models.File.id == file_id))
         try:
-            filename, mimetype = query.one()
+            file = query.one()
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
         return flask.send_from_directory(
-            directory=app.config["MEDIA_DIR"],
-            filename=file_id,
-            attachment_filename=filename,
-            mimetype=mimetype
+            directory=os.path.dirname(file.path),
+            filename=os.path.basename(file.path),
+            attachment_filename=file.title or os.path.basename(file.path),
+            mimetype=file.mimetype
         )
 
 
@@ -206,19 +200,11 @@ def set_file_meta(signed_file_id):
         new_title = request.form.get("title")
         if new_title is not None:
             file.title = new_title
-        new_description = request.form.get("description")
-        if new_description is not None:
-            file.description = new_description
-        new_filename = request.form.get("filename")
-        if new_filename is not None:
-            file.filename = new_filename
         session.commit()
         return JsonResponse({
             "id": file.id,
             "title": file.title,
-            "description": file.description,
-            "mimetype": file.mimetype,
-            "filename": file.filename
+            "mimetype": file.mimetype
         }, status=200)
 
 
@@ -233,15 +219,19 @@ def delete_file(signed_file_id):
         file_id = signer.unsign(signed_file_id).decode('utf-8')
     except itsdangerous.BadSignature:
         return JsonResponse({'error': "invalid signature"}, 403)
+    path = None
     with start_session() as session:
-        num_deleted = (session.query(models.File).
-                       filter(models.File.id == file_id).
-                       delete())
-        if num_deleted == 0:
+        try:
+            file = (session.query(models.File).
+                    filter(models.File.id == file_id).
+                    one())
+        except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
+        path = file.path
+        session.delete(file)
         session.commit()
     try:
-        os.remove(os.path.join(app.config["MEDIA_DIR"], file_id))
+        os.remove(path)
     except FileNotFoundError:
         raise abort(404)
     return Response(status=204)

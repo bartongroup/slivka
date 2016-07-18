@@ -1,7 +1,8 @@
 import os
 import re
 
-import pybioas
+import sqlalchemy.orm.exc
+
 from pybioas.db import start_session, models
 from .exceptions import ValidationError
 
@@ -294,13 +295,17 @@ class FileField(BaseField):
         value = super().validate(value)
         if value is None:
             return None
+        file = None
         with start_session() as session:
-            num_files = (session.query(models.File)
-                         .filter(models.File.id == value)
-                         .count())
-        if num_files == 0:
+            try:
+                file = (session.query(models.File)
+                        .filter(models.File.id == value)
+                        .one())
+            except sqlalchemy.orm.exc.NoResultFound:
+                raise ValidationError("file", "File does not exist.")
+        if not os.path.exists(file.path):
             raise ValidationError("file", "File does not exist.")
-        return os.path.abspath(os.path.join(pybioas.settings.MEDIA_DIR, value))
+        return file.path
 
     def get_constraints_list(self):
         return [
