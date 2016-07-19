@@ -2,7 +2,6 @@ import logging
 import os.path
 import threading
 import time
-import traceback
 
 from sqlalchemy.orm import joinedload
 
@@ -31,7 +30,7 @@ class Scheduler:
     def __init__(self):
         if not check_db():
             raise Exception("Database is not initialized.")
-        self._shutdown = False
+        self._shutdown_event = threading.Event()
         self._tasks = set()
         self._tasks_lock = threading.Lock()
         self._command_class = {
@@ -45,7 +44,9 @@ class Scheduler:
         """
         logger.info("Scheduler starts watching database.")
         connection_ok = TaskQueue.check_connection()
-        while not self._shutdown:
+        if connection_ok:
+            logger.info("Connected to worker.")
+        while not self._shutdown_event.is_set():
             if connection_ok:
                 session = Session()
                 logger.debug("poll db")
@@ -60,7 +61,7 @@ class Scheduler:
                     for request in pending_requests:
                         self.enqueue_task(request)
                 except (OSError, ServerError):
-                    logger.exception(traceback.format_exc())
+                    logger.exception("Connection lost.")
                     connection_ok = False
                 finally:
                     session.commit()
@@ -69,7 +70,9 @@ class Scheduler:
                 logger.info("Can't establish connection to worker. "
                             "Retry in 5 seconds.")
                 connection_ok = TaskQueue.check_connection()
-            time.sleep(5)
+                if connection_ok:
+                    logger.info("Connected to worker.")
+            self._shutdown_event.wait(5)
 
     def enqueue_task(self, request):
         """
@@ -91,7 +94,9 @@ class Scheduler:
     def collector_loop(self):
         logger.info("Scheduler starts collecting tasks from worker.")
         connection_ok = TaskQueue.check_connection()
-        while not self._shutdown:
+        if connection_ok:
+            logger.info("Connected to worker.")
+        while not self._shutdown_event:
             if connection_ok:
                 session = Session()
                 try:
@@ -112,6 +117,7 @@ class Scheduler:
                         ]
                         session.add(res)
                 except OSError:
+                    logger.exception("Connection lost.")
                     connection_ok = False
                 finally:
                     session.commit()
@@ -120,7 +126,9 @@ class Scheduler:
                 logger.info("Can't establish connection to worker. "
                             "Retry in 5 seconds.")
                 connection_ok = TaskQueue.check_connection()
-            time.sleep(5)
+                if connection_ok:
+                    logger.info("Connected to worker.")
+            self._shutdown_event.wait(5)
 
     def _collect_finished(self):
         """
@@ -142,7 +150,7 @@ class Scheduler:
         return finished
 
     def shutdown(self):
-        self._shutdown = True
+        self._shutdown_event.set()
 
 
 class Task:
@@ -169,8 +177,7 @@ def start_scheduler():
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
-        logger.debug("received shutdown signal")
+        logger.info("Shutting down...")
         scheduler.shutdown()
-    logger.info("Waiting for threads to join.")
     collector_thread.join()
     poll_thread.join()
