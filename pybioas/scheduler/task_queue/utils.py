@@ -1,6 +1,10 @@
 import inspect
 import json
+import logging
+import os
 import weakref
+
+import pybioas
 
 
 def recv_json(conn):
@@ -53,3 +57,29 @@ class Signal(object):
             self._methods.add(weakref.WeakMethod(slot))
         else:
             self._functions.add(slot)
+
+
+_logger = None
+
+def get_logger():
+    global _logger
+    if _logger is None:
+        _logger = logging.getLogger(__name__)
+        _logger.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter(
+            "%(asctime)s TaskQueue %(levelname)s: %(message)s",
+            "%d %b %H:%M:%S"
+        )
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(formatter)
+        _logger.addHandler(stream_handler)
+
+        file_handler = logging.FileHandler(
+            os.path.join(pybioas.settings.BASE_DIR, "TaskQueue.log"))
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        _logger.addHandler(file_handler)
+    return _logger

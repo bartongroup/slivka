@@ -1,27 +1,14 @@
 import itertools
 import json
-import logging
 import queue
 import socket
 import threading
 import time
-import traceback
 
 from pybioas.scheduler.command.command_factory import CommandFactory
 from pybioas.scheduler.task_queue.exceptions import ConnectionResetError
 from pybioas.scheduler.task_queue.job import Job
-from pybioas.scheduler.task_queue.utils import recv_json, send_json
-
-logger = logging.getLogger('TaskQueue')
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s %(name)s %(levelname)s: %(message)s",
-    "%d %b %H:%M:%S"
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+from pybioas.scheduler.task_queue.utils import recv_json, send_json, get_logger
 
 HOST = "localhost"
 PORT = 9090
@@ -42,6 +29,7 @@ class TaskQueue:
         :param port: server port
         :param num_workers: number of concurrent workers to spawn
         """
+        self._logger = get_logger()
         self._shutdown = False
         self._queue = queue.Queue()
         self._jobs = dict()
@@ -83,15 +71,18 @@ class TaskQueue:
             while True:
                 time.sleep(3600)
         except KeyboardInterrupt:
-            logger.info("Shutting down...")
+            self._logger.info("Shutting down...")
             self.shutdown()
         server_thread.join()
+        self._logger.debug("Server thread joined.")
         self._queue.join()
+        self._logger.debug("Queue joined.")
 
     def start_workers(self):
         """
         Starts all worker threads.
         """
+        self._logger.debug("Starting workers.")
         for worker in self._workers:
             worker.start()
 
@@ -104,20 +95,22 @@ class TaskQueue:
         """
         self._shutdown = True
         num_workers = sum(worker.is_alive() for worker in self._workers)
+        self._logger.debug("Sending %d KILLS to workers.", num_workers)
         with self._queue.mutex:
             self._queue.unfinished_tasks -= len(self._queue.queue)
             self._queue.queue.clear()
             self._queue.queue.extend([KILL_WORKER] * num_workers)
             self._queue.unfinished_tasks += num_workers
             self._queue.not_empty.notify_all()
+        self._logger.debug("Poking server to stop.")
         socket.socket().connect((self._host, self._port))
 
     def listen(self):
         """
         Starts listening to incoming connections and spawns client threads.
         """
-        logger.info("Ready to accept connections on {}:{}."
-                    .format(self._host, self._port))
+        self._logger.info("Ready to accept connections on %s:%d.",
+                          self._host, self._port)
         while not self._shutdown:
             try:
                 (client_socket, address) = self._server_socket.accept()
@@ -128,14 +121,14 @@ class TaskQueue:
                     client_socket.shutdown(socket.SHUT_RDWR)
                     client_socket.close()
                     break
-            logger.info("Received connection from {}.".format(address))
+            self._logger.info("Received connection from %s.", address)
             client_thread = threading.Thread(
                 target=self._serve_client,
                 args=(client_socket,)
             )
             client_thread.start()
         self._server_socket.close()
-        logger.info("Server socket closed.")
+        self._logger.info("Server socket closed.")
 
     def _serve_client(self, conn):
         """
@@ -147,7 +140,7 @@ class TaskQueue:
         conn.settimeout(5)
         try:
             head = conn.recv(8)
-            logger.debug("Received header: {}".format(head.decode()))
+            self._logger.debug("Received header: %s", head.decode())
             if head == self.HEAD_NEW_TASK:
                 self._new_task_request(conn)
             elif head == self.HEAD_JOB_STATUS:
@@ -157,11 +150,11 @@ class TaskQueue:
             elif head == self.HEAD_PING:
                 conn.send(self.STATUS_OK)
             else:
-                logger.warning("Invalid header: \"{}\"".format(head.decode()))
+                self._logger.warning("Invalid header: \"%s\"", head.decode())
         except socket.timeout:
-            logger.exception("Client socket timed out")
-        except OSError as e:
-            logger.exception("Connection error: {}".format(e))
+            self._logger.exception("Client socket timed out")
+        except OSError:
+            self._logger.exception("Connection error")
         finally:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
@@ -176,7 +169,7 @@ class TaskQueue:
         try:
             data = recv_json(conn)
         except json.JSONDecodeError:
-            logger.error("Invalid JSON.")
+            self._logger.error("Received invalid JSON form the client.")
             conn.send(self.STATUS_ERROR)
             return
         assert 'service' in data, "Service not specified."
@@ -186,7 +179,7 @@ class TaskQueue:
             CommandFactory.get_local_command_class(data['service'])
         command = command_cls(data['options'])
         job = Job(command)
-        logger.info("Spawned job {}".format(job))
+        self._logger.info("Spawned job %s", job)
         if send_json(conn, {'jobId': job.id}) == 0:
             raise ConnectionResetError("Connection reset by peer.")
         self._queue_job(job)
@@ -198,6 +191,7 @@ class TaskQueue:
         :type job: Job
         """
         job.sig_finished.register(self._on_job_finished)
+        self._logger.debug("Adding job %s to queue.", job)
         self._jobs[job.id] = job
         self._queue.put(job)
 
@@ -237,7 +231,7 @@ class TaskQueue:
         Callback slot activated when the job is finished.
         :param job_id: id of the job which sent the signal
         """
-        logger.debug('{} finished'.format(self._jobs[job_id]))
+        self._logger.debug('%s finished', self._jobs[job_id])
 
     @staticmethod
     def check_connection(host=HOST, port=PORT):
@@ -268,16 +262,16 @@ class Worker(threading.Thread):
         :param jobs_queue: queue with the jobs to execute
         :type jobs_queue: queue.Queue[Job]
         """
+        self._logger = get_logger()
         super(Worker, self).__init__(name=_worker_name())
         self._queue = jobs_queue
         self._job = None
 
     def run(self):
-        logger.debug("{} started.".format(self.name))
+        self._logger.debug("%s started.", self.name)
         while True:
             self._job = self._queue.get()
-            logger.debug("{} picked up the job {}"
-                         .format(self.name, self._job))
+            self._logger.debug("%s picked up %s", self.name, self._job)
             # noinspection PyBroadException
             try:
                 if self._job == KILL_WORKER:
@@ -285,8 +279,8 @@ class Worker(threading.Thread):
                 else:
                     self._job.run()
             except:
-                logger.exception(traceback.format_exc())
+                self._logger.exception("Critical error.")
             finally:
                 self._queue.task_done()
                 self._job = None
-        logger.debug("{} died.".format(self.name))
+        self._logger.debug("%s died.", self.name)

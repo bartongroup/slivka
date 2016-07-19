@@ -40,7 +40,7 @@ class DeferredResult:
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
         if status != TaskQueue.STATUS_OK:
-            raise ServerError("something bad happened")
+            raise ServerError("Internal server error")
         data = utils.recv_json(client_socket)
         client_socket.close()
         return data['status']
@@ -59,7 +59,7 @@ class DeferredResult:
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
         if status != TaskQueue.STATUS_OK:
-            raise ServerError("something bad happened")
+            raise ServerError("Internal server error")
         data = utils.recv_json(client_socket)
         client_socket.close()
         return data

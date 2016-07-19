@@ -13,21 +13,38 @@ from .task_queue import queue_run, TaskQueue
 from .task_queue.exceptions import ServerError
 from .task_queue.job import JobStatus
 
-logger = logging.getLogger('pybioas.Scheduler')
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s %(name)s:%(threadName)s %(levelname)s: %(message)s",
-    "%d %b %H:%M:%S"
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+_logger = None
+
+def get_logger():
+    """
+    :rtype: logging.Logger
+    """
+    global _logger
+    if _logger is None:
+        _logger = logging.getLogger(__name__)
+        _logger.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter(
+            "%(asctime)s Scheduler:%(threadName)s %(levelname)s: %(message)s",
+            "%d %b %H:%M:%S"
+        )
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(formatter)
+        _logger.addHandler(stream_handler)
+
+        file_handler = logging.FileHandler('Scheduler.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        _logger.addHandler(file_handler)
+    return _logger
 
 
 class Scheduler:
 
     def __init__(self):
+        self._logger = None
         if not check_db():
             raise Exception("Database is not initialized.")
         self._shutdown_event = threading.Event()
@@ -42,36 +59,36 @@ class Scheduler:
         """
         Keeps checking database for new Request records.
         """
-        logger.info("Scheduler starts watching database.")
+        self.logger.info("Scheduler starts watching database.")
         connection_ok = TaskQueue.check_connection()
         if connection_ok:
-            logger.info("Connected to worker.")
+            self.logger.info("Connected to worker.")
         while not self._shutdown_event.is_set():
             if connection_ok:
                 session = Session()
-                logger.debug("poll db")
+                self.logger.debug("Polling database")
                 pending_requests = (
                     session.query(Request).
                     options(joinedload('options')).
                     filter(Request.status == Request.STATUS_PENDING).
                     all()
                 )
-                logger.debug("found {} requests".format(len(pending_requests)))
+                self.logger.debug("Found %d requests", len(pending_requests))
                 try:
                     for request in pending_requests:
                         self.enqueue_task(request)
                 except (OSError, ServerError):
-                    logger.exception("Connection lost.")
+                    self.logger.exception("Connection lost.")
                     connection_ok = False
                 finally:
                     session.commit()
                     session.close()
             else:
-                logger.info("Can't establish connection to worker. "
-                            "Retry in 5 seconds.")
+                self.logger.info("Can't establish connection to worker. "
+                                 "Retry in 5 seconds.")
                 connection_ok = TaskQueue.check_connection()
                 if connection_ok:
-                    logger.info("Connected to worker.")
+                    self.logger.info("Connected to worker.")
             self._shutdown_event.wait(5)
 
     def enqueue_task(self, request):
@@ -92,10 +109,10 @@ class Scheduler:
             request.status = request.STATUS_QUEUED
 
     def collector_loop(self):
-        logger.info("Scheduler starts collecting tasks from worker.")
+        self.logger.info("Scheduler starts collecting tasks from worker.")
         connection_ok = TaskQueue.check_connection()
         if connection_ok:
-            logger.info("Connected to worker.")
+            self.logger.info("Connected to worker.")
         while not self._shutdown_event:
             if connection_ok:
                 session = Session()
@@ -117,17 +134,17 @@ class Scheduler:
                         ]
                         session.add(res)
                 except OSError:
-                    logger.exception("Connection lost.")
+                    self.logger.exception("Connection lost.")
                     connection_ok = False
                 finally:
                     session.commit()
                     session.close()
             else:
-                logger.info("Can't establish connection to worker. "
-                            "Retry in 5 seconds.")
+                self.logger.info("Can't establish connection to worker. "
+                                 "Retry in 5 seconds.")
                 connection_ok = TaskQueue.check_connection()
                 if connection_ok:
-                    logger.info("Connected to worker.")
+                    self.logger.info("Connected to worker.")
             self._shutdown_event.wait(5)
 
     def _collect_finished(self):
@@ -138,7 +155,7 @@ class Scheduler:
         :rtype: set[Task]
         :raise OSError:
         """
-        logger.debug("collecting finished tasks")
+        self.logger.debug("Collecting finished tasks")
         finished = set()
         with self._tasks_lock:
             for task in self._tasks:
@@ -146,11 +163,17 @@ class Scheduler:
                 if status in (JobStatus.COMPLETED, JobStatus.FAILED):
                     finished.add(task)
             self._tasks = self._tasks.difference(finished)
-        logger.debug("found {} tasks".format(len(finished)))
+        self.logger.debug("found % tasks", len(finished))
         return finished
 
     def shutdown(self):
         self._shutdown_event.set()
+
+    @property
+    def logger(self):
+        if self._logger is None:
+            self._logger = get_logger()
+        return self._logger
 
 
 class Task:
@@ -177,7 +200,7 @@ def start_scheduler():
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
-        logger.info("Shutting down...")
+        scheduler.logger.info("Shutting down...")
         scheduler.shutdown()
     collector_thread.join()
     poll_thread.join()
