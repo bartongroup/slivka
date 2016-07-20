@@ -10,7 +10,7 @@ except ImportError:
     import mock
 
 from pybioas.scheduler.task_queue.task_queue import (
-    TaskQueue, Worker, KILL_WORKER, HOST, PORT
+    TaskQueue, Worker, QueueServer, KILL_WORKER, HOST, PORT
 )
 
 
@@ -76,18 +76,11 @@ class TestTaskQueue(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.task_queue = TaskQueue(HOST, PORT, num_workers=1)
-        cls.server_thread = threading.Thread(target=cls.task_queue.listen)
-        cls.server_thread.start()
-        cls.task_queue.start_workers()
-
-    def test_running(self):
-        self.assertTrue(self.server_thread.is_alive())
-        for worker in self.task_queue._workers:
-            self.assertTrue(worker.is_alive())
+        cls.task_queue = TaskQueue(num_workers=1)
+        cls.task_queue.start(async=True)
 
     def test_check_connection(self):
-        self.assertTrue(TaskQueue.check_connection())
+        self.assertTrue(QueueServer.check_connection())
 
     def test_ping(self):
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

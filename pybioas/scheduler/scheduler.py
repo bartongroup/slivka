@@ -9,7 +9,7 @@ import pybioas
 from pybioas.db import check_db, Session
 from pybioas.db.models import Request, Result, File
 from .command.command_factory import CommandFactory
-from .task_queue import queue_run, TaskQueue
+from .task_queue import queue_run, QueueServer
 from .task_queue.exceptions import ServerError
 from .task_queue.job import JobStatus
 
@@ -60,7 +60,7 @@ class Scheduler:
         Keeps checking database for new Request records.
         """
         self.logger.info("Scheduler starts watching database.")
-        connection_ok = TaskQueue.check_connection()
+        connection_ok = QueueServer.check_connection()
         if connection_ok:
             self.logger.info("Connected to worker.")
         while not self._shutdown_event.is_set():
@@ -86,7 +86,7 @@ class Scheduler:
             else:
                 self.logger.info("Can't establish connection to worker. "
                                  "Retry in 5 seconds.")
-                connection_ok = TaskQueue.check_connection()
+                connection_ok = QueueServer.check_connection()
                 if connection_ok:
                     self.logger.info("Connected to worker.")
             self._shutdown_event.wait(5)
@@ -110,10 +110,10 @@ class Scheduler:
 
     def collector_loop(self):
         self.logger.info("Scheduler starts collecting tasks from worker.")
-        connection_ok = TaskQueue.check_connection()
+        connection_ok = QueueServer.check_connection()
         if connection_ok:
             self.logger.info("Connected to worker.")
-        while not self._shutdown_event:
+        while not self._shutdown_event.is_set():
             if connection_ok:
                 session = Session()
                 try:
@@ -142,7 +142,7 @@ class Scheduler:
             else:
                 self.logger.info("Can't establish connection to worker. "
                                  "Retry in 5 seconds.")
-                connection_ok = TaskQueue.check_connection()
+                connection_ok = QueueServer.check_connection()
                 if connection_ok:
                     self.logger.info("Connected to worker.")
             self._shutdown_event.wait(5)
@@ -163,7 +163,7 @@ class Scheduler:
                 if status in (JobStatus.COMPLETED, JobStatus.FAILED):
                     finished.add(task)
             self._tasks = self._tasks.difference(finished)
-        self.logger.debug("found % tasks", len(finished))
+        self.logger.debug("Found %d tasks", len(finished))
         return finished
 
     def shutdown(self):

@@ -23,7 +23,7 @@ class TaskQueue:
     STATUS_OK = b'OK      '
     STATUS_ERROR = b'ERROR   '
 
-    def __init__(self, host, port, num_workers=4):
+    def __init__(self, host=HOST, port=PORT, num_workers=4):
         """
         :param host: server host address
         :param port: server port
@@ -33,58 +33,29 @@ class TaskQueue:
         self._shutdown = False
         self._queue = queue.Queue()
         self._jobs = dict()
-        self._workers = list()
-        self._init_workers(num_workers)
+        self._workers = [Worker(self._queue) for _ in range(num_workers)]
+        self._server = QueueServer(host, port, self._jobs.get, self._queue_job)
 
-        self._host, self._port = host, port
-        self._server_socket = socket.socket(
-            family=socket.AF_INET, type=socket.SOCK_STREAM
-        )
-        self._server_socket.bind((host, port))
-        self._server_socket.settimeout(5)
-        self._server_socket.listen(5)
-
-    def _init_workers(self, num):
-        """
-        Creates a list of workers.
-        :param num: number of workers to spawm
-        """
-        self._workers = [
-            Worker(self._queue)
-            for _ in range(num)
-        ]
-
-    def start(self):
+    def start(self, async=False):
         """
         Launches the task queue. Starts the server thread and starts all
         worker threads. Then it waits for KeyboardInterrupt signal
         to stop execution of the server and workers.
         Waits for all threads to join before exiting.
         """
-        server_thread = threading.Thread(
-            target=self.listen,
-            name="ServerThread"
-        )
-        server_thread.start()
-        self.start_workers()
+        self._logger.debug("Starting server.")
+        self._server.start()
+        self._logger.debug("Starting workers.")
+        for worker in self._workers:
+            worker.start()
+        if async:
+            return
         try:
             while True:
                 time.sleep(3600)
         except KeyboardInterrupt:
             self._logger.info("Shutting down...")
             self.shutdown()
-        server_thread.join()
-        self._logger.debug("Server thread joined.")
-        self._queue.join()
-        self._logger.debug("Queue joined.")
-
-    def start_workers(self):
-        """
-        Starts all worker threads.
-        """
-        self._logger.debug("Starting workers.")
-        for worker in self._workers:
-            worker.start()
 
     def shutdown(self):
         """
@@ -94,7 +65,7 @@ class TaskQueue:
         :return:
         """
         self._logger.debug("Shutdown signal.")
-        self._shutdown = True
+        self._server.shutdown()
         num_workers = sum(worker.is_alive() for worker in self._workers)
         self._logger.debug("Sending %d KILLS to workers.", num_workers)
         with self._queue.mutex:
@@ -103,14 +74,92 @@ class TaskQueue:
             self._queue.queue.extend([KILL_WORKER] * num_workers)
             self._queue.unfinished_tasks += num_workers
             self._queue.not_empty.notify_all()
-        self._logger.debug("Poking server to stop.")
-        socket.socket().connect((self._host, self._port))
+        self._server.join()
+        self._logger.debug("Server thread joined.")
+        for worker in self._workers:
+            worker.join()
+        self._logger.debug("Workers joined.")
 
-    def listen(self):
+    def _queue_job(self, job):
         """
-        Starts listening to incoming connections and spawns client threads.
+        Adds a new job to the queue and registers "finished" signal.
+        :param job: new job
+        :type job: Job
         """
-        self._logger.info("Ready to accept connections on %s:%d.",
+        job.sig_finished.register(self._on_job_finished)
+        self._logger.debug("Adding job %s to queue.", job)
+        self._jobs[job.id] = job
+        self._queue.put(job)
+
+    def _on_job_finished(self, job_id):
+        """
+        Callback slot activated when the job is finished.
+        :param job_id: id of the job which sent the signal
+        """
+        self._logger.debug('%s finished', self._jobs[job_id])
+
+
+KILL_WORKER = 'KILL'
+
+
+class Worker(threading.Thread):
+
+    _counter = itertools.count(1)
+
+    def __init__(self, jobs_queue):
+        """
+        :param jobs_queue: queue with the jobs to execute
+        :type jobs_queue: queue.Queue[Job]
+        """
+        self._logger = get_logger()
+        super(Worker, self).__init__(name="Worker-%d" % next(self._counter))
+        self._queue = jobs_queue
+        self._job = None
+
+    def run(self):
+        self._logger.debug("%s started.", self.name)
+        while True:
+            self._job = self._queue.get()
+            self._logger.debug("%s picked up %s", self.name, self._job)
+            # noinspection PyBroadException
+            try:
+                if self._job == KILL_WORKER:
+                    break
+                else:
+                    self._job.run()
+            except:
+                self._logger.exception("Critical error.")
+            finally:
+                self._queue.task_done()
+                self._job = None
+        self._logger.debug("%s died.", self.name)
+
+
+class QueueServer(threading.Thread):
+
+    HEAD_NEW_TASK = TaskQueue.HEAD_NEW_TASK
+    HEAD_JOB_STATUS = TaskQueue.HEAD_JOB_STATUS
+    HEAD_JOB_RESULT = TaskQueue.HEAD_JOB_RESULT
+    HEAD_PING = TaskQueue.HEAD_PING
+    STATUS_OK = TaskQueue.STATUS_OK
+    STATUS_ERROR = TaskQueue.STATUS_ERROR
+
+    def __init__(self, host, port, get_job, add_job):
+        super(QueueServer, self).__init__(name='QueueServer')
+        self._logger = get_logger()
+        self._shutdown = False
+        self._host = host
+        self._port = port
+        self._get_job = get_job
+        self._add_job = add_job
+        self._server_socket = None
+
+    def run(self):
+        self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_socket.bind((self._host, self._port))
+        self._server_socket.settimeout(5)
+        self._server_socket.listen(5)
+        self._logger.info("Ready to accept connections on %s:%d",
                           self._host, self._port)
         while not self._shutdown:
             try:
@@ -122,7 +171,7 @@ class TaskQueue:
                     client_socket.shutdown(socket.SHUT_RDWR)
                     client_socket.close()
                     break
-            self._logger.info("Received connection from %s.", address)
+            self._logger.info("Received connection from %s", address)
             client_thread = threading.Thread(
                 target=self._serve_client,
                 args=(client_socket,)
@@ -180,21 +229,10 @@ class TaskQueue:
             CommandFactory.get_local_command_class(data['service'])
         command = command_cls(data['options'])
         job = Job(command)
-        self._logger.info("Spawned job %s", job)
+        self._logger.info("Created job %s", job)
         if send_json(conn, {'jobId': job.id}) == 0:
             raise ConnectionResetError("Connection reset by peer.")
-        self._queue_job(job)
-
-    def _queue_job(self, job):
-        """
-        Adds a new job to the queue and registers "finished" signal.
-        :param job: new job
-        :type job: Job
-        """
-        job.sig_finished.register(self._on_job_finished)
-        self._logger.debug("Adding job %s to queue.", job)
-        self._jobs[job.id] = job
-        self._queue.put(job)
+        self._add_job(job)
 
     def _job_status_request(self, conn):
         """
@@ -207,9 +245,12 @@ class TaskQueue:
             conn.send(self.STATUS_ERROR)
             return
         assert 'jobId' in data
-        status = self._jobs[data['jobId']].status
+        job = self._get_job(data['jobId'])
+        if job is None:
+            conn.send(self.STATUS_ERROR)
+            return
         conn.send(self.STATUS_OK)
-        if send_json(conn, {'status': status}) == 0:
+        if send_json(conn, {'status': job.status}) == 0:
             raise ConnectionResetError("Connection reset by peer.")
 
     def _job_result_request(self, conn):
@@ -219,7 +260,7 @@ class TaskQueue:
             conn.send(self.STATUS_ERROR)
             return
         assert 'jobId' in data
-        job = self._jobs.get(data['jobId'])
+        job = self._get_job(data['jobId'])
         if job is None:
             conn.send(self.STATUS_ERROR)
             return
@@ -227,12 +268,10 @@ class TaskQueue:
         if send_json(conn, job.result) == 0:
             raise ConnectionResetError("Connection reset by peer.")
 
-    def _on_job_finished(self, job_id):
-        """
-        Callback slot activated when the job is finished.
-        :param job_id: id of the job which sent the signal
-        """
-        self._logger.debug('%s finished', self._jobs[job_id])
+    def shutdown(self):
+        self._shutdown = True
+        self._logger.debug("Poking server to stop.")
+        socket.socket().connect((self._host, self._port))
 
     @staticmethod
     def check_connection(host=HOST, port=PORT):
@@ -247,41 +286,3 @@ class TaskQueue:
             return False
         else:
             return True
-
-
-_counter = itertools.count(1)
-def _worker_name():
-    return "Worker-%d" % next(_counter)
-
-
-KILL_WORKER = 'KILL'
-
-
-class Worker(threading.Thread):
-    def __init__(self, jobs_queue):
-        """
-        :param jobs_queue: queue with the jobs to execute
-        :type jobs_queue: queue.Queue[Job]
-        """
-        self._logger = get_logger()
-        super(Worker, self).__init__(name=_worker_name())
-        self._queue = jobs_queue
-        self._job = None
-
-    def run(self):
-        self._logger.debug("%s started.", self.name)
-        while True:
-            self._job = self._queue.get()
-            self._logger.debug("%s picked up %s", self.name, self._job)
-            # noinspection PyBroadException
-            try:
-                if self._job == KILL_WORKER:
-                    break
-                else:
-                    self._job.run()
-            except:
-                self._logger.exception("Critical error.")
-            finally:
-                self._queue.task_done()
-                self._job = None
-        self._logger.debug("%s died.", self.name)

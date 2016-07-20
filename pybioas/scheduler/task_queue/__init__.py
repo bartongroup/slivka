@@ -3,7 +3,7 @@ import socket
 from . import utils
 from .deferred_result import DeferredResult
 from .exceptions import ServerError
-from .task_queue import TaskQueue, HOST, PORT
+from .task_queue import TaskQueue, QueueServer, HOST, PORT
 
 
 def queue_run(service, values):
