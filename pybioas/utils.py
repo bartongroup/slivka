@@ -40,15 +40,6 @@ def copytree(src, dst):
     return dst
 
 
-class Bunch:
-    """
-    An utility class which creates the object with attributes given
-    to constructor.
-    """
-    def __init__(self, **kwargs):
-        self.__dict__.update(**kwargs)
-
-
 def snake_to_camel(name):
     """
     Converts snake_case name to lowercase camelCase

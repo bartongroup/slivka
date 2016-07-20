@@ -1,13 +1,16 @@
 import os
 import tempfile
 import unittest
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 from pybioas.server.forms import ValidationError
 from pybioas.server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
     TextField, BooleanField, ChoiceField
 )
-from pybioas.utils import Bunch
 
 
 class TestBaseFieldValid(unittest.TestCase):
@@ -172,7 +175,7 @@ class TestFileField(unittest.TestCase):
         from pybioas.db import models, start_session, create_db
 
         cls.temp_dir = tempfile.TemporaryDirectory()
-        settings = Bunch(
+        settings = mock.Mock(
             BASE_DIR=cls.temp_dir.name,
             MEDIA_DIR=".",
             SECRET_KEY=b'\x00',

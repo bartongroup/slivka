@@ -75,7 +75,7 @@ class TestOptionElementParser(unittest.TestCase):
         self.assertIsInstance(field, FileField)
         self.assertEqual(field._mimetype, "text/plain")
         self.assertEqual(field._extension, "txt")
-        self.assertEqual(field._max_size, 1024*20)
+        self.assertEqual(field._max_size, 1024 * 20)
 
 
 class TestForm(unittest.TestCase):

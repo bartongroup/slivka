@@ -93,6 +93,7 @@ class TaskQueue:
         Then, pokes the server to stop listening and return.
         :return:
         """
+        self._logger.debug("Shutdown signal.")
         self._shutdown = True
         num_workers = sum(worker.is_alive() for worker in self._workers)
         self._logger.debug("Sending %d KILLS to workers.", num_workers)

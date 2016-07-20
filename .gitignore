@@ -5,6 +5,4 @@ build/
 PyBioAS.egg-info/
 dist/
 
-uploads/
-work_dir/
-sqlite3.db
+**/*.log
