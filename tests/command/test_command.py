@@ -45,7 +45,6 @@ class TestGetFullCommandBinary(unittest.TestCase):
     def test_path_with_space(self):
         """
         Tests if path with escaped or quoted spaces is properly parsed.
-        :return:
         """
         cmd_cls = get_command_cls('/home/super\ user/')
         cmd = cmd_cls()
@@ -61,7 +60,6 @@ class TestGetFullCommandOptions(unittest.TestCase):
         """
         Tests if a single option `foo` is properly parsed and makes a
         separate command argument `'foo'`
-        :return:
         """
         cmd_cls = get_command_cls(
             'echo',
@@ -74,7 +72,6 @@ class TestGetFullCommandOptions(unittest.TestCase):
         """
         Tests if the value containing space `foo bar` will be passed as a
         single command argument `'foo bar'`
-        :return:
         """
         cmd_cls = get_command_cls(
             'echo',
@@ -148,6 +145,13 @@ class TestGetFullCommandOptions(unittest.TestCase):
 
 
 def get_command_cls(binary='echo', options=list()):
+    """
+    Helper function which creates a TestCommand class
+    :param binary: executable command
+    :param options: list of options passed to the command
+    :type options: list[CommandOption]
+    :return: LocalCommand subclass
+    """
     return type(
         'TestCommand',
         (LocalCommand,),

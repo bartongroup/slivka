@@ -10,6 +10,7 @@ from pybioas.scheduler.task_queue.exceptions import ConnectionResetError
 from pybioas.scheduler.task_queue.job import Job
 from pybioas.scheduler.task_queue.utils import recv_json, send_json, get_logger
 
+# TODO pick these values from settings
 HOST = "localhost"
 PORT = 9090
 
@@ -30,7 +31,6 @@ class TaskQueue:
         :param num_workers: number of concurrent workers to spawn
         """
         self._logger = get_logger()
-        self._shutdown = False
         self._queue = queue.Queue()
         self._jobs = dict()
         self._workers = [Worker(self._queue) for _ in range(num_workers)]
@@ -65,7 +65,10 @@ class TaskQueue:
         :return:
         """
         self._logger.debug("Shutdown signal.")
+
+        self._logger.debug("Shutting down the server.")
         self._server.shutdown()
+
         num_workers = sum(worker.is_alive() for worker in self._workers)
         self._logger.debug("Sending %d KILLS to workers.", num_workers)
         with self._queue.mutex:
@@ -74,6 +77,7 @@ class TaskQueue:
             self._queue.queue.extend([KILL_WORKER] * num_workers)
             self._queue.unfinished_tasks += num_workers
             self._queue.not_empty.notify_all()
+
         self._server.join()
         self._logger.debug("Server thread joined.")
         for worker in self._workers:
@@ -111,8 +115,8 @@ class Worker(threading.Thread):
         :param jobs_queue: queue with the jobs to execute
         :type jobs_queue: queue.Queue[Job]
         """
-        self._logger = get_logger()
         super(Worker, self).__init__(name="Worker-%d" % next(self._counter))
+        self._logger = get_logger()
         self._queue = jobs_queue
         self._job = None
 
@@ -147,7 +151,7 @@ class QueueServer(threading.Thread):
     def __init__(self, host, port, get_job, add_job):
         super(QueueServer, self).__init__(name='QueueServer')
         self._logger = get_logger()
-        self._shutdown = False
+        self._running = True
         self._host = host
         self._port = port
         self._get_job = get_job
@@ -161,13 +165,19 @@ class QueueServer(threading.Thread):
         self._server_socket.listen(5)
         self._logger.info("Ready to accept connections on %s:%d",
                           self._host, self._port)
-        while not self._shutdown:
+        while self.running:
+            # noinspection PyBroadException
             try:
                 (client_socket, address) = self._server_socket.accept()
             except socket.timeout:
                 continue
+            except:
+                self._logger.exception("Critical error occurred, server "
+                                       "stopped. Retry in 5 seconds.")
+                time.sleep(5)
+                continue
             else:
-                if self._shutdown:
+                if not self.running:
                     client_socket.shutdown(socket.SHUT_RDWR)
                     client_socket.close()
                     break
@@ -180,6 +190,11 @@ class QueueServer(threading.Thread):
         self._server_socket.close()
         self._logger.info("Server socket closed.")
 
+    @property
+    def running(self):
+        return self._running
+
+    # noinspection PyBroadException
     def _serve_client(self, conn):
         """
         Processes client connection and retrieves messages from it.
@@ -200,11 +215,15 @@ class QueueServer(threading.Thread):
             elif head == self.HEAD_PING:
                 conn.send(self.STATUS_OK)
             else:
-                self._logger.warning("Invalid header: \"%s\"", head.decode())
+                self._logger.warning("Invalid header: \"%s\".", head.decode())
         except socket.timeout:
-            self._logger.exception("Client socket timed out")
+            self._logger.exception("Client socket timed out.")
         except OSError:
-            self._logger.exception("Connection error")
+            self._logger.exception("Connection error.")
+        except json.JSONDecodeError:
+            self._logger.exception("Received JSON is invalid.")
+        except:
+            self._logger.exception("Critical error.")
         finally:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
@@ -214,16 +233,21 @@ class QueueServer(threading.Thread):
         Receives a new task from the client and spawns a new job.
         :param conn: client socket handler
         :raise ConnectionResetError
-        :raise KeyError
+        :raise AssertionError
         """
         try:
+            # FIXME error status is not sent on connection error
             data = recv_json(conn)
         except json.JSONDecodeError:
-            self._logger.error("Received invalid JSON form the client.")
             conn.send(self.STATUS_ERROR)
-            return
-        assert 'service' in data, "Service not specified."
-        assert 'options' in data, "Options not specified."
+            raise
+        # REVIEW raise KeyError (or JsonError) instead of assertion.
+        try:
+            assert 'service' in data, "Service not specified."
+            assert 'options' in data, "Options not specified."
+        except AssertionError:
+            conn.send(self.STATUS_ERROR)
+            raise KeyError
         conn.send(self.STATUS_OK)
         command_cls = \
             CommandFactory.get_local_command_class(data['service'])
@@ -269,7 +293,7 @@ class QueueServer(threading.Thread):
             raise ConnectionResetError("Connection reset by peer.")
 
     def shutdown(self):
-        self._shutdown = True
+        self._running = False
         self._logger.debug("Poking server to stop.")
         socket.socket().connect((self._host, self._port))
 

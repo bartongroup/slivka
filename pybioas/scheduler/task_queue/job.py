@@ -14,13 +14,17 @@ class Job:
         :param kwargs: keyword arguments passed to the runnable's start method
         """
         self._runnable = runnable
-        self.id = uuid.uuid4().hex
+        self._id = uuid.uuid4().hex
         self.status = JobStatus.QUEUED
         self._args = args or ()
         self._kwargs = kwargs or {}
         self._result = None
         self._exception = None
         self.sig_finished = Signal()
+
+    @property
+    def id(self):
+        return self._id
 
     def run(self):
         """
