@@ -31,32 +31,35 @@ class LocalCommand:
     def run_command(self):
         """
         Executes the command locally as a new subprocess.
+        :raise AttributeError: fields was not filled in the subclass
+        :raise FileNotFoundError: working dir from settings does not exist
+        :raise OSError: error occurred when starting the process
         """
-        stdout = stderr = b""
+        # review: working dir passed as a function argument or auto-generated
         cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
 
-        try:
-            self._process = subprocess.Popen(
-                self.get_full_cmd(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=self.env,
-                cwd=cwd
-            )
-            stdout, stderr = self._process.communicate()
-        finally:
-            return_code = self._process and self._process.returncode
-            return {
-                "return_code": return_code,
-                "stdout": stdout.decode(),
-                "stderr": stderr.decode(),
-                "files": [
-                    filename
-                    for output in self._output_files
-                    for filename in output.get_files_paths(cwd)
-                ]
-            }
+        self._process = subprocess.Popen(
+            self.get_full_cmd(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+            cwd=cwd
+        )
+        stdout, stderr = self._process.communicate()
+
+        return_code = self._process.returncode
+        # review: ProcessOutput namedtuple
+        return {
+            "return_code": return_code,
+            "stdout": stdout.decode(),
+            "stderr": stderr.decode(),
+            "files": [
+                filename
+                for output in self.output_files
+                for filename in output.get_files_paths(cwd)
+            ]
+        }
 
     def get_full_cmd(self):
         base = shlex.split(self.binary)
@@ -70,7 +73,7 @@ class LocalCommand:
                 )
             )
             for token in shlex.split(opt)
-            ]
+        ]
         return base + options
 
     @property
@@ -81,9 +84,7 @@ class LocalCommand:
 
     @property
     def output_files(self):
-        if self._output_files is None:
-            raise AttributeError("output files are not set")
-        return self._output_files
+        return self._output_files or []
 
     @property
     def env(self):
