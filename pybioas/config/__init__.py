@@ -11,6 +11,8 @@ class Settings:
     WORK_DIR = "work_dir"
     SERVICE_INI = os.path.join("config", "services.ini")
     SERVICES = ()
+    QUEUE_HOST = 'localhost'
+    QUEUE_PORT = 9090
 
     def __init__(self, settings_module):
         """

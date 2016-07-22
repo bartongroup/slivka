@@ -18,3 +18,7 @@ SERVICE_INI = "./services.ini"
 
 # list of available services ["Service1", "Service2", ...]
 SERVICES = [{% if example %}"PyDummy"{% endif %}]
+
+# configuration of the local task queue server
+QUEUE_HOST = 'localhost'
+QUEUE_PORT = 9090

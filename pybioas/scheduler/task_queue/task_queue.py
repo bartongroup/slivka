@@ -11,10 +11,6 @@ from pybioas.scheduler.task_queue.exceptions import ConnectionResetError
 from pybioas.scheduler.task_queue.job import Job
 from pybioas.scheduler.task_queue.utils import recv_json, send_json, get_logger
 
-# TODO pick these values from settings
-HOST = "localhost"
-PORT = 9090
-
 
 class TaskQueue:
     # Headers and status codes. Each is eight bytes long.
@@ -25,12 +21,14 @@ class TaskQueue:
     STATUS_OK = b'OK      '
     STATUS_ERROR = b'ERROR   '
 
-    def __init__(self, host=HOST, port=PORT, num_workers=4):
+    def __init__(self, host=None, port=None, num_workers=4):
         """
         :param host: server host address
         :param port: server port
         :param num_workers: number of concurrent workers to spawn
         """
+        if host is None: host = pybioas.settings.QUEUE_HOST
+        if port is None: port = pybioas.settings.QUEUE_PORT
         self._logger = get_logger()
         self._queue = queue.Queue()
         self._jobs = dict()
@@ -305,7 +303,9 @@ class QueueServer(threading.Thread):
         socket.socket().connect((self._host, self._port))
 
     @staticmethod
-    def check_connection(host=HOST, port=PORT):
+    def check_connection(host=None, port=None):
+        if host is None: host = pybioas.settings.QUEUE_HOST
+        if port is None: port = pybioas.settings.QUEUE_PORT
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((host, port))

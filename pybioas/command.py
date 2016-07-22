@@ -67,8 +67,8 @@ def admin():
 @click.command()
 def worker():
     """Starts task queue workers."""
-    from pybioas.scheduler.task_queue import TaskQueue, HOST, PORT
-    queue = TaskQueue(HOST, PORT)
+    from pybioas.scheduler.task_queue import TaskQueue
+    queue = TaskQueue()
     queue.start()
 
 

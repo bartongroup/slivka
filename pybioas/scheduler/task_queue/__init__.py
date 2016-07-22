@@ -1,9 +1,10 @@
 import socket
 
+import pybioas
 from . import utils
 from .deferred_result import DeferredResult
 from .exceptions import ServerError
-from .task_queue import TaskQueue, QueueServer, HOST, PORT
+from .task_queue import TaskQueue, QueueServer
 
 
 def queue_run(service, values):
@@ -15,8 +16,9 @@ def queue_run(service, values):
     :raise ServerError: server can't process the request
     :raise OSError: connection with server failed
     """
+    address = (pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT)
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((HOST, PORT))
+    client_socket.connect(address)
     client_socket.send(TaskQueue.HEAD_NEW_TASK)
 
     utils.send_json(client_socket, {
@@ -30,4 +32,4 @@ def queue_run(service, values):
     job_id = data["jobId"]
     client_socket.shutdown(socket.SHUT_RDWR)
     client_socket.close()
-    return DeferredResult(job_id, (HOST, PORT))
+    return DeferredResult(job_id, address)
