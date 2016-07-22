@@ -104,8 +104,16 @@ def dropdb():
     drop_db()
 
 
+@click.command()
+def shell():
+    """Starts python interactive shell with project configuration"""
+    import code
+    code.interact()
+
+
 admin.add_command(worker)
 admin.add_command(scheduler)
 admin.add_command(server)
 admin.add_command(initdb)
 admin.add_command(dropdb)
+admin.add_command(shell)
