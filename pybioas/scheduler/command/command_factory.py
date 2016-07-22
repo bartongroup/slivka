@@ -74,56 +74,53 @@ class PatternFileOutput(FileOutput):
 
 class CommandFactory:
 
-    _commands = {}
-
-    @classmethod
-    def get_local_command_class(cls, service):
+    # review: may be better to pass ConfigParser object
+    def __init__(self, config_file):
         """
-        Constructs a local command class from the config file data.
-        Values are taken from the section corresponding to the service name.
-        :param service: name of the service
-        :return: command class subclassing LocalCommand
+        Loads all command configurations from the config file.
+        :param config_file: path to service.ini config file
+        :raise FileNotFoundError: config file is missing
+        :raise configparser.NoOptionError
+        :raise yaml.YAMLError
+        :raise jsonschema.exceptions.ValidationError
         """
-        try:
-            command_cls = cls._commands[service]
-        except KeyError:
-            parser = configparser.ConfigParser()
-            with open(pybioas.settings.SERVICE_INI) as f:
-                parser.read_file(f)
-            command_file = parser.get(service, "command_file")
-            with open(command_file) as f:
-                data = yaml.load(f)
+        parser = configparser.ConfigParser()
+        with open(config_file) as file:
+            parser.read_file(file)
+        self._configurations = dict()
+        for configuration in parser.sections():
+            with open(parser.get(configuration, 'command_file')) as file:
+                data = yaml.load(file)
             jsonschema.validate(data, pybioas.utils.COMMAND_SCHEMA)
-            binary = parser.get(service, "bin")
-            options = CommandFactory._parse_options(data['options'])
-            outputs = CommandFactory._parse_outputs(data['outputs'], options)
+            binary = parser.get(configuration, 'bin')
+            options = self._parse_options(data['options'])
+            outputs, extra_options = self._parse_outputs(data['outputs'])
+            options.extend(extra_options)
             env = {
                 key[4:]: value
-                for key, value in parser.items(service)
-                if key.startswith("env.")
+                for key, value in parser.items(configuration)
+                if key.startswith('env.')
             } or None
             command_cls = type(
-                "{0}{1}".format(service, "LocalCommand"),
-                (LocalCommand, ),
+                '{0}{1}'.format(configuration, 'LocalCommand'),
+                (LocalCommand,),
                 {
-                    "_binary": binary,
-                    "_options": options,
-                    "_output_files": outputs,
-                    "_env": env
+                    '_binary': binary, '_options': options,
+                    '_output_files': outputs, '_env': env
                 }
             )
-            cls._commands[service] = command_cls
-        return command_cls
+            self._configurations[configuration] = command_cls
 
     @staticmethod
     def _parse_options(options):
         """
         Parses options dictionary into command option objects
         :param options: list of option descriptions
-        :type options: [dict(name=string, type=string, param=string)]
+        :type options: list[dict]
         :return: list of command option objects
-        :rtype: [CommandOption]
+        :rtype: list[CommandOption]
         """
+        # review: options should be a namedtuple name, parameter, value
         return [
             CommandOption(
                 name=option["name"],
@@ -134,15 +131,15 @@ class CommandFactory:
         ]
 
     @staticmethod
-    def _parse_outputs(outputs, options):
+    def _parse_outputs(outputs):
         """
-
         :param outputs:
-        :param options:
-        :return:
-        :raise KeyError:
+        :return: tuple of outputs list and extra options list
+        :rtype (list[FileOutput], list[CommandOption])
+        :raise KeyError: file output element is missing attribute
         """
         res = []
+        options = []
         for out in outputs:
             if out["method"] == "file":
                 if "filename" in out:
@@ -158,4 +155,23 @@ class CommandFactory:
                 else:
                     raise KeyError("None of the keys 'filename', "
                                    "'parameter', 'pattern' found.")
-        return res
+        return res, options
+
+    def get_command_class(self, configuration):
+        """
+        Returns a local command class built from the config file data.
+        Configuration name is a corresponding section in the config file.
+        :param configuration: name of the configuration
+        :return: command class subclassing LocalCommand
+        :rtype: type[LocalCommand]
+        :raise KeyError: specified configuration does not exist
+        """
+        return self._configurations[configuration]
+
+    @property
+    def configurations(self):
+        """
+        :return: configurations and commands dictionary
+        :rtype: dict[str, type[LocalCommand]]
+        """
+        return self._configurations

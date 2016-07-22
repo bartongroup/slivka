@@ -50,8 +50,9 @@ class Scheduler:
         self._shutdown_event = threading.Event()
         self._tasks = set()
         self._tasks_lock = threading.Lock()
+        command_factory = CommandFactory(pybioas.settings.SERVICE_INI)
         self._command_class = {
-            service: CommandFactory.get_local_command_class(service)
+            service: command_factory.get_command_class(service)
             for service in pybioas.settings.SERVICES
         }
 

@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 
+import pybioas
 from pybioas.scheduler.command.command_factory import CommandFactory
 from pybioas.scheduler.task_queue.exceptions import ConnectionResetError
 from pybioas.scheduler.task_queue.job import Job
@@ -157,6 +158,7 @@ class QueueServer(threading.Thread):
         self._get_job = get_job
         self._add_job = add_job
         self._server_socket = None
+        self.command_factory = CommandFactory(pybioas.settings.SERVICE_INI)
 
     def run(self):
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -249,8 +251,7 @@ class QueueServer(threading.Thread):
             conn.send(self.STATUS_ERROR)
             raise KeyError
         conn.send(self.STATUS_OK)
-        command_cls = \
-            CommandFactory.get_local_command_class(data['service'])
+        command_cls = self.command_factory.get_command_class(data['service'])
         command = command_cls(data['options'])
         job = Job(command)
         self._logger.info("Created job %s", job)
