@@ -62,6 +62,7 @@ class DeferredResult:
             raise ServerError("Internal server error")
         data = utils.recv_json(client_socket)
         client_socket.close()
+        # review: wrap data in an object like ProcessOutput
         return data
 
     def __repr__(self):

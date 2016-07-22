@@ -19,7 +19,6 @@ class Job:
         self._args = args or ()
         self._kwargs = kwargs or {}
         self._result = None
-        self._exception = None
         self.sig_finished = Signal()
 
     @property
@@ -63,11 +62,12 @@ class Job:
     def result(self):
         """
         Returns job result if the job is finished, otherwise None
-        :return: JobResult containing the output
+        :return: process output or None if not finished
+        :rtype: ProcessOutput
         """
         if not self.is_finished():
             return None
-        return self._result or self._exception
+        return self._result
 
     def is_finished(self):
         """

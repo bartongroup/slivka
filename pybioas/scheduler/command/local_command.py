@@ -2,6 +2,7 @@ import os
 import shlex
 import subprocess
 import uuid
+from collections import namedtuple
 
 import pybioas
 
@@ -31,6 +32,8 @@ class LocalCommand:
     def run_command(self):
         """
         Executes the command locally as a new subprocess.
+        :return: output of the running process
+        :rtype: ProcessOutput
         :raise AttributeError: fields was not filled in the subclass
         :raise FileNotFoundError: working dir from settings does not exist
         :raise OSError: error occurred when starting the process
@@ -49,17 +52,16 @@ class LocalCommand:
         stdout, stderr = self._process.communicate()
 
         return_code = self._process.returncode
-        # review: ProcessOutput namedtuple
-        return {
-            "return_code": return_code,
-            "stdout": stdout.decode(),
-            "stderr": stderr.decode(),
-            "files": [
+        return ProcessOutput(
+            return_code=return_code,
+            stdout=stdout.decode(),
+            stderr=stderr.decode(),
+            files=[
                 filename
                 for output in self.output_files
                 for filename in output.get_files_paths(cwd)
             ]
-        }
+        )
 
     def get_full_cmd(self):
         base = shlex.split(self.binary)
@@ -96,5 +98,17 @@ class LocalCommand:
             raise AttributeError("binary file path is not set")
         return self._binary
 
+    def kill(self):
+        pass
+
+    def suspend(self):
+        pass
+
+    def resume(self):
+        pass
+
     def __repr__(self):
         return "<{0}>".format(self.__class__.__name__)
+
+
+ProcessOutput = namedtuple('ProcessOutput', 'return_code stdout stderr files')

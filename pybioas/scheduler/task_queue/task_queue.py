@@ -268,12 +268,12 @@ class QueueServer(threading.Thread):
             data = recv_json(conn)
         except json.JSONDecodeError:
             conn.send(self.STATUS_ERROR)
-            return
+            raise
         assert 'jobId' in data
         job = self._get_job(data['jobId'])
         if job is None:
             conn.send(self.STATUS_ERROR)
-            return
+            raise KeyError(data['jobId'])
         conn.send(self.STATUS_OK)
         if send_json(conn, {'status': job.status}) == 0:
             raise ConnectionResetError("Connection reset by peer.")
@@ -283,14 +283,20 @@ class QueueServer(threading.Thread):
             data = recv_json(conn)
         except json.JSONDecodeError:
             conn.send(self.STATUS_ERROR)
-            return
+            raise
         assert 'jobId' in data
         job = self._get_job(data['jobId'])
         if job is None:
             conn.send(self.STATUS_ERROR)
-            return
+            raise KeyError(data['jobId'])
         conn.send(self.STATUS_OK)
-        if send_json(conn, job.result) == 0:
+        json_data = {
+            'return_code': job.result.return_code,
+            'stdout': job.result.stdout,
+            'stderr': job.result.stderr,
+            'files': job.result.files
+        }
+        if send_json(conn, json_data) == 0:
             raise ConnectionResetError("Connection reset by peer.")
 
     def shutdown(self):
