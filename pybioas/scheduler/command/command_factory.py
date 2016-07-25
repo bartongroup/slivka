@@ -15,7 +15,7 @@ from pybioas.scheduler.command.local_command import LocalCommand
 
 class CommandOption:
 
-    def __init__(self, name, param, default=None):
+    def __init__(self, name, param, type='text', default=None):
         """
         :param name: name of the option
         :param param: parameter template
@@ -23,6 +23,7 @@ class CommandOption:
         """
         self._name = name
         self._param_template = string.Template(param)
+        self._type = type
         self._default = default
 
     def get_cmd_option(self, value=None):
@@ -36,7 +37,7 @@ class CommandOption:
             value = self._default
         if value is None:
             return ""
-        elif value is False:
+        elif self._type == "boolean" and (not value or value == "0"):
             return self._param_template.substitute(value="")
         return self._param_template.substitute(value=shlex.quote(str(value)))
 
@@ -45,7 +46,7 @@ class CommandOption:
         return self._name
 
     def __repr__(self):
-        return "<Option {0}>".format(self._name)
+        return "<Option {0}>".format(self.name)
 
 
 class FileOutput:
@@ -120,11 +121,11 @@ class CommandFactory:
         :return: list of command option objects
         :rtype: list[CommandOption]
         """
-        # review: options should be a namedtuple name, parameter, value
         return [
             CommandOption(
                 name=option["name"],
                 param=option["parameter"],
+                type=option["value"].get("type"),
                 default=option["value"].get("default")
             )
             for option in options
