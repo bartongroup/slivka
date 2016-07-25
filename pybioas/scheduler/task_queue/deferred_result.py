@@ -2,7 +2,7 @@ import socket
 
 from . import utils
 from .exceptions import ServerError
-from .task_queue import TaskQueue
+from .task_queue import QueueServer
 
 
 class DeferredResult:
@@ -36,10 +36,10 @@ class DeferredResult:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
 
-        client_socket.send(TaskQueue.HEAD_JOB_STATUS)
+        client_socket.send(QueueServer.HEAD_JOB_STATUS)
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
-        if status != TaskQueue.STATUS_OK:
+        if status != QueueServer.STATUS_OK:
             raise ServerError("Internal server error")
         data = utils.recv_json(client_socket)
         client_socket.close()
@@ -55,10 +55,10 @@ class DeferredResult:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
 
-        client_socket.send(TaskQueue.HEAD_JOB_RESULT)
+        client_socket.send(QueueServer.HEAD_JOB_RESULT)
         utils.send_json(client_socket, {"jobId": self.job_id})
         status = client_socket.recv(8)
-        if status != TaskQueue.STATUS_OK:
+        if status != QueueServer.STATUS_OK:
             raise ServerError("Internal server error")
         data = utils.recv_json(client_socket)
         client_socket.close()

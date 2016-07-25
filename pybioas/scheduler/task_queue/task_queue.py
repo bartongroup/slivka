@@ -99,7 +99,7 @@ class TaskQueue:
         Callback slot activated when the job is finished.
         :param job_id: id of the job which sent the signal
         """
-        self._logger.debug('%s finished', self._jobs[job_id])
+        self._logger.info('%s finished', self._jobs[job_id])
 
 
 KILL_WORKER = 'KILL'
