@@ -5,6 +5,7 @@ import uuid
 from collections import namedtuple
 
 import pybioas
+from .utils import get_logger
 
 
 class LocalCommand:
@@ -17,6 +18,7 @@ class LocalCommand:
     _binary = None
     _options = None
     _output_files = None
+    _logger = None
 
     def __init__(self, values=None):
         """
@@ -25,6 +27,7 @@ class LocalCommand:
         """
         self._values = values or {}
         self._process = None
+        self._logger = get_logger()
 
     def run(self):
         return self.run_command()
@@ -42,8 +45,10 @@ class LocalCommand:
         cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
 
+        cmd_chunks = self.get_full_cmd()
+        self._logger.debug("Executing: %s", " ".join(cmd_chunks))
         self._process = subprocess.Popen(
-            self.get_full_cmd(),
+            cmd_chunks,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=self.env,
