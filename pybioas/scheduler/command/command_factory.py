@@ -57,6 +57,9 @@ class FileOutput:
     def get_files_paths(self, cwd):
         return [os.path.abspath(os.path.join(cwd, self._name))]
 
+    def __repr__(self):
+        return self._name
+
 
 class PatternFileOutput(FileOutput):
 
@@ -71,6 +74,9 @@ class PatternFileOutput(FileOutput):
             for name in files
             if self._regex.match(name)
         ]
+
+    def __repr__(self):
+        return self._regex.pattern
 
 
 class CommandFactory:
@@ -149,7 +155,9 @@ class CommandFactory:
                     filename = uuid.uuid4().hex + ".pybioas"
                     res.append(FileOutput(filename))
                     options.append(
-                        CommandOption("", out["parameter"], filename)
+                        CommandOption(
+                            "", param=out["parameter"], default=filename
+                        )
                     )
                 elif "pattern" in out:
                     res.append(PatternFileOutput(out["pattern"]))
