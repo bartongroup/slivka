@@ -23,7 +23,6 @@ def recv_json(conn):
     while remaining > 0:
         recv_length = min(remaining, 16384)
         content = conn.recv(recv_length)
-        logger.debug("Recv raw content:\n%r", content)
         if not content:
             break
         remaining -= buffer.write(content)
