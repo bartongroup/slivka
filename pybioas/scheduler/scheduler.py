@@ -67,14 +67,14 @@ class Scheduler:
         while not self._shutdown_event.is_set():
             if connection_ok:
                 session = Session()
-                self.logger.debug("Polling database")
                 pending_requests = (
                     session.query(Request).
                     options(joinedload('options')).
                     filter(Request.status == Request.STATUS_PENDING).
                     all()
                 )
-                self.logger.debug("Found %d requests", len(pending_requests))
+                if len(pending_requests):
+                    self.logger.debug("Found %d requests", len(pending_requests))
                 try:
                     for request in pending_requests:
                         self.enqueue_task(request)
@@ -123,6 +123,10 @@ class Scheduler:
                             filter(Request.id == task.request_id). \
                             update({"status": Request.STATUS_COMPLETED})
                         result = task.deferred_result.result
+                        self._logger.debug(
+                            "Result of %s: %s",
+                            task.request_id, result,
+                        )
                         res = Result(
                             return_code=result["return_code"],
                             stdout=result["stdout"],
@@ -137,6 +141,12 @@ class Scheduler:
                 except OSError:
                     self.logger.exception("Connection lost.")
                     connection_ok = False
+                except:
+                    self._logger.critical(
+                        "Critical error occurred, scheduler shuts down.",
+                        exc_info=True
+                    )
+                    self.shutdown()
                 finally:
                     session.commit()
                     session.close()
@@ -185,6 +195,7 @@ class Task:
         self.request_id = request.id
 
 
+# todo: pack function as a Scheduler method
 def start_scheduler():
     scheduler = Scheduler()
     collector_thread = threading.Thread(
@@ -198,7 +209,7 @@ def start_scheduler():
     )
     poll_thread.start()
     try:
-        while True:
+        while not scheduler._shutdown_event.is_set():
             time.sleep(3600)
     except KeyboardInterrupt:
         scheduler.logger.info("Shutting down...")

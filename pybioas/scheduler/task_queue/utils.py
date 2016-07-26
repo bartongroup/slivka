@@ -1,4 +1,5 @@
 import inspect
+import io
 import json
 import logging
 import os
@@ -17,8 +18,17 @@ def recv_json(conn):
     :raise socket.timeout: connection timed out
     """
     content_length = int.from_bytes(conn.recv(8), 'big')
-    content = conn.recv(content_length).decode()
-    return json.loads(content)
+    buffer = io.BytesIO()
+    remaining = content_length
+    while remaining > 0:
+        recv_length = min(remaining, 16384)
+        content = conn.recv(recv_length)
+        logger.debug("Recv raw content:\n%r", content)
+        if not content:
+            break
+        remaining -= buffer.write(content)
+    buffer.seek(0)
+    return json.loads(buffer.read().decode())
 
 
 def send_json(conn, data):

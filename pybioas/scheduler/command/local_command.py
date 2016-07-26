@@ -55,17 +55,17 @@ class LocalCommand:
             cwd=cwd
         )
         stdout, stderr = self._process.communicate()
-
         return_code = self._process.returncode
+        files = [
+            filename
+            for output in self.output_files
+            for filename in output.get_files_paths(cwd)
+        ]
         return ProcessOutput(
             return_code=return_code,
             stdout=stdout.decode(),
             stderr=stderr.decode(),
-            files=[
-                filename
-                for output in self.output_files
-                for filename in output.get_files_paths(cwd)
-            ]
+            files=files
         )
 
     def get_full_cmd(self):

@@ -35,14 +35,15 @@ class DeferredResult:
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-
-        client_socket.send(QueueServer.HEAD_JOB_STATUS)
-        utils.send_json(client_socket, {"jobId": self.job_id})
-        status = client_socket.recv(8)
-        if status != QueueServer.STATUS_OK:
-            raise ServerError("Internal server error")
-        data = utils.recv_json(client_socket)
-        client_socket.close()
+        try:
+            client_socket.send(QueueServer.HEAD_JOB_STATUS)
+            utils.send_json(client_socket, {"jobId": self.job_id})
+            status = client_socket.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError("Internal server error")
+            data = utils.recv_json(client_socket)
+        finally:
+            client_socket.close()
         return data['status']
 
     @property
@@ -54,14 +55,15 @@ class DeferredResult:
         """
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(self.server_address)
-
-        client_socket.send(QueueServer.HEAD_JOB_RESULT)
-        utils.send_json(client_socket, {"jobId": self.job_id})
-        status = client_socket.recv(8)
-        if status != QueueServer.STATUS_OK:
-            raise ServerError("Internal server error")
-        data = utils.recv_json(client_socket)
-        client_socket.close()
+        try:
+            client_socket.send(QueueServer.HEAD_JOB_RESULT)
+            utils.send_json(client_socket, {"jobId": self.job_id})
+            status = client_socket.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError("Internal server error")
+            data = utils.recv_json(client_socket)
+        finally:
+            client_socket.close()
         # review: wrap data in an object like ProcessOutput
         return data
 

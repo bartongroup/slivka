@@ -178,8 +178,13 @@ class QueueServer(threading.Thread):
                 continue
             else:
                 if not self.running:
-                    client_socket.shutdown(socket.SHUT_RDWR)
-                    client_socket.close()
+                    try:
+                        client_socket.shutdown(socket.SHUT_RDWR)
+                        client_socket.close()
+                    except OSError:
+                        self._logger.exception(
+                            "Error occurred while closing connection"
+                        )
                     break
             self._logger.info("Received connection from %s", address)
             client_thread = threading.Thread(
