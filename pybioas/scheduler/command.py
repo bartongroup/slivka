@@ -1,20 +1,23 @@
 import configparser
+import logging
+import os
 import os.path
 import re
 import shlex
 import string
+import subprocess
 import uuid
+from collections import namedtuple
 
 import jsonschema
 import yaml
 
-import pybioas
 import pybioas.utils
-from pybioas.scheduler.command.local_command import LocalCommand
 
 
 class CommandOption:
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, name, param, type='text', default=None):
         """
         :param name: name of the option
@@ -184,3 +187,135 @@ class CommandFactory:
         :rtype: dict[str, type[LocalCommand]]
         """
         return self._configurations
+
+
+class LocalCommand:
+    """
+    Class used for local command execution. It's subclasses are constructed by
+    the CommandFactory
+    """
+
+    _env = None
+    _binary = None
+    _options = None
+    _output_files = None
+    _logger = None
+
+    def __init__(self, values=None):
+        """
+        :param values: values passed to the command runner
+        :type values: dictionary of option name value pairs
+        """
+        self._values = values or {}
+        self._process = None
+        self._logger = logging.getLogger(__name__)
+
+    def run(self):
+        return self.run_command()
+
+    def run_command(self):
+        """
+        Executes the command locally as a new subprocess.
+        :return: output of the running process
+        :rtype: ProcessOutput
+        :raise AttributeError: fields was not filled in the subclass
+        :raise FileNotFoundError: working dir from settings does not exist
+        :raise OSError: error occurred when starting the process
+        """
+        # review: working dir passed as a function argument or auto-generated
+        cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
+        os.mkdir(cwd)
+
+        cmd_chunks = self.get_full_cmd()
+        self._logger.debug("Executing: %s", cmd_chunks)
+        self._process = subprocess.Popen(
+            cmd_chunks,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+            cwd=cwd
+        )
+        stdout, stderr = self._process.communicate()
+        return_code = self._process.returncode
+        files = [
+            filename
+            for output in self.output_files
+            for filename in output.get_files_paths(cwd)
+        ]
+        return ProcessOutput(
+            return_code=return_code,
+            stdout=stdout.decode(),
+            stderr=stderr.decode(),
+            files=files
+        )
+
+    def get_full_cmd(self):
+        base = shlex.split(self.binary)
+        options = [
+            token
+            for opt in filter(
+                None,
+                (
+                    option.get_cmd_option(self._values.get(option.name))
+                    for option in self.options
+                )
+            )
+            for token in shlex.split(opt)
+        ]
+        return base + options
+
+    @property
+    def options(self):
+        if self._options is None:
+            raise AttributeError("options are not set")
+        return self._options
+
+    @property
+    def output_files(self):
+        return self._output_files or []
+
+    @property
+    def env(self):
+        return dict(os.environ, **(self._env or {}))
+
+    @property
+    def binary(self):
+        if self._binary is None:
+            raise AttributeError("binary file path is not set")
+        return self._binary
+
+    # todo: implement these guys
+    def kill(self):
+        pass
+
+    def suspend(self):
+        pass
+
+    def resume(self):
+        pass
+
+    def __repr__(self):
+        return "<{0}>".format(self.__class__.__name__)
+
+
+ProcessOutput = namedtuple('ProcessOutput', 'return_code stdout stderr files')
+
+
+def setup_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "Command %(levelname)s: %(message)s"
+    )
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    file_handler = logging.FileHandler(
+        os.path.join(pybioas.settings.BASE_DIR, "Command.log"))
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)

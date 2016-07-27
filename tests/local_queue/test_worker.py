@@ -4,8 +4,10 @@ import time
 import unittest
 from unittest import mock as mock
 
+from pybioas.scheduler.task_queue.task_queue import Worker
+
 import pybioas.config
-from pybioas.scheduler.task_queue.task_queue import Worker, KILL_WORKER
+from pybioas.scheduler.task_queue import KILL_WORKER, Worker
 
 
 class TestWorker(unittest.TestCase):

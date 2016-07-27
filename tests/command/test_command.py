@@ -2,13 +2,14 @@ import subprocess
 import tempfile
 import unittest
 
+from pybioas.scheduler.command import CommandOption, LocalCommand
+from pybioas.scheduler.command import ProcessOutput
+
 try:
     import unittest.mock as mock
 except ImportError:
     import mock
 
-from pybioas.scheduler.command.command_factory import CommandOption
-from pybioas.scheduler.command.local_command import LocalCommand
 
 mock.patch.object = mock.patch.object
 
@@ -173,7 +174,7 @@ class TestGetFullCommandOptions(unittest.TestCase):
 
 
 # noinspection PyUnusedLocal
-@mock.patch('pybioas.scheduler.command.local_command.subprocess', autospec=True)
+@mock.patch('pybioas.scheduler.command.subprocess', autospec=True)
 class TestCommandExecution(unittest.TestCase):
 
     def setUp(self):
@@ -200,7 +201,7 @@ class TestCommandExecution(unittest.TestCase):
         command = LocalCommand()
         with mock.patch.object(command, 'get_full_cmd') as mock_get_cmd:
             mock_get_cmd.return_value = mock.sentinel.cmd
-            ret_value = command.run_command()
+            ret = command.run_command()  # type: ProcessOutput
 
         mock_subprocess.Popen.assert_called_once_with(
             mock.sentinel.cmd,
@@ -209,15 +210,10 @@ class TestCommandExecution(unittest.TestCase):
             env=mock.ANY,
             cwd=mock.ANY
         )
-        self.assertDictEqual(
-            {
-                "return_code": mock.sentinel.returncode,
-                "stdout": 'foofoo',
-                'stderr': 'barbazquz',
-                'files': []
-            },
-            ret_value
-        )
+        self.assertEqual(ret.return_code, mock.sentinel.returncode)
+        self.assertEqual(ret.stdout, 'foofoo')
+        self.assertEqual(ret.stderr, 'barbazquz')
+        self.assertEqual(ret.files, [])
 
     def test_missing_bin(self, mock_subprocess):
         """

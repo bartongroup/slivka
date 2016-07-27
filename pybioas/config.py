@@ -1,7 +1,5 @@
 import os
 
-from .exceptions import ImproperlyConfigured
-
 
 class Settings:
 
@@ -51,3 +49,7 @@ class Settings:
             raise ImproperlyConfigured(
                 "SERVICES must be a list or tuple of service names"
             )
+
+
+class ImproperlyConfigured(Exception):
+    pass

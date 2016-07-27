@@ -1,25 +1,22 @@
+import inspect
 import itertools
 import json
+import logging
+import os
 import queue
 import socket
 import threading
 import time
+import uuid
+import weakref
 
 import pybioas
-from pybioas.scheduler.command.command_factory import CommandFactory
-from pybioas.scheduler.task_queue.exceptions import ConnectionResetError
-from pybioas.scheduler.task_queue.job import Job
-from pybioas.scheduler.task_queue.utils import recv_json, send_json, get_logger
+from pybioas.scheduler import recv_json, send_json
+from pybioas.scheduler.command import CommandFactory
 
 
 class TaskQueue:
     # Headers and status codes. Each is eight bytes long.
-    HEAD_NEW_TASK = b'NEW TASK'
-    HEAD_JOB_STATUS = b'JOB STAT'
-    HEAD_JOB_RESULT = b'JOB RES '
-    HEAD_PING = b'PING    '
-    STATUS_OK = b'OK      '
-    STATUS_ERROR = b'ERROR   '
 
     def __init__(self, host=None, port=None, num_workers=4):
         """
@@ -29,7 +26,7 @@ class TaskQueue:
         """
         if host is None: host = pybioas.settings.QUEUE_HOST
         if port is None: port = pybioas.settings.QUEUE_PORT
-        self._logger = get_logger()
+        self._logger = logging.getLogger(__name__)
         self._queue = queue.Queue()
         self._jobs = dict()
         self._workers = [Worker(self._queue) for _ in range(num_workers)]
@@ -115,7 +112,7 @@ class Worker(threading.Thread):
         :type jobs_queue: queue.Queue[Job]
         """
         super(Worker, self).__init__(name="Worker-%d" % next(self._counter))
-        self._logger = get_logger()
+        self._logger = logging.getLogger(__name__)
         self._queue = jobs_queue
         self._job = None
 
@@ -140,16 +137,16 @@ class Worker(threading.Thread):
 
 class QueueServer(threading.Thread):
 
-    HEAD_NEW_TASK = TaskQueue.HEAD_NEW_TASK
-    HEAD_JOB_STATUS = TaskQueue.HEAD_JOB_STATUS
-    HEAD_JOB_RESULT = TaskQueue.HEAD_JOB_RESULT
-    HEAD_PING = TaskQueue.HEAD_PING
-    STATUS_OK = TaskQueue.STATUS_OK
-    STATUS_ERROR = TaskQueue.STATUS_ERROR
+    HEAD_NEW_TASK = b'NEW TASK'
+    HEAD_JOB_STATUS = b'JOB STAT'
+    HEAD_JOB_RESULT = b'JOB RES '
+    HEAD_PING = b'PING    '
+    STATUS_OK = b'OK      '
+    STATUS_ERROR = b'ERROR   '
 
     def __init__(self, host, port, get_job, add_job):
         super(QueueServer, self).__init__(name='QueueServer')
-        self._logger = get_logger()
+        self._logger = logging.getLogger(__name__)
         self._running = True
         self._host = host
         self._port = port
@@ -314,11 +311,261 @@ class QueueServer(threading.Thread):
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((host, port))
-            conn.send(TaskQueue.HEAD_PING)
+            conn.send(QueueServer.HEAD_PING)
             response = conn.recv(8)
         except OSError:
             return False
-        if response != TaskQueue.STATUS_OK:
+        if response != QueueServer.STATUS_OK:
             return False
         else:
             return True
+
+
+class Job:
+
+    def __init__(self, runnable, args=None, kwargs=None):
+        """
+        Initialize a new job which executes start method of the runnable
+        as a separate thread.
+        :param runnable: runnable started by the worker
+        :param args: arguments passed to the runnable's start method
+        :param kwargs: keyword arguments passed to the runnable's start method
+        """
+        self._runnable = runnable
+        self._id = uuid.uuid4().hex
+        self.status = JobStatus.QUEUED
+        self._args = args or ()
+        self._kwargs = kwargs or {}
+        self._result = None
+        self.sig_finished = Signal()
+
+    @property
+    def id(self):
+        return self._id
+
+    def run(self):
+        """
+        Executes the target function and waits for completion.
+        """
+        self.status = JobStatus.RUNNING
+        try:
+            self._result = self._runnable.run(*self._args, **self._kwargs)
+        except:
+            self.status = JobStatus.FAILED
+            raise
+        else:
+            self.status = JobStatus.COMPLETED
+        finally:
+            self.sig_finished(self.id)
+
+    def kill(self):
+        """
+        Orders the running task to kill its process
+        """
+        self._runnable.kill()
+
+    def suspend(self):
+        """
+        Tells the running task to suspend execution
+        """
+        self._runnable.suspend()
+
+    def resume(self):
+        """
+        Tells the running task to resume suspended execution
+        """
+        self._runnable.resume()
+
+    @property
+    def result(self):
+        """
+        Returns job result if the job is finished, otherwise None
+        :return: process output or None if not finished
+        :rtype: ProcessOutput
+        """
+        if not self.is_finished():
+            return None
+        return self._result
+
+    def is_finished(self):
+        """
+        Checks if the job is finished
+        """
+        return (self.status == JobStatus.COMPLETED or
+                self.status == JobStatus.FAILED)
+
+    def is_pending(self):
+        """
+        Checks if the job is pending execution
+        """
+        return self.status == JobStatus.QUEUED
+
+    def is_running(self):
+        """
+        Checks if the job is already running
+        """
+        return self.status == JobStatus.RUNNING
+
+    def __repr__(self):
+        return "<Job> {id} - {status}".format(id=self.id, status=self.status)
+
+
+class JobStatus:
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    COLLECTED = "COLLECTED"
+    FAILED = "FAILED"
+
+
+class Signal(object):
+
+    def __init__(self):
+        self._functions = set()
+        self._methods = set()
+
+    def __call__(self, *args, **kwargs):
+        for func in self._functions:
+            func(*args, **kwargs)
+        for weak_method in self._methods:
+            method = weak_method()
+            method and method(*args, **kwargs)
+
+    def call(self, *args, **kwargs):
+        return self.__call__(*args, **kwargs)
+
+    def register(self, slot):
+        if inspect.ismethod(slot):
+            self._methods.add(weakref.WeakMethod(slot))
+        else:
+            self._functions.add(slot)
+
+
+# noinspection PyShadowingBuiltins
+class ConnectionError(OSError):
+    """ Connection error. """
+
+
+# noinspection PyShadowingBuiltins
+class ConnectionResetError(ConnectionError):
+    """ Connection reset. """
+
+
+class ServerError(Exception):
+    """ Internal server error """
+
+
+def queue_run(service, values):
+    """
+    Sends the task to the worker which enqueues it as a new job.
+    :param service: name of service configuration
+    :param values: options passed to the configuration
+    :return: DeferredResult associated with the job
+    :raise ServerError: server can't process the request
+    :raise OSError: connection with server failed
+    """
+    address = (pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT)
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(address)
+    client_socket.send(QueueServer.HEAD_NEW_TASK)
+
+    send_json(client_socket, {
+        "service": service,
+        "options": values
+    })
+    status = client_socket.recv(8)
+    if status != QueueServer.STATUS_OK:
+        raise ServerError("something bad happened")
+    data = recv_json(client_socket)
+    job_id = data["jobId"]
+    client_socket.shutdown(socket.SHUT_RDWR)
+    client_socket.close()
+    return DeferredResult(job_id, address)
+
+
+class DeferredResult:
+    """
+    Deferred result instances are intermediate objects which communicates
+    between client and the task queue. When the job is queued, it returns
+    Deferred result instead of job result which is not available yet.
+    It allows asynchronous execution of the task and retrieving the result
+    when the job is complete.
+
+    DeferredResult should not be instantiated directly, but through calling
+    `scheduler.task_queue.queue_run`.
+    """
+
+    def __init__(self, job_id, server_address):
+        """
+        :param job_id: identification of the task.
+        :param server_address: tuple of address and port of the worker server
+        """
+        self.job_id = job_id
+        self.server_address = server_address
+
+    @property
+    def status(self):
+        """
+        Asks the server for the status of the job linked to this deferred
+        result instance.
+        :return: current job status
+        :rtype: enum job.JobStatus value
+        """
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(self.server_address)
+        try:
+            client_socket.send(QueueServer.HEAD_JOB_STATUS)
+            send_json(client_socket, {"jobId": self.job_id})
+            status = client_socket.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError("Internal server error")
+            data = recv_json(client_socket)
+        finally:
+            client_socket.close()
+        return data['status']
+
+    @property
+    def result(self):
+        """
+        Asks the server for the result of the job associated with this
+        deferred result.
+        :return: job result or exception traceback if failed
+        """
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(self.server_address)
+        try:
+            client_socket.send(QueueServer.HEAD_JOB_RESULT)
+            send_json(client_socket, {"jobId": self.job_id})
+            status = client_socket.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError("Internal server error")
+            data = recv_json(client_socket)
+        finally:
+            client_socket.close()
+        # review: wrap data in an object like ProcessOutput
+        return data
+
+    def __repr__(self):
+        return ("<DeferredResult {job_id} server={addr[0]}:{addr[1]}>"
+                .format(job_id=self.job_id, addr=self.server_address))
+
+
+def setup_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "%(asctime)s TaskQueue %(levelname)s: %(message)s",
+        "%d %b %H:%M:%S"
+    )
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    file_handler = logging.FileHandler(
+        os.path.join(pybioas.settings.BASE_DIR, "TaskQueue.log"))
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)

@@ -1,4 +1,4 @@
 import pybioas.config
 
-# initialize dummmy settings
+# initialize dummy settings
 settings = pybioas.config.Settings

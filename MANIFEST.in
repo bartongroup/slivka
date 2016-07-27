@@ -1,9 +1,9 @@
 include ez_setup.py
 include MANIFEST.in
 include README.rst
-include requirements.pip
+imclude REST_API.rst
+include requirements.txt
 
-graft pybioas/server/static
 graft pybioas/data
 
 global-exclude *.py[co]

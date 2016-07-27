@@ -8,7 +8,7 @@ import pkg_resources
 COMMAND_SCHEMA = json.loads(
     pkg_resources.resource_string(
         "pybioas",
-        "data/utils/CommandDescriptionSchema.json"
+        "data/config/CommandDescriptionSchema.json"
     ).decode()
 )
 

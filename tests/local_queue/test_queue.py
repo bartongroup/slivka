@@ -2,12 +2,12 @@ import json
 import socket
 import unittest
 
+from pybioas.scheduler.task_queue import QueueServer
+
 try:
     import unittest.mock as mock
 except ImportError:
     import mock
-
-from pybioas.scheduler.task_queue.task_queue import QueueServer
 
 mock.patch.object = mock.patch.object
 
@@ -25,12 +25,12 @@ class TestServerSocket(unittest.TestCase):
 
     def setUp(self):
         self.socket_patch = mock.patch(
-            'pybioas.scheduler.task_queue.task_queue.socket',
+            'pybioas.scheduler.task_queue.socket',
             autospec=True
         )
         self.mock_socket = self.socket_patch.start()
-        with mock.patch('pybioas.scheduler.task_queue.'
-                        'task_queue.CommandFactory', autospec=True):
+        with mock.patch('pybioas.scheduler.task_queue.CommandFactory',
+                        autospec=True):
             self.server = QueueServer('localhost', 0, mock.Mock(), mock.Mock())
 
         self.mock_client_socket = mock.Mock()
@@ -89,11 +89,12 @@ class TestServerSocket(unittest.TestCase):
         self.serve_patch.stop()
 
 
+# noinspection PyTypeChecker
 class TestServeClient(unittest.TestCase):
 
     def setUp(self):
-        with mock.patch('pybioas.scheduler.task_queue.'
-                        'task_queue.CommandFactory', autospec=True):
+        with mock.patch('pybioas.scheduler.task_queue.CommandFactory',
+                        autospec=True):
             self.server = QueueServer('localhost', 0, mock.Mock(), mock.Mock())
         mock.patch.object(self.server, '_logger').start()
 
@@ -140,16 +141,15 @@ class TestServeClient(unittest.TestCase):
 
 
 # noinspection PyUnusedLocal
-@mock.patch('pybioas.scheduler.task_queue.task_queue.Job', autospec=True)
-@mock.patch('pybioas.scheduler.task_queue.task_queue.send_json')
-@mock.patch('pybioas.scheduler.task_queue.task_queue.recv_json')
+@mock.patch('pybioas.scheduler.task_queue.Job', autospec=True)
+@mock.patch('pybioas.scheduler.task_queue.send_json')
+@mock.patch('pybioas.scheduler.task_queue.recv_json')
 class TestNewTaskRequest(unittest.TestCase):
 
     def setUp(self):
-        mock.patch('pybioas.scheduler.task_queue.task_queue.get_logger').start()
         self.add_job = mock.Mock()
         self.command_factory_patch = \
-            mock.patch('pybioas.scheduler.task_queue.task_queue.CommandFactory',
+            mock.patch('pybioas.scheduler.task_queue.CommandFactory',
                        autospec=True)
         self.mock_command_factory = self.command_factory_patch.start()
         self.server = QueueServer('localhost', 0, mock.Mock(), self.add_job)

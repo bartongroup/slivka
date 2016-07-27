@@ -8,37 +8,8 @@ from sqlalchemy.orm import joinedload
 import pybioas
 from pybioas.db import check_db, Session
 from pybioas.db.models import Request, Result, File
-from .command.command_factory import CommandFactory
-from .task_queue import queue_run, QueueServer
-from .task_queue.exceptions import ServerError
-from .task_queue.job import JobStatus
-
-_logger = None
-
-def get_logger():
-    """
-    :rtype: logging.Logger
-    """
-    global _logger
-    if _logger is None:
-        _logger = logging.getLogger(__name__)
-        _logger.setLevel(logging.DEBUG)
-
-        formatter = logging.Formatter(
-            "%(asctime)s Scheduler:%(threadName)s %(levelname)s: %(message)s",
-            "%d %b %H:%M:%S"
-        )
-
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-        stream_handler.setFormatter(formatter)
-        _logger.addHandler(stream_handler)
-
-        file_handler = logging.FileHandler('Scheduler.log')
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(formatter)
-        _logger.addHandler(file_handler)
-    return _logger
+from .command import CommandFactory
+from .task_queue import JobStatus, ServerError, QueueServer, queue_run
 
 
 class Scheduler:
@@ -74,7 +45,9 @@ class Scheduler:
                     all()
                 )
                 if len(pending_requests):
-                    self.logger.debug("Found %d requests", len(pending_requests))
+                    self.logger.debug(
+                        "Found %d requests", len(pending_requests)
+                    )
                 try:
                     for request in pending_requests:
                         self.enqueue_task(request)
@@ -117,6 +90,7 @@ class Scheduler:
         while not self._shutdown_event.is_set():
             if connection_ok:
                 session = Session()
+                # noinspection PyBroadException
                 try:
                     for task in self._collect_finished():
                         session.query(Request). \
@@ -183,7 +157,7 @@ class Scheduler:
     @property
     def logger(self):
         if self._logger is None:
-            self._logger = get_logger()
+            self._logger = setup_logger()
         return self._logger
 
 
@@ -216,3 +190,27 @@ def start_scheduler():
         scheduler.shutdown()
     collector_thread.join()
     poll_thread.join()
+
+
+def setup_logger():
+    """
+    :rtype: logging.Logger
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "%(asctime)s Scheduler:%(threadName)s %(levelname)s: %(message)s",
+        "%d %b %H:%M:%S"
+    )
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    file_handler = logging.FileHandler('Scheduler.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
