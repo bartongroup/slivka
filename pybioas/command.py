@@ -86,7 +86,11 @@ def server():
     from pybioas.server.serverapp import app
 
     init_forms(pybioas.settings.SERVICE_INI)
-    app.run(host='localhost', port=8080, debug=True)
+    app.run(
+        host=pybioas.settings.SERVER_HOST,
+        port=pybioas.settings.SERVER_PORT,
+        debug=pybioas.settings.DEBUG
+    )
 
 
 @click.command()

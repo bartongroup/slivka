@@ -21,4 +21,11 @@ SERVICES = [{% if example %}"PyDummy"{% endif %}]
 
 # configuration of the local task queue server
 QUEUE_HOST = 'localhost'
-QUEUE_PORT = 9090
+QUEUE_PORT = 3397
+
+# configuration of the api server
+SERVER_HOST = 'localhost'
+SERVER_PORT = 8000
+
+# enable/disable debug mode
+DEBUG = True
