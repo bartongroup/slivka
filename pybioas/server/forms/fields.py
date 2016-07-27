@@ -380,11 +380,12 @@ class TextField(BaseField):
 class BooleanField(BaseField):
     false_literals = {'no', 'false', '0'}
 
-    def __init__(self, name, default=None, required=True):
+    def __init__(self, name, default=None, required=True, value=''):
         """
         :param name: parameter id
         :param default: default value of the field
         """
+        self._repr_value = value
         super().__init__(name, default, required)
 
     def validate(self, value):
@@ -400,9 +401,9 @@ class BooleanField(BaseField):
             cleaned_value = None
         elif (type(value) == str and
                 value.lower() in self.false_literals):
-            cleaned_value = False
+            cleaned_value = ""
         else:
-            cleaned_value = bool(value)
+            cleaned_value = self._repr_value if bool(value) else ""
         return cleaned_value
 
 

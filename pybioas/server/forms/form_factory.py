@@ -171,7 +171,8 @@ class FormFactory:
         return BooleanField(
             field["name"],
             default=value.get("default"),
-            required=value.get("required", True)
+            required=value.get("required", True),
+            value=value.get("value")
         )
 
     @staticmethod

@@ -263,7 +263,7 @@ class TestTextField(unittest.TestCase):
 
 class TestBooleanField(unittest.TestCase):
     def setUp(self):
-        self.field = BooleanField('', required=True)
+        self.field = BooleanField('', required=False, value='-flag')
 
     def test_is_valid(self):
         self.field.value = True
@@ -275,17 +275,12 @@ class TestBooleanField(unittest.TestCase):
         self.field.value = False
         self.assertTrue(self.field.is_valid)
 
-    def test_required(self):
-        with self.assertRaises(ValidationError) as cm:
-            self.field.validate(None)
-        self.assertEqual(cm.exception.code, 'required')
-
     def test_cleaned_data_true(self):
         for value in [1, True, 'yes', 'true', 'TRUE', 'True', 'LOL', '1',
                       object(), type('', (), {})]:
             self.field.value = value
             self.assertEqual(
-                self.field.cleaned_value, True,
+                self.field.cleaned_value, '-flag',
                 "invalid value for %s" % value
             )
 
@@ -293,9 +288,13 @@ class TestBooleanField(unittest.TestCase):
         for value in [0, False, 'no', 'false', 'FALSE', 'False', '0', ()]:
             self.field.value = value
             self.assertEqual(
-                self.field.cleaned_value, False,
+                self.field.cleaned_value, '',
                 "invalid value for %r" % (value,)
             )
+
+    def test_cleaned_data_none(self):
+        self.field.value = None
+        self.assertIsNone(self.field.cleaned_value)
 
 
 class TestSelectField(unittest.TestCase):

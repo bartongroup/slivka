@@ -61,7 +61,8 @@ class TestOptionElementParser(unittest.TestCase):
         epsilon_field = [f for f in self.fields if f['name'] == 'epsilon'][0]
         field = FormFactory._get_boolean_field(epsilon_field)
         self.assertIsInstance(field, BooleanField)
-        self.assertEqual(field.default, True)
+        self.assertTrue(field.default)
+        self.assertEqual(field._repr_value, "-e")
 
     def test_choice_field(self):
         zeta_field = [f for f in self.fields if f['name'] == 'zeta'][0]
