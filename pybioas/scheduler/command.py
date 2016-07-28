@@ -95,6 +95,7 @@ class CommandFactory:
         :raise jsonschema.exceptions.ValidationError
         """
         parser = configparser.ConfigParser()
+        parser.optionxform = lambda option: option
         with open(config_file) as file:
             parser.read_file(file)
         self._configurations = dict()
@@ -143,7 +144,7 @@ class CommandFactory:
     @staticmethod
     def _parse_outputs(outputs):
         """
-        :param outputs:
+        :param outputs: list[dict]
         :return: tuple of outputs list and extra options list
         :rtype (list[FileOutput], list[CommandOption])
         :raise KeyError: file output element is missing attribute
@@ -159,7 +160,9 @@ class CommandFactory:
                     res.append(FileOutput(filename))
                     options.append(
                         CommandOption(
-                            "", param=out["parameter"], default=filename
+                            out['parameter'],
+                            param=out["parameter"],
+                            default=filename
                         )
                     )
                 elif "pattern" in out:
@@ -175,7 +178,7 @@ class CommandFactory:
         Configuration name is a corresponding section in the config file.
         :param configuration: name of the configuration
         :return: command class subclassing LocalCommand
-        :rtype: type[LocalCommand]
+        :rtype: LocalCommand
         :raise KeyError: specified configuration does not exist
         """
         return self._configurations[configuration]
@@ -184,7 +187,7 @@ class CommandFactory:
     def configurations(self):
         """
         :return: configurations and commands dictionary
-        :rtype: dict[str, type[LocalCommand]]
+        :rtype: dict[str, LocalCommand]
         """
         return self._configurations
 

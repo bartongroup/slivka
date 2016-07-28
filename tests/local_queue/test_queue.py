@@ -43,6 +43,10 @@ class TestServerSocket(unittest.TestCase):
         self.serve_patch = mock.patch.object(self.server, '_serve_client')
         self.mock_serve_client = self.serve_patch.start()
 
+    def tearDown(self):
+        self.socket_patch.stop()
+        self.serve_patch.stop()
+
     def test_socket_closed(self):
         """
         Tests if the server socket is correctly closed in normal conditions.
@@ -83,10 +87,6 @@ class TestServerSocket(unittest.TestCase):
         with mock.patch.object(QueueServer, 'running', property(running)):
             self.server.run()
         self.mock_serve_client.assert_not_called()
-
-    def tearDown(self):
-        self.socket_patch.stop()
-        self.serve_patch.stop()
 
 
 # noinspection PyTypeChecker

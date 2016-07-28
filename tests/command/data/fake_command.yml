@@ -1,0 +1,26 @@
+options:
+  -
+    name: alpha
+    label: Alpha field
+    description: This is the first letter
+    parameter: -a ${value}
+    value:
+      type: text
+      default: foo
+  -
+    name: beta
+    label: Beta field
+    description: This is the second letter
+    parameter: --beta=${value}
+    value:
+      type: text
+
+outputs:
+  -
+    type: result
+    method: file
+    pattern: ".+\\.txt"
+  -
+    type: result
+    method: file
+    parameter: "--out ${value}"

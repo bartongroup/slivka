@@ -10,8 +10,8 @@ try:
 except ImportError:
     import mock
 
-
 mock.patch.object = mock.patch.object
+
 
 class TestGetFullCommandBinary(unittest.TestCase):
     """
@@ -135,7 +135,7 @@ class TestGetFullCommandOptions(unittest.TestCase):
 
     def test_multiple_arguments(self):
         """
-        Tests if mutliple arguments are properly passed to the list.
+        Tests if mutltiple arguments are properly passed to the list.
         """
         cmd_cls = get_command_cls(
             'echo',
