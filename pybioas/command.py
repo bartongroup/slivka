@@ -1,3 +1,5 @@
+import io
+import logging.config
 import os
 
 import click
@@ -61,12 +63,14 @@ def setup(name, examples):
 
 @click.group()
 def admin():
-    import pybioas.scheduler.task_queue
-    import pybioas.scheduler.command
-    import pybioas.scheduler.scheduler
-    pybioas.scheduler.task_queue.setup_logger()
-    pybioas.scheduler.command.setup_logger()
-    pybioas.scheduler.scheduler.setup_logger()
+    logger_config = pkg_resources.resource_stream(
+        "pybioas",
+        "data/config/defaultLogger.ini"
+    )
+    logging.config.fileConfig(
+        io.TextIOWrapper(logger_config),
+        defaults={'logdir': pybioas.settings.BASE_DIR}
+    )
 
 
 @click.command()

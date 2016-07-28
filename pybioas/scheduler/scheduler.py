@@ -15,7 +15,7 @@ from .task_queue import JobStatus, ServerError, QueueServer, queue_run
 class Scheduler:
 
     def __init__(self):
-        self._logger = None
+        self._logger = logging.getLogger(__name__)
         if not check_db():
             raise Exception("Database is not initialized.")
         self._shutdown_event = threading.Event()
@@ -156,8 +156,6 @@ class Scheduler:
 
     @property
     def logger(self):
-        if self._logger is None:
-            self._logger = setup_logger()
         return self._logger
 
 
@@ -190,27 +188,3 @@ def start_scheduler():
         scheduler.shutdown()
     collector_thread.join()
     poll_thread.join()
-
-
-def setup_logger():
-    """
-    :rtype: logging.Logger
-    """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        "%(asctime)s Scheduler:%(threadName)s %(levelname)s: %(message)s",
-        "%d %b %H:%M:%S"
-    )
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-
-    file_handler = logging.FileHandler('Scheduler.log')
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    return logger

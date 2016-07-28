@@ -2,7 +2,6 @@ import inspect
 import itertools
 import json
 import logging
-import os
 import queue
 import socket
 import threading
@@ -548,24 +547,3 @@ class DeferredResult:
     def __repr__(self):
         return ("<DeferredResult {job_id} server={addr[0]}:{addr[1]}>"
                 .format(job_id=self.job_id, addr=self.server_address))
-
-
-def setup_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        "%(asctime)s TaskQueue %(levelname)s: %(message)s",
-        "%d %b %H:%M:%S"
-    )
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-
-    file_handler = logging.FileHandler(
-        os.path.join(pybioas.settings.BASE_DIR, "TaskQueue.log"))
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)

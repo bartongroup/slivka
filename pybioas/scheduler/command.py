@@ -83,6 +83,9 @@ class PatternFileOutput(FileOutput):
 
 
 class CommandFactory:
+    """
+    :type _configurations: dict[str, LocalCommand]
+    """
 
     # review: may be better to pass ConfigParser object
     def __init__(self, config_file):
@@ -178,7 +181,7 @@ class CommandFactory:
         Configuration name is a corresponding section in the config file.
         :param configuration: name of the configuration
         :return: command class subclassing LocalCommand
-        :rtype: LocalCommand
+        :rtype: type[LocalCommand]
         :raise KeyError: specified configuration does not exist
         """
         return self._configurations[configuration]
@@ -187,7 +190,7 @@ class CommandFactory:
     def configurations(self):
         """
         :return: configurations and commands dictionary
-        :rtype: dict[str, LocalCommand]
+        :rtype: dict[str, type[LocalCommand]]
         """
         return self._configurations
 
@@ -196,13 +199,20 @@ class LocalCommand:
     """
     Class used for local command execution. It's subclasses are constructed by
     the CommandFactory
+
+    :type _env: dict[str, str]
+    :type _binary: str
+    :type _options: list[CommandOption]
+    :type _output_files: list[FileOutput]
+    :type _logger: logging.Logger
+    :type _process: subprocess.Popen
+    :type _values: dict[str, str]
     """
 
     _env = None
     _binary = None
     _options = None
     _output_files = None
-    _logger = None
 
     def __init__(self, values=None):
         """
@@ -302,23 +312,3 @@ class LocalCommand:
 
 
 ProcessOutput = namedtuple('ProcessOutput', 'return_code stdout stderr files')
-
-
-def setup_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        "Command %(levelname)s: %(message)s"
-    )
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-
-    file_handler = logging.FileHandler(
-        os.path.join(pybioas.settings.BASE_DIR, "Command.log"))
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
