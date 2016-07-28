@@ -61,7 +61,12 @@ def setup(name, examples):
 
 @click.group()
 def admin():
-    pass
+    import pybioas.scheduler.task_queue
+    import pybioas.scheduler.command
+    import pybioas.scheduler.scheduler
+    pybioas.scheduler.task_queue.setup_logger()
+    pybioas.scheduler.command.setup_logger()
+    pybioas.scheduler.scheduler.setup_logger()
 
 
 @click.command()
