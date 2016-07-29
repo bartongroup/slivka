@@ -96,7 +96,6 @@ class TestServeClient(unittest.TestCase):
         with mock.patch('pybioas.scheduler.task_queue.CommandFactory',
                         autospec=True):
             self.server = QueueServer('localhost', 0, mock.Mock(), mock.Mock())
-        mock.patch.object(self.server, '_logger').start()
 
     def test_timeout_socket_close(self):
         """

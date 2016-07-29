@@ -7,8 +7,9 @@ try:
 except ImportError:
     import mock
 
-from pybioas.scheduler.command import CommandOption, FileOutput, \
-    PatternFileOutput, CommandFactory
+from pybioas.scheduler.command import (
+    CommandOption, FileOutput, PatternFileOutput, CommandFactory
+)
 
 THIS_FOLDER = os.path.abspath(os.path.dirname(__file__))
 

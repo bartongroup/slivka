@@ -6,7 +6,6 @@ except ImportError:
     import mock
 from io import BytesIO
 
-from pybioas.scheduler.task_queue.utils import send_json
 from pybioas.scheduler import recv_json, send_json
 
 

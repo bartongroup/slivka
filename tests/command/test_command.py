@@ -2,8 +2,7 @@ import subprocess
 import tempfile
 import unittest
 
-from pybioas.scheduler.command import CommandOption, LocalCommand
-from pybioas.scheduler.command import ProcessOutput
+from pybioas.scheduler.command import CommandOption, LocalCommand, ProcessOutput
 
 try:
     import unittest.mock as mock
