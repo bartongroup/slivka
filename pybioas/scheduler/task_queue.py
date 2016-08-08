@@ -2,16 +2,20 @@ import inspect
 import itertools
 import json
 import logging
+import os
 import queue
+import signal
 import socket
+import subprocess
 import threading
 import time
-import uuid
 import weakref
+from collections import namedtuple
 
 import pybioas
-from pybioas.scheduler import recv_json, send_json
-from pybioas.scheduler.command import CommandFactory
+from . import recv_json, send_json
+
+logger = logging.getLogger(__name__)
 
 
 class TaskQueue:
@@ -23,13 +27,17 @@ class TaskQueue:
         :param port: server port
         :param num_workers: number of concurrent workers to spawn
         """
-        if host is None: host = pybioas.settings.QUEUE_HOST
-        if port is None: port = pybioas.settings.QUEUE_PORT
-        self._logger = logging.getLogger(__name__)
+        if host is None or port is None:
+            host, port = (
+                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+            )
         self._queue = queue.Queue()
         self._jobs = dict()
         self._workers = [Worker(self._queue) for _ in range(num_workers)]
-        self._server = QueueServer(host, port, self._jobs.get, self._queue_job)
+        self._server = QueueServer(
+            host, port, self._jobs.get, self._enqueue_command
+        )
+        self._job_id_counter = itertools.count(1)
 
     def start(self, async=False):
         """
@@ -38,9 +46,9 @@ class TaskQueue:
         to stop execution of the server and workers.
         Waits for all threads to join before exiting.
         """
-        self._logger.debug("Starting server.")
+        logger.info("Starting server.")
         self._server.start()
-        self._logger.debug("Starting workers.")
+        logger.info("Starting workers.")
         for worker in self._workers:
             worker.start()
         if async:
@@ -49,7 +57,7 @@ class TaskQueue:
             while True:
                 time.sleep(3600)
         except KeyboardInterrupt:
-            self._logger.info("Shutting down...")
+            logger.info("Shutting down...")
             self.shutdown()
 
     def shutdown(self):
@@ -59,13 +67,13 @@ class TaskQueue:
         Then, pokes the server to stop listening and return.
         :return:
         """
-        self._logger.debug("Shutdown signal.")
+        logger.debug("Shutdown signal.")
 
-        self._logger.debug("Shutting down the server.")
+        logger.debug("Shutting down the server.")
         self._server.shutdown()
 
         num_workers = sum(worker.is_alive() for worker in self._workers)
-        self._logger.debug("Sending %d KILLS to workers.", num_workers)
+        logger.debug("Sending %d KILLS to workers.", num_workers)
         with self._queue.mutex:
             self._queue.unfinished_tasks -= len(self._queue.queue)
             self._queue.queue.clear()
@@ -74,28 +82,24 @@ class TaskQueue:
             self._queue.not_empty.notify_all()
 
         self._server.join()
-        self._logger.debug("Server thread joined.")
+        logger.debug("Server thread joined.")
         for worker in self._workers:
             worker.join()
-        self._logger.debug("Workers joined.")
+        logger.debug("Workers joined.")
 
-    def _queue_job(self, job):
+    def _enqueue_command(self, command):
         """
         Adds a new job to the queue and registers "finished" signal.
-        :param job: new job
-        :type job: Job
+        :param command: new command to execute
+        :type command: LocalCommand
+        :return: id of the job
+        :rtype: int
         """
-        job.sig_finished.register(self._on_job_finished)
-        self._logger.debug("Adding job %s to queue.", job)
-        self._jobs[job.id] = job
-        self._queue.put(job)
-
-    def _on_job_finished(self, job_id):
-        """
-        Callback slot activated when the job is finished.
-        :param job_id: id of the job which sent the signal
-        """
-        self._logger.info('%s finished', self._jobs[job_id])
+        job_id = next(self._job_id_counter)
+        logger.debug("Adding job %s to queue.", command)
+        self._jobs[job_id] = command
+        self._queue.put(command)
+        return job_id
 
 
 KILL_WORKER = 'KILL'
@@ -111,15 +115,14 @@ class Worker(threading.Thread):
         :type jobs_queue: queue.Queue[Job]
         """
         super(Worker, self).__init__(name="Worker-%d" % next(self._counter))
-        self._logger = logging.getLogger(__name__)
         self._queue = jobs_queue
         self._job = None
 
     def run(self):
-        self._logger.debug("%s started.", self.name)
+        logger.debug("%s started.", self.name)
         while True:
             self._job = self._queue.get()
-            self._logger.debug("%s picked up %s", self.name, self._job)
+            logger.info("%s picked up %s", self.name, self._job)
             # noinspection PyBroadException
             try:
                 if self._job == KILL_WORKER:
@@ -127,11 +130,12 @@ class Worker(threading.Thread):
                 else:
                     self._job.run()
             except:
-                self._logger.exception("Critical error.")
+                logger.exception("Critical error.")
             finally:
+                logger.info("%s completed %s", self.name, self._job)
                 self._queue.task_done()
                 self._job = None
-        self._logger.debug("%s died.", self.name)
+        logger.debug("%s died.", self.name)
 
 
 class QueueServer(threading.Thread):
@@ -144,23 +148,28 @@ class QueueServer(threading.Thread):
     STATUS_ERROR = b'ERROR   '
 
     def __init__(self, host, port, get_job, add_job):
+        """
+        :param host: queue server host
+        :param port: queue server port
+        :param get_job: job getter function
+        :type get_job: (dict, int) -> LocalCommand
+        :param add_job: job adder function
+        :type add_job: (TaskQueue, LocalCommand) -> int
+        """
         super(QueueServer, self).__init__(name='QueueServer')
-        self._logger = logging.getLogger(__name__)
         self._running = True
-        self._host = host
-        self._port = port
+        self._host, self._port = host, port
         self._get_job = get_job
         self._add_job = add_job
         self._server_socket = None
-        self.command_factory = CommandFactory(pybioas.settings.SERVICE_INI)
 
     def run(self):
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind((self._host, self._port))
         self._server_socket.settimeout(5)
         self._server_socket.listen(5)
-        self._logger.info("Ready to accept connections on %s:%d",
-                          self._host, self._port)
+        logger.info("Ready to accept connections on %s:%d",
+                    self._host, self._port)
         while self.running:
             # noinspection PyBroadException
             try:
@@ -168,8 +177,8 @@ class QueueServer(threading.Thread):
             except socket.timeout:
                 continue
             except:
-                self._logger.exception("Critical error occurred, server "
-                                       "stopped. Retry in 5 seconds.")
+                logger.exception("Critical error occurred, server "
+                                 "stopped. Retry in 5 seconds.")
                 time.sleep(5)
                 continue
             else:
@@ -178,18 +187,18 @@ class QueueServer(threading.Thread):
                         client_socket.shutdown(socket.SHUT_RDWR)
                         client_socket.close()
                     except OSError:
-                        self._logger.exception(
+                        logger.exception(
                             "Error occurred while closing connection"
                         )
                     break
-            self._logger.info("Received connection from %s", address)
+            logger.info("Received connection from %s", address)
             client_thread = threading.Thread(
                 target=self._serve_client,
                 args=(client_socket,)
             )
             client_thread.start()
         self._server_socket.close()
-        self._logger.info("Server socket closed.")
+        logger.info("Server socket closed.")
 
     @property
     def running(self):
@@ -206,7 +215,7 @@ class QueueServer(threading.Thread):
         conn.settimeout(5)
         try:
             head = conn.recv(8)
-            self._logger.debug("Received header: %s", head.decode())
+            logger.debug("Received header: %s", head.decode())
             if head == self.HEAD_NEW_TASK:
                 self._new_task_request(conn)
             elif head == self.HEAD_JOB_STATUS:
@@ -216,15 +225,15 @@ class QueueServer(threading.Thread):
             elif head == self.HEAD_PING:
                 conn.send(self.STATUS_OK)
             else:
-                self._logger.warning("Invalid header: \"%s\".", head.decode())
+                logger.warning("Invalid header: \"%s\".", head.decode())
         except socket.timeout:
-            self._logger.exception("Client socket timed out.")
+            logger.exception("Client socket timed out.")
         except OSError:
-            self._logger.exception("Connection error.")
+            logger.exception("Connection error.")
         except json.JSONDecodeError:
-            self._logger.exception("Received JSON is invalid.")
+            logger.exception("Received JSON is invalid.")
         except:
-            self._logger.exception("Critical error.")
+            logger.exception("Critical error.")
         finally:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
@@ -242,21 +251,13 @@ class QueueServer(threading.Thread):
         except json.JSONDecodeError:
             conn.send(self.STATUS_ERROR)
             raise
-        # REVIEW raise KeyError (or JsonError) instead of assertion.
-        try:
-            assert 'service' in data, "Service not specified."
-            assert 'options' in data, "Options not specified."
-        except AssertionError:
-            conn.send(self.STATUS_ERROR)
-            raise KeyError
         conn.send(self.STATUS_OK)
-        command_cls = self.command_factory.get_command_class(data['service'])
-        command = command_cls(data['options'])
-        job = Job(command)
-        self._logger.info("Created job %s", job)
-        if send_json(conn, {'jobId': job.id}) == 0:
+        command = LocalCommand(cmd=data['cmd'], cwd=data['cwd'],
+                               env=data['env'])
+        logger.info("Created job %s", command)
+        job_id = self._add_job(command)
+        if send_json(conn, {'jobId': job_id}) == 0:
             raise ConnectionResetError("Connection reset by peer.")
-        self._add_job(job)
 
     def _job_status_request(self, conn):
         """
@@ -290,131 +291,102 @@ class QueueServer(threading.Thread):
             raise KeyError(data['jobId'])
         conn.send(self.STATUS_OK)
         json_data = {
-            'return_code': job.result.return_code,
-            'stdout': job.result.stdout,
-            'stderr': job.result.stderr,
-            'files': job.result.files
+            'return_code': job.output.return_code,
+            'stdout': job.output.stdout,
+            'stderr': job.output.stderr
         }
         if send_json(conn, json_data) == 0:
             raise ConnectionResetError("Connection reset by peer.")
 
     def shutdown(self):
         self._running = False
-        self._logger.debug("Poking server to stop.")
+        logger.debug("Poking server to stop.")
         socket.socket().connect((self._host, self._port))
 
     @staticmethod
     def check_connection(host=None, port=None):
-        if host is None: host = pybioas.settings.QUEUE_HOST
-        if port is None: port = pybioas.settings.QUEUE_PORT
+        if host is None or port is None:
+            (host, port) = (
+                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+            )
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((host, port))
             conn.send(QueueServer.HEAD_PING)
             response = conn.recv(8)
+            conn.shutdown(socket.SHUT_RDWR)
         except OSError:
             return False
-        if response != QueueServer.STATUS_OK:
-            return False
-        else:
-            return True
-
-
-class Job:
-
-    def __init__(self, runnable, args=None, kwargs=None):
-        """
-        Initialize a new job which executes start method of the runnable
-        as a separate thread.
-        :param runnable: runnable started by the worker
-        :param args: arguments passed to the runnable's start method
-        :param kwargs: keyword arguments passed to the runnable's start method
-        """
-        self._runnable = runnable
-        self._id = uuid.uuid4().hex
-        self.status = JobStatus.QUEUED
-        self._args = args or ()
-        self._kwargs = kwargs or {}
-        self._result = None
-        self.sig_finished = Signal()
-
-    @property
-    def id(self):
-        return self._id
-
-    def run(self):
-        """
-        Executes the target function and waits for completion.
-        """
-        self.status = JobStatus.RUNNING
-        try:
-            self._result = self._runnable.run(*self._args, **self._kwargs)
-        except:
-            self.status = JobStatus.FAILED
-            raise
-        else:
-            self.status = JobStatus.COMPLETED
         finally:
-            self.sig_finished(self.id)
+            conn.close()
+        if response == QueueServer.STATUS_OK:
+            return True
+        else:
+            return False
 
-    def kill(self):
-        """
-        Orders the running task to kill its process
-        """
-        self._runnable.kill()
+    @staticmethod
+    def submit_job(cmd, cwd, env=None, *, host=None, port=None):
+        if host is None or port is None:
+            (host, port) = (
+                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+            )
+        logger.debug(
+            "Submitting new command\ncmd: %r\nenv: %r\ncwd: %s", cmd, env, cwd
+        )
+        json_data = {'cmd': cmd, 'cwd': cwd, 'env': env or {}}
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            conn.send(QueueServer.HEAD_NEW_TASK)
+            send_json(conn, json_data)
+            status = conn.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError('Internal server error')
+            data = recv_json(conn)
+            job_id = data['jobId']
+            conn.shutdown(socket.SHUT_RDWR)
+        finally:
+            conn.close()
+        return job_id
 
-    def suspend(self):
-        """
-        Tells the running task to suspend execution
-        """
-        self._runnable.suspend()
+    @staticmethod
+    def get_job_status(job_id, *, host=None, port=None):
+        if host is None or port is None:
+            (host, port) = (
+                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+            )
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            conn.send(QueueServer.HEAD_JOB_STATUS)
+            send_json(conn, {'jobId': job_id})
+            status = conn.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError('Internal server error')
+            data = recv_json(conn)
+            conn.shutdown(socket.SHUT_RDWR)
+        finally:
+            conn.close()
+        return data['status']
 
-    def resume(self):
-        """
-        Tells the running task to resume suspended execution
-        """
-        self._runnable.resume()
-
-    @property
-    def result(self):
-        """
-        Returns job result if the job is finished, otherwise None
-        :return: process output or None if not finished
-        :rtype: ProcessOutput
-        """
-        if not self.is_finished():
-            return None
-        return self._result
-
-    def is_finished(self):
-        """
-        Checks if the job is finished
-        """
-        return (self.status == JobStatus.COMPLETED or
-                self.status == JobStatus.FAILED)
-
-    def is_pending(self):
-        """
-        Checks if the job is pending execution
-        """
-        return self.status == JobStatus.QUEUED
-
-    def is_running(self):
-        """
-        Checks if the job is already running
-        """
-        return self.status == JobStatus.RUNNING
-
-    def __repr__(self):
-        return "<Job> {id} - {status}".format(id=self.id, status=self.status)
-
-
-class JobStatus:
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    COMPLETED = "COMPLETED"
-    COLLECTED = "COLLECTED"
-    FAILED = "FAILED"
+    @staticmethod
+    def get_job_output(job_id, *, host=None, port=None):
+        if host is None or port is None:
+            (host, port) = (
+                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+            )
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            conn.send(QueueServer.HEAD_JOB_RESULT)
+            send_json(conn, {'jobId': job_id})
+            status = conn.recv(8)
+            if status != QueueServer.STATUS_OK:
+                raise ServerError('Internal server error')
+            data = recv_json(conn)
+        finally:
+            conn.close()
+        return ProcessOutput(**data)
 
 
 class Signal(object):
@@ -454,96 +426,111 @@ class ServerError(Exception):
     """ Internal server error """
 
 
-def queue_run(service, values):
+class LocalCommand:
     """
-    Sends the task to the worker which enqueues it as a new job.
-    :param service: name of service configuration
-    :param values: options passed to the configuration
-    :return: DeferredResult associated with the job
-    :raise ServerError: server can't process the request
-    :raise OSError: connection with server failed
+    Class used for a local command execution.
+    :type _cmd: list[str]
+    :type _env: dict[str, str]
+    :type _cwd: str
+    :type _process: subprocess.Popen
+    :type _status: str
+    :type _output: ProcessOutput
     """
-    address = (pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT)
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(address)
-    client_socket.send(QueueServer.HEAD_NEW_TASK)
+    STATUS_QUEUED = 'queued'
+    STATUS_RUNNING = 'running'
+    STATUS_EXCEPTION = 'exception'
+    STATUS_SUCCESS = 'success'
 
-    send_json(client_socket, {
-        "service": service,
-        "options": values
-    })
-    status = client_socket.recv(8)
-    if status != QueueServer.STATUS_OK:
-        raise ServerError("something bad happened")
-    data = recv_json(client_socket)
-    job_id = data["jobId"]
-    client_socket.shutdown(socket.SHUT_RDWR)
-    client_socket.close()
-    return DeferredResult(job_id, address)
+    def __init__(self, cmd, cwd, env=None):
+        self._cmd = cmd
+        self._env = env
+        self._cwd = cwd
+        self._process = None
+        self._status = self.STATUS_QUEUED
+        self._output = None
 
-
-class DeferredResult:
-    """
-    Deferred result instances are intermediate objects which communicates
-    between client and the task queue. When the job is queued, it returns
-    Deferred result instead of job result which is not available yet.
-    It allows asynchronous execution of the task and retrieving the result
-    when the job is complete.
-
-    DeferredResult should not be instantiated directly, but through calling
-    `scheduler.task_queue.queue_run`.
-    """
-
-    def __init__(self, job_id, server_address):
+    def run(self):
         """
-        :param job_id: identification of the task.
-        :param server_address: tuple of address and port of the worker server
+        Executes the command locally as a new subprocess.
+        :return: output of the running process
+        :rtype: ProcessOutput
+        :raise FileNotFoundError: working dir from settings does not exist
+        :raise OSError: error occurred when starting the process
         """
-        self.job_id = job_id
-        self.server_address = server_address
+        self._status = self.STATUS_RUNNING
+        logger.debug(
+            "Starting local command cmd=%r env=%r cwd=%s",
+            self._cmd, self._env, self._cwd
+        )
+        try:
+            self._process = subprocess.Popen(
+                self._cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=dict(os.environ, **self._env),
+                cwd=self._cwd
+            )
+            stdout, stderr = self._process.communicate()
+            return_code = self._process.returncode
+        except:
+            self._status = self.STATUS_EXCEPTION
+            raise
+        else:
+            self._status = self.STATUS_SUCCESS
+        self._output = ProcessOutput(
+            return_code,
+            stdout.decode(),
+            stderr.decode()
+        )
+        return self._output
 
     @property
     def status(self):
-        """
-        Asks the server for the status of the job linked to this deferred
-        result instance.
-        :return: current job status
-        :rtype: enum job.JobStatus value
-        """
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(self.server_address)
-        try:
-            client_socket.send(QueueServer.HEAD_JOB_STATUS)
-            send_json(client_socket, {"jobId": self.job_id})
-            status = client_socket.recv(8)
-            if status != QueueServer.STATUS_OK:
-                raise ServerError("Internal server error")
-            data = recv_json(client_socket)
-        finally:
-            client_socket.close()
-        return data['status']
+        return self._status
 
     @property
-    def result(self):
+    def output(self):
         """
-        Asks the server for the result of the job associated with this
-        deferred result.
-        :return: job result or exception traceback if failed
+        :rtype: ProcessOutput
         """
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(self.server_address)
+        return self._output
+
+    def terminate(self):
+        """
+        :raises OSError: no such process
+        """
+        self._process.terminate()
+
+    def kill(self):
+        """
+        :raises OSError: no such process
+        """
+        self._process.kill()
+
+    def suspend(self):
         try:
-            client_socket.send(QueueServer.HEAD_JOB_RESULT)
-            send_json(client_socket, {"jobId": self.job_id})
-            status = client_socket.recv(8)
-            if status != QueueServer.STATUS_OK:
-                raise ServerError("Internal server error")
-            data = recv_json(client_socket)
-        finally:
-            client_socket.close()
-        # review: wrap data in an object like ProcessOutput
-        return data
+            # noinspection PyUnresolvedReferences
+            self._process.send_signal(signal.SIGSTOP)
+        except AttributeError:
+            logger.warning(
+                'SIGSTOP is not available on this platform'
+            )
+
+    def resume(self):
+        try:
+            # noinspection PyUnresolvedReferences
+            self._process.send_signal(signal.SIGCONT)
+        except AttributeError:
+            logger.warning(
+                'SIGCONT is not available on this platform'
+            )
+
+    def is_finished(self):
+        return (self._status == self.STATUS_SUCCESS or
+                self._status == self.STATUS_EXCEPTION)
 
     def __repr__(self):
-        return ("<DeferredResult {job_id} server={addr[0]}:{addr[1]}>"
-                .format(job_id=self.job_id, addr=self.server_address))
+        return "<{0}>".format(self.__class__.__name__)
+
+
+ProcessOutput = namedtuple('ProcessOutput', 'return_code, stdout, stderr')

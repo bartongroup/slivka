@@ -1,0 +1,50 @@
+---
+options:
+    -
+        ref: message
+        param: -m $value
+    -
+        ref: error
+        param: -e $value
+    -
+        ref: returnCode
+        param: -r $value
+    -
+        ref: number
+        param: -n $value
+    -
+        ref: out
+        param: -o $value
+        val: output.fasta
+
+result:
+    -
+        type: result
+        mimetype: text/plain
+        method: file
+        path: stdout.txt
+    -
+        type: error
+        mimetype: text/plain
+        method: file
+        path: stderr.txt
+    -
+        type: result
+        method: file
+        path: DefaultOutput.txt
+    -
+        type: result
+        mimetype: text/plain
+        method: file
+        path: output.fasta
+    -
+        type: result
+        mimetype: text/plain
+        method: file
+        pattern: (.*)
+
+configurations:
+    local:
+        execClass: LocalExec
+        bin: python "{{ pydummy_path }}"
+...

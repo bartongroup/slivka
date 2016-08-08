@@ -1,0 +1,88 @@
+{
+  "type": "object",
+  "properties": {
+    "options": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/option"},
+      "additionalItems": false
+    },
+    "result": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/result"},
+      "additionalItems": false
+    },
+    "configurations": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/definitions/configuration"}
+    }
+  },
+  "additionalProperties": false,
+  "required": ["options", "result", "configurations"],
+  "definitions": {
+    "option": {
+      "type": "object",
+      "properties": {
+        "ref": {"type": "string"},
+        "param": {"type": "string"},
+        "val": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "required": ["ref", "param"]
+    },
+    "result": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["result", "error", "log"]
+        },
+        "mimetype": {"type": "string"},
+        "method": {
+          "enum": ["file"]
+        },
+        "path": {"type": "string"},
+        "pattern": {"type": "string"}
+      },
+      "oneOf": [
+        {"required": ["path"]},
+        {"required": ["pattern"]}
+      ],
+      "additionalProperties": false
+    },
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "execClass": {"type": "string"},
+        "bin": {"type": "string"},
+        "env": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "queueArgs": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "additionalItems": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["execClass", "bin"]
+    }
+  }
+}

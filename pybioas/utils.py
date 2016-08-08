@@ -5,10 +5,17 @@ import shutil
 
 import pkg_resources
 
-COMMAND_SCHEMA = json.loads(
+FORM_SCHEMA = json.loads(
     pkg_resources.resource_string(
         "pybioas",
-        "data/config/CommandDescriptionSchema.json"
+        "data/config/FormDescriptionSchema.json"
+    ).decode()
+)
+
+CONF_SCHEMA = json.loads(
+    pkg_resources.resource_string(
+        "pybioas",
+        "data/config/ConfDescriptionSchema.json"
     ).decode()
 )
 

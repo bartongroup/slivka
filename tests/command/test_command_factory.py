@@ -8,7 +8,7 @@ except ImportError:
     import mock
 
 from pybioas.scheduler.command import (
-    CommandOption, FileOutput, PatternFileOutput, CommandFactory
+    CommandOption, FileResult, PatternFileResult
 )
 
 THIS_FOLDER = os.path.abspath(os.path.dirname(__file__))
@@ -94,15 +94,19 @@ class TestCommandOptionEscaping(unittest.TestCase):
 class TestFileOutputs(unittest.TestCase):
 
     @unittest.skipUnless(os.name == 'posix', "POSIX paths only.")
-    def test_single_file(self):
-        fo = FileOutput('somefile.txt')
-        files = fo.get_files_paths('/var/')
+    @mock.patch("pybioas.scheduler.command.os.path.exists")
+    def test_single_file(self, mock_pathexist):
+        mock_pathexist.return_value = True
+        fo = FileResult('somefile.txt')
+        files = fo.get_paths('/var/')
         self.assertListEqual(files, ['/var/somefile.txt'])
 
     @unittest.skipUnless(os.name == 'nt', "Windows paths only.")
-    def test_single_file(self):
-        fo = FileOutput('somefile.txt')
-        files = fo.get_files_paths('C:\\var\\')
+    @mock.patch("pybioas.scheduler.command.os.path.exists")
+    def test_single_file(self, mock_pathexist):
+        mock_pathexist.return_value = True
+        fo = FileResult('somefile.txt')
+        files = fo.get_paths('C:\\var\\')
         self.assertListEqual(files, ['C:\\var\\somefile.txt'])
 
     @unittest.skipUnless(os.name == 'posix', "POSIX paths only.")
@@ -112,8 +116,8 @@ class TestFileOutputs(unittest.TestCase):
         :type mock_listdir: mock.MagicMock
         """
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileOutput(r'.+\.txt')
-        files = fo.get_files_paths('/var/')
+        fo = PatternFileResult(r'.+\.txt')
+        files = fo.get_paths('/var/')
         self.assertListEqual(files, ["/var/file1.txt", "/var/file2.txt"])
 
     @unittest.skipUnless(os.name == 'nt', "Windows paths only.")
@@ -123,83 +127,22 @@ class TestFileOutputs(unittest.TestCase):
         :type mock_listdir: mock.MagicMock
         """
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileOutput(r'.+\.txt')
-        files = fo.get_files_paths('C:\\var\\')
+        fo = PatternFileResult(r'.+\.txt')
+        files = fo.get_paths('C:\\var\\')
         self.assertListEqual(
             files, ["C:\\var\\file1.txt", "C:\\var\\file2.txt"]
         )
 
     def test_single_file_path_abs(self):
-        fo = FileOutput('somefile.txt')
-        files = fo.get_files_paths(os.curdir)
+        fo = FileResult('somefile.txt')
+        files = fo.get_paths(os.curdir)
         for path in files:
             self.assertTrue(os.path.isabs(path))
 
     @mock.patch("pybioas.scheduler.command.os.listdir")
     def test_pattern_file_path_abs(self, mock_listdir):
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileOutput(r'.+\.txt')
-        files = fo.get_files_paths(os.curdir)
+        fo = PatternFileResult(r'.+\.txt')
+        files = fo.get_paths(os.curdir)
         for path in files:
             self.assertTrue(os.path.isabs(path))
-
-
-class TestCommandFactory(unittest.TestCase):
-
-    def setUp(self):
-        self.open_patch = mock.patch(
-            'pybioas.scheduler.command.open',
-            mock.MagicMock(side_effect=mock_open)
-        )
-        self.open_patch.start()
-        self.factory = CommandFactory('data/fake_config.ini')
-
-    def tearDown(self):
-        self.open_patch.stop()
-
-    def test_configurations_list(self):
-        self.assertSetEqual(
-            set(self.factory.configurations),
-            {'Fake', 'Dummy'}
-        )
-
-    def test_env_setting(self):
-        Dummy = self.factory.get_command_class('Dummy')
-        self.assertDictEqual(
-            Dummy._env,
-            {
-                'MYDUMMYENV': 'Dummy env',
-                'THEIRDUMMYENV': 'Another env',
-                'YOURDUMMYENV': 'One more env'
-            }
-        )
-
-    def test_bin_setting(self):
-        Fake = self.factory.get_command_class('Fake')
-        self.assertEqual(Fake._binary, 'fake_executable')
-
-    def test_options(self):
-        Fake = self.factory.get_command_class('Fake')
-
-        option = next((opt for opt in Fake._options if opt.name == 'alpha'))
-        self.assertEqual(option._param_template.template, '-a ${value}')
-        self.assertEqual(option._default, 'foo')
-
-        option = next((opt for opt in Fake._options if opt.name == 'beta'))
-        self.assertEqual(option._param_template.template, '--beta=${value}')
-        self.assertIsNone(option._default)
-
-    def test_pattern_output(self):
-        Fake = self.factory.get_command_class('Fake')
-        output = Fake._output_files[0]
-        self.assertIsInstance(output, PatternFileOutput)
-        self.assertEqual(output._regex.pattern, ".+\\.txt")
-
-    def test_param_output(self):
-        Fake = self.factory.get_command_class('Fake')
-        output = Fake._output_files[1]
-        self.assertIsInstance(output, FileOutput)
-        option = next((opt for opt in Fake._options
-                       if opt.name == '--out ${value}'))
-        self.assertEqual(option._param_template.template, '--out ${value}')
-        self.assertEqual(option._default, output._name)

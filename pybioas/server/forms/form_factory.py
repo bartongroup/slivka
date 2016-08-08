@@ -4,7 +4,7 @@ import jsonschema
 import yaml
 
 from pybioas.db.models import Request, Option
-from pybioas.utils import COMMAND_SCHEMA
+from pybioas.utils import FORM_SCHEMA
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, ChoiceField)
@@ -95,19 +95,19 @@ class BaseForm:
 class FormFactory:
 
     @staticmethod
-    def get_form_class(form_name, service, command_file):
+    def get_form_class(form_name, service, form_file):
         """
         Constructs a form class from a parameters configuration file
         :param form_name: name given to a new form class
         :param service: service name the form is bound to
-        :param command_file: a path to json file describing form fields
+        :param form_file: a path to json file describing form fields
         :return: new BaseForm subclass with fields loaded from the param file
         :raise jsonschema.exceptions.ValidationError:
         """
-        with open(command_file, "r") as f:
+        with open(form_file, "r") as f:
             instance = yaml.load(f)
-        jsonschema.validate(instance, COMMAND_SCHEMA)
-        fields = list(FormFactory._load_fields(instance['options']))
+        jsonschema.validate(instance, FORM_SCHEMA)
+        fields = list(FormFactory._load_fields(instance))
         return type(
             form_name, (BaseForm, ),
             {
@@ -123,16 +123,16 @@ class FormFactory:
         :param fields: list of field descriptions
         :return: iterable of field objects
         """
-        for field in fields:
+        for name, field in fields.items():
             factory = FormFactory.field_factory[field['value']['type']].__func__
-            yield (field['name'], factory(field))
+            yield (name, factory(name, field))
 
     @staticmethod
-    def _get_integer_field(field):
+    def _get_integer_field(name, field):
         value = field['value']
-        assert value['type'] == 'integer'
+        assert value['type'] == 'int'
         return IntegerField(
-            field['name'],
+            name,
             minimum=value.get("min"),
             maximum=value.get("max"),
             default=value.get("default"),
@@ -140,11 +140,11 @@ class FormFactory:
         )
 
     @staticmethod
-    def _get_decimal_field(field):
+    def _get_decimal_field(name, field):
         value = field['value']
-        assert value['type'] == "decimal"
+        assert value['type'] == "float"
         return DecimalField(
-            field['name'],
+            name,
             default=value.get("default"),
             required=value.get("required", True),
             minimum=value.get("min"), maximum=value.get("max"),
@@ -153,11 +153,11 @@ class FormFactory:
         )
 
     @staticmethod
-    def _get_text_field(field):
+    def _get_text_field(name, field):
         value = field['value']
         assert value['type'] == 'text'
         return TextField(
-            field["name"],
+            name,
             default=value.get("default"),
             required=value.get("required", True),
             min_length=value.get("minLength"),
@@ -165,33 +165,33 @@ class FormFactory:
         )
 
     @staticmethod
-    def _get_boolean_field(field):
+    def _get_boolean_field(name, field):
         value = field["value"]
         assert value["type"] == "boolean"
         return BooleanField(
-            field["name"],
+            name,
             default=value.get("default"),
             required=value.get("required", True),
             value=value.get("value")
         )
 
     @staticmethod
-    def _get_choice_field(field):
+    def _get_choice_field(name, field):
         value = field['value']
         assert value['type'] == 'choice'
         return ChoiceField(
-            field["name"],
+            name,
             default=value.get("default"),
             required=value.get("required", True),
             choices=value.get("choices", {}).values()
         )
 
     @staticmethod
-    def _get_file_field(field):
+    def _get_file_field(name, field):
         value = field['value']
         assert value["type"] == "file"
         return FileField(
-            field["name"],
+            name,
             default=value.get("default"),
             required=value.get("required", True),
             extension=value.get("extension"),
@@ -200,8 +200,8 @@ class FormFactory:
         )
 
     field_factory = {
-        "integer": _get_integer_field,
-        "decimal": _get_decimal_field,
+        "int": _get_integer_field,
+        "float": _get_decimal_field,
         "text": _get_text_field,
         "boolean": _get_boolean_field,
         "choice": _get_choice_field,

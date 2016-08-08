@@ -175,12 +175,13 @@ class TestFileField(unittest.TestCase):
         from pybioas.db import models, start_session, create_db
 
         cls.temp_dir = tempfile.TemporaryDirectory()
-        settings = mock.Mock(
+        settings = dict(
             BASE_DIR=cls.temp_dir.name,
             MEDIA_DIR=".",
             SECRET_KEY=b'\x00',
-            SERVICE_INI=None
+            SERVICE_INI='service.ini'
         )
+        open(os.path.join(cls.temp_dir.name, 'service.ini'), 'w').close()
         path = os.path.join(cls.temp_dir.name, "foo")
         with open(path, "w") as f:
             f.write("bar bar")

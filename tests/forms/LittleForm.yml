@@ -1,14 +1,13 @@
-options:
-  - name: alpha
+---
+alpha:
     label: Alpha
-    parameter: --alpha ${value}
     value:
-      type: integer
-      required: yes
+        type: int
+        required: yes
 
-  - name: beta
+beta:
     label: Beta
-    parameter: --beta ${value}
     value:
-      type: integer
-      required: no
+        type: int
+        required: no
+...

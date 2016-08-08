@@ -1,40 +1,16 @@
 {
   "type": "object",
-  "properties": {
-    "options": {
-      "type": "array",
-      "items": {"$ref": "#/definitions/field"},
-      "additionalItems": false
-    },
-    "outputs": {
-      "type": "array",
-      "items": {
-        "anyOf": [
-          {"$ref": "#/definitions/pipeOutput"},
-          {"$ref": "#/definitions/fileOutput"}
-        ]
-      },
-      "additionalItems": false
-    }
-  },
-  "additionalProperties": false,
+  "additionalProperties": {"$ref": "#/definitions/field"},
 
   "definitions": {
     "field": {
       "title": "form field validation schema",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "[\\w\\d-]{1,16}"
-        },
         "label": {
           "type": "string"
         },
         "description": {
-          "type": "string"
-        },
-        "parameter": {
           "type": "string"
         },
         "value": {
@@ -49,14 +25,14 @@
         }
       },
       "additionalProperties": false,
-      "required": ["name", "label", "parameter", "value"]
+      "required": ["label", "value"]
     },
 
     "integerField": {
       "title": "integer value validation schema",
       "type": "object",
       "properties": {
-        "type": {"enum": ["integer"]},
+        "type": {"enum": ["int"]},
         "min": {"type": "integer"},
         "max": {"type": "integer"},
         "default": {
@@ -74,7 +50,7 @@
       "title": "decimal value validation schema",
       "type": "object",
       "properties": {
-        "type": {"enum": ["decimal"]},
+        "type": {"enum": ["float"]},
         "min": {"type": "number"},
         "max": {"type": "number"},
         "minExclusive": {"type": "boolean"},

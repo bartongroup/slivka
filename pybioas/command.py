@@ -1,4 +1,3 @@
-import io
 import logging.config
 import os
 
@@ -11,19 +10,26 @@ import pybioas.utils
 
 @click.command()
 @click.argument("name")
-@click.option("--examples/--no-examples", default=True, is_flag=True,
-              help="Add examples to the project.")
-def setup(name, examples):
+def setup(name):
     project_dir = os.path.abspath(os.path.join(os.getcwd(), name))
+    managepy_path = os.path.join(project_dir, "manage.py")
+    settingspy_path = os.path.join(project_dir, "settings.py")
+    servicesini_path = os.path.join(project_dir, "services.ini")
+    form_path = os.path.join(project_dir, 'config', 'pydummyForm.yml')
+    conf_path = os.path.join(project_dir, 'config', 'pydummyConf.yml')
+    pydummy_path = os.path.join(project_dir, 'bin', 'pydummy.py')
+
     if os.path.isdir(project_dir):
         click.confirm(
             "Directory already exist. Do you want to set the project here?",
             abort=True
         )
     os.makedirs(project_dir, exist_ok=True)
+    os.mkdir(os.path.dirname(form_path))
+    os.mkdir(os.path.dirname(pydummy_path))
 
-    # copy pybioas.py template
-    with open(os.path.join(project_dir, "manage.py"), "wb") as f:
+    # copy manage.py template
+    with open(managepy_path, "wb") as f:
         f.write(pkg_resources.resource_string(
             "pybioas", "data/template/manage.py.jinja2"
         ))
@@ -31,46 +37,42 @@ def setup(name, examples):
     # copy settings.py template
     settings_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/settings.py.jinja2"
-        ).decode()
-    )
-    tpl_stream = settings_tpl.stream(
-        secret_key=os.urandom(32),
-        example=examples
-    )
-    with open(os.path.join(project_dir, "settings.py"), "w") as f:
+            "pybioas", "data/template/settings.py.jinja2").decode())
+    tpl_stream = settings_tpl.stream(secret_key=os.urandom(32))
+    with open(settingspy_path, "w") as f:
         tpl_stream.dump(f)
 
     # copy services.ini template
     services_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/services.ini.jinja2"
-        ).decode()
-    )
-    tpl_stream = services_tpl.stream(
-        project_root=project_dir, example=examples
-    )
-    with open(os.path.join(project_dir, "services.ini"), "w") as f:
+            "pybioas", "data/template/services.ini.jinja2").decode())
+    tpl_stream = services_tpl.stream(form_path=form_path, config_path=conf_path)
+    with open(servicesini_path, "w") as f:
         tpl_stream.dump(f)
 
-    if examples:
-        # copy example data
-        pybioas.utils.copytree(
-            pkg_resources.resource_filename('pybioas', "data/examples"),
-            os.path.join(project_dir)
-        )
+    # copy form description
+    with open(form_path, 'wb') as f:
+        f.write(pkg_resources.resource_string(
+            "pybioas", "data/template/config/pydummyForm.yml"
+        ))
+
+    # copy pydummy configuration
+    conf_tpl = jinja2.Template(
+        pkg_resources.resource_string(
+            "pybioas", "data/template/config/pydummyConf.yml").decode())
+    tpl_stream = conf_tpl.stream(pydummy_path=pydummy_path)
+    with open(conf_path, 'w') as f:
+        tpl_stream.dump(f)
+
+    with open(pydummy_path, 'wb') as f:
+        f.write(pkg_resources.resource_string(
+            "pybioas", "data/template/binaries/pydummy.py"
+        ))
 
 
 @click.group()
 def admin():
-    logger_config = pkg_resources.resource_stream(
-        "pybioas",
-        "data/config/defaultLogger.ini"
-    )
-    logging.config.fileConfig(
-        io.TextIOWrapper(logger_config),
-        defaults={'logdir': pybioas.settings.BASE_DIR}
-    )
+    logging.config.dictConfig(pybioas.settings.LOGGER_CONF)
 
 
 @click.command()
@@ -84,8 +86,9 @@ def worker():
 @click.command()
 def scheduler():
     """Starts job scheduler."""
-    from pybioas.scheduler.scheduler import start_scheduler
-    start_scheduler()
+    from pybioas.scheduler.scheduler import Scheduler
+    sched = Scheduler()
+    sched.start()
 
 
 @click.command()

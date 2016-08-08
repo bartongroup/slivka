@@ -1,9 +1,0 @@
-options:
-  - name: alpha
-    label: Alpha field
-    description: This is the first letter.
-    parameter: "-a ${value}"
-    value:
-      type: text
-
-outputs: []
