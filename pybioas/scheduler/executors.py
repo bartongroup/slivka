@@ -50,7 +50,7 @@ class Executor(JobMixin):
         cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
         job_id = self.submit(values, cwd)
-        job = Job(job_id, cwd, self)
+        job = Job(job_id, cwd, self.file_results)
         job.get_status = self.get_status.__func__.__get__(job, Job)
         job.get_result = self.get_result.__func__.__get__(job, Job)
         return job
@@ -144,10 +144,10 @@ class Executor(JobMixin):
 # noinspection PyAbstractClass
 class Job(JobMixin):
 
-    def __init__(self, job_id, cwd, executor):
+    def __init__(self, job_id, cwd, file_results):
         self.id = job_id
         self._cwd = cwd
-        self._file_results = executor.file_results
+        self._file_results = file_results
 
     @property
     def status(self):
