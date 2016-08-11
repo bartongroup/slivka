@@ -14,6 +14,10 @@
     "configurations": {
       "type": "object",
       "additionalProperties": {"$ref": "#/definitions/configuration"}
+    },
+    "limits": {
+      "type": "string",
+      "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$"
     }
   },
   "additionalProperties": false,

@@ -13,6 +13,7 @@ import weakref
 from collections import namedtuple
 
 import pybioas
+from pybioas.scheduler.exc import ConnectionResetError, ServerError
 from . import recv_json, send_json
 
 logger = logging.getLogger(__name__)
@@ -410,20 +411,6 @@ class Signal(object):
             self._methods.add(weakref.WeakMethod(slot))
         else:
             self._functions.add(slot)
-
-
-# noinspection PyShadowingBuiltins
-class ConnectionError(OSError):
-    """ Connection error. """
-
-
-# noinspection PyShadowingBuiltins
-class ConnectionResetError(ConnectionError):
-    """ Connection reset. """
-
-
-class ServerError(Exception):
-    """ Internal server error """
 
 
 class LocalCommand:

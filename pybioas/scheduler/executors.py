@@ -1,4 +1,5 @@
 import os
+import pydoc
 import shlex
 import subprocess
 import sys
@@ -138,7 +139,10 @@ class Executor(JobMixin):
                 file_results=file_results,
                 env=configuration.get('env')
             )
-        return executors
+        limits = pydoc.locate(conf['limits'], forceload=1)
+        if limits is None:
+            raise ImportError(conf['limits'])
+        return executors, limits
 
 
 # noinspection PyAbstractClass
@@ -186,11 +190,23 @@ class JobOutput:
         self.stdout = stdout
         self.stderr = stderr
 
-    def __repr__(self):
-        return (
-            "<JobOutput rcode=%d stdout=%s stderr=%s>" %
-            (self.return_code, self.stdout, self.stderr)
-        )
+
+class JobLimits:
+
+    configurations = []
+
+    def get_conf(self, fields):
+
+        self.setup()
+        for conf in self.configurations:
+            limit_check = getattr(self, "limit_%s" % conf, None)
+            if limit_check is not None and limit_check(fields):
+                return conf
+        else:
+            return None
+
+    def setup(self):
+        pass
 
 
 class ShellExec(Executor):

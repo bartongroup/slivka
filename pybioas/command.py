@@ -17,6 +17,7 @@ def setup(name):
     servicesini_path = os.path.join(project_dir, "services.ini")
     form_path = os.path.join(project_dir, 'config', 'pydummyForm.yml')
     conf_path = os.path.join(project_dir, 'config', 'pydummyConf.yml')
+    limits_path = os.path.join(project_dir, 'config', 'limits.py')
     pydummy_path = os.path.join(project_dir, 'bin', 'pydummy.py')
 
     if os.path.isdir(project_dir):
@@ -63,6 +64,12 @@ def setup(name):
     tpl_stream = conf_tpl.stream(pydummy_path=pydummy_path)
     with open(conf_path, 'w') as f:
         tpl_stream.dump(f)
+
+    # copy service limits
+    with open(limits_path, 'wb') as f:
+        f.write(pkg_resources.resource_string(
+            'pybioas', 'data/template/config/limits.py'
+        ))
 
     with open(pydummy_path, 'wb') as f:
         f.write(pkg_resources.resource_string(

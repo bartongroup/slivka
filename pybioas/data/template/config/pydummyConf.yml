@@ -47,4 +47,6 @@ configurations:
     local:
         execClass: LocalExec
         bin: python "{{ pydummy_path }}"
+
+limits: config.limits.PydummyLimit
 ...
