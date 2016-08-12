@@ -256,7 +256,7 @@ def get_task(task_id):
             "ready": job_request.is_finished,
             "output": None
         }
-        if job_request.is_finished:
+        if job_request.status == models.JobModel.STATUS_COMPLETED:
             response['output'] = {
                 "returnCode": job_request.result.return_code,
                 "stdout": job_request.result.stdout,

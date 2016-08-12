@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -10,26 +10,31 @@ Base = declarative_base()
 
 class Request(Base):
 
-    STATUS_PENDING = "PENDING"
-    STATUS_QUEUED = "QUEUED"
-    STATUS_RUNNING = "RUNNING"
-    STATUS_FAILED = "FAILED"
-    STATUS_COMPLETED = "COMPLETED"
-
     __tablename__ = "requests"
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String, nullable=False)
     uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
-    status = Column(String, default=STATUS_PENDING)
+    pending = Column(Boolean, default=True)
 
     options = relationship("Option", back_populates="request")
     result = relationship("Result", back_populates="request", uselist=False)
+    job = relationship("JobModel", back_populates="request", uselist=False)
 
     @property
     def is_finished(self):
-        return self.status in [self.STATUS_COMPLETED, self.STATUS_FAILED]
+        return self.status in {
+            JobModel.STATUS_COMPLETED, JobModel.STATUS_FAILED,
+            JobModel.STATUS_ERROR
+        }
+
+    @property
+    def status(self):
+        if self.job is None:
+            return JobModel.STATUS_PENDING
+        else:
+            return self.job.status
 
     def __repr__(self):
         return ("<Request(id={id}, service={service})>"
@@ -46,11 +51,37 @@ class Option(Base):
     request_id = Column(Integer,
                         ForeignKey('requests.id', ondelete='CASCADE'))
 
-    request = relationship("Request", back_populates="options")
+    request = relationship("Request", back_populates="options", uselist=False)
 
     def __repr__(self):
         return ("<Option(name={name}, value={value}>"
                 .format(name=self.name, value=self.value))
+
+
+class JobModel(Base):
+
+    STATUS_PENDING = "pending"
+    STATUS_QUEUED = "queued"
+    STATUS_RUNNING = "running"
+    STATUS_COMPLETED = "completed"
+    STATUS_FAILED = "failed"
+    STATUS_ERROR = "error"
+
+    __tablename__ = "jobs"
+
+    id = Column(Integer, primary_key=True)
+    request_id = Column(
+        Integer,
+        ForeignKey('requests.id', ondelete='CASCADE'),
+        nullable=False
+    )
+    status = Column(String(16), default=STATUS_QUEUED, nullable=False)
+    job_ref_id = Column(Integer)
+    working_dir = Column(String(256))
+    service = Column(String(16), nullable=False)
+    configuration = Column(String(16), nullable=False)
+
+    request = relationship("Request", back_populates="job", uselist=False)
 
 
 class Result(Base):

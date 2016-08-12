@@ -135,7 +135,7 @@ class TestExecutorSubmit(unittest.TestCase):
         mock_submit.return_value = mock.sentinel.job_id
         exe = Executor()
         exe(mock.sentinel.values)
-        mock_job.assert_called_once_with(mock.sentinel.job_id, mock.ANY, [])
+        mock_job.assert_called_once_with(mock.sentinel.job_id, mock.ANY, exe)
 
     def test_get_status(self, mock_submit):
         def mock_get_status(this, job_id):
@@ -162,29 +162,33 @@ class TestExecutorSubmit(unittest.TestCase):
 
 class TestJob(unittest.TestCase):
 
-    @mock.patch('pybioas.scheduler.executors.Job.get_status')
-    def test_status_property(self, mock_get_status):
-        job = Job(mock.sentinel.id, None, None)
-        mock_get_status.return_value = mock.sentinel.status
-        self.assertEqual(job.status, mock.sentinel.status)
-        mock_get_status.assert_called_once_with(mock.sentinel.id)
+    def setUp(self):
+        self.mock_exe = mock.create_autospec(Executor)
+        self.mock_exe.get_status = (lambda s, jid: None).__get__(self.mock_exe)
+        self.mock_exe.get_result = (lambda s, jid: None).__get__(self.mock_exe)
 
-    @mock.patch('pybioas.scheduler.executors.Job.get_result')
-    def test_result_property(self, mock_get_result):
-        job = Job(mock.sentinel.id, None, None)
-        mock_get_result.return_value = mock.sentinel.result
-        self.assertEqual(job.result, mock.sentinel.result)
-        mock_get_result.assert_called_once_with(mock.sentinel.id)
+    def test_status_property(self):
+        job = Job(mock.sentinel.id, None, self.mock_exe)
+        with mock.patch.object(job, 'get_status') as mock_get_status:
+            mock_get_status.return_value = mock.sentinel.status
+            self.assertEqual(job.status, mock.sentinel.status)
+            mock_get_status.assert_called_once_with(mock.sentinel.id)
+
+    def test_result_property(self):
+        job = Job(mock.sentinel.id, None, self.mock_exe)
+        with mock.patch.object(job, 'get_result') as mock_get_result:
+            mock_get_result.return_value = mock.sentinel.result
+            self.assertEqual(job.result, mock.sentinel.result)
+            mock_get_result.assert_called_once_with(mock.sentinel.id)
 
     def test_file_results(self):
         mock_file_result1 = mock.create_autospec(FileResult)
         mock_file_result1.get_paths.return_value = ['/foo', '/bar']
         mock_file_result2 = mock.create_autospec(FileResult)
         mock_file_result2.get_paths.return_value = ['/qux']
-        job = Job(
-            None, mock.sentinel.cwd,
-            [mock_file_result1, mock_file_result2]
-        )
+        self.mock_exe.file_results = [mock_file_result1, mock_file_result2]
+
+        job = Job(None, mock.sentinel.cwd, self.mock_exe)
         self.assertListEqual(job.file_results, ['/foo', '/bar', '/qux'])
         mock_file_result1.get_paths.assert_called_once_with(mock.sentinel.cwd)
         mock_file_result2.get_paths.assert_called_once_with(mock.sentinel.cwd)

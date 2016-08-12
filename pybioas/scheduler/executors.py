@@ -1,3 +1,4 @@
+import logging
 import os
 import pydoc
 import shlex
@@ -7,15 +8,18 @@ import uuid
 
 import pybioas
 from .command import CommandOption, FileResult, PatternFileResult
+from .exc import JobRetrievalError, SubmissionError
 from .task_queue import QueueServer
+
+logger = logging.getLogger(__name__)
 
 
 class JobMixin:
     STATUS_QUEUED = 'queued'
     STATUS_RUNNING = 'running'
-    STATUS_EXCEPTION = 'exception'
+    STATUS_COMPLETED = 'completed'
     STATUS_FAILED = 'failed'
-    STATUS_SUCCESS = 'success'
+    STATUS_ERROR = 'error'
 
     def get_status(self, job_id):
         raise NotImplementedError
@@ -50,10 +54,13 @@ class Executor(JobMixin):
     def __call__(self, values):
         cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
-        job_id = self.submit(values, cwd)
-        job = Job(job_id, cwd, self.file_results)
-        job.get_status = self.get_status.__func__.__get__(job, Job)
-        job.get_result = self.get_result.__func__.__get__(job, Job)
+        try:
+            job_id = self.submit(values, cwd)
+        except:
+            logger.critical("Critical error occurred when submitting the job",
+                            exc_info=True)
+            raise SubmissionError
+        job = Job(job_id, cwd, self)
         return job
 
     @property
@@ -145,21 +152,51 @@ class Executor(JobMixin):
         return executors, limits
 
 
-# noinspection PyAbstractClass
 class Job(JobMixin):
 
-    def __init__(self, job_id, cwd, file_results):
+    def __init__(self, job_id, cwd, exe):
+        """
+        :param job_id:
+        :param cwd:
+        :param exe:
+        :type exe: Executor
+        """
         self.id = job_id
         self._cwd = cwd
-        self._file_results = file_results
+        self._file_results = exe.file_results
+        self.get_status = exe.get_status.__func__.__get__(self, self.__class__)
+        self.get_result = exe.get_result.__func__.__get__(self, self.__class__)
+        self._cached_status = None
+
+    @property
+    def cached_status(self):
+        if self._cached_status is None:
+            return self.status
+        else:
+            return self._cached_status
 
     @property
     def status(self):
-        return self.get_status(self.id)
+        try:
+            self._cached_status = self.get_status(self.id)
+            return self._cached_status
+        except:
+            logger.critical(
+                "Critical error occurred when retrieving job status",
+                exc_info=True
+            )
+            raise JobRetrievalError
 
     @property
     def result(self):
-        return self.get_result(self.id)
+        try:
+            return self.get_result(self.id)
+        except:
+            logger.critical(
+                "Critical error occurred when retrieving job result",
+                exc_info=True
+            )
+            raise JobRetrievalError
 
     @property
     def cwd(self):
@@ -173,13 +210,16 @@ class Job(JobMixin):
             for path in file_result.get_paths(self.cwd)
         ]
 
+    def get_result(self, job_id):
+        pass
+
+    def get_status(self, job_id):
+        pass
+
     def is_finished(self):
         return self.status in {
-            Job.STATUS_SUCCESS, Job.STATUS_FAILED, Job.STATUS_EXCEPTION
+            Job.STATUS_COMPLETED, Job.STATUS_FAILED, Job.STATUS_ERROR
         }
-
-    def __repr__(self):
-        return "<Job %d>" % self.id
 
 
 class JobOutput:
@@ -226,11 +266,14 @@ class ShellExec(Executor):
         """
         :type process: subprocess.Popen
         """
-        status = process.poll()
+        try:
+            status = process.poll()
+        except OSError:
+            return self.STATUS_ERROR
         if status is None:
             return self.STATUS_RUNNING
         if status == 0:
-            return self.STATUS_SUCCESS
+            return self.STATUS_COMPLETED
         else:
             return self.STATUS_FAILED
 
