@@ -90,7 +90,7 @@ class TaskQueue:
 
     def _enqueue_command(self, command):
         """
-        Adds a new job to the queue and registers "finished" signal.
+        Adds a new job to the queue.
         :param command: new command to execute
         :type command: LocalCommand
         :return: id of the job
@@ -120,6 +120,9 @@ class Worker(threading.Thread):
         self._job = None
 
     def run(self):
+        """
+        Runs Worker thread which polls queue for commands and starts them.
+        """
         logger.debug("%s started.", self.name)
         while True:
             self._job = self._queue.get()
@@ -131,7 +134,7 @@ class Worker(threading.Thread):
                 else:
                     self._job.run()
             except:
-                logger.exception("Critical error.")
+                logger.exception("Failed to execute command.")
             finally:
                 logger.info("%s completed %s", self.name, self._job)
                 self._queue.task_done()
@@ -165,6 +168,13 @@ class QueueServer(threading.Thread):
         self._server_socket = None
 
     def run(self):
+        """
+        Runs a QueueServer thread which keeps listening on the socket to
+        incoming connections and manages job submissions and status checking.
+        When client is connected, a new thread is spawned to handle the
+        request and produce response.
+        :return:
+        """
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind((self._host, self._port))
         self._server_socket.settimeout(5)
@@ -177,7 +187,7 @@ class QueueServer(threading.Thread):
                 (client_socket, address) = self._server_socket.accept()
             except socket.timeout:
                 continue
-            except:
+            except OSError:
                 logger.exception("Critical error occurred, server "
                                  "stopped. Retry in 5 seconds.")
                 time.sleep(5)
@@ -203,6 +213,9 @@ class QueueServer(threading.Thread):
 
     @property
     def running(self):
+        """
+        :return: if the queue server is running
+        """
         return self._running
 
     # noinspection PyBroadException
@@ -247,7 +260,6 @@ class QueueServer(threading.Thread):
         :raise AssertionError
         """
         try:
-            # FIXME error status is not sent on connection error
             data = recv_json(conn)
         except json.JSONDecodeError:
             conn.send(self.STATUS_ERROR)
@@ -262,8 +274,10 @@ class QueueServer(threading.Thread):
 
     def _job_status_request(self, conn):
         """
+        Handles status request and sends job status to the client.
         :param conn: client socket handler
-        :raise ConnectionResetError
+        :raise KeyError: Job with given key does not exist
+        :raise ConnectionResetError: Connection to client lost
         """
         try:
             data = recv_json(conn)
@@ -280,6 +294,12 @@ class QueueServer(threading.Thread):
             raise ConnectionResetError("Connection reset by peer.")
 
     def _job_result_request(self, conn):
+        """
+        Handles job result request and sends back the job result.
+        :param conn: client socket handler
+        :raise: KeyError: Job with given id doesn't exist
+        :raise ConnectionResetError: Connection to client lost
+        """
         try:
             data = recv_json(conn)
         except json.JSONDecodeError:
@@ -300,12 +320,21 @@ class QueueServer(threading.Thread):
             raise ConnectionResetError("Connection reset by peer.")
 
     def shutdown(self):
+        """
+        Stops the server.
+        """
         self._running = False
         logger.debug("Poking server to stop.")
         socket.socket().connect((self._host, self._port))
 
     @staticmethod
     def check_connection(host=None, port=None):
+        """
+        Tests if the queue server is running properly and accepting connections.
+        :param host: host to connect to (defaults to settings.QUEUE_HOST)
+        :param port: port to connect to (defaults to settings.QUEUE_PORT)
+        :return: whether the server accepted connection properly
+        """
         if host is None or port is None:
             (host, port) = (
                 pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
@@ -327,6 +356,23 @@ class QueueServer(threading.Thread):
 
     @staticmethod
     def submit_job(cmd, cwd, env=None, *, host=None, port=None):
+        """
+        Helper function which sends a new job to the local queue.
+        It esablishes the connection to the worker server and send new job
+        details. You need to specify list of command arguments, working
+        directory and, optionally, environment variables.
+        By default, it connect to the queue address specified in the settings,
+        but you can override it specifying `host` and `port` arguments.
+        :param cmd: list of command line arguments to execute
+        :type cmd: list[str]
+        :param cwd: absolute path of current working directory for the command
+        :type cwd: str
+        :param env: environment variables
+        :type env: dict[str, str]
+        :param host: queue server host address (typically localhost)
+        :param port: queue server listening port
+        :return: id of the newly created job
+        """
         if host is None or port is None:
             (host, port) = (
                 pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
@@ -352,6 +398,16 @@ class QueueServer(threading.Thread):
 
     @staticmethod
     def get_job_status(job_id, *, host=None, port=None):
+        """
+        Helper function which requests the local queue for job status.
+        It establishes the connection to the local queue server at specified
+        host and port. If not given, it uses default local queue address from
+        settings.
+        :param job_id: job identifier received on submission
+        :param host: local queue host address (typically localhost)
+        :param port: local queue listening port
+        :return: job status string
+        """
         if host is None or port is None:
             (host, port) = (
                 pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
@@ -372,6 +428,15 @@ class QueueServer(threading.Thread):
 
     @staticmethod
     def get_job_output(job_id, *, host=None, port=None):
+        """
+        Helper function which requests the local queue for job output.
+        It retrieves status code and console output from the process.
+        :param job_id: job identifier received on submission
+        :param host: local queue host address (typically localhost)
+        :param port: local queue port
+        :return: output of the executed process
+        :rtype: ProcessOutput
+        """
         if host is None or port is None:
             (host, port) = (
                 pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT

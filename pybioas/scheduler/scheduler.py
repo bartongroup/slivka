@@ -54,6 +54,12 @@ class Scheduler:
                 Executor.make_from_conf(conf_data)
 
     def _restore_jobs(self):
+        """
+        Loads jobs which have queued or running status from the database
+        and re-creates Job objects based on the retrieved data.
+        It's intended to restore running jobs in case the scheduler was
+        restarted.
+        """
         with start_session() as sess:
             running = (
                 sess.query(JobModel).
@@ -69,6 +75,16 @@ class Scheduler:
             self._tasks.add(JobWrapper(job, job_model.request_id))
 
     def start(self, async=False):
+        """
+        Starts the scheduler and it's working threads. If `async` parameter is
+        set to False, it blocks until interrupt signal is received.
+        After this, it shuts the server down gracefully and waits for threads to
+        join.
+        Asynchorous start doesn't mean that the main process wil exit and
+        subprocesses will run in the background. When started asynchonously
+        you should shutdown it manually from outside.
+        :param async: whether the sheduler should not block
+        """
         self._collector_thread.start()
         self._poll_thread.start()
         if async:
@@ -82,18 +98,33 @@ class Scheduler:
             self.join()
 
     def shutdown(self):
+        """
+        Sends shutdown signal and starts exit process.
+        """
         self._shutdown_event.set()
 
     def join(self):
+        """
+        Blocks until scheduler stops working.
+        """
         self._collector_thread.join()
         self._poll_thread.join()
 
     def get_executor(self, service, configuration):
+        """
+        Returns the executor for specified service and configuration.
+        Raises KeyError is configuration or service not found.
+        :param service: service to run
+        :param configuration: executor configuration
+        :return: executor object for given configuration
+        :rtype: Executor
+        """
         return self._executors[service][configuration]
 
     def database_poll_loop(self):
         """
-        Keeps checking database for new Request records.
+        Keeps checking database for pending requests.
+        Submits a new job if one is found.
         """
         self.logger.info("Scheduler starts watching database.")
         while self.is_running:
@@ -101,7 +132,7 @@ class Scheduler:
             pending_requests = (
                 session.query(Request).
                 options(joinedload('options')).
-                filter(Request.pending == True).
+                filter_by(pending=True).
                 all()
             )
             self.logger.debug("Found %d requests", len(pending_requests))
@@ -115,8 +146,8 @@ class Scheduler:
 
     def submit_job(self, request):
         """
-        Starts a new job based on the request data.
-        :param request: job request
+        Starts a new job based on the data in the database for given Request.
+        :param request: request database record
         :type request: Request
         """
         options = {
@@ -142,6 +173,11 @@ class Scheduler:
                 self._tasks.add(JobWrapper(job, request.id))
 
     def collector_loop(self):
+        """
+        Main loop which collects finished jobs from queues.
+        For each finished job it starts final procedures and saves the result
+        to the database.
+        """
         self.logger.info("Scheduler starts collecting tasks.")
         while self.is_running:
             session = Session()
@@ -166,10 +202,8 @@ class Scheduler:
     def _get_finished(self):
         """
         Browses all running tasks and collects those which are finished.
-        They are removed from the `tasks` set.
         :return: set of finished tasks
         :rtype: set[JobWrapper]
-        :raise OSError:
         """
         self.logger.debug("Collecting finished tasks")
         with self._tasks_lock:
@@ -185,9 +219,11 @@ class Scheduler:
 
     def _complete_job(self, job_wrapper, session):
         """
-        :param job_wrapper:
-        :param session:
-        :return:
+        Finalize job processing removing completed jobs from the running
+        tasks and updating job status and result in the database.
+        If retrieving result fails, it skips the job and tries again later.
+        :param job_wrapper: wrapper of currently processed job
+        :param session: current database session
         :raise JobRetrievalError:
         """
         result = job_wrapper.job.result
@@ -209,10 +245,17 @@ class Scheduler:
 
     @property
     def logger(self):
+        """
+        :return: current scheduler logger
+        """
         return self._logger
 
     @property
     def is_running(self):
+        """
+        :return: if the scheduler is currently running.
+        :rtype: bool
+        """
         return not self._shutdown_event.is_set()
 
 
