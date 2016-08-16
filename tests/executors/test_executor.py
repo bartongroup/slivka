@@ -162,6 +162,7 @@ class TestExecutorSubmit(unittest.TestCase):
 
 class TestJob(unittest.TestCase):
 
+    # noinspection PyUnresolvedReferences
     def setUp(self):
         self.mock_exe = mock.create_autospec(Executor)
         self.mock_exe.get_status = (lambda s, jid: None).__get__(self.mock_exe)

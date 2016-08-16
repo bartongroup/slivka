@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class TaskQueue:
-    # Headers and status codes. Each is eight bytes long.
 
     def __init__(self, host=None, port=None, num_workers=4):
         """
@@ -161,7 +160,7 @@ class QueueServer(threading.Thread):
         :type add_job: (TaskQueue, LocalCommand) -> int
         """
         super(QueueServer, self).__init__(name='QueueServer')
-        self._running = True
+        self._running = False
         self._host, self._port = host, port
         self._get_job = get_job
         self._add_job = add_job
@@ -181,8 +180,8 @@ class QueueServer(threading.Thread):
         self._server_socket.listen(5)
         logger.info("Ready to accept connections on %s:%d",
                     self._host, self._port)
+        self._running = True
         while self.running:
-            # noinspection PyBroadException
             try:
                 (client_socket, address) = self._server_socket.accept()
             except socket.timeout:

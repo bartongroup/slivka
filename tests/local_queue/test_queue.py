@@ -1,8 +1,13 @@
+import json
+import logging
 import socket
+import sys
 import types
 import unittest
 
-from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER
+from pybioas.scheduler.exc import ServerError
+from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER, \
+    ProcessOutput
 
 try:
     import unittest.mock as mock
@@ -10,6 +15,8 @@ except ImportError:
     import mock
 
 mock.patch.object = mock.patch.object
+
+logging.basicConfig(level=logging.CRITICAL)
 
 
 class TestTaskQueueBase(unittest.TestCase):
@@ -189,3 +196,130 @@ class TestServeClient(unittest.TestCase):
         conn.recv.return_value = QueueServer.HEAD_PING
         self.server._serve_client(conn)
         conn.send.assert_called_once_with(QueueServer.STATUS_OK)
+
+
+class TestServerCommunication(unittest.TestCase):
+
+    PORT = 2354
+
+    def setUp(self):
+        self.mock_get = mock.MagicMock(types.FunctionType)
+        self.mock_add = mock.MagicMock(types.FunctionType)
+        self.server = QueueServer(
+            'localhost', self.PORT, self.mock_get, self.mock_add
+        )
+        self.server.start()
+        while not self.server.running:
+            pass
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.join()
+
+    def test_check_connection_ok(self):
+        status = QueueServer.check_connection('localhost', self.PORT)
+        self.assertTrue(status)
+
+    def test_check_connection_server_down(self):
+        status = QueueServer.check_connection('localhost', 0000)
+        self.assertFalse(status)
+
+    def test_check_connection_failure(self):
+        def mock_serve_client(this, conn):
+            conn.send(this.STATUS_ERROR)
+            conn.close()
+
+        # noinspection PyUnresolvedReferences
+        with mock.patch.object(self.server, '_serve_client',
+                               new=mock_serve_client.__get__(self.server)):
+            status = QueueServer.check_connection('localhost', self.PORT)
+        self.assertFalse(status)
+
+    @mock.patch('pybioas.scheduler.task_queue.LocalCommand')
+    def test_job_submission(self, mock_local_cmd):
+        self.mock_add.return_value = 1
+        job_id = QueueServer.submit_job(
+            cmd=['mock.sentinel.cmd'],
+            cwd='mock.sentinel.cwd',
+            env={'MOCK': 'mock.sentinel.env'},
+            host='localhost',
+            port=self.PORT
+        )
+        self.assertEqual(job_id, 1)
+        mock_local_cmd.assert_called_once_with(
+            cmd=['mock.sentinel.cmd'],
+            cwd='mock.sentinel.cwd',
+            env={'MOCK': 'mock.sentinel.env'}
+        )
+        self.mock_add.assert_called_once_with(mock_local_cmd.return_value)
+
+    @mock.patch('pybioas.scheduler.task_queue.recv_json')
+    @mock.patch('pybioas.scheduler.task_queue.LocalCommand')
+    def test_job_submission_invalid_json(self, mock_local_cmd, mock_recv_json):
+        mock_recv_json.side_effect = json.JSONDecodeError('foo', 'bar', 0)
+        with self.assertRaises(ServerError):
+            QueueServer.submit_job(
+                cmd=['mock.sentinel.cmd'],
+                cwd='mock.sentinel.cwd',
+                env={'MOCK': 'mock.sentinel.env'},
+                host='localhost',
+                port=self.PORT
+            )
+        mock_local_cmd.assert_not_called()
+        self.mock_add.assert_not_called()
+
+    def test_job_submission_server_down_oserror(self):
+        with self.assertRaises(OSError):
+            QueueServer.submit_job(
+                cmd=['mock.sentinel.cmd'],
+                cwd='mock.sentinel.cwd',
+                env={'MOCK': 'mock.sentinel.env'},
+                host='localhost',
+                port=0000
+            )
+
+    @unittest.skipIf(sys.version_info <= (3, 2),
+                     "ConnectionRefusedError in python 3.3")
+    def test_job_submission_server_down(self):
+        with self.assertRaises(ConnectionRefusedError):
+            QueueServer.submit_job(
+                cmd=['mock.sentinel.cmd'],
+                cwd='mock.sentinel.cwd',
+                env={'MOCK': 'mock.sentinel.env'},
+                host='localhost',
+                port=1234
+            )
+
+    def test_job_status(self):
+        self.mock_get.return_value.status = 'mock_success'
+        status = QueueServer.get_job_status(
+            15, host='localhost', port=self.PORT)
+        self.assertEqual(status, 'mock_success')
+        self.mock_get.assert_called_once_with(15)
+
+    def test_job_status_server_down_oserror(self):
+        with self.assertRaises(OSError):
+            QueueServer.get_job_status(1, host='localhost', port=1234)
+
+    @unittest.skipIf(sys.version_info <= (3, 2),
+                     "ConnectionRefusedError in python 3.3")
+    def test_job_status_server_down(self):
+        with self.assertRaises(ConnectionRefusedError):
+            QueueServer.get_job_status(1, host='localhost', port=1234)
+
+    def test_job_status_not_exist(self):
+        self.mock_get.return_value = None
+        with self.assertRaises(ServerError):
+            QueueServer.get_job_status(15, host='localhost', port=self.PORT)
+
+    def test_job_output(self):
+        process_output = ProcessOutput(0, 'mock_stdout', 'mock_stderr')
+        self.mock_get.return_value.output = process_output
+        out = QueueServer.get_job_output(14, host='localhost', port=self.PORT)
+        self.assertTupleEqual(out, process_output)
+        self.mock_get.assert_called_once_with(14)
+
+    def test_job_output_not_exist(self):
+        self.mock_get.return_value = None
+        with self.assertRaises(ServerError):
+            QueueServer.get_job_output(14, host='localhost', port=self.PORT)
