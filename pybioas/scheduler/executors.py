@@ -1,6 +1,8 @@
+import getpass
 import logging
 import os
 import pydoc
+import re
 import shlex
 import subprocess
 import sys
@@ -18,6 +20,7 @@ class JobMixin:
     STATUS_QUEUED = 'queued'
     STATUS_RUNNING = 'running'
     STATUS_COMPLETED = 'completed'
+    STATUS_DELETED = 'deleted'
     STATUS_FAILED = 'failed'
     STATUS_ERROR = 'error'
 
@@ -26,6 +29,8 @@ class JobMixin:
 
     def get_result(self, job_id):
         raise NotImplementedError
+
+    cwd = None
 
 
 # noinspection PyAbstractClass
@@ -302,13 +307,76 @@ class LocalExec(Executor):
         return JobOutput(*QueueServer.get_job_output(job_id))
 
 
-class ClusterExec(Executor):
+class GridEngineExec(Executor):
+
+    job_submission_regex = re.compile(
+        r'Your job (\d+) \(.+\) has been submitted'
+    )
+    job_status_regex = re.compile(
+        r'^(\d+)\s+[\d\.]+\s+.*?\s+[\w-]+\s+(\w{1,3})\s+[\d/]+\s+[\d:]+\s+'
+        r'[\w@\.-]*\s+\d+$',
+        re.MULTILINE
+    )
 
     def submit(self, values, cwd):
-        pass
+        queue_command = [
+            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'
+        ] + self.qargs
+        process = subprocess.Popen(
+            queue_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            cwd=cwd,
+            env=self.env,
+            universal_newlines=True
+        )
+        command_chunks = self.bin + self.get_options(values)
+        command = ' '.join(shlex.quote(s) for s in command_chunks)
+        stdin = "echo > started\n%s\necho > finished\n" % command
+        stdout, stderr = process.communicate(stdin)
+        match = self.job_submission_regex.match(stdout)
+        return match.group(1)
 
     def get_status(self, job_id):
-        pass
+        username = getpass.getuser()
+        process = subprocess.Popen(
+            "qstat -u '%s'" % username,
+            stdout=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True
+        )
+        out, err = process.communicate()
+        matches = self.job_status_regex.findall(out)
+        try:
+            status = next(match[1] for match in matches if match[0] == job_id)
+        except StopIteration:
+            time_started = os.path.getmtime(os.path.join(self.cwd, 'started'))
+            try:
+                time_finished = os.path.getmtime(
+                    os.path.join(self.cwd, 'finished'))
+            except FileNotFoundError:
+                return self.STATUS_RUNNING
+            else:
+                if time_finished >= time_started:
+                    return self.STATUS_COMPLETED
+                else:
+                    return self.STATUS_RUNNING
+        if status == 'r' or status == 't':
+            return self.STATUS_RUNNING
+        elif status == 'qw' or status == 'T':
+            return self.STATUS_QUEUED
+        elif status == 'd':
+            return self.STATUS_DELETED
+        else:
+            return self.STATUS_ERROR
 
     def get_result(self, job_id):
-        pass
+        out_path = os.path.join(self.cwd, 'stdout.txt')
+        err_path = os.path.join(self.cwd, 'stderr.txt')
+        with open(out_path) as stdout, open(err_path) as stderr:
+            return JobOutput(
+                return_code=0,
+                stdout=stdout.read(),
+                stderr=stderr.read()
+            )
