@@ -1,15 +1,11 @@
-# noinspection PyShadowingBuiltins
-class ConnectionError(OSError):
-    """ Connection error. """
-
-
-# noinspection PyShadowingBuiltins
-class ConnectionResetError(ConnectionError):
-    """ Connection reset. """
-
-
 class ServerError(Exception):
     """ Internal server error """
+
+
+class NotFoundError(RuntimeError):
+    """
+    Job with the given id not found.
+    """
 
 
 class SubmissionError(RuntimeError):
