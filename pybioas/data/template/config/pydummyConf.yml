@@ -16,6 +16,9 @@ options:
         ref: out
         param: -o $value
         val: output.fasta
+    -
+        ref: wait
+        param: --wait $value
 
 result:
     -
@@ -39,13 +42,16 @@ result:
         path: output.fasta
     -
         type: result
-        mimetype: text/plain
         method: file
-        pattern: (.*)
+        pattern: part\d+.txt
 
 configurations:
     local:
         execClass: LocalExec
+        bin: python "{{ pydummy_path }}"
+
+    cluster:
+        execClass: GridEngineExec
         bin: python "{{ pydummy_path }}"
 
 limits: config.limits.PydummyLimit

@@ -2,7 +2,8 @@ import tempfile
 import unittest
 
 from pybioas.scheduler.command import CommandOption, FileResult
-from pybioas.scheduler.executors import Executor, Job
+from pybioas.scheduler.executors import Executor, Job, GridEngineExec, \
+    GridEngineJob
 
 try:
     import unittest.mock as mock
@@ -170,3 +171,119 @@ class TestJob(unittest.TestCase):
         self.assertListEqual(job.file_results, ['/foo', '/bar', '/qux'])
         mock_file_result1.get_paths.assert_called_once_with(mock.sentinel.cwd)
         mock_file_result2.get_paths.assert_called_once_with(mock.sentinel.cwd)
+
+
+class TestGridEngineExec(unittest.TestCase):
+
+    def setUp(self):
+        self.subprocess_path = mock.patch(
+            'pybioas.scheduler.executors.subprocess'
+        )
+        self.mock_subprocess = self.subprocess_path.start()
+        self.mock_popen = self.mock_subprocess.Popen.return_value
+        self.mock_popen.communicate.return_value = (
+            'Your job 0 (command) has been submitted', ''
+        )
+        self.exe = GridEngineExec()
+
+    def tearDown(self):
+        self.subprocess_path.stop()
+
+    @mock.patch('pybioas.scheduler.executors.Executor.qargs',
+                new_callable=mock.PropertyMock)
+    def test_qsub(self, mock_qargs):
+        mock_qargs.return_value = [mock.sentinel.qarg1, mock.sentinel.qarg2]
+        self.exe.submit({}, '')
+        expected_arg = ([
+            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt',
+            mock.sentinel.qarg1, mock.sentinel.qarg2
+        ],)
+        (args, kwargs) = self.mock_subprocess.Popen.call_args
+        self.assertTupleEqual(args, expected_arg)
+
+    @mock.patch('pybioas.scheduler.executors.Executor.bin',
+                new_callable=mock.PropertyMock)
+    def test_command(self, mock_bin):
+        mock_bin.return_value = ['mockpython', 'mockscript.py']
+        self.exe.submit({}, '')
+        self.mock_popen.communicate.assert_called_once_with(
+            "echo > started\nmockpython mockscript.py\necho > finished\n"
+        )
+
+    def test_job_id(self):
+        self.mock_popen.communicate.return_value = (
+            'Your job 4365 (command) has been submitted', ''
+        )
+        job_id = self.exe.submit({}, '')
+        self.assertEqual(job_id, "4365")
+
+
+class TestGridEngineJob(unittest.TestCase):
+
+    qstat_output = (
+        "1771701 1.00500 jp_4NIaEBc mockuser     r     08/13/2016 17:57:21 c6100.q@c6100-1-4.cluster.life     4\n"
+        "1778095 1.00500 jp_D21Nm6a mockuser     r     08/15/2016 22:53:29 c6100.q@c6100-1-4.cluster.life     4\n"
+        "1791672 0.01993 R          mockuser     Eqw   08/17/2016 17:41:34                                    1\n"
+        "1776414 0.00588 fic_Sample mockuser     qw    08/15/2016 11:44:23                                   10\n"
+        "1776413 0.00589 fic_Sample mockuser     d     08/15/2016 11:44:23                                   10\n"
+    )
+
+    def setUp(self):
+        self.getuser_patch = mock.patch(
+            'pybioas.scheduler.executors.getpass.getuser',
+            return_value='mockuser'
+        )
+        self.getuser_patch.start()
+        self.subprocess_patch = mock.patch(
+            'pybioas.scheduler.executors.subprocess',
+            autospec=True
+        )
+        self.mock_subprocess = self.subprocess_patch.start()
+        mock_popen = self.mock_subprocess.Popen.return_value
+        mock_popen.communicate.return_value = (self.qstat_output, '')
+        mock_exec = mock.create_autospec(Executor)
+        mock_exec.file_results = []
+        self.job = GridEngineJob('', '', mock_exec)
+
+    def tearDown(self):
+        self.getuser_patch.stop()
+        self.subprocess_patch.stop()
+
+    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    def test_qstat_call(self, mock_path):
+        mock_path.getmtime.return_value = 0
+        self.job.get_status('abc')
+        (args, kwargs) = self.mock_subprocess.Popen.call_args
+        expected_args = ('qstat -u \'mockuser\'',)
+        self.assertTupleEqual(args, expected_args)
+        self.assertTrue(kwargs['shell'])
+
+    def test_job_queued(self):
+        status = self.job.get_status('1776414')
+        self.assertEqual(status, Job.STATUS_QUEUED)
+
+    def test_job_running(self):
+        status = self.job.get_status('1778095')
+        self.assertEqual(status, Job.STATUS_RUNNING)
+
+    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    def test_job_completed_not_synced(self, mock_path):
+        mock_path.getmtime.side_effect = (10, FileNotFoundError)
+        status = self.job.get_status('1772453')
+        self.assertEqual(status, Job.STATUS_RUNNING)
+
+    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    def test_job_running_restarted(self, mock_path):
+        mock_path.getmtime.side_effect = (20, 19)
+        status = self.job.get_status('1772453')
+        self.assertEqual(status, Job.STATUS_RUNNING)
+
+    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    def test_job_completed(self, mock_path):
+        mock_path.getmtime.side_effect = (19, 20)
+        status = self.job.get_status('1772453')
+        self.assertEqual(status, Job.STATUS_COMPLETED)
+
+    def test_job_deleted(self):
+        status = self.job.get_status('1776413')
+        self.assertEqual(status, Job.STATUS_DELETED)

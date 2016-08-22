@@ -30,4 +30,12 @@ number:
         required: yes
         type: int
         default: 1
+
+wait:
+    label: Time to wait
+    description: Stop the process for the specified number of seconds
+    value:
+        required: no
+        type: int
+        default: 0
 ...
