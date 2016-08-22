@@ -16,25 +16,8 @@ from .task_queue import QueueServer
 logger = logging.getLogger(__name__)
 
 
-class JobMixin:
-    STATUS_QUEUED = 'queued'
-    STATUS_RUNNING = 'running'
-    STATUS_COMPLETED = 'completed'
-    STATUS_DELETED = 'deleted'
-    STATUS_FAILED = 'failed'
-    STATUS_ERROR = 'error'
-
-    def get_status(self, job_id):
-        raise NotImplementedError
-
-    def get_result(self, job_id):
-        raise NotImplementedError
-
-    cwd = None
-
-
 # noinspection PyAbstractClass
-class Executor(JobMixin):
+class Executor:
 
     def __init__(self, *, bin="", options=None,
                  qargs=None, file_results=None, env=None):
@@ -65,7 +48,7 @@ class Executor(JobMixin):
             logger.critical("Critical error occurred when submitting the job",
                             exc_info=True)
             raise SubmissionError
-        job = Job(job_id, cwd, self)
+        job = self.get_job_cls()(job_id, cwd, self)
         return job
 
     @property
@@ -117,6 +100,13 @@ class Executor(JobMixin):
         raise NotImplementedError
 
     @staticmethod
+    def get_job_cls():
+        """
+        :return: Class of the associated job
+        """
+        raise NotImplementedError
+
+    @staticmethod
     def make_from_conf(conf):
         """
         :param conf: configuration dictionary grabbed from the config file
@@ -157,7 +147,14 @@ class Executor(JobMixin):
         return executors, limits
 
 
-class Job(JobMixin):
+class Job:
+
+    STATUS_QUEUED = 'queued'
+    STATUS_RUNNING = 'running'
+    STATUS_COMPLETED = 'completed'
+    STATUS_DELETED = 'deleted'
+    STATUS_FAILED = 'failed'
+    STATUS_ERROR = 'error'
 
     def __init__(self, job_id, cwd, exe):
         """
@@ -169,8 +166,6 @@ class Job(JobMixin):
         self.id = job_id
         self._cwd = cwd
         self._file_results = exe.file_results
-        self.get_status = exe.get_status.__func__.__get__(self, self.__class__)
-        self.get_result = exe.get_result.__func__.__get__(self, self.__class__)
         self._cached_status = None
 
     @property
@@ -215,11 +210,11 @@ class Job(JobMixin):
             for path in file_result.get_paths(self.cwd)
         ]
 
-    def get_result(self, job_id):
-        pass
-
     def get_status(self, job_id):
-        pass
+        raise NotImplementedError
+
+    def get_result(self, job_id):
+        raise NotImplementedError
 
     def is_finished(self):
         return self.status in {
@@ -267,6 +262,13 @@ class ShellExec(Executor):
             universal_newlines=True
         )
 
+    @staticmethod
+    def get_job_cls():
+        return ShellJob
+
+
+class ShellJob(Job):
+
     def get_status(self, process):
         """
         :type process: subprocess.Popen
@@ -300,6 +302,13 @@ class LocalExec(Executor):
         command = self.bin + self.get_options(values)
         return QueueServer.submit_job(command, cwd, self.env)
 
+    @staticmethod
+    def get_job_cls():
+        return LocalJob
+
+
+class LocalJob(Job):
+
     def get_status(self, job_id):
         return QueueServer.get_job_status(job_id)
 
@@ -311,11 +320,6 @@ class GridEngineExec(Executor):
 
     job_submission_regex = re.compile(
         r'Your job (\d+) \(.+\) has been submitted'
-    )
-    job_status_regex = re.compile(
-        r'^(\d+)\s+[\d\.]+\s+.*?\s+[\w-]+\s+(\w{1,3})\s+[\d/]+\s+[\d:]+\s+'
-        r'[\w@\.-]*\s+\d+$',
-        re.MULTILINE
     )
 
     def submit(self, values, cwd):
@@ -338,19 +342,30 @@ class GridEngineExec(Executor):
         match = self.job_submission_regex.match(stdout)
         return match.group(1)
 
+    @staticmethod
+    def get_job_cls():
+        return GridEngineJob
+
+
+class GridEngineJob(Job):
+
+    job_status_regex_pattern = (
+        r'^{0}\s+[\d\.]+\s+.*?\s+[\w-]+\s+(\w{{1,3}})\s+[\d/]+\s+[\d:]+\s+'
+        r'[\w@\.-]*\s+\d+$'
+    )
+
     def get_status(self, job_id):
         username = getpass.getuser()
         process = subprocess.Popen(
-            "qstat -u '%s'" % username,
+            "qstat -u '%s'" % (username or '*'),
             stdout=subprocess.PIPE,
             shell=True,
             universal_newlines=True
         )
         out, err = process.communicate()
-        matches = self.job_status_regex.findall(out)
-        try:
-            status = next(match[1] for match in matches if match[0] == job_id)
-        except StopIteration:
+        regex = self.job_status_regex_pattern.format(job_id)
+        match = re.search(regex, out, re.MULTILINE)
+        if match is None:
             time_started = os.path.getmtime(os.path.join(self.cwd, 'started'))
             try:
                 time_finished = os.path.getmtime(
@@ -362,14 +377,16 @@ class GridEngineExec(Executor):
                     return self.STATUS_COMPLETED
                 else:
                     return self.STATUS_RUNNING
-        if status == 'r' or status == 't':
-            return self.STATUS_RUNNING
-        elif status == 'qw' or status == 'T':
-            return self.STATUS_QUEUED
-        elif status == 'd':
-            return self.STATUS_DELETED
         else:
-            return self.STATUS_ERROR
+            status = match.group(1)
+            if status == 'r' or status == 't':
+                return self.STATUS_RUNNING
+            elif status == 'qw' or status == 'T':
+                return self.STATUS_QUEUED
+            elif status == 'd':
+                return self.STATUS_DELETED
+            else:
+                return self.STATUS_ERROR
 
     def get_result(self, job_id):
         out_path = os.path.join(self.cwd, 'stdout.txt')

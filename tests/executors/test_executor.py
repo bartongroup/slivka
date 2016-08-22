@@ -110,54 +110,33 @@ class TestExecutorOptions(unittest.TestCase):
 
 # noinspection PyUnusedLocal
 @mock.patch('pybioas.scheduler.executors.Executor.submit')
+@mock.patch('pybioas.scheduler.executors.Executor.get_job_cls')
 @mock.patch('pybioas.scheduler.executors.pybioas.settings', new=settings_mock)
 class TestExecutorSubmit(unittest.TestCase):
 
-    def test_submit_called(self, mock_submit):
+    def test_submit_called(self, mock_get_job, mock_submit):
         exe = Executor()
         exe(mock.sentinel.values)
         mock_submit.assert_called_once_with(mock.sentinel.values, mock.ANY)
 
-    def test_submit_cwd(self, mock_submit):
+    def test_submit_cwd(self, mock_get_job, mock_submit):
         exe = Executor()
         exe(mock.sentinel.values)
         ((val, cwd), kwargs) = mock_submit.call_args
         self.assertTrue(cwd.startswith(tmp_dir.name))
 
-    @mock.patch('pybioas.scheduler.executors.Job')
-    def test_job_created(self, mock_job, mock_submit):
+    def test_job_created(self, mock_get_job, mock_submit):
         exe = Executor()
         job = exe(mock.sentinel.values)
-        self.assertEqual(job, mock_job.return_value)
+        mock_job = mock_get_job.return_value.return_value
+        self.assertEqual(job, mock_job)
 
-    @mock.patch('pybioas.scheduler.executors.Job')
-    def test_job_args(self, mock_job, mock_submit):
+    def test_job_args(self, mock_get_job, mock_submit):
         mock_submit.return_value = mock.sentinel.job_id
         exe = Executor()
         exe(mock.sentinel.values)
+        mock_job = mock_get_job.return_value
         mock_job.assert_called_once_with(mock.sentinel.job_id, mock.ANY, exe)
-
-    def test_get_status(self, mock_submit):
-        def mock_get_status(this, job_id):
-            return mock.sentinel.status
-        exe = Executor()
-        # noinspection PyUnresolvedReferences
-        with mock.patch.object(exe, 'get_status',
-                               new=mock_get_status.__get__(exe)):
-            job = exe(None)
-        self.assertEqual(job.get_status.__func__, mock_get_status)
-        self.assertEqual(job.status, mock.sentinel.status)
-
-    def test_get_result(self, mock_submit):
-        def mock_get_result(this, job_id):
-            return mock.sentinel.result
-        exe = Executor()
-        # noinspection PyUnresolvedReferences
-        with mock.patch.object(exe, 'get_result',
-                               new=mock_get_result.__get__(exe)):
-            job = exe(None)
-        self.assertEqual(job.get_result.__func__, mock_get_result)
-        self.assertEqual(job.result, mock.sentinel.result)
 
 
 class TestJob(unittest.TestCase):
@@ -165,8 +144,6 @@ class TestJob(unittest.TestCase):
     # noinspection PyUnresolvedReferences
     def setUp(self):
         self.mock_exe = mock.create_autospec(Executor)
-        self.mock_exe.get_status = (lambda s, jid: None).__get__(self.mock_exe)
-        self.mock_exe.get_result = (lambda s, jid: None).__get__(self.mock_exe)
 
     def test_status_property(self):
         job = Job(mock.sentinel.id, None, self.mock_exe)
