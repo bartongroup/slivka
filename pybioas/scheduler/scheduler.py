@@ -139,6 +139,7 @@ class Scheduler:
             try:
                 for request in pending_requests:
                     self.submit_job(request)
+                    request.pending = False
             finally:
                 session.commit()
                 session.close()
@@ -157,12 +158,14 @@ class Scheduler:
         with self._tasks_lock:
             limits = self._limits[request.service]()
             configuration = limits.get_conf(options)
-            executor = self.get_executor(request.service, configuration)
-            request.pending = False
             request.job = JobModel(
                 service=request.service,
                 configuration=configuration
             )
+            if configuration is None:
+                request.job.status = JobModel.STATUS_ERROR
+                return
+            executor = self.get_executor(request.service, configuration)
             try:
                 job = executor(options)
             except SubmissionError:

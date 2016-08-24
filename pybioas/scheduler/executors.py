@@ -236,16 +236,30 @@ class JobLimits:
     configurations = []
 
     def get_conf(self, fields):
-
-        self.setup()
+        try:
+            self.setup(fields)
+        except Exception:
+            logger.critical(
+                'Failed to setup configuration checker',
+                exc_info=True
+            )
+            return None
         for conf in self.configurations:
             limit_check = getattr(self, "limit_%s" % conf, None)
-            if limit_check is not None and limit_check(fields):
-                return conf
+            # noinspection PyBroadException
+            try:
+                if limit_check is not None and limit_check(fields):
+                    return conf
+            except Exception:
+                logger.critical(
+                    'Limit check for configuration %s raised exception',
+                    conf,
+                    exc_info=True
+                )
         else:
             return None
 
-    def setup(self):
+    def setup(self, values):
         pass
 
 
@@ -324,7 +338,7 @@ class GridEngineExec(Executor):
 
     def submit(self, values, cwd):
         queue_command = [
-            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt', '-V'
+            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'
         ] + self.qargs
         logger.debug('starting %s' % ' '.join(queue_command))
         process = subprocess.Popen(

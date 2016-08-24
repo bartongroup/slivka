@@ -19,15 +19,12 @@ SERVICE_INI = "./services.ini"
 # folder where log files are stored
 LOG_DIR = "./logs"
 
-# list of available services ["Service1", "Service2", ...]
-SERVICES = ["PyDummy"]
-
 # configuration of the local task queue server
 QUEUE_HOST = 'localhost'
 QUEUE_PORT = 3397
 
-# configuration of the api server
-SERVER_HOST = 'localhost'
+# configuration of the REST server
+SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 8000
 
 # enable/disable debug mode

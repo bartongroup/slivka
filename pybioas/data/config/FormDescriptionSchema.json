@@ -1,5 +1,8 @@
 {
   "type": "object",
+  "properties": {
+    "version": {"type": "string"}
+  },
   "additionalProperties": {"$ref": "#/definitions/field"},
 
   "definitions": {
@@ -145,38 +148,6 @@
       },
       "additionalProperties": false,
       "required": ["type"]
-    },
-    "pipeOutput": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "enum": ["result", "error", "log"]
-        },
-        "method": {
-          "enum": ["stdout", "stderr"]
-        }
-      },
-      "additionalProperties": false
-    },
-    "fileOutput": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "enum": ["result", "error", "log"]
-        },
-        "method": {
-          "enum": ["file"]
-        },
-        "filename": {"type": "string"},
-        "pattern": {"type": "string"},
-        "parameter": {"type": "string"}
-      },
-      "oneOf": [
-        {"required": ["filename"]},
-        {"required": ["parameter"]},
-        {"required": ["pattern"]}
-      ],
-      "additionalParameters": false
     }
   }
 }

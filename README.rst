@@ -52,17 +52,17 @@ Setting up the project
 
 Navigate to the folder where you want to create your project and run: ::
 
-  pybioas-setup <name> [--examples/--no-examples]
+  pybioas-setup <name>
 
-It will create a new folder ``<name>`` and upload three files to it:
+It will create a new folder ``<name>`` and upload three core files to it:
 *settings.py*, *manage.py* and *services.ini*. You usually need to modify
-only the last one. ``--examples`` flag tells whether to include sample
-service and its configuration. By default examples are added to the project.
+only the last one. PyBioAS will also include sample service and its
+configuration.
 
 :manage.py:
   a main executable script which configures PyBioAS and runs its components.
 :settings.py:
-  a settings python module which contains project constants.
+  a settings Python module which contains project constants.
 :service.ini:
   manages services execution and points to configuration files
 
@@ -126,23 +126,38 @@ Configuring settings
 :``SERVICE_INI``:
   Path to *service.ini* file, absolute or relative to ``BASE_DIR``.
 
-:``SERVICES``:
-  List of services available on your platform.
-  It consists of case-sensitive names of the installed services.
+:``LOG_DIR``:
+  Path to directory where log files will be stored. Can be either absolute
+  or relative to ``BASE__DIR``.
 
-  Example:
+:``QUEUE_HOST``:
+  Address where the local queue is listening on. It's highly recommended to use
+  localhost, as accepting connection from outside may be a security risk.
 
-  .. code-block:: python
+:``QUEUE_PORT``:
+  Port which local queue is listening to new connections on. It must not
+  collide with any commonly used ports and must be less than 65535.
+  It's recommended to pick value between 1000 and 10000.
 
-    SERVICES = ["Lorem", "Ipsum", "Dolor", "Sit", "Amet"]
+:``SERVER_HOST``:
+  Address at which the server accepts connections. You should use your
+  broadcast address or ``"0.0.0.0"`` to accept all connections.
+
+:``SERVER_PORT``:
+  Port used for listening to REST requests. You might use one of the common
+  HTTP ports e.g. 8000, 8080 or 8888
+
+:``DEBUG``:
+  Flag indicating whether debug mode should be enabled. Debug mode should not
+  be used in production.
 
 
 Configuring services
 --------------------
 
 A general service configuration is contained in the *service.ini* file.
-The first section, called ``[DEFAULT]``, is ignored by the application and can
-be used to define constants like project directory. These constants can be
+The ``[DEFAULT]`` section is ignored by the application and can
+be used to define constants i.e. project directory. These constants can be
 referred using ``%(key)s`` placeholder.
 
 ``address`` field in the following example
@@ -160,107 +175,85 @@ Each section (except ``[DEFAULT]``) corresponds to one service configuration
 defined in the services list in the *settings.py* file.
 The section must contain two keys:
 
-:``command_file``:
+:``config``:
   The path to the command definition file described in the section
   `Command description`_.
 
-:``bin``:
-  Executable command e.g. ``java dummyFile`` or ``bin\runme.bat``
-
-Optional keys are environment variables which will be set for each command
-execution. Each key must start with ``env.`` followed by the variable name
-to be considered the environment variable.
-Every variable set will **replace** existing system variable.
+:``form``:
+  The path to user form definition file descriped in the section
+  `Form description`_.
 
 A sample configuration section of service Lorem may look like this:
 
 .. code-block:: ini
 
+  [DEFAULT]
+  root_path = /home/myself/pybioas-project
+
   [Lorem]
-  command_file = %(root_path)s/conf/LoremConfig.yml
-  bin = python %(root_path)s/scripts/lorem.py
-  env.PATH = /home/lorem_env/bin/
-  env.PYTHONPATH = /home/myPythonLib/
+  config = %(root_path)s/config/LoremConfig.yml
+  form = %(root_path)/config/LoremForm.yml
 
 
-Command description
--------------------
+Form description
+----------------
 
-Command description files tell the application how to communicate with the script.
-They describe what command options are expected from the user, what the
-values are confined to and outputs which will be produced and sent back to the
-user.
+Form description file specified what fields are presented to the front end user
+and what values are expected. File should contain a json object where keys are
+fields names and values are specifications of the fields.
+Field specification object may have three fields:
 
-The file should be written using either YAML or JSON syntax and should
-follow structure described below. JSON schema of the command description
-is defined in the `Command Description Schema`_ file.
-
-The root object must have exactly two properties: ``options`` which is the
-list of `option objects <#option-object>`__ and ``outputs`` which is the list
-of `output objects <#output-object>`__.
+``label``:
+  Human readable name of the field (required)
+``description``:
+  Detailed description of the fields or help text (optional)
+``value``:
+  `Value object`_ describing accepted field values (required)
 
 .. code-block:: json
 
   {
-    "options": [],
-    "outputs": []
-  }
-
-.. _Command Description Schema: pybioas/data/utils/CommandDescriptionSchema.json
-
-Option object
-^^^^^^^^^^^^^
-
-Each option object must have properties ``name``, ``label``, ``parameter`` and
-``value`` and the optional property ``description``
-
-:``name``:
-  Name of the field which is used for identification and as a request parameter.
-  It should contain between 1 and 16 alphanumeric characters and be unique for
-  each field.
-
-:``label``:
-  Human readable field name which will be displayed to the front-end user.
-  The purpose of this value is to help identify the field.
-
-:``description``:
-  Optional long description of the field.
-
-:``parameter``:
-  Template of the command option. Field value will be replaced for ``${value}``
-  placeholder. i.e. ``--in ${value}``, ``-a=${value}``.
-  ``${value}`` is not required and, if not given, the option will be independent
-  of the field value.
-
-:``value``:
-  Details about what value is expected. Value objects are described in more
-  details in the `Value object`_ section.
-
-Example:
-
-.. code-block:: json
-
-  {
-    "name": "alpha",
-    "label": "Alpha",
-    "description": "Text assigned to the first alphabet letter.",
-    "parameter": "-a ${value}",
-    "value": {
-      "type": "text"
+    "input": {
+      "label": "Input file",
+      "description": "Json or Yaml file containing data to be parsed",
+      "value": {
+        "type": "file",
+        "maxSize": "2KB",
+        "required": true
+      }
+    },
+    "format": {
+      "label": "File format",
+      "value": {
+        "type": "choice",
+        "choices": {
+          "JSON": "json",
+          "YAML": "yaml",
+          "other": "other"
+        },
+        "required": false,
+        "default": "json"
+      }
     }
   }
 
 Value object
 ^^^^^^^^^^^^
 
-Each value object regardless of its type have two properties. First,
-``type``, is required and can take one of the following values: ``integer``,
-``decimal``, ``text``, ``boolean``, ``choice`` or ``file``. Second one,
-``default``, is optional and its value should match type of the field.
+Each value object regardless of its type have three properties: ``type``,
+``required``, ``default``. First, ``type``, is required and can take one of the
+following values: ``int``, ``float``, ``text``, ``boolean``, ``choice`` or
+``file``.
+Second, ``required``, is required and specifies whether the value must be
+specified for the form to be valid.
+Third, ``default``, is optional and its value should match type of the field.
+It's the default value of the field if user won't choose anything.
+Note that specifying default value makes the field not required as default is
+user for no input.
 
 All other properties are optional and they are specific for different types.
 
-:integer:
+:int:
   ``min`` : (int)
     Inclusive minimum value, unbound if not present
   ``max`` : (int)
@@ -269,13 +262,14 @@ All other properties are optional and they are specific for different types.
   .. code-block:: json
 
     {
-      "type": "integer",
+      "required": true,
+      "type": "int",
       "min": 0,
       "max": 10,
       "default": 5
     }
 
-:decimal:
+:float:
   ``min`` : (float)
     Minimum value, unbound if not present
   ``max`` : (float)
@@ -288,10 +282,10 @@ All other properties are optional and they are specific for different types.
   .. code-block:: json
 
     {
-      "type": "decimal",
+      "type": "float",
       "min": -4.0,
       "minExclusive": false,
-      "max": 4.0,
+      "max": 4.5,
       "maxExlusive": true,
       "default": 0
     }
@@ -313,8 +307,6 @@ All other properties are optional and they are specific for different types.
 :boolean:
   ``value`` : (string)
     Value assigned to the field if true. Otherwise, an empty string is set.
-    For boolean flags it's recommended to set parameter to ``${value}``
-    and boolean value to flag. e.g. ``--flag``
 
   .. code-block:: json
 
@@ -328,7 +320,7 @@ All other properties are optional and they are specific for different types.
   In choice field only one of the available choices can be selected.
 
   ``choices`` : (object)
-    Choices are defined as an object where property key is option and the
+    Choices are defined as an object where property key is option name and the
     value is choice value. When the choice is selected, it's value is passed
     to the parameter.
 
@@ -363,92 +355,279 @@ All other properties are optional and they are specific for different types.
     }
 
 
-Output object
-^^^^^^^^^^^^^
+Command description
+-------------------
 
-Output objects describe possible outputs of the command execution.
-They are defined by the output type and the output method.
+Command description files tell the application how to communicate with the
+script and how to submit it to the queue.
+The file should be written using either YAML or JSON syntax and should
+follow structure described below.
+
+The root object must have the following properties: ``options`` which is the
+list of `Option objects`_, ``result`` which is the list
+of `Result objects`_, ``configurations`` which is the
+map of configuration names and parameters described in `Configurations`_ and
+``limits`` which specifies the importable Python class providing configuration
+selection.
+
+Option objects
+^^^^^^^^^^^^^^
+
+Each option object must have properties ``ref`` and ``param``.
+Optionally you may add ``val`` if you want to use default value.
+
+:``ref``:
+  Corresponding field name in the form definition file. The value of the form
+  field with this name will be used for this option.
+
+:``param``:
+  Template of the command option. Field value will be replaced for ``${value}``
+  placeholder. i.e. ``--in ${value}``, ``-a=${value}``.
+  ``${value}`` is not required and, if not given, the option will be independent
+  of the field value.
+
+:``val``:
+  Value used if corresponding field in the form is not found or evaluates to
+  ``None``. Useful when you need to specify constants like output file flag.
+
+Example:
+
+.. code-block:: json
+
+  {
+    "options": [
+      {
+        "ref": "message",
+        "param": "-m $value"
+      },
+      {
+        "ref": "format",
+        "param": "--format=$value"
+      },
+      {
+        "ref": "output",
+        "param": "-o $value",
+        "val": "output_file.o"
+      }
+    ]
+  }
+
+Result objects
+^^^^^^^^^^^^^^
+
+Result objects describe possible outputs of the command execution.
 Each output object should have ``type`` property which takes one of the values:
 ``result``, ``error`` or ``log`` which indicates whether the output should be
 interpreted as computation result, error message or log, respectively.
-``method`` property, which is one of: ``stdout``, ``stderr`` or ``file``,
-defines how the output can be retrieved. Values indicate standard output
-stream, standard error stream or file.
-Additionally, if the output method is set to ``file``, exactly one of the
+``method`` property defines how the output can be retrieved.
+The only allowed value is ``file`` which indicates that the content is stored
+in the file.
+If the output method is set to ``file``, exactly one of the
 following properties must be provided
 
-:``filename``:
-  A name with relative path to the output file.
-
-:``parameter``:
-  Command line option template which will be used to define the output file
-  name. File name is substituted for ``${value}`` placeholder.
-  e.g. ``--out ${value}``
+:``path``:
+  A path to the output file relative to the current working directory.
 
 :``pattern``:
-  Regular expression which should match all output files.
-  May be used to specify the folder with output files.
+  Regular expression used to match output files.
+  May be used to specify the folder with output files or data split between
+  multiple files.
+
+Note, ``path`` should be used if file must be provided by the service.
+If command returns and this file is not present, job is considered as failed.
+``pattern`` should be used for multiple files and optional files when zero or
+more files are expected. These paths are evaluated lazily after the job is
+finished and match as many files as is present at that time.
 
 Example of the list of outputs:
 
 .. code-block:: json
 
-  [
-    {
-      "type": "error",
-      "method": "stderr"
-    },
-    {
-      "type": "log",
-      "method": "file",
-      "filename": "log.txt"
-    },
-    {
-      "type": "result",
-      "method": "file",
-      "pattern": "/build/.+\\.o"
-    },
-    {
-      "type": "result",
-      "method": "stdout"
+  {
+    "result": [
+      {
+        "type": "result",
+        "method": "file",
+        "pattern": "/build/.+\\.o"
+      },
+      {
+        "type": "result",
+        "method": "file",
+        "path": "file.out"
+      },
+      {
+        "type": "error",
+        "method": "file",
+        "pattern": "error\\.log"
+      },
+      {
+        "type": "log",
+        "method": "file",
+        "path": "output.log"
+      }
+    ]
+  }
+
+Configurations
+^^^^^^^^^^^^^^
+
+Each configuration describes how the command will be dispatched to the queue.
+It can be either local queue or Sun Grid Engine accessible on the machine.
+Each key in the ``configuration`` object represents configuration name which
+can be referenced in the limits module.
+
+Values should be objects with following properties:
+
+:``execClass``:
+  Class of the executor used to start the job with given configuration.
+  Available values are ``LocalExec`` for local queue manager provided with
+  PyBioAS, ``ShellExec`` which simply spawns a new process (only recommended
+  for very short jobs which takes milliseconds to complete) and
+  ``GridEngineExec`` which sends the job to Sun Grid Engine.
+
+:``bin``:
+  Command or path to executable binary which will be executed with the queue.
+  Command is passed as it is to the shell, so keep correct escaping and
+  quotation.
+
+:``queueArgs``:
+  List of arguments passed directly to the queue command. It's optional and
+  is applicable to several execution environments only.
+
+Example:
+
+.. code-block:: json
+
+  {
+    "configurations": {
+      "local": {
+        "execClass": "LocalExec",
+        "bin": "python \"/var/pybioas-project/binaries/pydummy.py\""
+      },
+      "cluster": {
+        "execClass": "GridEngineExec",
+        "bin": "/var/pybioas-project/binaries/pydummy.py",
+        "queueArgs": [
+          "-v",
+          "PATH=/local/python-envs/pybioas/bin"
+        ]
+      }
     }
-  ]
+  }
+
+Limits
+^^^^^^
+
+Path to Python class which performs selection of the configuration based on
+command parameters. It has to be a valid Python import path (packages separated
+with dots) accessible to the application. Folder containing Python module and
+its parent folders must contain an empty *__init__.py* file to be Python
+packages.
+More details on limits classes in the `Limits class`_ section.
+
+
+Limits class
+------------
+
+In your project configuration you may create one of more Python modules
+containing limit classes. Each class should contain methods which allows to
+pick one configuration when given values passed to the form.
+
+Limits class must extend ``pybioas.scheduler.executors.JobLimits`` class
+and define one class attribute ``configurations`` containing the list of
+configuration names.
+For each configuration you should specify a method ``limit_<configuration>``
+which accepts one argument - dictionary containing form values.
+Each of the methods should return ``True`` or ``False`` depending on whether for
+given form values this configuration should be selected.
+Limits are evaluated in the order specified in the ``configurations`` list
+and first one which returns ``True`` is picked.
+You may also need to define ``setup`` method for expensive operations.
+``setup`` is called before all limit methods and can be used to prepare some
+variables beforehand and store them as attributes of ``self``.
+
+Let's look at the example of dummy json/yaml reader.
+
+.. code-block:: python
+
+  import os
+
+  from pybioas.scheduler.executors import JobLimits
+
+  class MyLimits(JobLimits):
+
+      configurations = ['first_conf', 'second_conf']
+
+      def setup(self, values):
+          input_file = values['input']
+          statinfo = os.stat(input_file)
+          self.input_file_size = statinfo.st_size
+
+      def limit_first_conf(self, values):
+          if values['format'] == 'json' and self.input_file_size < 100:
+              return True
+          if values['format'] == 'yaml' and self.input_file_size < 20:
+              return True
+          return False
+
+      def limit_second_conf(self, values):
+          if self.input_file_size < 1000:
+              return True
+          else:
+              return False
+
+First, inside ``setup`` method, it retrieves input file path, checks its size
+in bytes and stores the value in the ``input_file_size`` property.
+Next, it checks criteria for first configuration which are: less than 100B
+json file or less than 20B yaml file. If they are not met, refuse to use this
+configuration and jump to the next in the list.
+Second configuration, on the other hand, is executed if the file size does not
+exceed 1000B. Otherwise, scheduler refuses to start the job.
+
+Field values can be obtained from the method argument using field name as a
+dictionary key. All values are strings in the format as they are entered in the
+shell command and may require conversion to other types.
 
 
 ===============
 Running the app
 ===============
 
-PyBioAS consists of three main parts: http server, job scheduler and
-local execution queue. Separation allows them to run independently e.g.
+PyBioAS consists of two core parts: rest http server and job scheduler.
+Separation allows them to run independently of each other. In case
 when the scheduler is down, server keeps collection requests and stash them,
 so when the scheduler is working again it can catch up with the server.
 Each component is launched using *manage.py* script with additional arguments.
 
-First of all, you need to create a database file and add a schema executing ::
+Additionally, you can use simple task queue added to PyBioAS to run tasks
+on the local machine without additional software installed.
+
+To launch the project, you need to create a database file with a schema
+by executing ::
 
   python manage.py initdb
 
-It will create a *sqlite.db* file in the current working directory.
+It will create a *sqlite.db* file in the current working directory and
+automatically create all required tables.
 
-In order to delete the file, you may call ::
+In order to delete the database, you may call ::
 
   python manage.py dropdb
 
 or remove it manually fom the file system.
 
-Next, you need to launch three processes for each module. Http server is
-launched with ::
+Next, you need to launch rest server and scheduler processes.
+Server can be started with ::
 
   python manage.py server
 
-Then, you can start the worker process with ::
-
-  python manage.py worker
-
-and scheduler ::
+Then, you can start the scheduler process with ::
 
   python manage.py scheduler
 
-To stop the process, send the ``SIG_TERM`` or ``SIG_KILL`` signal to that
-process.
+If you decided to use local queue to start jobs, you can run it with ::
+
+  python manage.py worker
+
+To stop any of these processes, send the ``INTERRUPT`` signal to it co close it
+gracefully.

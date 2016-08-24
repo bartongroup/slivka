@@ -1,3 +1,4 @@
+import configparser
 import os
 import types
 
@@ -10,7 +11,7 @@ class Settings:
     MEDIA_DIR = "media"
     WORK_DIR = "work_dir"
     SERVICE_INI = "services.ini"
-    SERVICES = ()
+    SERVICE_CONF = None
     QUEUE_HOST = 'localhost'
     QUEUE_PORT = 3397
     SERVER_HOST = 'localhost'
@@ -24,6 +25,7 @@ class Settings:
             self._load_dict(settings)
         elif settings is None:
             pass
+        self.SERVICE_CONF = configparser.ConfigParser()
         self._parse()
 
     def _load_dict(self, settings_dict):
@@ -58,6 +60,7 @@ class Settings:
             raise ImproperlyConfigured(
                 "{} is not a file.".format(self.SERVICE_INI)
             )
+        self.SERVICE_CONF.read(self.SERVICE_INI)
 
         if not isinstance(self.SERVER_PORT, int):
             raise ImproperlyConfigured("SERVER_PORT must be an integer")
@@ -69,16 +72,20 @@ class Settings:
         self.LOG_DIR = self._normalize_path(self.LOG_DIR)
         os.makedirs(self.LOG_DIR, exist_ok=True)
 
-        scheduler_log_file = os.path.join(self.LOG_DIR, 'Scheduler.log')
-        task_queue_log_file = os.path.join(self.LOG_DIR, 'TaskQueue.log')
         self.LOGGER_CONF = _LOGGER_CONF_TEMPLATE.copy()
-        self.LOGGER_CONF['handlers']['scheduler_file']['filename'] = scheduler_log_file
-        self.LOGGER_CONF['handlers']['task_queue_file']['filename'] = task_queue_log_file
+        self.LOGGER_CONF['handlers']['scheduler_file']['filename'] = \
+            os.path.join(self.LOG_DIR, 'Scheduler.log')
+        self.LOGGER_CONF['handlers']['task_queue_file']['filename'] = \
+            os.path.join(self.LOG_DIR, 'TaskQueue.log')
 
     def _normalize_path(self, path):
         if not os.path.isabs(path):
             path = os.path.join(self.BASE_DIR, path)
         return os.path.normpath(path)
+
+    @property
+    def SERVICES(self):
+        return list(self.SERVICE_CONF.sections())
 
 
 class ImproperlyConfigured(Exception):
@@ -135,4 +142,3 @@ _LOGGER_CONF_TEMPLATE = {
         }
     }
 }
-
