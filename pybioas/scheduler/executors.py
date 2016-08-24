@@ -13,7 +13,7 @@ from .command import CommandOption, FileResult, PatternFileResult
 from .exc import JobRetrievalError, SubmissionError
 from .task_queue import QueueServer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('pybioas.scheduler.scheduler')
 
 
 # noinspection PyAbstractClass
@@ -324,8 +324,9 @@ class GridEngineExec(Executor):
 
     def submit(self, values, cwd):
         queue_command = [
-            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'
+            'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt', '-V'
         ] + self.qargs
+        logger.debug('starting %s' % ' '.join(queue_command))
         process = subprocess.Popen(
             queue_command,
             stdout=subprocess.PIPE,
@@ -337,7 +338,10 @@ class GridEngineExec(Executor):
         )
         command_chunks = self.bin + self.get_options(values)
         command = ' '.join(shlex.quote(s) for s in command_chunks)
-        stdin = "echo > started\n%s\necho > finished\n" % command
+        logger.debug('submitting %s' % command)
+        stdin = ("echo > started;\n"
+                 "%s;\n"
+                 "echo > finished;") % command
         stdout, stderr = process.communicate(stdin)
         match = self.job_submission_regex.match(stdout)
         return match.group(1)
@@ -366,7 +370,11 @@ class GridEngineJob(Job):
         regex = self.job_status_regex_pattern.format(job_id)
         match = re.search(regex, out, re.MULTILINE)
         if match is None:
-            time_started = os.path.getmtime(os.path.join(self.cwd, 'started'))
+            try:
+                time_started = os.path.getmtime(
+                    os.path.join(self.cwd, 'started'))
+            except FileNotFoundError:
+                return self.STATUS_QUEUED
             try:
                 time_finished = os.path.getmtime(
                     os.path.join(self.cwd, 'finished'))

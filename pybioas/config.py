@@ -67,10 +67,11 @@ class Settings:
         if self.LOG_DIR is None:
             self.LOG_DIR = self.BASE_DIR
         self.LOG_DIR = self._normalize_path(self.LOG_DIR)
+        os.makedirs(self.LOG_DIR, exist_ok=True)
 
         scheduler_log_file = os.path.join(self.LOG_DIR, 'Scheduler.log')
         task_queue_log_file = os.path.join(self.LOG_DIR, 'TaskQueue.log')
-        self.LOGGER_CONF = dict(_LOGGER_CONF_TEMPLATE)
+        self.LOGGER_CONF = _LOGGER_CONF_TEMPLATE.copy()
         self.LOGGER_CONF['handlers']['scheduler_file']['filename'] = scheduler_log_file
         self.LOGGER_CONF['handlers']['task_queue_file']['filename'] = task_queue_log_file
 

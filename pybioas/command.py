@@ -1,5 +1,6 @@
 import logging.config
 import os
+import stat
 
 import click
 import jinja2
@@ -34,6 +35,7 @@ def setup(name):
         f.write(pkg_resources.resource_string(
             "pybioas", "data/template/manage.py.jinja2"
         ))
+    os.chmod(managepy_path, stat.S_IXUSR)
 
     # copy settings.py template
     settings_tpl = jinja2.Template(
@@ -70,11 +72,13 @@ def setup(name):
         f.write(pkg_resources.resource_string(
             'pybioas', 'data/template/config/limits.py'
         ))
+    open(os.path.join(os.path.dirname(limits_path), '__init__.py'), 'w').close()
 
     with open(pydummy_path, 'wb') as f:
         f.write(pkg_resources.resource_string(
             "pybioas", "data/template/binaries/pydummy.py"
         ))
+    os.chmod(pydummy_path, stat.S_IXUSR)
 
 
 @click.group()

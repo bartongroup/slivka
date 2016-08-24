@@ -16,7 +16,7 @@ queuing mechanism and sqlite_ database.
 Installation and requirements
 =============================
 
-Installation requires Python 3.2+ (recommended version 3.5).
+Installation requires Python 3.3+ (recommended version 3.5).
 Additional requirements, which will be downloaded and installed automatically,
 are:
 
