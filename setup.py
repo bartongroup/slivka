@@ -8,7 +8,7 @@ except ImportError:
 
 setup(
     name="PyBioAS",
-    version="0.0.dev2",
+    version="0.0.dev3",
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
         "click==6.6",

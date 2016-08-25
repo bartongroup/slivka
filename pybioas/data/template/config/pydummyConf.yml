@@ -54,5 +54,5 @@ configurations:
         execClass: GridEngineExec
         bin: python "{{ pydummy_path }}"
 
-limits: config.limits.PydummyLimit
+limits: config.limits.PydummyLimits
 ...
