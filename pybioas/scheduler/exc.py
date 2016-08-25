@@ -1,20 +1,30 @@
-class ServerError(Exception):
-    """ Internal server error """
+class QueueError(RuntimeError):
+    """
+    Superclass of all queue related error statuses
+    """
 
 
-class NotFoundError(RuntimeError):
+class JobNotFoundError(QueueError):
     """
     Job with the given id not found.
     """
 
 
-class SubmissionError(RuntimeError):
+class QueueBrokenError(QueueError):
     """
-    Job cannot be submitted by the Executor due to an external queue error.
+    Error raised when the queue is broken and all other requests for resource
+    will fail.
     """
 
 
-class JobRetrievalError(RuntimeError):
+class ServerError(QueueBrokenError):
     """
-    Job cannot be fetched from the queue due to an external queue error
+    Internal server error
+    """
+
+
+class QueueUnavailableError(QueueError):
+    """
+    Exception raised when the queue is temporarily not available but resource
+    will be accessible in the future
     """

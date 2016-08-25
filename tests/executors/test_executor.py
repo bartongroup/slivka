@@ -2,6 +2,8 @@ import tempfile
 import unittest
 
 from pybioas.scheduler.command import CommandOption, FileResult
+from pybioas.scheduler.exc import QueueUnavailableError, QueueBrokenError, \
+    JobNotFoundError
 from pybioas.scheduler.executors import Executor, Job, GridEngineExec, \
     GridEngineJob
 
@@ -139,6 +141,32 @@ class TestExecutorSubmit(unittest.TestCase):
         mock_job = mock_get_job.return_value
         mock_job.assert_called_once_with(mock.sentinel.job_id, mock.ANY, exe)
 
+    def test_queue_unavailable(self, mock_get_job, mock_submit):
+        mock_submit.side_effect = QueueUnavailableError(mock.sentinel.msg)
+        exe = Executor()
+        with self.assertRaises(QueueUnavailableError) as cm:
+            exe(mock.sentinel.values)
+            self.assertTupleEqual(cm.exception.args, (mock.sentinel.msg,))
+
+    def test_queue_broken(self, mock_get_job, mock_submit):
+        mock_submit.side_effect = QueueBrokenError(mock.sentinel.msg)
+        exe = Executor()
+        with self.assertRaises(QueueBrokenError) as cm:
+            exe(mock.sentinel.values)
+            self.assertTupleEqual(cm.exception.args, (mock.sentinel.msg,))
+
+    def test_job_not_found(self, mock_get_job, mock_submit):
+        mock_submit.side_effect = JobNotFoundError(mock.sentinel.msg)
+        exe = Executor()
+        with self.assertRaises(JobNotFoundError) as cm:
+            exe(mock.sentinel.values)
+            self.assertTupleEqual(cm.exception.args, (mock.sentinel.msg,))
+
+    def test_unexpected_queue_error(self, mock_get_job, mock_submit):
+        mock_submit.side_effect = Exception
+        exe = Executor()
+        self.assertRaises(QueueBrokenError, exe, mock.sentinel.values)
+
 
 class TestJob(unittest.TestCase):
 
@@ -155,7 +183,9 @@ class TestJob(unittest.TestCase):
 
     def test_result_property(self):
         job = Job(mock.sentinel.id, None, self.mock_exe)
-        with mock.patch.object(job, 'get_result') as mock_get_result:
+        with mock.patch.object(job, 'get_result') as mock_get_result, \
+                mock.patch.object(job, 'get_status',
+                                  return_value=Job.STATUS_COMPLETED):
             mock_get_result.return_value = mock.sentinel.result
             self.assertEqual(job.result, mock.sentinel.result)
             mock_get_result.assert_called_once_with(mock.sentinel.id)
@@ -207,7 +237,9 @@ class TestGridEngineExec(unittest.TestCase):
         mock_bin.return_value = ['mockpython', 'mockscript.py']
         self.exe.submit({}, '')
         self.mock_popen.communicate.assert_called_once_with(
-            "echo > started\nmockpython mockscript.py\necho > finished\n"
+            "echo > started;\n"
+            "mockpython mockscript.py;\n"
+            "echo > finished;"
         )
 
     def test_job_id(self):
@@ -221,11 +253,16 @@ class TestGridEngineExec(unittest.TestCase):
 class TestGridEngineJob(unittest.TestCase):
 
     qstat_output = (
-        "1771701 1.00500 jp_4NIaEBc mockuser     r     08/13/2016 17:57:21 c6100.q@c6100-1-4.cluster.life     4\n"
-        "1778095 1.00500 jp_D21Nm6a mockuser     r     08/15/2016 22:53:29 c6100.q@c6100-1-4.cluster.life     4\n"
-        "1791672 0.01993 R          mockuser     Eqw   08/17/2016 17:41:34                                    1\n"
-        "1776414 0.00588 fic_Sample mockuser     qw    08/15/2016 11:44:23                                   10\n"
-        "1776413 0.00589 fic_Sample mockuser     d     08/15/2016 11:44:23                                   10\n"
+        "1771701 1.00500 jp_4NIaEBc mockuser     r     "
+        "08/13/2016 17:57:21 c6100.q@c6100-1-4.cluster.life     4\n"
+        "1778095 1.00500 jp_D21Nm6a mockuser     r     "
+        "08/15/2016 22:53:29 c6100.q@c6100-1-4.cluster.life     4\n"
+        "1791672 0.01993 R          mockuser     Eqw   "
+        "08/17/2016 17:41:34                                    1\n"
+        "1776414 0.00588 fic_Sample mockuser     qw    "
+        "08/15/2016 11:44:23                                   10\n"
+        "1776413 0.00589 fic_Sample mockuser     d     "
+        "08/15/2016 11:44:23                                   10\n"
     )
 
     def setUp(self):

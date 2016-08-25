@@ -15,7 +15,7 @@ from collections import namedtuple, deque
 from select import select
 
 import pybioas
-from pybioas.scheduler.exc import ServerError, NotFoundError
+from pybioas.scheduler.exc import ServerError, JobNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -146,10 +146,11 @@ class QueueServer(threading.Thread):
 
     HEAD_NEW_TASK = b'NEW TASK'
     HEAD_JOB_STATUS = b'JOB STAT'
-    HEAD_JOB_RESULT = b'JOB RES '
+    HEAD_JOB_RESULT = b'JOB RESU'
     HEAD_PING = b'PING    '
     STATUS_OK = b'OK      '
     STATUS_ERROR = b'ERROR   '
+    STATUS_NOT_FOUND = b'NOT FOUN'
 
     def __init__(self, host, port, get_job, add_job):
         """
@@ -287,13 +288,13 @@ class QueueServer(threading.Thread):
             elif header == self.HEAD_JOB_STATUS:
                 try:
                     response = self.job_status_request(request)
-                except NotFoundError:
-                    return self.STATUS_ERROR
+                except JobNotFoundError:
+                    return self.STATUS_NOT_FOUND
             elif header == self.HEAD_JOB_RESULT:
                 try:
                     response = self.job_result_request(request)
-                except NotFoundError:
-                    return self.STATUS_ERROR
+                except JobNotFoundError:
+                    return self.STATUS_NOT_FOUND
             elif header == self.HEAD_PING:
                 return self.STATUS_OK
             else:
@@ -321,13 +322,13 @@ class QueueServer(threading.Thread):
     def job_status_request(self, request):
         job = self._get_job(request['jobId'])
         if job is None:
-            raise NotFoundError("Job %r not found" % request['jobId'])
+            raise JobNotFoundError("Job %r not found" % request['jobId'])
         return {'status': job.status}
 
     def job_result_request(self, request):
         job = self._get_job(request['jobId'])
         if job is None:
-            raise NotFoundError("Job %d not found" % request['jobId'])
+            raise JobNotFoundError("Job %d not found" % request['jobId'])
         return {
             'return_code': job.output.return_code,
             'stdout': job.output.stdout,
@@ -437,7 +438,9 @@ class QueueServer(threading.Thread):
             header = conn.recv(16)
             status = header[:8]
             content_length = int.from_bytes(header[8:], 'big')
-            if status != QueueServer.STATUS_OK:
+            if status == QueueServer.STATUS_NOT_FOUND:
+                raise JobNotFoundError
+            elif status != QueueServer.STATUS_OK:
                 raise ServerError('Internal server error')
             try:
                 data = QueueServer.read_json(conn, content_length)
@@ -476,7 +479,9 @@ class QueueServer(threading.Thread):
             header = conn.recv(16)
             status = header[:8]
             content_length = int.from_bytes(header[8:], 'big')
-            if status != QueueServer.STATUS_OK:
+            if status == QueueServer.STATUS_NOT_FOUND:
+                raise JobNotFoundError
+            elif status != QueueServer.STATUS_OK:
                 raise ServerError('Internal server error')
             try:
                 data = QueueServer.read_json(conn, content_length)

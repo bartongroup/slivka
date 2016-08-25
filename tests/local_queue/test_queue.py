@@ -3,7 +3,7 @@ import sys
 import types
 import unittest
 
-from pybioas.scheduler.exc import ServerError
+from pybioas.scheduler.exc import JobNotFoundError
 from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER, \
     ProcessOutput
 
@@ -162,7 +162,7 @@ class TestServerCommunication(unittest.TestCase):
 
     def test_job_status_not_exist(self):
         self.mock_get.return_value = None
-        with self.assertRaises(ServerError):
+        with self.assertRaises(JobNotFoundError):
             QueueServer.get_job_status(15, address=self.ADDRESS)
 
     def test_job_output(self):
@@ -174,5 +174,5 @@ class TestServerCommunication(unittest.TestCase):
 
     def test_job_output_not_exist(self):
         self.mock_get.return_value = None
-        with self.assertRaises(ServerError):
+        with self.assertRaises(JobNotFoundError):
             QueueServer.get_job_output(14, address=self.ADDRESS)

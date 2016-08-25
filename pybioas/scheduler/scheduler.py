@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 import pybioas.utils
 from pybioas.db import Session, start_session
 from pybioas.db.models import Request, Result, File, JobModel
-from .exc import JobRetrievalError, SubmissionError
+from .exc import QueueBrokenError, QueueUnavailableError, JobNotFoundError
 from .executors import Executor, Job
 
 
@@ -80,10 +80,10 @@ class Scheduler:
         set to False, it blocks until interrupt signal is received.
         After this, it shuts the server down gracefully and waits for threads to
         join.
-        Asynchorous start doesn't mean that the main process wil exit and
-        subprocesses will run in the background. When started asynchonously
+        Asynchronous start doesn't mean that the main process wil exit and
+        subprocess will run in the background. When started asynchronously
         you should shutdown it manually from outside.
-        :param async: whether the sheduler should not block
+        :param async: whether the scheduler should not block
         """
         self._collector_thread.start()
         self._poll_thread.start()
@@ -139,7 +139,6 @@ class Scheduler:
             try:
                 for request in pending_requests:
                     self.submit_job(request)
-                    request.pending = False
             finally:
                 session.commit()
                 session.close()
@@ -164,16 +163,20 @@ class Scheduler:
             )
             if configuration is None:
                 request.job.status = JobModel.STATUS_ERROR
-                return
-            executor = self.get_executor(request.service, configuration)
-            try:
-                job = executor(options)
-            except SubmissionError:
-                request.job.status = JobModel.STATUS_ERROR
             else:
-                request.job.job_ref_id = job.id
-                request.job.working_dir = job.cwd
-                self._tasks.add(JobWrapper(job, request.id))
+                executor = self.get_executor(request.service, configuration)
+                try:
+                    job = executor(options)
+                except QueueUnavailableError:
+                    request.job = None
+                    return
+                except QueueBrokenError:
+                    request.job.status = JobModel.STATUS_ERROR
+                else:
+                    request.job.job_ref_id = job.id
+                    request.job.working_dir = job.cwd
+                    self._tasks.add(JobWrapper(job, request.id))
+            request.pending = False
 
     def collector_loop(self):
         """
@@ -186,11 +189,17 @@ class Scheduler:
             session = Session()
             # noinspection PyBroadException
             try:
-                for job_wrapper in self._get_finished():
+                finished, broken = self._get_finished()
+                for job_wrapper in finished:
                     try:
                         self._complete_job(job_wrapper, session)
-                    except JobRetrievalError:
+                    except QueueUnavailableError:
+                        self.logger.warning("Queue unavailable")
+                    except (QueueBrokenError, JobNotFoundError):
                         self.logger.error("Couldn't retrieve job result.")
+                        broken.add(job_wrapper)
+                for job_wrapper in broken:
+                    self._discard_job(job_wrapper, session)
             except:
                 self._logger.critical(
                     "Critical error occurred, scheduler shuts down.",
@@ -205,20 +214,24 @@ class Scheduler:
     def _get_finished(self):
         """
         Browses all running tasks and collects those which are finished.
-        :return: set of finished tasks
-        :rtype: set[JobWrapper]
+        :return: sets of finished and broken tasks
+        :rtype: (set[JobWrapper], set[JobWrapper])
         """
         self.logger.debug("Collecting finished tasks")
         with self._tasks_lock:
             finished = set()
+            broken = set()
             for job_wrapper in self._tasks:
                 try:
                     if job_wrapper.job.is_finished():
                         finished.add(job_wrapper)
-                except JobRetrievalError:
-                    self.logger.error("Couldn't retrieve job status.")
+                except QueueUnavailableError:
+                    self.logger.warning("Queue unavailable")
+                except (QueueBrokenError, JobNotFoundError):
+                    self.logger.exception("Couldn't retrieve job status.")
+                    broken.add(job_wrapper)
         self.logger.debug("Found %d tasks", len(finished))
-        return finished
+        return finished, broken
 
     def _complete_job(self, job_wrapper, session):
         """
@@ -227,7 +240,9 @@ class Scheduler:
         If retrieving result fails, it skips the job and tries again later.
         :param job_wrapper: wrapper of currently processed job
         :param session: current database session
-        :raise JobRetrievalError:
+        :raise QueueBrokenError:
+        :raise JobNotFoundError:
+        :raise QueueUnavailableError:
         """
         result = job_wrapper.job.result
         self._tasks.remove(job_wrapper)
@@ -245,6 +260,18 @@ class Scheduler:
             for path in job_wrapper.job.file_results
         ]
         session.add(res)
+
+    def _discard_job(self, job_wrapper, session):
+        """
+        Discards broken jobs from the scheduler and marks them as erroneous.
+        :param job_wrapper: wrapper od currently processed job
+        :param session: current database session
+        :type session: sqlalchemy.orm.Session
+        """
+        self._tasks.remove(job_wrapper)
+        (session.query(JobModel).
+            filter(JobModel.request_id == job_wrapper.request_id).
+            update({"status": job_wrapper.job.cached_status}))
 
     @property
     def logger(self):

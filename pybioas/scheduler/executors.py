@@ -10,7 +10,7 @@ import uuid
 
 import pybioas
 from .command import CommandOption, FileResult, PatternFileResult
-from .exc import JobRetrievalError, SubmissionError
+from .exc import QueueBrokenError, QueueError, QueueUnavailableError
 from .task_queue import QueueServer
 
 logger = logging.getLogger('pybioas.scheduler.scheduler')
@@ -44,10 +44,12 @@ class Executor:
         os.mkdir(cwd)
         try:
             job_id = self.submit(values, cwd)
+        except QueueError:
+            raise
         except:
             logger.critical("Critical error occurred when submitting the job",
                             exc_info=True)
-            raise SubmissionError
+            raise QueueBrokenError
         job = self.get_job_cls()(job_id, cwd, self)
         return job
 
@@ -180,23 +182,31 @@ class Job:
         try:
             self._cached_status = self.get_status(self.id)
             return self._cached_status
+        except QueueError:
+            self._cached_status = self.STATUS_ERROR
+            raise
         except:
+            self._cached_status = self.STATUS_ERROR
             logger.critical(
                 "Critical error occurred when retrieving job status",
                 exc_info=True
             )
-            raise JobRetrievalError
+            raise QueueBrokenError
 
     @property
     def result(self):
+        if self.cached_status in {Job.STATUS_QUEUED, Job.STATUS_RUNNING}:
+            return None
         try:
             return self.get_result(self.id)
+        except QueueError:
+            raise
         except:
             logger.critical(
                 "Critical error occurred when retrieving job result",
                 exc_info=True
             )
-            raise JobRetrievalError
+            raise QueueBrokenError
 
     @property
     def cwd(self):
@@ -217,9 +227,7 @@ class Job:
         raise NotImplementedError
 
     def is_finished(self):
-        return self.status in {
-            Job.STATUS_COMPLETED, Job.STATUS_FAILED, Job.STATUS_ERROR
-        }
+        return self.status not in {Job.STATUS_QUEUED, Job.STATUS_RUNNING}
 
 
 class JobOutput:
@@ -236,6 +244,7 @@ class JobLimits:
     configurations = []
 
     def get_conf(self, fields):
+        # noinspection PyBroadException
         try:
             self.setup(fields)
         except Exception:
@@ -314,7 +323,10 @@ class LocalExec(Executor):
 
     def submit(self, values, cwd):
         command = self.bin + self.get_options(values)
-        return QueueServer.submit_job(command, cwd, self.env)
+        try:
+            return QueueServer.submit_job(command, cwd, self.env)
+        except ConnectionError:
+            raise QueueUnavailableError
 
     @staticmethod
     def get_job_cls():
@@ -324,10 +336,16 @@ class LocalExec(Executor):
 class LocalJob(Job):
 
     def get_status(self, job_id):
-        return QueueServer.get_job_status(job_id)
+        try:
+            return QueueServer.get_job_status(job_id)
+        except ConnectionError:
+            raise QueueUnavailableError
 
     def get_result(self, job_id):
-        return JobOutput(*QueueServer.get_job_output(job_id))
+        try:
+            return JobOutput(*QueueServer.get_job_output(job_id))
+        except ConnectionError:
+            raise QueueUnavailableError
 
 
 class GridEngineExec(Executor):
@@ -340,7 +358,6 @@ class GridEngineExec(Executor):
         queue_command = [
             'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'
         ] + self.qargs
-        logger.debug('starting %s' % ' '.join(queue_command))
         process = subprocess.Popen(
             queue_command,
             stdout=subprocess.PIPE,
@@ -352,7 +369,6 @@ class GridEngineExec(Executor):
         )
         command_chunks = self.bin + self.get_options(values)
         command = ' '.join(shlex.quote(s) for s in command_chunks)
-        logger.debug('submitting %s' % command)
         stdin = ("echo > started;\n"
                  "%s;\n"
                  "echo > finished;") % command
@@ -408,7 +424,7 @@ class GridEngineJob(Job):
             elif status == 'd':
                 return self.STATUS_DELETED
             else:
-                return self.STATUS_ERROR
+                raise QueueUnavailableError
 
     def get_result(self, job_id):
         out_path = os.path.join(self.cwd, 'stdout.txt')
