@@ -11,7 +11,7 @@ class Settings:
     MEDIA_DIR = "media"
     WORK_DIR = "work_dir"
     SERVICE_INI = "services.ini"
-    SERVICE_CONF = None
+    CONFIG = None
     QUEUE_HOST = 'localhost'
     QUEUE_PORT = 3397
     SERVER_HOST = 'localhost'
@@ -25,7 +25,7 @@ class Settings:
             self._load_dict(settings)
         elif settings is None:
             pass
-        self.SERVICE_CONF = configparser.ConfigParser()
+        self.CONFIG = configparser.ConfigParser()
         self._parse()
 
     def _load_dict(self, settings_dict):
@@ -60,7 +60,8 @@ class Settings:
             raise ImproperlyConfigured(
                 "{} is not a file.".format(self.SERVICE_INI)
             )
-        self.SERVICE_CONF.read(self.SERVICE_INI)
+        self.CONFIG.read(self.SERVICE_INI)
+        self.CONFIG.optionxform = lambda option: option
 
         if not isinstance(self.SERVER_PORT, int):
             raise ImproperlyConfigured("SERVER_PORT must be an integer")
@@ -85,7 +86,7 @@ class Settings:
 
     @property
     def SERVICES(self):
-        return list(self.SERVICE_CONF.sections())
+        return list(self.CONFIG.sections())
 
 
 class ImproperlyConfigured(Exception):

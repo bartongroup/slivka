@@ -554,26 +554,27 @@ class LocalCommand:
             "Starting local command cmd=%r env=%r cwd=%s",
             self._cmd, self._env, self._cwd
         )
+        stdout = open(os.path.join(self._cwd, 'stdout.txt'), 'wb')
+        stderr = open(os.path.join(self._cmd, 'stderr.txt'), 'wb')
         try:
             self._process = subprocess.Popen(
                 self._cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=stdout,
+                stderr=stderr,
                 env=dict(os.environ, **self._env),
                 cwd=self._cwd
             )
-            stdout, stderr = self._process.communicate()
+            self._process.wait()
             return_code = self._process.returncode
         except:
             self._status = self.STATUS_FAILED
             raise
         else:
             self._status = self.STATUS_COMPLETED
-        self._output = ProcessOutput(
-            return_code,
-            stdout.decode(),
-            stderr.decode()
-        )
+        finally:
+            stdout.close()
+            stderr.close()
+        self._output = ProcessOutput(return_code, '', '')
         return self._output
 
     @property

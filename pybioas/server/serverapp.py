@@ -237,33 +237,47 @@ def delete_file(signed_file_id):
     return Response(status=204)
 
 
-@app.route('/task/<task_id>', methods=["GET"])
-def get_task(task_id):
+@app.route('/task/<task_id>/status', methods=['GET'])
+def get_task_status(task_id):
     """
-    GET /task/{task_id}
-    Gets the status of the running taks.
+    GET /task/{task_id}/status
+    Gets the status of the task.
     :param task_id: task identifier
     """
     with start_session() as session:
         try:
-            job_request = (session.query(models.Request).
-                           filter(models.Request.uuid == task_id).
-                           one())
+            job_req = (session.query(models.Request).
+                       filter_by(uuid=task_id).
+                       one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
-        response = {
-            "status": job_request.status,
-            "ready": job_request.is_finished,
-            "output": None
-        }
-        if job_request.status == models.JobModel.STATUS_COMPLETED:
-            response['output'] = {
-                "returnCode": job_request.result.return_code,
-                "stdout": job_request.result.stdout,
-                "stderr": job_request.result.stderr,
-                "files": [file.id for file in job_request.result.output_files]
-            }
-        return JsonResponse(response)
+        return JsonResponse({
+            "status": job_req.status,
+            "ready": job_req.is_finished
+        })
+
+
+@app.route('/task/<task_id>/files', methods=['GET'])
+def get_task_files(task_id):
+    """
+    GET /task/{task_id}/files
+    Get the list of file ids associated with this job.
+    :param task_id: task identifier
+    """
+    with start_session() as session:
+        try:
+            req = (session.query(models.Request).
+                   filter_by(uuid=task_id).
+                   one())
+        except sqlalchemy.orm.exc.NoResultFound:
+            raise abort(404)
+
+        files = (session.query(models.File).
+                 filter_by(job=req.job).
+                 all())
+        return JsonResponse({
+            "files": [file.id for file in files]
+        })
 
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])

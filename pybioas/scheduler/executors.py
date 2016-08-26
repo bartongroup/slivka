@@ -9,7 +9,7 @@ import sys
 import uuid
 
 import pybioas
-from .command import CommandOption, FileResult, PatternFileResult
+from .command import CommandOption, PathWrapper, PatternPathWrapper
 from .exc import QueueBrokenError, QueueError, QueueUnavailableError
 from .task_queue import QueueServer
 
@@ -19,24 +19,28 @@ logger = logging.getLogger('pybioas.scheduler.scheduler')
 # noinspection PyAbstractClass
 class Executor:
 
-    def __init__(self, *, bin="", options=None,
-                 qargs=None, file_results=None, env=None):
+    def __init__(self, *, bin="", options=None, qargs=None, result_paths=None,
+                 log_paths=None, env=None):
         """
+        :param log_paths:
         :param bin: executable command
         :type bin: str
         :param options: list of command options
         :type options: list[CommandOption]
         :param qargs: queue engine arguments
         :type qargs: list[str]
-        :param file_results: list of command outputs
-        :type file_results: list[FileResult]
+        :param result_paths: list of result file path wrappers
+        :type result_paths: list[PathWrapper]
+        :param log_paths: list of log file path wrappers
+        :type log_paths: list[PathWrapper]
         :param env: dictionary of environment variables to use
         :type env: dict[str, str]
         """
         self._qargs = qargs or []
         self._bin = shlex.split(bin)
         self._options = options or []
-        self._file_results = file_results or []
+        self._result_paths = result_paths or []
+        self._log_paths = log_paths or []
         self._env = env or {}
 
     def __call__(self, values):
@@ -92,8 +96,12 @@ class Executor:
         return options
 
     @property
-    def file_results(self):
-        return self._file_results
+    def result_paths(self):
+        return self._result_paths
+
+    @property
+    def log_paths(self):
+        return self._log_paths
 
     def submit(self, values, cwd):
         """
@@ -113,7 +121,7 @@ class Executor:
         """
         :param conf: configuration dictionary grabbed from the config file
         :return: dictionary of executors for each configuration
-        :rtype: dict[str, Executor]
+        :rtype: (dict[str, Executor], JobLimits)
         """
         options = [
             CommandOption(
@@ -123,24 +131,32 @@ class Executor:
             )
             for option in conf.get('options', [])
         ]
-        file_results = []
+        result_files = []
+        log_files = []
         for res in conf.get('result', []):
             if "path" in res:
-                file_results.append(FileResult(res['path']))
+                file = PathWrapper(res['path'])
             elif "pattern" in res:
-                file_results.append(PatternFileResult(res['pattern']))
+                file = PatternPathWrapper(res['pattern'])
             else:
                 raise ValueError("No property \"pattern\" or \"path\"")
+            if res['type'] == 'result':
+                result_files.append(file)
+            elif res['type'] == 'log' or res['type'] == 'error':
+                log_files.append(file)
+            else:
+                raise ValueError("Invalid file type: \"%s\"" % res['type'])
         executors = {}
         for name, configuration in conf.get('configurations', {}).items():
-            cls = getattr(
+            exec_cls = getattr(
                 sys.modules[__name__], configuration['execClass']
             )
-            executors[name] = cls(
+            executors[name] = exec_cls(
                 bin=configuration['bin'],
                 options=options,
                 qargs=configuration.get('queueArgs'),
-                file_results=file_results,
+                result_paths=result_files,
+                log_paths=log_files,
                 env=configuration.get('env')
             )
         limits = pydoc.locate(conf['limits'], forceload=1)
@@ -167,7 +183,8 @@ class Job:
         """
         self.id = job_id
         self._cwd = cwd
-        self._file_results = exe.file_results
+        self._result_paths = exe.result_paths
+        self._log_paths = exe.log_paths
         self._cached_status = None
 
     @property
@@ -213,11 +230,19 @@ class Job:
         return self._cwd
 
     @property
-    def file_results(self):
+    def result_paths(self):
         return [
             path
-            for file_result in self._file_results
-            for path in file_result.get_paths(self.cwd)
+            for path_wrapper in self._result_paths
+            for path in path_wrapper.get_paths(self.cwd)
+        ]
+
+    @property
+    def log_paths(self):
+        return [
+            path
+            for path_wrapper in self._log_paths
+            for path in path_wrapper.get_paths(self.cwd)
         ]
 
     def get_status(self, job_id):

@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime
 
@@ -48,8 +49,10 @@ class Option(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(16), nullable=False)
     value = Column(String)
-    request_id = Column(Integer,
-                        ForeignKey('requests.id', ondelete='CASCADE'))
+    request_id = Column(
+        Integer,
+        ForeignKey('requests.id', ondelete='CASCADE')
+    )
 
     request = relationship("Request", back_populates="options", uselist=False)
 
@@ -76,12 +79,13 @@ class JobModel(Base):
         nullable=False
     )
     status = Column(String(16), default=STATUS_QUEUED, nullable=False)
-    job_ref_id = Column(Integer)
+    job_ref_id = Column(String(32))
     working_dir = Column(String(256))
     service = Column(String(16), nullable=False)
     configuration = Column(String(16), nullable=False)
 
     request = relationship("Request", back_populates="job", uselist=False)
+    files = relationship("File", back_populates="job")
 
 
 class Result(Base):
@@ -92,11 +96,16 @@ class Result(Base):
     return_code = Column(Integer)
     stdout = Column(String)
     stderr = Column(String)
-    request_id = Column(Integer,
-                        ForeignKey("requests.id", ondelete="SET NULL"))
+    request_id = Column(
+        Integer,
+        ForeignKey("requests.id", ondelete="SET NULL")
+    )
 
     request = relationship("Request", back_populates="result")
-    output_files = relationship("File", back_populates="result")
+
+
+def default_title(context):
+    return os.path.basename(context.current_parameters['path'])
 
 
 class File(Base):
@@ -104,14 +113,17 @@ class File(Base):
     __tablename__ = "files"
 
     id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
-    title = Column(String(32))
+    title = Column(String(32), default=default_title)
     path = Column(String(256), nullable=False)
     mimetype = Column(String(32))
-    result_id = Column(Integer,
-                       ForeignKey("results.id", ondelete="SET NULL"),
-                       nullable=True, default=None)
+    job_id = Column(
+        Integer,
+        ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None
+    )
 
-    result = relationship("Result", back_populates="output_files")
+    job = relationship("JobModel", back_populates="files", uselist=False)
 
     def __repr__(self):
         return ("<File(id={id}, title={title}>"

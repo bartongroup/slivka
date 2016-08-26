@@ -1,8 +1,6 @@
 import logging
-import os.path
 import threading
 import time
-from configparser import ConfigParser
 
 import jsonschema
 import yaml
@@ -40,10 +38,7 @@ class Scheduler:
         For each service specifies in services.ini loads its configuration
         data and constructs executor for each configuration.
         """
-        parser = ConfigParser()
-        parser.optionxform = lambda option: option
-        with open(pybioas.settings.SERVICE_INI) as file:
-            parser.read_file(file)
+        parser = pybioas.settings.CONFIG
         self._executors = {}
         self._limits = {}
         for service in parser.sections():
@@ -157,26 +152,30 @@ class Scheduler:
         with self._tasks_lock:
             limits = self._limits[request.service]()
             configuration = limits.get_conf(options)
-            request.job = JobModel(
+            job_model = JobModel(
                 service=request.service,
                 configuration=configuration
             )
             if configuration is None:
-                request.job.status = JobModel.STATUS_ERROR
+                job_model.status = JobModel.STATUS_ERROR
             else:
                 executor = self.get_executor(request.service, configuration)
                 try:
                     job = executor(options)
                 except QueueUnavailableError:
-                    request.job = None
                     return
                 except QueueBrokenError:
-                    request.job.status = JobModel.STATUS_ERROR
+                    job_model.status = JobModel.STATUS_ERROR
                 else:
-                    request.job.job_ref_id = job.id
-                    request.job.working_dir = job.cwd
+                    job_model.status = JobModel.STATUS_QUEUED
+                    job_model.job_ref_id = job.id
+                    job_model.working_dir = job.cwd
+                    job_model.files = [
+                        File(path=path) for path in job.log_paths
+                    ]
                     self._tasks.add(JobWrapper(job, request.id))
-            request.pending = False
+        request.job = job_model
+        request.pending = False
 
     def collector_loop(self):
         """
@@ -244,21 +243,23 @@ class Scheduler:
         :raise JobNotFoundError:
         :raise QueueUnavailableError:
         """
+        self.logger.debug('Complete job %s', job_wrapper.job)
         result = job_wrapper.job.result
         self._tasks.remove(job_wrapper)
-        (session.query(JobModel).
-            filter(JobModel.request_id == job_wrapper.request_id).
-            update({"status": job_wrapper.job.cached_status}))
+        job_model = (session.query(JobModel).
+                     filter(JobModel.request_id == job_wrapper.request_id).
+                     one())
+        job_model.status = job_wrapper.job.cached_status
         res = Result(
             return_code=result.return_code,
             stdout=result.stdout,
             stderr=result.stderr,
             request_id=job_wrapper.request_id
         )
-        res.output_files = [
-            File(path=path, title=os.path.basename(path))
-            for path in job_wrapper.job.file_results
-        ]
+        session.add_all([
+            File(path=path, job=job_model)
+            for path in job_wrapper.job.result_paths
+        ])
         session.add(res)
 
     def _discard_job(self, job_wrapper, session):

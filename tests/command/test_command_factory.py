@@ -8,7 +8,7 @@ except ImportError:
     import mock
 
 from pybioas.scheduler.command import (
-    CommandOption, FileResult, PatternFileResult
+    CommandOption, PathWrapper, PatternPathWrapper
 )
 
 THIS_FOLDER = os.path.abspath(os.path.dirname(__file__))
@@ -97,7 +97,7 @@ class TestFileOutputs(unittest.TestCase):
     @mock.patch("pybioas.scheduler.command.os.path.exists")
     def test_single_file(self, mock_pathexist):
         mock_pathexist.return_value = True
-        fo = FileResult('somefile.txt')
+        fo = PathWrapper('somefile.txt')
         files = fo.get_paths('/var/')
         self.assertListEqual(files, ['/var/somefile.txt'])
 
@@ -105,7 +105,7 @@ class TestFileOutputs(unittest.TestCase):
     @mock.patch("pybioas.scheduler.command.os.path.exists")
     def test_single_file(self, mock_pathexist):
         mock_pathexist.return_value = True
-        fo = FileResult('somefile.txt')
+        fo = PathWrapper('somefile.txt')
         files = fo.get_paths('C:\\var\\')
         self.assertListEqual(files, ['C:\\var\\somefile.txt'])
 
@@ -116,7 +116,7 @@ class TestFileOutputs(unittest.TestCase):
         :type mock_listdir: mock.MagicMock
         """
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileResult(r'.+\.txt')
+        fo = PatternPathWrapper(r'.+\.txt')
         files = fo.get_paths('/var/')
         self.assertListEqual(files, ["/var/file1.txt", "/var/file2.txt"])
 
@@ -127,14 +127,14 @@ class TestFileOutputs(unittest.TestCase):
         :type mock_listdir: mock.MagicMock
         """
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileResult(r'.+\.txt')
+        fo = PatternPathWrapper(r'.+\.txt')
         files = fo.get_paths('C:\\var\\')
         self.assertListEqual(
             files, ["C:\\var\\file1.txt", "C:\\var\\file2.txt"]
         )
 
     def test_single_file_path_abs(self):
-        fo = FileResult('somefile.txt')
+        fo = PathWrapper('somefile.txt')
         files = fo.get_paths(os.curdir)
         for path in files:
             self.assertTrue(os.path.isabs(path))
@@ -142,7 +142,7 @@ class TestFileOutputs(unittest.TestCase):
     @mock.patch("pybioas.scheduler.command.os.listdir")
     def test_pattern_file_path_abs(self, mock_listdir):
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
-        fo = PatternFileResult(r'.+\.txt')
+        fo = PatternPathWrapper(r'.+\.txt')
         files = fo.get_paths(os.curdir)
         for path in files:
             self.assertTrue(os.path.isabs(path))

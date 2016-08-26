@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 
-from pybioas.scheduler.command import CommandOption, FileResult
+from pybioas.scheduler.command import CommandOption, PathWrapper
 from pybioas.scheduler.exc import QueueUnavailableError, QueueBrokenError, \
     JobNotFoundError
 from pybioas.scheduler.executors import Executor, Job, GridEngineExec, \
@@ -191,14 +191,14 @@ class TestJob(unittest.TestCase):
             mock_get_result.assert_called_once_with(mock.sentinel.id)
 
     def test_file_results(self):
-        mock_file_result1 = mock.create_autospec(FileResult)
+        mock_file_result1 = mock.create_autospec(PathWrapper)
         mock_file_result1.get_paths.return_value = ['/foo', '/bar']
-        mock_file_result2 = mock.create_autospec(FileResult)
+        mock_file_result2 = mock.create_autospec(PathWrapper)
         mock_file_result2.get_paths.return_value = ['/qux']
-        self.mock_exe.file_results = [mock_file_result1, mock_file_result2]
+        self.mock_exe.result_paths = [mock_file_result1, mock_file_result2]
 
         job = Job(None, mock.sentinel.cwd, self.mock_exe)
-        self.assertListEqual(job.file_results, ['/foo', '/bar', '/qux'])
+        self.assertListEqual(job.result_paths, ['/foo', '/bar', '/qux'])
         mock_file_result1.get_paths.assert_called_once_with(mock.sentinel.cwd)
         mock_file_result2.get_paths.assert_called_once_with(mock.sentinel.cwd)
 
@@ -279,7 +279,7 @@ class TestGridEngineJob(unittest.TestCase):
         mock_popen = self.mock_subprocess.Popen.return_value
         mock_popen.communicate.return_value = (self.qstat_output, '')
         mock_exec = mock.create_autospec(Executor)
-        mock_exec.file_results = []
+        mock_exec.result_paths = []
         self.job = GridEngineJob('', '', mock_exec)
 
     def tearDown(self):
