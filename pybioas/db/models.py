@@ -20,7 +20,6 @@ class Request(Base):
     pending = Column(Boolean, default=True)
 
     options = relationship("Option", back_populates="request")
-    result = relationship("Result", back_populates="request", uselist=False)
     job = relationship("JobModel", back_populates="request", uselist=False)
 
     @property
@@ -83,25 +82,10 @@ class JobModel(Base):
     working_dir = Column(String(256))
     service = Column(String(16), nullable=False)
     configuration = Column(String(16), nullable=False)
+    return_code = Column(String(8), nullable=True)
 
     request = relationship("Request", back_populates="job", uselist=False)
     files = relationship("File", back_populates="job")
-
-
-class Result(Base):
-
-    __tablename__ = "results"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    return_code = Column(Integer)
-    stdout = Column(String)
-    stderr = Column(String)
-    request_id = Column(
-        Integer,
-        ForeignKey("requests.id", ondelete="SET NULL")
-    )
-
-    request = relationship("Request", back_populates="result")
 
 
 def default_title(context):

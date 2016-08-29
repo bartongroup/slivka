@@ -10,7 +10,8 @@ import uuid
 
 import pybioas
 from .command import CommandOption, PathWrapper, PatternPathWrapper
-from .exc import QueueBrokenError, QueueError, QueueUnavailableError
+from .exc import QueueBrokenError, QueueError, QueueUnavailableError, \
+    JobNotFoundError
 from .task_queue import QueueServer
 
 logger = logging.getLogger('pybioas.scheduler.scheduler')
@@ -211,7 +212,7 @@ class Job:
             raise QueueBrokenError
 
     @property
-    def result(self):
+    def return_code(self):
         if self.cached_status in {Job.STATUS_QUEUED, Job.STATUS_RUNNING}:
             return None
         try:
@@ -255,15 +256,6 @@ class Job:
         return self.status not in {Job.STATUS_QUEUED, Job.STATUS_RUNNING}
 
 
-class JobOutput:
-    __slots__ = ['return_code', 'stdout', 'stderr']
-
-    def __init__(self, return_code, stdout, stderr):
-        self.return_code = return_code
-        self.stdout = stdout
-        self.stderr = stderr
-
-
 class JobLimits:
 
     configurations = []
@@ -304,8 +296,8 @@ class ShellExec(Executor):
         command = self.bin + options
         return subprocess.Popen(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=open(os.path.join(cwd, 'stdout.txt'), 'w'),
+            stderr=open(os.path.join(cwd, 'stderr.txt'), 'w'),
             cwd=cwd,
             universal_newlines=True
         )
@@ -324,7 +316,9 @@ class ShellJob(Job):
         try:
             status = process.poll()
         except OSError:
-            return self.STATUS_ERROR
+            raise QueueBrokenError
+        except AttributeError:
+            raise JobNotFoundError
         if status is None:
             return self.STATUS_RUNNING
         if status == 0:
@@ -336,12 +330,8 @@ class ShellJob(Job):
         """
         :type process: subprocess.Popen
         """
-        stdout, stderr = process.communicate()
-        return JobOutput(
-            return_code=process.returncode,
-            stdout=stdout,
-            stderr=stderr
-        )
+        process.wait()
+        return process.returncode
 
 
 class LocalExec(Executor):
@@ -368,7 +358,7 @@ class LocalJob(Job):
 
     def get_result(self, job_id):
         try:
-            return JobOutput(*QueueServer.get_job_output(job_id))
+            return QueueServer.get_job_return_code(job_id)
         except ConnectionError:
             raise QueueUnavailableError
 
@@ -452,11 +442,4 @@ class GridEngineJob(Job):
                 raise QueueUnavailableError
 
     def get_result(self, job_id):
-        out_path = os.path.join(self.cwd, 'stdout.txt')
-        err_path = os.path.join(self.cwd, 'stderr.txt')
-        with open(out_path) as stdout, open(err_path) as stderr:
-            return JobOutput(
-                return_code=0,
-                stdout=stdout.read(),
-                stderr=stderr.read()
-            )
+        return 0

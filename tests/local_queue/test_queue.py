@@ -4,8 +4,7 @@ import types
 import unittest
 
 from pybioas.scheduler.exc import JobNotFoundError
-from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER, \
-    ProcessOutput
+from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER
 
 try:
     import unittest.mock as mock
@@ -166,13 +165,12 @@ class TestServerCommunication(unittest.TestCase):
             QueueServer.get_job_status(15, address=self.ADDRESS)
 
     def test_job_output(self):
-        process_output = ProcessOutput(0, 'mock_stdout', 'mock_stderr')
-        self.mock_get.return_value.output = process_output
-        out = QueueServer.get_job_output(14, address=self.ADDRESS)
-        self.assertTupleEqual(out, process_output)
+        self.mock_get.return_value.return_code = '13'
+        out = QueueServer.get_job_return_code(14, address=self.ADDRESS)
+        self.assertEqual(out, '13')
         self.mock_get.assert_called_once_with(14)
 
     def test_job_output_not_exist(self):
         self.mock_get.return_value = None
         with self.assertRaises(JobNotFoundError):
-            QueueServer.get_job_output(14, address=self.ADDRESS)
+            QueueServer.get_job_return_code(14, address=self.ADDRESS)

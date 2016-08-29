@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 import pybioas.utils
 from pybioas.db import Session, start_session
-from pybioas.db.models import Request, Result, File, JobModel
+from pybioas.db.models import Request, File, JobModel
 from .exc import QueueBrokenError, QueueUnavailableError, JobNotFoundError
 from .executors import Executor, Job
 
@@ -244,23 +244,17 @@ class Scheduler:
         :raise QueueUnavailableError:
         """
         self.logger.debug('Complete job %s', job_wrapper.job)
-        result = job_wrapper.job.result
+        return_code = job_wrapper.job.return_code
         self._tasks.remove(job_wrapper)
         job_model = (session.query(JobModel).
                      filter(JobModel.request_id == job_wrapper.request_id).
                      one())
         job_model.status = job_wrapper.job.cached_status
-        res = Result(
-            return_code=result.return_code,
-            stdout=result.stdout,
-            stderr=result.stderr,
-            request_id=job_wrapper.request_id
-        )
+        job_model.return_code = return_code
         session.add_all([
             File(path=path, job=job_model)
             for path in job_wrapper.job.result_paths
         ])
-        session.add(res)
 
     def _discard_job(self, job_wrapper, session):
         """

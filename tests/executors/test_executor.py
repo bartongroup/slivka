@@ -187,7 +187,7 @@ class TestJob(unittest.TestCase):
                 mock.patch.object(job, 'get_status',
                                   return_value=Job.STATUS_COMPLETED):
             mock_get_result.return_value = mock.sentinel.result
-            self.assertEqual(job.result, mock.sentinel.result)
+            self.assertEqual(job.return_code, mock.sentinel.result)
             mock_get_result.assert_called_once_with(mock.sentinel.id)
 
     def test_file_results(self):

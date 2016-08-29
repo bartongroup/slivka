@@ -113,7 +113,7 @@ class Worker(threading.Thread):
     def __init__(self, jobs_queue):
         """
         :param jobs_queue: queue with the jobs to execute
-        :type jobs_queue: queue.Queue[Job]
+        :type jobs_queue: queue.Queue[LocalCommand]
         """
         super(Worker, self).__init__(name="Worker-%d" % next(self._counter))
         self._queue = jobs_queue
@@ -181,10 +181,13 @@ class QueueServer(threading.Thread):
         """
         self._running = False
         logger.debug("Poking server to stop.")
+        dummy_conn = socket.socket()
         try:
-            socket.socket().connect((self._host, self._port))
+            dummy_conn.connect((self._host, self._port))
         except ConnectionRefusedError:
             pass
+        finally:
+            dummy_conn.close()
 
     def run(self):
         """
@@ -329,11 +332,7 @@ class QueueServer(threading.Thread):
         job = self._get_job(request['jobId'])
         if job is None:
             raise JobNotFoundError("Job %d not found" % request['jobId'])
-        return {
-            'return_code': job.output.return_code,
-            'stdout': job.output.stdout,
-            'stderr': job.output.stderr
-        }
+        return {'return_code': job.return_code}
 
     @staticmethod
     def check_connection(address=None):
@@ -381,38 +380,19 @@ class QueueServer(threading.Thread):
         :type address: (str, int)
         :return: id of the newly created job
         """
-        if address is None:
-            address = (
-                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
-            )
-        logger.debug(
-            "Submitting new command\ncmd: %r\nenv: %r\ncwd: %s", cmd, env, cwd
+        status, data = QueueServer.communicate(
+            QueueServer.HEAD_NEW_TASK,
+            {'cmd': cmd, 'cwd': cwd, 'env': env or {}},
+            address=address
         )
-        content = QueueServer.serialize_json({
-            'cmd': cmd, 'cwd': cwd, 'env': env or {}
-        })
-        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            conn.connect(address)
-            conn.send(QueueServer.HEAD_NEW_TASK + content)
-            header = conn.recv(16)
-            status = header[:8]
-            content_length = int.from_bytes(header[8:], 'big')
-            if status != QueueServer.STATUS_OK:
-                raise ServerError('Internal server error')
-            try:
-                data = QueueServer.read_json(conn, content_length)
-                job_id = data['jobId']
-            except BlockingIOError:
-                logger.critical('Invalid message length', exc_info=True)
-                raise ServerError('Server did not send enough data')
-            except (json.JSONDecodeError, KeyError):
-                logger.critical('Invalid server response', exc_info=True)
-                raise ServerError('Invalid server response')
-            conn.shutdown(socket.SHUT_RDWR)
-        finally:
-            conn.close()
-        return job_id
+            return data['jobId']
+        except KeyError:
+            logger.critical(
+                'Server responses with invalid json \n%s\n'
+                'Expected "jobId" key',
+                json.dumps(data, indent=2)
+            )
 
     @staticmethod
     def get_job_status(job_id, *, address=None):
@@ -425,39 +405,29 @@ class QueueServer(threading.Thread):
         :param address: local queue address
         :type address: (str, int)
         :return: job status string
+        :raise JobNotFoundError
+        :raise ServerError:
         """
-        if address is None:
-            address = (
-                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
-            )
-        content = QueueServer.serialize_json({'jobId': job_id})
-        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        status, data = QueueServer.communicate(
+            QueueServer.HEAD_JOB_STATUS,
+            {'jobId': job_id},
+            address=address
+        )
+        if status == QueueServer.STATUS_NOT_FOUND:
+            raise JobNotFoundError
+        elif status != QueueServer.STATUS_OK:
+            raise ServerError('Internal server error')
         try:
-            conn.connect(address)
-            conn.send(QueueServer.HEAD_JOB_STATUS + content)
-            header = conn.recv(16)
-            status = header[:8]
-            content_length = int.from_bytes(header[8:], 'big')
-            if status == QueueServer.STATUS_NOT_FOUND:
-                raise JobNotFoundError
-            elif status != QueueServer.STATUS_OK:
-                raise ServerError('Internal server error')
-            try:
-                data = QueueServer.read_json(conn, content_length)
-                status = data['status']
-            except BlockingIOError:
-                logger.critical('Invalid message length', exc_info=True)
-                raise ServerError('Server did not send enough data')
-            except (json.JSONDecodeError, KeyError):
-                logger.critical('Invalid server response', exc_info=True)
-                raise ServerError('Invalid server response')
-            conn.shutdown(socket.SHUT_RDWR)
-        finally:
-            conn.close()
-        return status
+            return data['status']
+        except KeyError:
+            logger.critical(
+                'Server responded with invalid json \n%s\n'
+                'Expected "status" key.',
+                json.dumps(data, intent=2)
+            )
 
     @staticmethod
-    def get_job_output(job_id, *, address=None):
+    def get_job_return_code(job_id, *, address=None):
         """
         Helper function which requests the local queue for job output.
         It retrieves status code and console output from the process.
@@ -467,32 +437,52 @@ class QueueServer(threading.Thread):
         :return: output of the executed process
         :rtype: ProcessOutput
         """
+        status, data = QueueServer.communicate(
+            QueueServer.HEAD_JOB_RESULT,
+            {'jobId': job_id},
+            address=address
+        )
+        if status == QueueServer.STATUS_NOT_FOUND:
+            raise JobNotFoundError
+        elif status != QueueServer.STATUS_OK:
+            logger.critical('Server encountered an error')
+            raise ServerError('Internal server error')
+        try:
+            return data['return_code']
+        except KeyError:
+            logger.critical(
+                'Server responded with invalid json \n%s\n'
+                'Expected "return_code" key.',
+                json.dumps(data, indent=2)
+            )
+
+    @staticmethod
+    def communicate(head, content, *, address=None):
         if address is None:
             address = (
-                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+                pybioas.settings.QUEUE_HOST,
+                pybioas.settings.QUEUE_PORT
             )
-        content = QueueServer.serialize_json({'jobId': job_id})
+        content = QueueServer.serialize_json(content)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect(address)
-            conn.send(QueueServer.HEAD_JOB_RESULT + content)
+            conn.send(head + content)
             header = conn.recv(16)
             status = header[:8]
             content_length = int.from_bytes(header[8:], 'big')
-            if status == QueueServer.STATUS_NOT_FOUND:
-                raise JobNotFoundError
-            elif status != QueueServer.STATUS_OK:
-                raise ServerError('Internal server error')
             try:
                 data = QueueServer.read_json(conn, content_length)
-                output = ProcessOutput(**data)
-            except (json.JSONDecodeError, TypeError):
+            except BlockingIOError:
+                logger.critical('Invalid message length', exc_info=True)
+                raise ServerError('Server did not send enough data')
+            except json.JSONDecodeError:
                 logger.critical('Invalid server response', exc_info=True)
                 raise ServerError('Invalid server response')
             conn.shutdown(socket.SHUT_RDWR)
         finally:
             conn.close()
-        return output
+        return status, data
 
 
 class Signal(object):
@@ -526,7 +516,7 @@ class LocalCommand:
     :type _cwd: str
     :type _process: subprocess.Popen
     :type _status: str
-    :type _output: ProcessOutput
+    :type _return_code: str
     """
     STATUS_QUEUED = 'queued'
     STATUS_RUNNING = 'running'
@@ -539,7 +529,7 @@ class LocalCommand:
         self._cwd = cwd
         self._process = None
         self._status = self.STATUS_QUEUED
-        self._output = None
+        self._return_code = None
 
     def run(self):
         """
@@ -555,7 +545,7 @@ class LocalCommand:
             self._cmd, self._env, self._cwd
         )
         stdout = open(os.path.join(self._cwd, 'stdout.txt'), 'wb')
-        stderr = open(os.path.join(self._cmd, 'stderr.txt'), 'wb')
+        stderr = open(os.path.join(self._cwd, 'stderr.txt'), 'wb')
         try:
             self._process = subprocess.Popen(
                 self._cmd,
@@ -565,28 +555,27 @@ class LocalCommand:
                 cwd=self._cwd
             )
             self._process.wait()
-            return_code = self._process.returncode
         except:
             self._status = self.STATUS_FAILED
             raise
         else:
+            self._return_code = self._process.returncode
             self._status = self.STATUS_COMPLETED
         finally:
             stdout.close()
             stderr.close()
-        self._output = ProcessOutput(return_code, '', '')
-        return self._output
+        return self._return_code
 
     @property
     def status(self):
         return self._status
 
     @property
-    def output(self):
+    def return_code(self):
         """
-        :rtype: ProcessOutput
+        :rtype: str
         """
-        return self._output
+        return self._return_code
 
     def terminate(self):
         """
