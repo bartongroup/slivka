@@ -8,13 +8,13 @@ import subprocess
 import sys
 import uuid
 
-import pybioas
+import slivka
 from .command import CommandOption, PathWrapper, PatternPathWrapper
 from .exc import QueueBrokenError, QueueError, QueueUnavailableError, \
     JobNotFoundError
 from .task_queue import QueueServer
 
-logger = logging.getLogger('pybioas.scheduler.scheduler')
+logger = logging.getLogger('slivka.scheduler.scheduler')
 
 
 # noinspection PyAbstractClass
@@ -45,7 +45,7 @@ class Executor:
         self._env = env or {}
 
     def __call__(self, values):
-        cwd = os.path.join(pybioas.settings.WORK_DIR, uuid.uuid4().hex)
+        cwd = os.path.join(slivka.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
         try:
             job_id = self.submit(values, cwd)

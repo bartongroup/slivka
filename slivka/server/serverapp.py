@@ -8,16 +8,16 @@ import werkzeug.exceptions
 import werkzeug.utils
 from flask import Flask, Response, json, request, abort
 
-import pybioas
-from pybioas.db import Session, models, start_session
-from pybioas.server.forms import get_form
-from pybioas.utils import snake_to_camel
+import slivka
+from slivka.db import Session, models, start_session
+from slivka.server.forms import get_form
+from slivka.utils import snake_to_camel
 
-app = Flask('pybioas', root_path=os.path.dirname(__file__))
+app = Flask('slivka', root_path=os.path.dirname(__file__))
 app.config.update(
     DEBUG=True,
-    MEDIA_DIR=pybioas.settings.MEDIA_DIR,
-    SECRET_KEY=pybioas.settings.SECRET_KEY
+    MEDIA_DIR=slivka.settings.MEDIA_DIR,
+    SECRET_KEY=slivka.settings.SECRET_KEY
 )
 
 signer = itsdangerous.Signer(app.config["SECRET_KEY"])
@@ -30,7 +30,7 @@ def get_services():
     Returns the list of services.
     :return: JSON response with list of service names
     """
-    return JsonResponse({"services": pybioas.settings.SERVICES})
+    return JsonResponse({"services": slivka.settings.SERVICES})
 
 
 @app.route('/service/<service>/form', methods=["GET"])
@@ -41,7 +41,7 @@ def get_service_form(service):
     :param service: service name
     :return: JSON response with service form
     """
-    if service not in pybioas.settings.SERVICES:
+    if service not in slivka.settings.SERVICES:
         raise abort(404)
     form_cls = get_form(service)
     form = form_cls()
@@ -75,7 +75,7 @@ def post_service_form(service):
     Sends form data and starts new task.
     :param service: service name
     """
-    if service not in pybioas.settings.SERVICES:
+    if service not in slivka.settings.SERVICES:
         raise abort(404)
     form_cls = get_form(service)
     form = form_cls(request.form)

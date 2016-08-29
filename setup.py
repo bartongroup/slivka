@@ -7,8 +7,8 @@ except ImportError:
 
 
 setup(
-    name="PyBioAS",
-    version="0.0.dev4",
+    name="Slivka",
+    version="0.1.dev0",
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
         "click==6.6",
@@ -24,13 +24,13 @@ setup(
     include_package_data=True,
 
     entry_points={
-        "console_scripts": "pybioas-setup=pybioas.command:setup"
+        "console_scripts": "slivka-setup=slivka.command:setup"
     },
 
     author="Mateusz Maciej Warowny",
     author_email="m.m.warowny@dundee.ac.uk",
-    url="https://github.com/warownia1/pyBioAS",
-    download_url="https://github.com/warownia1/pyBioAS/archive/master.zip",
+    url="https://github.com/warownia1/Slivka",
+    download_url="https://github.com/warownia1/Slivka/archive/master.zip",
 
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

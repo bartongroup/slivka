@@ -6,8 +6,8 @@ try:
 except ImportError:
     import mock
 
-from pybioas.server.forms import ValidationError
-from pybioas.server.forms.fields import (
+from slivka.server.forms import ValidationError
+from slivka.server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
     TextField, BooleanField, ChoiceField
 )
@@ -171,8 +171,8 @@ class TestFileField(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import pybioas.config
-        from pybioas.db import models, start_session, create_db
+        import slivka.config
+        from slivka.db import models, start_session, create_db
 
         cls.temp_dir = tempfile.TemporaryDirectory()
         settings = dict(
@@ -185,7 +185,7 @@ class TestFileField(unittest.TestCase):
         path = os.path.join(cls.temp_dir.name, "foo")
         with open(path, "w") as f:
             f.write("bar bar")
-        pybioas.settings = pybioas.config.Settings(settings)
+        slivka.settings = slivka.config.Settings(settings)
         create_db()
         with start_session() as session:
             file = models.File(id="foo", path=path)
@@ -220,7 +220,7 @@ class TestFileField(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        from pybioas.db import drop_db
+        from slivka.db import drop_db
 
         drop_db()
         cls.temp_dir.cleanup()

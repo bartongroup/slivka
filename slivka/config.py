@@ -100,12 +100,12 @@ _LOGGER_CONF_TEMPLATE = {
         "handlers": ["console"]
     },
     "loggers": {
-        "pybioas.scheduler.scheduler": {
+        "slivka.scheduler.scheduler": {
             "level": "DEBUG",
             "propagate": True,
             "handlers": ["scheduler_file"]
         },
-        "pybioas.scheduler.task_queue": {
+        "slivka.scheduler.task_queue": {
             "level": "DEBUG",
             "propagate": True,
             "handlers": ["task_queue_file"]

@@ -4,9 +4,9 @@ import unittest
 import jsonschema
 import yaml
 
-from pybioas.server.forms import FormFactory
-from pybioas.server.forms.fields import *
-from pybioas.utils import FORM_SCHEMA
+from slivka.server.forms import FormFactory
+from slivka.server.forms.fields import *
+from slivka.utils import FORM_SCHEMA
 
 
 class TestOptionElementParser(unittest.TestCase):

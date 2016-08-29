@@ -14,8 +14,8 @@ import weakref
 from collections import namedtuple, deque
 from select import select
 
-import pybioas
-from pybioas.scheduler.exc import ServerError, JobNotFoundError
+import slivka
+from slivka.scheduler.exc import ServerError, JobNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class TaskQueue:
         """
         if host is None or port is None:
             host, port = (
-                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+                slivka.settings.QUEUE_HOST, slivka.settings.QUEUE_PORT
             )
         self._queue = queue.Queue()
         self._jobs = dict()
@@ -344,7 +344,7 @@ class QueueServer(threading.Thread):
         """
         if address is None:
             address = (
-                pybioas.settings.QUEUE_HOST, pybioas.settings.QUEUE_PORT
+                slivka.settings.QUEUE_HOST, slivka.settings.QUEUE_PORT
             )
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -460,8 +460,8 @@ class QueueServer(threading.Thread):
     def communicate(head, content, *, address=None):
         if address is None:
             address = (
-                pybioas.settings.QUEUE_HOST,
-                pybioas.settings.QUEUE_PORT
+                slivka.settings.QUEUE_HOST,
+                slivka.settings.QUEUE_PORT
             )
         content = QueueServer.serialize_json(content)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

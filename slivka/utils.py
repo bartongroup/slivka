@@ -7,14 +7,14 @@ import pkg_resources
 
 FORM_SCHEMA = json.loads(
     pkg_resources.resource_string(
-        "pybioas",
+        "slivka",
         "data/config/FormDescriptionSchema.json"
     ).decode()
 )
 
 CONF_SCHEMA = json.loads(
     pkg_resources.resource_string(
-        "pybioas",
+        "slivka",
         "data/config/ConfDescriptionSchema.json"
     ).decode()
 )

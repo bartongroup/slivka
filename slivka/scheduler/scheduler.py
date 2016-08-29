@@ -7,9 +7,9 @@ import yaml
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
-import pybioas.utils
-from pybioas.db import Session, start_session
-from pybioas.db.models import Request, File, JobModel
+import slivka.utils
+from slivka.db import Session, start_session
+from slivka.db.models import Request, File, JobModel
 from .exc import QueueBrokenError, QueueUnavailableError, JobNotFoundError
 from .executors import Executor, Job
 
@@ -38,13 +38,13 @@ class Scheduler:
         For each service specifies in services.ini loads its configuration
         data and constructs executor for each configuration.
         """
-        parser = pybioas.settings.CONFIG
+        parser = slivka.settings.CONFIG
         self._executors = {}
         self._limits = {}
         for service in parser.sections():
             with open(parser.get(service, 'config')) as file:
                 conf_data = yaml.load(file)
-            jsonschema.validate(conf_data, pybioas.utils.CONF_SCHEMA)
+            jsonschema.validate(conf_data, slivka.utils.CONF_SCHEMA)
             self._executors[service], self._limits[service] = \
                 Executor.make_from_conf(conf_data)
 

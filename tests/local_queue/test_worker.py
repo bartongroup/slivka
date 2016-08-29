@@ -5,8 +5,8 @@ import time
 import unittest
 from unittest import mock as mock
 
-import pybioas.config
-from pybioas.scheduler.task_queue import KILL_WORKER, Worker
+import slivka.config
+from slivka.scheduler.task_queue import KILL_WORKER, Worker
 
 
 class TestWorker(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestWorker(unittest.TestCase):
             SERVICE_INI='config.ini'
         )
         open(os.path.join(temp_dir.name, 'config.ini'), 'w').close()
-        pybioas.settings = pybioas.config.Settings(settings)
+        slivka.settings = slivka.config.Settings(settings)
 
     def setUp(self):
         self.q = queue.Queue()

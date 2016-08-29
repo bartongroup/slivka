@@ -4,10 +4,10 @@ from importlib import import_module
 
 if __name__ == "__main__":
     try:
-        import pybioas
+        import slivka
     except ImportError:
         raise ImportError(
-            "Couldn't import pybioas. Make sure it's installed corectly "
+            "Couldn't import slivka. Make sure it's installed corectly "
             "and available on you PYTHONPATH environment variable. "
             "Check if you activated virtual environment."
         )
@@ -18,5 +18,5 @@ if __name__ == "__main__":
             "Couldn't find settings module. Make sure there is a settings.py "
             "file in the project root directory."
         )
-    pybioas.setup(settings_module)
-    pybioas.command.admin()
+    slivka.setup(settings_module)
+    slivka.command.admin()

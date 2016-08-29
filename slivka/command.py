@@ -6,7 +6,7 @@ import click
 import jinja2
 import pkg_resources
 
-import pybioas.utils
+import slivka.utils
 
 
 @click.command()
@@ -33,14 +33,14 @@ def setup(name):
     # copy manage.py template
     with open(managepy_path, "wb") as f:
         f.write(pkg_resources.resource_string(
-            "pybioas", "data/template/manage.py.jinja2"
+            "slivka", "data/template/manage.py.jinja2"
         ))
     os.chmod(managepy_path, stat.S_IXUSR)
 
     # copy settings.py template
     settings_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/settings.py.jinja2").decode())
+            "slivka", "data/template/settings.py.jinja2").decode())
     tpl_stream = settings_tpl.stream(secret_key=os.urandom(32))
     with open(settingspy_path, "w") as f:
         tpl_stream.dump(f)
@@ -48,7 +48,7 @@ def setup(name):
     # copy services.ini template
     services_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/services.ini.jinja2").decode())
+            "slivka", "data/template/services.ini.jinja2").decode())
     tpl_stream = services_tpl.stream(form_path=form_path, config_path=conf_path)
     with open(servicesini_path, "w") as f:
         tpl_stream.dump(f)
@@ -56,13 +56,13 @@ def setup(name):
     # copy form description
     with open(form_path, 'wb') as f:
         f.write(pkg_resources.resource_string(
-            "pybioas", "data/template/config/pydummyForm.yml"
+            "slivka", "data/template/config/pydummyForm.yml"
         ))
 
     # copy pydummy configuration
     conf_tpl = jinja2.Template(
         pkg_resources.resource_string(
-            "pybioas", "data/template/config/pydummyConf.yml").decode())
+            "slivka", "data/template/config/pydummyConf.yml").decode())
     tpl_stream = conf_tpl.stream(pydummy_path=pydummy_path)
     with open(conf_path, 'w') as f:
         tpl_stream.dump(f)
@@ -70,26 +70,26 @@ def setup(name):
     # copy service limits
     with open(limits_path, 'wb') as f:
         f.write(pkg_resources.resource_string(
-            'pybioas', 'data/template/config/limits.py'
+            'slivka', 'data/template/config/limits.py'
         ))
     open(os.path.join(os.path.dirname(limits_path), '__init__.py'), 'w').close()
 
     with open(pydummy_path, 'wb') as f:
         f.write(pkg_resources.resource_string(
-            "pybioas", "data/template/binaries/pydummy.py"
+            "slivka", "data/template/binaries/pydummy.py"
         ))
     os.chmod(pydummy_path, stat.S_IXUSR)
 
 
 @click.group()
 def admin():
-    logging.config.dictConfig(pybioas.settings.LOGGER_CONF)
+    logging.config.dictConfig(slivka.settings.LOGGER_CONF)
 
 
 @click.command()
 def worker():
     """Starts task queue workers."""
-    from pybioas.scheduler.task_queue import TaskQueue
+    from slivka.scheduler.task_queue import TaskQueue
     queue = TaskQueue()
     queue.start()
 
@@ -97,7 +97,7 @@ def worker():
 @click.command()
 def scheduler():
     """Starts job scheduler."""
-    from pybioas.scheduler.scheduler import Scheduler
+    from slivka.scheduler.scheduler import Scheduler
     sched = Scheduler()
     sched.start()
 
@@ -105,21 +105,21 @@ def scheduler():
 @click.command()
 def server():
     """Starts server."""
-    from pybioas.server.forms import init_forms
-    from pybioas.server.serverapp import app
+    from slivka.server.forms import init_forms
+    from slivka.server.serverapp import app
 
-    init_forms(pybioas.settings.SERVICE_INI)
+    init_forms(slivka.settings.SERVICE_INI)
     app.run(
-        host=pybioas.settings.SERVER_HOST,
-        port=pybioas.settings.SERVER_PORT,
-        debug=pybioas.settings.DEBUG
+        host=slivka.settings.SERVER_HOST,
+        port=slivka.settings.SERVER_PORT,
+        debug=slivka.settings.DEBUG
     )
 
 
 @click.command()
 def initdb():
     """Initializes the database."""
-    from pybioas.db import create_db
+    from slivka.db import create_db
     create_db()
 
 
@@ -127,7 +127,7 @@ def initdb():
 @click.confirmation_option(prompt="Are you sure you want to drop the db?")
 def dropdb():
     """Drops the database."""
-    from pybioas.db import drop_db
+    from slivka.db import drop_db
     drop_db()
 
 

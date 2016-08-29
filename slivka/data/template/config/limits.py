@@ -1,4 +1,4 @@
-from pybioas.scheduler.executors import JobLimits
+from slivka.scheduler.executors import JobLimits
 
 
 class PydummyLimits(JobLimits):

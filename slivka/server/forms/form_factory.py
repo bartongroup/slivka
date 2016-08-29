@@ -3,8 +3,8 @@ from copy import deepcopy
 import jsonschema
 import yaml
 
-from pybioas.db.models import Request, Option
-from pybioas.utils import FORM_SCHEMA
+from slivka.db.models import Request, Option
+from slivka.utils import FORM_SCHEMA
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, ChoiceField)

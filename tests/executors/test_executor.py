@@ -1,10 +1,10 @@
 import tempfile
 import unittest
 
-from pybioas.scheduler.command import CommandOption, PathWrapper
-from pybioas.scheduler.exc import QueueUnavailableError, QueueBrokenError, \
+from slivka.scheduler.command import CommandOption, PathWrapper
+from slivka.scheduler.exc import QueueUnavailableError, QueueBrokenError, \
     JobNotFoundError
-from pybioas.scheduler.executors import Executor, Job, GridEngineExec, \
+from slivka.scheduler.executors import Executor, Job, GridEngineExec, \
     GridEngineJob
 
 try:
@@ -12,11 +12,11 @@ try:
 except ImportError:
     import mock
 
-import pybioas.config
+import slivka.config
 
 mock.patch.object = mock.patch.object
 
-settings_mock = mock.create_autospec(pybioas.config.Settings)
+settings_mock = mock.create_autospec(slivka.config.Settings)
 tmp_dir = tempfile.TemporaryDirectory()
 settings_mock.WORK_DIR = tmp_dir.name
 
@@ -24,14 +24,14 @@ settings_mock.WORK_DIR = tmp_dir.name
 class TestExecutorBase(unittest.TestCase):
 
     def test_bin(self):
-        exe = Executor(bin="python /var/pybioas/manage.py")
-        self.assertListEqual(exe.bin, ['python', '/var/pybioas/manage.py'])
+        exe = Executor(bin="python /var/slivka/manage.py")
+        self.assertListEqual(exe.bin, ['python', '/var/slivka/manage.py'])
 
     def test_empty_bin(self):
         exe = Executor()
         self.assertListEqual(exe.bin, [])
 
-    @mock.patch('pybioas.scheduler.executors.shlex', autospec=True)
+    @mock.patch('slivka.scheduler.executors.shlex', autospec=True)
     def test_options(self, mock_shlex):
         mock_shlex.split.return_value = [mock.sentinel.token]
         option = mock.create_autospec(CommandOption)
@@ -112,9 +112,9 @@ class TestExecutorOptions(unittest.TestCase):
 
 
 # noinspection PyUnusedLocal
-@mock.patch('pybioas.scheduler.executors.Executor.submit')
-@mock.patch('pybioas.scheduler.executors.Executor.get_job_cls')
-@mock.patch('pybioas.scheduler.executors.pybioas.settings', new=settings_mock)
+@mock.patch('slivka.scheduler.executors.Executor.submit')
+@mock.patch('slivka.scheduler.executors.Executor.get_job_cls')
+@mock.patch('slivka.scheduler.executors.slivka.settings', new=settings_mock)
 class TestExecutorSubmit(unittest.TestCase):
 
     def test_submit_called(self, mock_get_job, mock_submit):
@@ -207,7 +207,7 @@ class TestGridEngineExec(unittest.TestCase):
 
     def setUp(self):
         self.subprocess_path = mock.patch(
-            'pybioas.scheduler.executors.subprocess'
+            'slivka.scheduler.executors.subprocess'
         )
         self.mock_subprocess = self.subprocess_path.start()
         self.mock_popen = self.mock_subprocess.Popen.return_value
@@ -219,7 +219,7 @@ class TestGridEngineExec(unittest.TestCase):
     def tearDown(self):
         self.subprocess_path.stop()
 
-    @mock.patch('pybioas.scheduler.executors.Executor.qargs',
+    @mock.patch('slivka.scheduler.executors.Executor.qargs',
                 new_callable=mock.PropertyMock)
     def test_qsub(self, mock_qargs):
         mock_qargs.return_value = [mock.sentinel.qarg1, mock.sentinel.qarg2]
@@ -231,7 +231,7 @@ class TestGridEngineExec(unittest.TestCase):
         (args, kwargs) = self.mock_subprocess.Popen.call_args
         self.assertTupleEqual(args, expected_arg)
 
-    @mock.patch('pybioas.scheduler.executors.Executor.bin',
+    @mock.patch('slivka.scheduler.executors.Executor.bin',
                 new_callable=mock.PropertyMock)
     def test_command(self, mock_bin):
         mock_bin.return_value = ['mockpython', 'mockscript.py']
@@ -267,12 +267,12 @@ class TestGridEngineJob(unittest.TestCase):
 
     def setUp(self):
         self.getuser_patch = mock.patch(
-            'pybioas.scheduler.executors.getpass.getuser',
+            'slivka.scheduler.executors.getpass.getuser',
             return_value='mockuser'
         )
         self.getuser_patch.start()
         self.subprocess_patch = mock.patch(
-            'pybioas.scheduler.executors.subprocess',
+            'slivka.scheduler.executors.subprocess',
             autospec=True
         )
         self.mock_subprocess = self.subprocess_patch.start()
@@ -286,7 +286,7 @@ class TestGridEngineJob(unittest.TestCase):
         self.getuser_patch.stop()
         self.subprocess_patch.stop()
 
-    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    @mock.patch('slivka.scheduler.executors.os.path', autospec=True)
     def test_qstat_call(self, mock_path):
         mock_path.getmtime.return_value = 0
         self.job.get_status('abc')
@@ -303,19 +303,19 @@ class TestGridEngineJob(unittest.TestCase):
         status = self.job.get_status('1778095')
         self.assertEqual(status, Job.STATUS_RUNNING)
 
-    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    @mock.patch('slivka.scheduler.executors.os.path', autospec=True)
     def test_job_completed_not_synced(self, mock_path):
         mock_path.getmtime.side_effect = (10, FileNotFoundError)
         status = self.job.get_status('1772453')
         self.assertEqual(status, Job.STATUS_RUNNING)
 
-    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    @mock.patch('slivka.scheduler.executors.os.path', autospec=True)
     def test_job_running_restarted(self, mock_path):
         mock_path.getmtime.side_effect = (20, 19)
         status = self.job.get_status('1772453')
         self.assertEqual(status, Job.STATUS_RUNNING)
 
-    @mock.patch('pybioas.scheduler.executors.os.path', autospec=True)
+    @mock.patch('slivka.scheduler.executors.os.path', autospec=True)
     def test_job_completed(self, mock_path):
         mock_path.getmtime.side_effect = (19, 20)
         status = self.job.get_status('1772453')

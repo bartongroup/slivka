@@ -1,8 +1,8 @@
 #####################
-PyBioAS Documentation
+Slivka Documentation
 #####################
 
-PyBioAS is a server application for Python intended for easy and flexible
+Slivka is a server application for Python intended for easy and flexible
 configuration of REST API for various web services. The server is based on
 Flask_ microframework and SQLAlchemy_. The scheduler uses native Python
 queuing mechanism and sqlite_ database.
@@ -30,7 +30,7 @@ are:
 - SQLAlchemy (1.0.13)
 - Werkzeug (0.11.10)
 
-It's recommended to install PyBioAS inside a virtual environment.
+It's recommended to install Slivka inside a virtual environment.
 Get virtualenv with ``pip install virtualenv`` (on some Linux distributions
 you may need to install ``apt-get install python-virtualenv``).
 Run ``virtualenv env``, wait for it to create a new environment in ``env``
@@ -40,8 +40,8 @@ can be found in `virtualenv documentation`_.
 
 .. _`virtualenv documentation`: https://virtualenv.pypa.io/en/stable/
 
-To install PyBioAS download PyBioAS zip or tar archive and run
-``pip install PyBioAS-<version>.zip``. Setuptools and all requirements
+To install Slivka download Slivka zip or tar archive and run
+``pip install Slivka-<version>.zip``. Setuptools and all requirements
 will be downloaded if not present, so internet connection is required
 during the installation.
 
@@ -52,15 +52,15 @@ Setting up the project
 
 Navigate to the folder where you want to create your project and run: ::
 
-  pybioas-setup <name>
+  slivka-setup <name>
 
 It will create a new folder ``<name>`` and upload three core files to it:
 *settings.py*, *manage.py* and *services.ini*. You usually need to modify
-only the last one. PyBioAS will also include sample service and its
+only the last one. Slivka will also include sample service and its
 configuration.
 
 :manage.py:
-  a main executable script which configures PyBioAS and runs its components.
+  a main executable script which configures Slivka and runs its components.
 :settings.py:
   a settings Python module which contains project constants.
 :service.ini:
@@ -90,13 +90,13 @@ Configuring settings
 
   .. code-block:: python
 
-    BASE_DIR = os.path.abspath(os.path.join("/", "var", "pybioas"))
-    # /var/pybioas (Unix)
-    # C:\var\pybioas (Windows)
+    BASE_DIR = os.path.abspath(os.path.join("/", "var", "slivka"))
+    # /var/slivka (Unix)
+    # C:\var\slivka (Windows)
 
-    BASE_DIR = os.path.abspath("/home/user/pybioas/")
-    # /home/user/pybioas (Unix)
-    # C:\home\user\pybioas (Windows)
+    BASE_DIR = os.path.abspath("/home/user/slivka/")
+    # /home/user/slivka (Unix)
+    # C:\home\user\slivka (Windows)
 
     BASE_DIR = os.path.abspath("C:\\Windows\\system32")
     # C:\Windows\system32 (Windows)
@@ -188,7 +188,7 @@ A sample configuration section of service Lorem may look like this:
 .. code-block:: ini
 
   [DEFAULT]
-  root_path = /home/myself/pybioas-project
+  root_path = /home/myself/slivka-project
 
   [Lorem]
   config = %(root_path)s/config/LoremConfig.yml
@@ -481,7 +481,7 @@ Values should be objects with following properties:
 :``execClass``:
   Class of the executor used to start the job with given configuration.
   Available values are ``LocalExec`` for local queue manager provided with
-  PyBioAS, ``ShellExec`` which simply spawns a new process (only recommended
+  Slivka, ``ShellExec`` which simply spawns a new process (only recommended
   for very short jobs which takes milliseconds to complete) and
   ``GridEngineExec`` which sends the job to Sun Grid Engine.
 
@@ -502,14 +502,14 @@ Example:
     "configurations": {
       "local": {
         "execClass": "LocalExec",
-        "bin": "python \"/var/pybioas-project/binaries/pydummy.py\""
+        "bin": "python \"/var/slivka-project/binaries/pydummy.py\""
       },
       "cluster": {
         "execClass": "GridEngineExec",
-        "bin": "/var/pybioas-project/binaries/pydummy.py",
+        "bin": "/var/slivka-project/binaries/pydummy.py",
         "queueArgs": [
           "-v",
-          "PATH=/local/python-envs/pybioas/bin"
+          "PATH=/local/python-envs/slivka/bin"
         ]
       }
     }
@@ -533,7 +533,7 @@ In your project configuration you may create one of more Python modules
 containing limit classes. Each class should contain methods which allows to
 pick one configuration when given values passed to the form.
 
-Limits class must extend ``pybioas.scheduler.executors.JobLimits`` class
+Limits class must extend ``slivka.scheduler.executors.JobLimits`` class
 and define one class attribute ``configurations`` containing the list of
 configuration names.
 For each configuration you should specify a method ``limit_<configuration>``
@@ -552,7 +552,7 @@ Let's look at the example of dummy json/yaml reader.
 
   import os
 
-  from pybioas.scheduler.executors import JobLimits
+  from slivka.scheduler.executors import JobLimits
 
   class MyLimits(JobLimits):
 
@@ -593,13 +593,13 @@ shell command and may require conversion to other types.
 Running the app
 ===============
 
-PyBioAS consists of two core parts: rest http server and job scheduler.
+Slivka consists of two core parts: rest http server and job scheduler.
 Separation allows them to run independently of each other. In case
 when the scheduler is down, server keeps collection requests and stash them,
 so when the scheduler is working again it can catch up with the server.
 Each component is launched using *manage.py* script with additional arguments.
 
-Additionally, you can use simple task queue added to PyBioAS to run tasks
+Additionally, you can use simple task queue added to Slivka to run tasks
 on the local machine without additional software installed.
 
 To launch the project, you need to create a database file with a schema

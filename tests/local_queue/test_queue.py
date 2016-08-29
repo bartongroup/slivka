@@ -3,8 +3,8 @@ import sys
 import types
 import unittest
 
-from pybioas.scheduler.exc import JobNotFoundError
-from pybioas.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER
+from slivka.scheduler.exc import JobNotFoundError
+from slivka.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER
 
 try:
     import unittest.mock as mock
@@ -21,9 +21,9 @@ class TestTaskQueueBase(unittest.TestCase):
     NUM_WORKERS = 3
 
     # noinspection PyMethodOverriding
-    @mock.patch('pybioas.scheduler.task_queue.queue.Queue')
-    @mock.patch('pybioas.scheduler.task_queue.QueueServer', autospec=True)
-    @mock.patch('pybioas.scheduler.task_queue.Worker', autospec=True)
+    @mock.patch('slivka.scheduler.task_queue.queue.Queue')
+    @mock.patch('slivka.scheduler.task_queue.QueueServer', autospec=True)
+    @mock.patch('slivka.scheduler.task_queue.Worker', autospec=True)
     def setUp(self, mock_worker, mock_server, mock_queue):
         self.mock_worker_cls = mock_worker
         self.mock_server_cls = mock_server
@@ -106,7 +106,7 @@ class TestServerCommunication(unittest.TestCase):
             status = QueueServer.check_connection(self.ADDRESS)
         self.assertFalse(status)
 
-    @mock.patch('pybioas.scheduler.task_queue.LocalCommand')
+    @mock.patch('slivka.scheduler.task_queue.LocalCommand')
     def test_job_submission(self, mock_local_cmd):
         self.mock_add.return_value = 1
         job_id = QueueServer.submit_job(

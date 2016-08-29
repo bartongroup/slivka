@@ -4,6 +4,6 @@ include README.rst
 include REST_API.rst
 include requirements.txt
 
-graft pybioas/data
+graft slivka/data
 
 global-exclude *.py[co]

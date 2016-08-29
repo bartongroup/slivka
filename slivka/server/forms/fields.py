@@ -3,7 +3,7 @@ import re
 
 import sqlalchemy.orm.exc
 
-from pybioas.db import start_session, models
+from slivka.db import start_session, models
 from .exceptions import ValidationError
 
 

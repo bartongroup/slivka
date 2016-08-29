@@ -7,7 +7,7 @@ try:
 except ImportError:
     import mock
 
-from pybioas.scheduler.command import (
+from slivka.scheduler.command import (
     CommandOption, PathWrapper, PatternPathWrapper
 )
 
@@ -94,7 +94,7 @@ class TestCommandOptionEscaping(unittest.TestCase):
 class TestFileOutputs(unittest.TestCase):
 
     @unittest.skipUnless(os.name == 'posix', "POSIX paths only.")
-    @mock.patch("pybioas.scheduler.command.os.path.exists")
+    @mock.patch("slivka.scheduler.command.os.path.exists")
     def test_single_file(self, mock_pathexist):
         mock_pathexist.return_value = True
         fo = PathWrapper('somefile.txt')
@@ -102,7 +102,7 @@ class TestFileOutputs(unittest.TestCase):
         self.assertListEqual(files, ['/var/somefile.txt'])
 
     @unittest.skipUnless(os.name == 'nt', "Windows paths only.")
-    @mock.patch("pybioas.scheduler.command.os.path.exists")
+    @mock.patch("slivka.scheduler.command.os.path.exists")
     def test_single_file(self, mock_pathexist):
         mock_pathexist.return_value = True
         fo = PathWrapper('somefile.txt')
@@ -110,7 +110,7 @@ class TestFileOutputs(unittest.TestCase):
         self.assertListEqual(files, ['C:\\var\\somefile.txt'])
 
     @unittest.skipUnless(os.name == 'posix', "POSIX paths only.")
-    @mock.patch("pybioas.scheduler.command.os.listdir")
+    @mock.patch("slivka.scheduler.command.os.listdir")
     def test_pattern_file(self, mock_listdir):
         """
         :type mock_listdir: mock.MagicMock
@@ -121,7 +121,7 @@ class TestFileOutputs(unittest.TestCase):
         self.assertListEqual(files, ["/var/file1.txt", "/var/file2.txt"])
 
     @unittest.skipUnless(os.name == 'nt', "Windows paths only.")
-    @mock.patch("pybioas.scheduler.command.os.listdir")
+    @mock.patch("slivka.scheduler.command.os.listdir")
     def test_pattern_file(self, mock_listdir):
         """
         :type mock_listdir: mock.MagicMock
@@ -139,7 +139,7 @@ class TestFileOutputs(unittest.TestCase):
         for path in files:
             self.assertTrue(os.path.isabs(path))
 
-    @mock.patch("pybioas.scheduler.command.os.listdir")
+    @mock.patch("slivka.scheduler.command.os.listdir")
     def test_pattern_file_path_abs(self, mock_listdir):
         mock_listdir.return_value = ["file1.txt", "file2.txt", "donttouch.me"]
         fo = PatternPathWrapper(r'.+\.txt')
