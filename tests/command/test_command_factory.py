@@ -37,12 +37,12 @@ class TestCommandOptionBase(unittest.TestCase):
     def test_no_value_1(self):
         option = CommandOption('', '-foo ${value}')
         cmd = option.get_cmd_option(None)
-        self.assertFalse(cmd)
+        self.assertIsNone(cmd)
 
     def test_no_value_2(self):
         option = CommandOption('', '-foo')
         cmd = option.get_cmd_option(None)
-        self.assertFalse(cmd)
+        self.assertIsNone(cmd)
 
     def test_empty_string(self):
         option = CommandOption('', '-foo ${value}')

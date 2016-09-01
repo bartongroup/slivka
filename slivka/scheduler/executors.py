@@ -85,13 +85,11 @@ class Executor:
         """
         options = [
             token
-            for opt in filter(
-                None,
-                (
-                    option.get_cmd_option(values.get(option.name))
-                    for option in self._options
-                )
+            for opt in (
+                option.get_cmd_option(values.get(option.name))
+                for option in self._options
             )
+            if opt is not None
             for token in shlex.split(opt)
         ]
         return options

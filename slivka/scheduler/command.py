@@ -27,7 +27,7 @@ class CommandOption:
         if value is None:
             value = self._default
         if value is None:
-            return ""
+            return None
         return self._param_template.substitute(value=shlex.quote(str(value)))
 
     @property

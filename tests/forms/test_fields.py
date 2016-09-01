@@ -264,7 +264,7 @@ class TestTextField(unittest.TestCase):
 
 class TestBooleanField(unittest.TestCase):
     def setUp(self):
-        self.field = BooleanField('', required=False, value='-flag')
+        self.field = BooleanField('', required=False)
 
     def test_is_valid(self):
         self.field.value = True
@@ -280,16 +280,16 @@ class TestBooleanField(unittest.TestCase):
         for value in [1, True, 'yes', 'true', 'TRUE', 'True', 'LOL', '1',
                       object(), type('', (), {})]:
             self.field.value = value
-            self.assertEqual(
-                self.field.cleaned_value, '-flag',
+            self.assertTrue(
+                self.field.cleaned_value,
                 "invalid value for %s" % value
             )
 
     def test_cleaned_data_false(self):
-        for value in [0, False, 'no', 'false', 'FALSE', 'False', '0', ()]:
+        for value in [0, False, 'no', 'false', 'FALSE', 'False', '0', 'null']:
             self.field.value = value
-            self.assertEqual(
-                self.field.cleaned_value, '',
+            self.assertIsNone(
+                self.field.cleaned_value,
                 "invalid value for %r" % (value,)
             )
 
@@ -300,7 +300,13 @@ class TestBooleanField(unittest.TestCase):
 
 class TestSelectField(unittest.TestCase):
     def setUp(self):
-        self.field = ChoiceField('', choices=("alpha", "beta", "gamma"))
+        self.field = ChoiceField(
+            '', choices={
+                "alpha": '-a',
+                "beta": '-b',
+                "gamma": '-g'
+            }
+        )
 
     def test_is_valid(self):
         self.field.value = "alpha"
@@ -318,9 +324,13 @@ class TestSelectField(unittest.TestCase):
         self.assertEqual(cm.exception.code, 'required')
 
     def test_not_required(self):
-        field = ChoiceField('', required=False, choices=('a', 'b'))
+        field = ChoiceField(
+            '',
+            required=False,
+            choices={'a': '-a', 'b': '-b'}
+        )
         self.assertIsNone(field.cleaned_value)
 
     def test_cleaned_data(self):
         self.field.value = "gamma"
-        self.assertEqual(self.field.cleaned_value, "gamma")
+        self.assertEqual(self.field.cleaned_value, "-g")
