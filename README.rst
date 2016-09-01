@@ -1,6 +1,6 @@
-#####################
+####################
 Slivka Documentation
-#####################
+####################
 
 Slivka is a server application for Python intended for easy and flexible
 configuration of REST API for various web services. The server is based on
@@ -305,14 +305,13 @@ All other properties are optional and they are specific for different types.
     }
 
 :boolean:
-  ``value`` : (string)
-    Value assigned to the field if true. Otherwise, an empty string is set.
+  Boolean field evaluates to true for each value except ``"false"``, ``"0"``,
+  ``"null"``, ``"no"``; otherwise, it becomes `None`
 
   .. code-block:: json
 
     {
       "type": "boolean",
-      "value": "--flag",
       "default": false
     }
 

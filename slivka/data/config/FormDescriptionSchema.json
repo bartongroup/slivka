@@ -98,7 +98,6 @@
       "type": "object",
       "properties": {
         "type": {"enum": ["boolean"]},
-        "value": {"type": "string"},
         "default": {
           "type": "boolean"
         },
@@ -107,7 +106,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["type", "value"]
+      "required": ["type"]
     },
 
     "choiceField": {

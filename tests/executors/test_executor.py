@@ -71,7 +71,7 @@ class TestExecutorOptions(unittest.TestCase):
         cmd = exe.get_options({'alpha': 'foo'})
         self.assertListEqual(['foo'], cmd)
 
-    def test_option_with_space(self):
+    def test_value_with_space(self):
         exe = Executor(options=[CommandOption('alpha', '${value}')])
         cmd = exe.get_options({'alpha': 'foo bar'})
         self.assertListEqual(['foo bar'], cmd)
@@ -85,6 +85,26 @@ class TestExecutorOptions(unittest.TestCase):
         exe = Executor(options=[CommandOption('alpha', '-a=${value}')])
         cmd = exe.get_options({'alpha': 'foo bar'})
         self.assertListEqual(['-a=foo bar'], cmd)
+
+    def test_null_value(self):
+        exe = Executor(options=[CommandOption('alpha', '-a ${value}')])
+        cmd = exe.get_options({'alpha': None})
+        self.assertListEqual([], cmd)
+
+    def test_absent_value(self):
+        exe = Executor(options=[CommandOption('alpha', '-a $value')])
+        cmd = exe.get_options({})
+        self.assertListEqual([], cmd)
+
+    def test_empty_value(self):
+        exe = Executor(options=[CommandOption('alpha', '-a $value')])
+        cmd = exe.get_options({'alpha': ''})
+        self.assertListEqual(['-a', ''], cmd)
+
+    def test_empty_option(self):
+        exe = Executor(options=[CommandOption('alpha', '$value')])
+        cmd = exe.get_options({'alpha': ''})
+        self.assertListEqual([''], cmd)
 
     def test_multiple_arguments(self):
         exe = Executor(
@@ -107,7 +127,7 @@ class TestExecutorOptions(unittest.TestCase):
 
     def test_skip_empty_arguments(self):
         exe = Executor(options=[CommandOption('alpha', '')])
-        cmd = exe.get_options({})
+        cmd = exe.get_options({'alpha': 'foo'})
         self.assertListEqual([], cmd)
 
 

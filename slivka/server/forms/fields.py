@@ -378,14 +378,13 @@ class TextField(BaseField):
 
 
 class BooleanField(BaseField):
-    false_literals = {'no', 'false', '0'}
+    false_literals = {'no', 'false', '0', 'null'}
 
-    def __init__(self, name, default=None, required=True, value=''):
+    def __init__(self, name, default=None, required=True):
         """
         :param name: parameter id
         :param default: default value of the field
         """
-        self._repr_value = value
         super().__init__(name, default, required)
 
     def validate(self, value):
@@ -397,25 +396,23 @@ class BooleanField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
-        if value is None:
-            cleaned_value = None
-        elif (type(value) == str and
+        if (type(value) == str and
                 value.lower() in self.false_literals):
-            cleaned_value = ""
-        else:
-            cleaned_value = self._repr_value if bool(value) else ""
-        return cleaned_value
+            value = False
+        return bool(value) or None
 
 
 class ChoiceField(BaseField):
-    def __init__(self, name, default=None, required=True, choices=()):
+    def __init__(self, name, default=None, required=True, choices=None):
         """
         :param required:
         :param name: parameter id
         :param default: default value of the field
         :param choices: an iterable of allowed choices
         """
-        self._choices = list(choices)
+        if choices is None:
+            choices = {}
+        self._choices = choices
         super().__init__(name, default, required)
 
     def validate(self, value):
@@ -426,12 +423,12 @@ class ChoiceField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
-        if not(value in self._choices or value is None):
+        if not(value in self._choices.keys() or value is None):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
-            return value
+            return self._choices.get(value)
 
     def get_constraints_list(self):
         return [
-            ("choices", self._choices)
+            ("choices", self._choices.keys())
         ]

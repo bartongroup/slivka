@@ -44,7 +44,6 @@ epsilon:
     description: Epsilon field
     value:
         type: boolean
-        value: -e
         default: true
 
 zeta:

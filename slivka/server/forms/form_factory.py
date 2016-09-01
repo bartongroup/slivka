@@ -172,7 +172,6 @@ class FormFactory:
             name,
             default=value.get("default"),
             required=value.get("required", True),
-            value=value.get("value")
         )
 
     @staticmethod
@@ -183,7 +182,7 @@ class FormFactory:
             name,
             default=value.get("default"),
             required=value.get("required", True),
-            choices=value.get("choices", {}).values()
+            choices=value.get("choices")
         )
 
     @staticmethod
