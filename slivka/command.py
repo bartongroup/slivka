@@ -35,7 +35,7 @@ def setup(name):
         f.write(pkg_resources.resource_string(
             "slivka", "data/template/manage.py.jinja2"
         ))
-    os.chmod(managepy_path, stat.S_IXUSR)
+    os.chmod(managepy_path, stat.S_IRWXU)
 
     # copy settings.py template
     settings_tpl = jinja2.Template(
@@ -78,7 +78,7 @@ def setup(name):
         f.write(pkg_resources.resource_string(
             "slivka", "data/template/binaries/pydummy.py"
         ))
-    os.chmod(pydummy_path, stat.S_IXUSR)
+    os.chmod(pydummy_path, stat.S_IRWXU)
 
 
 @click.group()

@@ -8,7 +8,7 @@ except ImportError:
 
 setup(
     name="Slivka",
-    version="0.1.dev0",
+    version="0.1.dev1",
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
         "click==6.6",
