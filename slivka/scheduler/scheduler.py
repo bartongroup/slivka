@@ -15,6 +15,10 @@ from .executors import Executor, Job
 
 
 class Scheduler:
+    """Scans the database for new tasks and dispatches them to executors.
+
+
+    """
 
     def __init__(self):
         self._logger = logging.getLogger(__name__)
@@ -29,12 +33,12 @@ class Scheduler:
         )
         self._collector_thread = threading.Thread(
             target=self.collector_loop,
-            name="PollThread"
+            name="CollectorThread"
         )
 
     def _set_executors(self):
-        """
-        Loads executors and configurations from config file.
+        """Load executors and configurations from the config file.
+
         For each service specifies in services.ini loads its configuration
         data and constructs executor for each configuration.
         """
@@ -70,14 +74,20 @@ class Scheduler:
             self._tasks.add(JobWrapper(job, job_model.request_id))
 
     def start(self, async=False):
-        """
-        Starts the scheduler and it's working threads. If `async` parameter is
-        set to False, it blocks until interrupt signal is received.
-        After this, it shuts the server down gracefully and waits for threads to
-        join.
-        Asynchronous start doesn't mean that the main process wil exit and
-        subprocess will run in the background. When started asynchronously
-        you should shutdown it manually from outside.
+        """Start the scheduler and it's working threads.
+
+        It launches poller and collector threads of the scheduler which scan
+        the database and dispatch the tasks respectively. If ``async``
+        parameter is set to ``False``, it blocks until keyboard interrupt
+        signal is received. After that, it stops the polling and collecting
+        threads and join them before returning.
+
+        Setting ``async`` to ``True`` will cause the method to return
+        immediately after spawning collector and poll threads which will
+        run in the background. When started asynchronously, the scheduler's
+        shutdown method shoud be called manually by the main thread.
+        This option is especially usefun in interactive debugging of testing.
+
         :param async: whether the scheduler should not block
         """
         self._collector_thread.start()

@@ -5,6 +5,7 @@ import shutil
 
 import pkg_resources
 
+
 FORM_SCHEMA = json.loads(
     pkg_resources.resource_string(
         "slivka",
@@ -21,12 +22,17 @@ CONF_SCHEMA = json.loads(
 
 
 def copytree(src, dst):
-    """
+    """Copy directory tree recursively.
+    
     Alternative implementation of shutil.copytree which allows to copy into
-    existing directories.
-    :param src:
-    :param dst:
-    :return:
+    existing directories. Directories which does not exist are created and
+    existing directories are populated with files and folders.
+    If destination directory path does not exist, it will attempt to create
+    the entire directory tree up to that level.
+    
+    :param src: source directory path
+    :param dst: destination directory path
+    :return: destination directory path
     """
     os.makedirs(dst, exist_ok=True)
     errors = []
@@ -48,9 +54,9 @@ def copytree(src, dst):
 
 
 def snake_to_camel(name):
-    """
-    Converts snake_case name to lowercase camelCase
-    :param name: name to convert
+    """Convert snake_case name to lowercase camelCase
+    
+    :param name: snake_case name
     :return: camelCase name
     """
     comp = name.split('_')
@@ -58,9 +64,9 @@ def snake_to_camel(name):
 
 
 def camel_to_snake(name):
-    """
-    Converts camelCase name to snake_case
-    :param name: name to convert
+    """Convert camelCase name to snake_case
+    
+    :param name: camelCase name
     :return: snake_case name
     """
     s = re.sub('([A-Z])([A-Z][a-z]+)', r'\1_\2', name)

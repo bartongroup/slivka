@@ -1,63 +1,20 @@
-####################
-Slivka Documentation
-####################
+Starting the project
+====================
 
-Slivka is a server application for Python intended for easy and flexible
-configuration of REST API for various web services. The server is based on
-Flask_ microframework and SQLAlchemy_. The scheduler uses native Python
-queuing mechanism and sqlite_ database.
+In order to create a new Slivka project navigate to the folder where you want
+to set-up your project and use the executable created during the installation.
+::
 
-.. _Flask: https://github.com/pallets/flask
-.. _SQLAlchemy: https://github.com/zzzeek/sqlalchemy
-.. _sqlite: https://www.sqlite.org/
+   slivka-setup <name>
 
+Replacing ``<name>`` with the name of the project you create.
+If the executable cannot be accessed (e.g. it is not in the PATH), you
+can equivalently run the slivka module with ::
 
-=============================
-Installation and requirements
-=============================
+   python -m slivka <name>
 
-Installation requires Python 3.3+ (recommended version 3.5).
-Additional requirements, which will be downloaded and installed automatically,
-are:
-
-- click (6.6)
-- Flask (0.11.1)
-- itsdangerous (0.24)
-- Jinja2 (2.8)
-- jsonschema (2.5.1)
-- MarkupSafe (0.23)
-- PyYAML (3.11)
-- SQLAlchemy (1.0.13)
-- Werkzeug (0.11.10)
-
-It's recommended to install Slivka inside a virtual environment.
-Get virtualenv with ``pip install virtualenv`` (on some Linux distributions
-you may need to install ``apt-get install python-virtualenv``).
-Run ``virtualenv env``, wait for it to create a new environment in ``env``
-directory and activate using ``source env/bin/activate`` on Unix/OS X or
-``env\Scripts\activate.bat`` on Windows. More information about the package
-can be found in `virtualenv documentation`_.
-
-.. _`virtualenv documentation`: https://virtualenv.pypa.io/en/stable/
-
-To install Slivka download Slivka zip or tar archive and run
-``pip install Slivka-<version>.zip``. Setuptools and all requirements
-will be downloaded if not present, so internet connection is required
-during the installation.
-
-
-======================
-Setting up the project
-======================
-
-Navigate to the folder where you want to create your project and run: ::
-
-  slivka-setup <name>
-
-It will create a new folder ``<name>`` and upload three core files to it:
-*settings.py*, *manage.py* and *services.ini*. You usually need to modify
-only the last one. Slivka will also include sample service and its
-configuration.
+It will create a new folder ``<name>`` and copy three core files to it and
+sample service with its configuration. The three core files of the project are:
 
 :manage.py:
   a main executable script which configures Slivka and runs its components.
@@ -66,11 +23,19 @@ configuration.
 :service.ini:
   manages services execution and points to configuration files
 
+All three files are unicode text files and can be edited with any text editor.
 
-Configuring settings
---------------------
 
-``settings.py`` is a Python module file which provides execution constants:
+Settings file
+-------------
+
+``settings.py`` is a Python module file containing several constants which
+are used over the entire application. Since it's a python code which gets
+imported and executed every time Slivka is started, you can place some
+initialization scripts in here.
+Several constants are inserted on project creation, but you are free to add
+more, keeping that only uppercase variables are considered settings variables.
+Here is the list of constants created on project set-up with description.
 
 :``BASE_DIR``:
   Must be set to the absolute location of the project folder. It tells the
@@ -81,9 +46,9 @@ Configuring settings
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-  You can set it to any path using ``os.path.join`` wrapped in ``os.path.abspath``.
-  Relative paths should be avoided as they start at current work directory
-  which may be different for each execution.
+  You can set it to any path using ``os.path.join`` surrounded by
+  ``os.path.abspath``. Relative paths should be avoided as they start at
+  current work directory which may be different for each execution.
   It's recommended to leave it unchanged.
 
   Example:
@@ -152,15 +117,22 @@ Configuring settings
   be used in production.
 
 
-Configuring services
---------------------
+Services configuration
+----------------------
 
-A general service configuration is contained in the *service.ini* file.
+An entry point to service configuration is put in the *service.ini* file.
+The file consist of sections whose name is pun in square brackets ``[section]``
+and key-value pairs mapped to each other with equality sign (=) or colon (:)
+e.g. ``key = value``. More details about the structure of the file can be
+found in the configparser_ documentation.
+
+.. _configparser: https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
+
 The ``[DEFAULT]`` section is ignored by the application and can
 be used to define constants i.e. project directory. These constants can be
-referred using ``%(key)s`` placeholder.
-
-``address`` field in the following example
+referred using ``%(key)s`` placeholder similar to C-style formatting.
+In the following example, the ``address`` field will be evaluated to
+``example.com:80``
 
 .. code-block:: ini
 
@@ -169,21 +141,19 @@ referred using ``%(key)s`` placeholder.
   port = 80
   address = %(host)s:%(port)s
 
-will be evaluated to ``example.com:80``
-
-Each section (except ``[DEFAULT]``) corresponds to one service configuration
-defined in the services list in the *settings.py* file.
-The section must contain two keys:
+Each section (except ``[DEFAULT]``) corresponds to one service configuration.
+Services can be anything ranging from a different ways to call an application
+to range of different applications. The section must contain two keys:
 
 :``config``:
-  The path to the command definition file described in the section
-  `Command description`_.
+  The path to the command definition file which structure is described in the
+  `Command description`_ section.
 
 :``form``:
-  The path to user form definition file descriped in the section
-  `Form description`_.
+  The path to user form definition file described in the `Form description`_
+  section.
 
-A sample configuration section of service Lorem may look like this:
+A sample configuration section of a service *Lorem* may look like this:
 
 .. code-block:: ini
 
@@ -199,9 +169,10 @@ Form description
 ----------------
 
 Form description file specified what fields are presented to the front end user
-and what values are expected. File should contain a json object where keys are
-fields names and values are specifications of the fields.
-Field specification object may have three fields:
+and what field values are expected. The file should contain a single JSON
+object which keys are unique form field names and values are options and
+restrictions imposed on the form field values.
+Each field, regardless of its type, have three option fields:
 
 ``label``:
   Human readable name of the field (required)
@@ -209,6 +180,8 @@ Field specification object may have three fields:
   Detailed description of the fields or help text (optional)
 ``value``:
   `Value object`_ describing accepted field values (required)
+
+Example of the form accepting two fields, file and file format is shown below.
 
 .. code-block:: json
 
@@ -240,7 +213,7 @@ Field specification object may have three fields:
 Value object
 ^^^^^^^^^^^^
 
-Each value object regardless of its type have three properties: ``type``,
+Each value object, regardless of its type, may have three properties: ``type``,
 ``required``, ``default``. First, ``type``, is required and can take one of the
 following values: ``int``, ``float``, ``text``, ``boolean``, ``choice`` or
 ``file``.
@@ -248,8 +221,8 @@ Second, ``required``, is required and specifies whether the value must be
 specified for the form to be valid.
 Third, ``default``, is optional and its value should match type of the field.
 It's the default value of the field if user won't choose anything.
-Note that specifying default value makes the field not required as default is
-user for no input.
+Note that specifying default value makes the field not required as default
+value is used if the field is left ampty.
 
 All other properties are optional and they are specific for different types.
 
@@ -305,8 +278,8 @@ All other properties are optional and they are specific for different types.
     }
 
 :boolean:
-  Boolean field evaluates to true for each value except ``"false"``, ``"0"``,
-  ``"null"``, ``"no"``; otherwise, it becomes `None`
+  Boolean field evaluates to true for each input value except ``"false"``,
+  ``"0"``, ``"null"``, ``"no"``; otherwise, it becomes ``None``
 
   .. code-block:: json
 
@@ -320,8 +293,8 @@ All other properties are optional and they are specific for different types.
 
   ``choices`` : (object)
     Choices are defined as an object where property key is option name and the
-    value is choice value. When the choice is selected, it's value is passed
-    to the parameter.
+    value is choice value. When the choice name is selected, it's value is
+    passed to the parameter.
 
   .. code-block:: json
 
@@ -373,7 +346,7 @@ Option objects
 ^^^^^^^^^^^^^^
 
 Each option object must have properties ``ref`` and ``param``.
-Optionally you may add ``val`` if you want to use default value.
+Optionally you may add ``val`` if you want to use a default value.
 
 :``ref``:
   Corresponding field name in the form definition file. The value of the form
@@ -382,12 +355,12 @@ Optionally you may add ``val`` if you want to use default value.
 :``param``:
   Template of the command option. Field value will be replaced for ``${value}``
   placeholder. i.e. ``--in ${value}``, ``-a=${value}``.
-  ``${value}`` is not required and, if not given, the option will be independent
-  of the field value.
+  ``${value}`` is not required and, if not given, the option will be
+  passed independently of the field value.
 
 :``val``:
   Value used if corresponding field in the form is not found or evaluates to
-  ``None``. Useful when you need to specify constants like output file flag.
+  ``None``. Useful when you need to specify constants i.e. output file flag.
 
 Example:
 
@@ -417,7 +390,7 @@ Result objects
 Result objects describe possible outputs of the command execution.
 Each output object should have ``type`` property which takes one of the values:
 ``result``, ``error`` or ``log`` which indicates whether the output should be
-interpreted as computation result, error message or log, respectively.
+interpreted as computation result, error message or log file, respectively.
 ``method`` property defines how the output can be retrieved.
 The only allowed value is ``file`` which indicates that the content is stored
 in the file.
@@ -432,11 +405,11 @@ following properties must be provided
   May be used to specify the folder with output files or data split between
   multiple files.
 
-Note, ``path`` should be used if file must be provided by the service.
-If command returns and this file is not present, job is considered as failed.
+Note, ``path`` should be used if the service is exprected to produce the file.
+If command returns and this file is not present, job is considered failed.
 ``pattern`` should be used for multiple files and optional files when zero or
 more files are expected. These paths are evaluated lazily after the job is
-finished and match as many files as is present at that time.
+finished and match as many files as is present at the job completion.
 
 Example of the list of outputs:
 
@@ -517,12 +490,12 @@ Example:
 Limits
 ^^^^^^
 
-Path to Python class which performs selection of the configuration based on
+Path to the Python class which performs selection of the configuration based on
 command parameters. It has to be a valid Python import path (packages separated
 with dots) accessible to the application. Folder containing Python module and
 its parent folders must contain an empty *__init__.py* file to be Python
 packages.
-More details on limits classes in the `Limits class`_ section.
+More details on limits classes is in the `Limits class`_ section.
 
 
 Limits class
@@ -534,11 +507,11 @@ pick one configuration when given values passed to the form.
 
 Limits class must extend ``slivka.scheduler.executors.JobLimits`` class
 and define one class attribute ``configurations`` containing the list of
-configuration names.
-For each configuration you should specify a method ``limit_<configuration>``
-which accepts one argument - dictionary containing form values.
-Each of the methods should return ``True`` or ``False`` depending on whether for
-given form values this configuration should be selected.
+configuration names in order of evaluation.
+For each configuration you should specify a method named
+``limit_<configuration>`` which accepts one argument - dictionary containing
+form values. Each of the methods should return ``True`` or ``False`` depending
+on whether for given form values this configuration should be selected.
 Limits are evaluated in the order specified in the ``configurations`` list
 and first one which returns ``True`` is picked.
 You may also need to define ``setup`` method for expensive operations.
@@ -581,52 +554,8 @@ Next, it checks criteria for first configuration which are: less than 100B
 json file or less than 20B yaml file. If they are not met, refuse to use this
 configuration and jump to the next in the list.
 Second configuration, on the other hand, is executed if the file size does not
-exceed 1000B. Otherwise, scheduler refuses to start the job.
+exceed 1000B. Otherwise, scheduler will refuse to start the job.
 
 Field values can be obtained from the method argument using field name as a
 dictionary key. All values are strings in the format as they are entered in the
 shell command and may require conversion to other types.
-
-
-===============
-Running the app
-===============
-
-Slivka consists of two core parts: rest http server and job scheduler.
-Separation allows them to run independently of each other. In case
-when the scheduler is down, server keeps collection requests and stash them,
-so when the scheduler is working again it can catch up with the server.
-Each component is launched using *manage.py* script with additional arguments.
-
-Additionally, you can use simple task queue added to Slivka to run tasks
-on the local machine without additional software installed.
-
-To launch the project, you need to create a database file with a schema
-by executing ::
-
-  python manage.py initdb
-
-It will create an *sqlite.db* file in the current working directory and
-automatically create all required tables.
-
-In order to delete the database, you may call ::
-
-  python manage.py dropdb
-
-or remove it manually fom the file system.
-
-Next, you need to launch REST server and scheduler processes.
-Server can be started with ::
-
-  python manage.py server
-
-Then, you can start the scheduler process with ::
-
-  python manage.py scheduler
-
-If you decided to use local queue to process jobs, you can run it with ::
-
-  python manage.py worker
-
-To stop any of these processes, send the ``INTERRUPT`` signal to it to close it
-gracefully.

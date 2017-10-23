@@ -41,11 +41,19 @@ class TaskQueue:
         self._job_id_counter = itertools.count(1)
 
     def start(self, async=False):
-        """
-        Launches the task queue. Starts the server thread and starts all
-        worker threads. Then it waits for KeyboardInterrupt signal
-        to stop execution of the server and workers.
-        Waits for all threads to join before exiting.
+        """Start the server thread and workers.
+
+        Launches the task queue. Starts the server thread and all
+        worker threads. Then, it waits for KeyboardInterrupt signal
+        to call ``shutdown`` function and stop execution of the server and
+        workers.
+        If ``async`` parameter is set to true, queue will not block after
+        starting server and workers and ``shutdown`` must be called manually
+        from the main thread. This option is useful for interactive debugging
+        and unit testing.
+
+        :param async: don't block after starting (default: False)
+        :type async: bool
         """
         logger.info("Starting server.")
         self._server.start()
@@ -60,13 +68,17 @@ class TaskQueue:
         except KeyboardInterrupt:
             logger.info("Shutting down...")
             self.shutdown()
+            logger.info("Finished")
 
     def shutdown(self):
-        """
-        Flushes the task queue and puts kill worker signal for each
-        alive worker.
-        Then, pokes the server to stop listening and return.
-        :return:
+        """Finish the work of the task queue.
+
+        Puts kill worker signal for each alive worker to stop their threads and
+        pokes the server with a dummy request to make it stop listening and
+        return.
+
+        This function should not be called manually unless using asynchronous
+        interactive mode.
         """
         logger.debug("Shutdown signal.")
 
@@ -89,8 +101,8 @@ class TaskQueue:
         logger.debug("Workers joined.")
 
     def _enqueue_command(self, command):
-        """
-        Adds a new job to the queue.
+        """Add a new job to the queue.
+
         :param command: new command to execute
         :type command: LocalCommand
         :return: id of the job
@@ -339,7 +351,7 @@ class QueueServer(threading.Thread):
         """
         Tests if the queue server is running properly and accepting connections.
         :param address: address to connect to (defaults to (settings.QUEUE_HOST
-                        settings.QUEUE_PORT))
+            settings.QUEUE_PORT))
         :return: whether the server accepted connection properly
         """
         if address is None:
@@ -370,6 +382,7 @@ class QueueServer(threading.Thread):
         directory and, optionally, environment variables.
         By default, it connect to the queue address specified in the settings,
         but you can override it specifying `host` and `port` arguments.
+
         :param cmd: list of command line arguments to execute
         :type cmd: list[str]
         :param cwd: absolute path of current working directory for the command

@@ -7,10 +7,12 @@ from .form_factory import FormFactory
 
 
 def init_forms(config_file):
-    """
-    Loads services and their parameter files from configuration and
-    automagically builds form classes. Forms are dynamically added to the forms
-    module.
+    """Initialize ``forms`` module.
+
+    Load services and their parameter files from configuration and
+    dynamically creates corresponding form classes. The classes are dynamically
+    added to the forms module.
+
     :param config_file:
     """
     config = configparser.ConfigParser()
@@ -26,7 +28,8 @@ def init_forms(config_file):
 
 
 def get_form(service):
-    """
+    """Get the form bound to the specified service.
+
     :param service: name of the service
     :return: form associated with a given service
     """
@@ -35,8 +38,9 @@ def get_form(service):
 
 
 def get_form_name(service):
-    """
-    :param service: service for which form name is constructed
+    """Generate form class name from service name.
+
+    :param service: service name
     :return: form name for the given service
     """
     return service.capitalize() + "Form"
