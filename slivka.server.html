@@ -1,0 +1,365 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>slivka.server &#8212; Slivka 0.1.dev1 documentation</title>
+    
+    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.dev1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="slivka.server.forms" href="slivka.server.forms.html" />
+    <link rel="prev" title="slivka.scheduler" href="slivka.scheduler.html" />
+   
+  <link rel="stylesheet" href="static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="slivka-server">
+<h1>slivka.server<a class="headerlink" href="#slivka-server" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="slivka.server.forms.html">slivka.server.forms</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="slivka.server.forms.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="slivka.server.forms.html#module-slivka.server.forms.exceptions">slivka.server.forms.exceptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="slivka.server.forms.html#module-slivka.server.forms.fields">slivka.server.forms.fields</a></li>
+<li class="toctree-l3"><a class="reference internal" href="slivka.server.forms.html#module-slivka.server.forms.form_factory">slivka.server.forms.form_factory</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="slivka.server.forms.html#module-slivka.server.forms">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-slivka.server.serverapp">
+<span id="slivka-server-serverapp"></span><h3>slivka.server.serverapp<a class="headerlink" href="#module-slivka.server.serverapp" title="Permalink to this headline">¶</a></h3>
+<p>Provides wsgi application and routes for each possible request</p>
+<p>This module initializes a global instance of Flask application and sets it&#8217;s
+configuration based on the provided config file.
+It also contains and binds all url routes to functions taking a request and
+producing a json response.</p>
+<p>Flask application <code class="docutils literal"><span class="pre">app</span></code> contained in this module can be used as a
+standalone HTTP debugging server or can be passed to the dedicated wsgi
+server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.</p>
+<dl class="function">
+<dt id="slivka.server.serverapp.JsonResponse">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">JsonResponse</code><span class="sig-paren">(</span><em>content</em>, <em>status=200</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.JsonResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create JSON response form a dictionary.</p>
+<p>This is a wrapper function around a <code class="docutils literal"><span class="pre">flask.Response</span></code> object which
+automatically serializes <code class="docutils literal"><span class="pre">content</span></code> as a JSON object and sets response
+mimetype to <em>application/json</em>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>content</strong> &#8211; dictionary with response content</li>
+<li><strong>status</strong> &#8211; HTTP response status code</li>
+<li><strong>kwargs</strong> &#8211; additional arguments passed to the Response object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">JSON response object</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="slivka.server.serverapp.app">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">app</code><em class="property"> = &lt;Flask 'slivka'&gt;</em><a class="headerlink" href="#slivka.server.serverapp.app" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flask object implementing WSGI application.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.delete_file">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">delete_file</code><span class="sig-paren">(</span><em>signed_file_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.delete_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete file from the filesystem. <code class="docutils literal"><span class="pre">DELETE</span> <span class="pre">/file/{signed_file_id}</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>signed_file_id</strong> &#8211; signed file identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Http response with status code</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.echo">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">echo</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.echo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return request method and POST and GET arguments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">JSON response with basic request information.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.file_download">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">file_download</code><span class="sig-paren">(</span><em>file_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.file_download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download file contents. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/file/{file_id}/download</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_id</strong> &#8211; file identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">requested file contents</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.file_upload">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">file_upload</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.file_upload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Upload the file to the server. <code class="docutils literal"><span class="pre">POST</span> <span class="pre">/file</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">JSON containing internal metadata of the uploaded file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.get_file_meta">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">get_file_meta</code><span class="sig-paren">(</span><em>file_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.get_file_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get file metadata. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/file/{file_id}</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_id</strong> &#8211; file identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON containing internal metadata of the file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.get_service_form">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">get_service_form</code><span class="sig-paren">(</span><em>service</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.get_service_form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets service request form. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/service/{service}/form</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>service</strong> &#8211; service name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON response with service form</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.get_services">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">get_services</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.get_services" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of services. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/services</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">JSON response with list of service names</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.get_task_files">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">get_task_files</code><span class="sig-paren">(</span><em>task_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.get_task_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the list of file ids of this job. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/task/{task_id}/files</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>task_id</strong> &#8211; task identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON response with list of file ids produced by the task.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.get_task_status">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">get_task_status</code><span class="sig-paren">(</span><em>task_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.get_task_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the status of the task. <code class="docutils literal"><span class="pre">GET</span> <span class="pre">/task/{task_id}/status</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>task_id</strong> &#8211; task identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON response with current job completion status</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.not_allowed_405">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">not_allowed_405</code><span class="sig-paren">(</span><em>e</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.not_allowed_405" title="Permalink to this definition">¶</a></dt>
+<dd><p>Custom 405 error JSON response.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.not_found_404">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">not_found_404</code><span class="sig-paren">(</span><em>e</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.not_found_404" title="Permalink to this definition">¶</a></dt>
+<dd><p>Custom 404 error JSON response.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.post_service_form">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">post_service_form</code><span class="sig-paren">(</span><em>service</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.post_service_form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send form data and starts new task. <code class="docutils literal"><span class="pre">POST</span> <span class="pre">/service/{service}/form</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>service</strong> &#8211; service name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON response with submitted task id</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.server_error_500">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">server_error_500</code><span class="sig-paren">(</span><em>e</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.server_error_500" title="Permalink to this definition">¶</a></dt>
+<dd><p>Custom 500 error JSON resoinse.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.server.serverapp.set_file_meta">
+<code class="descclassname">slivka.server.serverapp.</code><code class="descname">set_file_meta</code><span class="sig-paren">(</span><em>signed_file_id</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.serverapp.set_file_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update file metadata. <code class="docutils literal"><span class="pre">PUT</span> <span class="pre">/file/{signed_file_id}</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>signed_file_id</strong> &#8211; signed file identifier</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">JSON containing new metadata of the file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">slivka.server</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a><ul>
+<li><a class="reference internal" href="#module-slivka.server.serverapp">slivka.server.serverapp</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">Slivka Module Reference</a><ul>
+      <li>Previous: <a href="slivka.scheduler.html" title="previous chapter">slivka.scheduler</a></li>
+      <li>Next: <a href="slivka.server.forms.html" title="next chapter">slivka.server.forms</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="sources/slivka.server.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Mateusz Maciej Warowny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="sources/slivka.server.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

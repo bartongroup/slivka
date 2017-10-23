@@ -1,0 +1,334 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>slivka &#8212; Slivka 0.1.dev1 documentation</title>
+    
+    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.dev1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="slivka.db" href="slivka.db.html" />
+    <link rel="prev" title="Slivka Module Reference" href="modules.html" />
+   
+  <link rel="stylesheet" href="static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="slivka">
+<h1>slivka<a class="headerlink" href="#slivka" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-slivka.command">
+<span id="slivka-command"></span><h3>slivka.command<a class="headerlink" href="#module-slivka.command" title="Permalink to this headline">¶</a></h3>
+<p>Entry points for command line interface.</p>
+<p>This module provides a collection of functions which are called directly from
+the command line interface. Each function corresponds to the command with the
+same name as the function, which is passed as a first parameter to the script
+call. Additionally, some of the functions process additional arguments
+usually specified just after the command name.</p>
+<dl class="function">
+<dt id="slivka.command.setup">
+<code class="descclassname">slivka.command.</code><code class="descname">setup</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup a new project in the current working directory.</p>
+<p>This function initializes a new project in the current working directory
+and populates it with necessary directory tree and configuration files.
+Project name should be specified as a command argument and corresponds to
+the name of the new project folder.
+Using <code class="docutils literal"><span class="pre">&quot;.&quot;</span></code> (dot) as a folder name will set up the project in the current
+directory.</p>
+<p>All templates are fetched form <code class="docutils literal"><span class="pre">slivka/data/template</span></code> populated
+with data specific to the project and copied to the project directory.</p>
+<p>Calling this fuction is a default behaviuor when a slivka module is
+executed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; name of the project folder</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.admin">
+<code class="descclassname">slivka.command.</code><code class="descname">admin</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.admin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Admin commands group.</p>
+<p>Function groups all command and makes sure that the logger is always
+initialized before the program is started.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.worker">
+<code class="descclassname">slivka.command.</code><code class="descname">worker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start task queue workers.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.scheduler">
+<code class="descclassname">slivka.command.</code><code class="descname">scheduler</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.scheduler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start job scheduler.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.server">
+<code class="descclassname">slivka.command.</code><code class="descname">server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts HTTP server.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.initdb">
+<code class="descclassname">slivka.command.</code><code class="descname">initdb</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.initdb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialise the database.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.dropdb">
+<code class="descclassname">slivka.command.</code><code class="descname">dropdb</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.dropdb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the database</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.command.shell">
+<code class="descclassname">slivka.command.</code><code class="descname">shell</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.command.shell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize project configuration and start python shell.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-slivka.config">
+<span id="slivka-config"></span><h3>slivka.config<a class="headerlink" href="#module-slivka.config" title="Permalink to this headline">¶</a></h3>
+<dl class="exception">
+<dt id="slivka.config.ImproperlyConfigured">
+<em class="property">exception </em><code class="descclassname">slivka.config.</code><code class="descname">ImproperlyConfigured</code><a class="headerlink" href="#slivka.config.ImproperlyConfigured" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception raised when configuration values are invalid.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka.config.Settings">
+<em class="property">class </em><code class="descclassname">slivka.config.</code><code class="descname">Settings</code><span class="sig-paren">(</span><em>settings=None</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.config.Settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container class for all project settings.</p>
+<p>The settings object is initialized by the <code class="docutils literal"><span class="pre">slivka.setup</span></code> function every
+time Slivka is started and stored in a global variable <code class="docutils literal"><span class="pre">slivka.settings</span></code>.
+It contains all configuration information used during runtime and is
+globally accessible to every module.</p>
+<p>Settings object is initialized with either a local settings module file or
+a dictionary from which all uppercase names are extracted and their values
+are stored as object attributes.</p>
+<p>Object attributes might change depending on the values stored in the
+settings file. However, a set of fields is pre-defined and is always
+accessible, either overridden by custom configuration or default.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>BASE_DIR</strong> &#8211; root directory of the project (default: cwd)</li>
+<li><strong>LOG_DIR</strong> &#8211; log files directory (default: <code class="docutils literal"><span class="pre">BASE_DIR/logs</span></code>)</li>
+<li><strong>MEDIA_DIR</strong> &#8211; media files directory (default: <code class="docutils literal"><span class="pre">BASE_DIR/media</span></code>)</li>
+<li><strong>SECRET_KEY</strong> &#8211; key used for id signatures</li>
+<li><strong>WORK_DIR</strong> &#8211; working directory for local jobs</li>
+<li><strong>SERVICE_INI</strong> &#8211; location of services configuration file</li>
+<li><strong>CONFIG</strong> &#8211; parsed services configuration file</li>
+<li><strong>QUEUE_HOST</strong> &#8211; hostname of queue process</li>
+<li><strong>QUEUE_PORT</strong> &#8211; task queue listening port</li>
+<li><strong>SERVER_HOST</strong> &#8211; http server hostname</li>
+<li><strong>SERVER_PORT</strong> &#8211; http server listening port</li>
+<li><strong>DEBUG</strong> &#8211; enable debugging</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="slivka.config.Settings.SERVICES">
+<code class="descname">SERVICES</code><a class="headerlink" href="#slivka.config.Settings.SERVICES" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of services form the services configuration file</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-slivka.utils">
+<span id="slivka-utils"></span><h3>slivka.utils<a class="headerlink" href="#module-slivka.utils" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="slivka.utils.camel_to_snake">
+<code class="descclassname">slivka.utils.</code><code class="descname">camel_to_snake</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.utils.camel_to_snake" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert camelCase name to snake_case</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; camelCase name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">snake_case name</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.utils.copytree">
+<code class="descclassname">slivka.utils.</code><code class="descname">copytree</code><span class="sig-paren">(</span><em>src</em>, <em>dst</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.utils.copytree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy directory tree recursively.</p>
+<p>Alternative implementation of shutil.copytree which allows to copy into
+existing directories. Directories which does not exist are created and
+existing directories are populated with files and folders.
+If destination directory path does not exist, it will attempt to create
+the entire directory tree up to that level.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>src</strong> &#8211; source directory path</li>
+<li><strong>dst</strong> &#8211; destination directory path</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">destination directory path</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.utils.snake_to_camel">
+<code class="descclassname">slivka.utils.</code><code class="descname">snake_to_camel</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.utils.snake_to_camel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert snake_case name to lowercase camelCase</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; snake_case name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">camelCase name</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-slivka">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-slivka" title="Permalink to this headline">¶</a></h2>
+<dl class="data">
+<dt id="slivka.settings">
+<code class="descclassname">slivka.</code><code class="descname">settings</code><em class="property"> = None</em><a class="headerlink" href="#slivka.settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project configuration object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">:ref:slivka.config.Settings</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="slivka.setup">
+<code class="descclassname">slivka.</code><code class="descname">setup</code><span class="sig-paren">(</span><em>settings_module</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the <code class="docutils literal"><span class="pre">settings</span></code> variable to a new <code class="docutils literal"><span class="pre">Settings</span></code> object.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">slivka</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a><ul>
+<li><a class="reference internal" href="#module-slivka.command">slivka.command</a></li>
+<li><a class="reference internal" href="#module-slivka.config">slivka.config</a></li>
+<li><a class="reference internal" href="#module-slivka.utils">slivka.utils</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-slivka">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">Slivka Module Reference</a><ul>
+      <li>Previous: <a href="modules.html" title="previous chapter">Slivka Module Reference</a></li>
+      <li>Next: <a href="slivka.db.html" title="next chapter">slivka.db</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="sources/slivka.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Mateusz Maciej Warowny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="sources/slivka.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Requirements &#8212; Slivka 0.1.dev1 documentation</title>
+    
+    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.dev1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Starting the project" href="configuration.html" />
+    <link rel="prev" title="Welcome to Slivka’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="requirements">
+<h1>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h1>
+<p>Installation requires Python 3.3+ (recommended version 3.5).
+Additional requirements, which will be downloaded and installed automatically,
+are:</p>
+<ul class="simple">
+<li>click (6.6)</li>
+<li>Flask (0.11.1)</li>
+<li>itsdangerous (0.24)</li>
+<li>Jinja2 (2.8)</li>
+<li>jsonschema (2.5.1)</li>
+<li>MarkupSafe (0.23)</li>
+<li>PyYAML (3.11)</li>
+<li>SQLAlchemy (1.0.13)</li>
+<li>Werkzeug (0.11.10)</li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>It&#8217;s recommended to install Slivka inside a virtual environment.
+Get virtualenv with <code class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">virtualenv</span></code> (on some Linux distributions
+you may need to install <code class="docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-virtualenv</span></code>).
+Run <code class="docutils literal"><span class="pre">virtualenv</span> <span class="pre">env</span></code>, wait for it to create a new environment in <code class="docutils literal"><span class="pre">env</span></code>
+directory and activate using <code class="docutils literal"><span class="pre">source</span> <span class="pre">env/bin/activate</span></code> on Unix/OS X or
+<code class="docutils literal"><span class="pre">env\Scripts\activate.bat</span></code> on Windows. More information about the package
+can be found in <a class="reference external" href="https://virtualenv.pypa.io/en/stable/">virtualenv documentation</a>.</p>
+<p>To install Slivka download Slivka zip or tar archive form <a class="reference external" href="https://github.com/warownia1/Slivka/releases">here</a> and run
+<code class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">Slivka-&lt;version&gt;.(zip|tar)</span></code> on the downloaded file.
+Alternatively, you can install the most recent version directly from the github
+repository with <code class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">git+git://github.com/warownia1/Slivka</span></code>.
+Setuptools and all requirements will be downloaded if not present, so internet
+connection is required during the installation.</p>
+<p>Installation will create a new executable <code class="docutils literal"><span class="pre">slivka-setup</span></code> in your Python
+scripts directory. It can be used to initialize new projects.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Requirements</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Slivka&#8217;s documentation!</a></li>
+      <li>Next: <a href="configuration.html" title="next chapter">Starting the project</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="sources/installation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Mateusz Maciej Warowny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="sources/installation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
