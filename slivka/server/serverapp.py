@@ -1,3 +1,15 @@
+"""Provides wsgi application and routes for each possible request
+
+This module initializes a global instance of Flask application and sets it's
+configuration based on the provided config file.
+It also contains and binds all url routes to functions taking a request and
+producing a json response.
+
+Flask application ``app`` contained in this module can be used as a
+standalone HTTP debugging server or can be passed to the dedicated wsgi
+server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
+"""
+
 import os.path
 import tempfile
 
@@ -14,6 +26,9 @@ from slivka.server.forms import get_form
 from slivka.utils import snake_to_camel
 
 app = Flask('slivka', root_path=os.path.dirname(__file__))
+"""Flask object implementing WSGI application."""
+
+# fixme: slivka.settings is not instantiated during documentation generation
 app.config.update(
     DEBUG=True,
     MEDIA_DIR=slivka.settings.MEDIA_DIR,
@@ -25,9 +40,8 @@ signer = itsdangerous.Signer(app.config["SECRET_KEY"])
 
 @app.route('/services', methods=['GET'])
 def get_services():
-    """
-    GET /services
-    Returns the list of services.
+    """Return the list of services. ``GET /services``
+
     :return: JSON response with list of service names
     """
     return JsonResponse({"services": slivka.settings.SERVICES})
@@ -35,9 +49,8 @@ def get_services():
 
 @app.route('/service/<service>/form', methods=["GET"])
 def get_service_form(service):
-    """
-    GET /service/{service}/form
-    Gets service request form.
+    """Gets service request form. ``GET /service/{service}/form``
+
     :param service: service name
     :return: JSON response with service form
     """
@@ -70,10 +83,10 @@ def get_service_form(service):
 
 @app.route('/service/<service>/form', methods=["POST"])
 def post_service_form(service):
-    """
-    POST /service/{service}/form
-    Sends form data and starts new task.
+    """Send form data and starts new task. ``POST /service/{service}/form``
+    
     :param service: service name
+    :return: JSON response with submitted task id
     """
     if service not in slivka.settings.SERVICES:
         raise abort(404)
@@ -99,9 +112,9 @@ def post_service_form(service):
 
 @app.route('/file', methods=["POST"])
 def file_upload():
-    """
-    POST /file
-    Uploads the file to the server.
+    """Upload the file to the server. ``POST /file``
+
+    :return: JSON containing internal metadata of the uploaded file
     """
     try:
         mimetype = request.form["mimetype"]
@@ -135,10 +148,10 @@ def file_upload():
 
 @app.route('/file/<file_id>', methods=["GET"])
 def get_file_meta(file_id):
-    """
-    GET /file/{file_id}
-    Gets file metadata.
+    """Get file metadata. ``GET /file/{file_id}``
+    
     :param file_id: file identifier
+    :return: JSON containing internal metadata of the file 
     """
     session = Session()
     try:
@@ -158,11 +171,11 @@ def get_file_meta(file_id):
 
 @app.route('/file/<file_id>/download', methods=["GET"])
 def file_download(file_id):
-    """
-    GET /file/{file_id}/download
-    Downloads file contents.
+    """Download file contents. ``GET /file/{file_id}/download``
+
+    
     :param file_id: file identifier
-    :return: file contents
+    :return: requested file contents
     """
     with start_session() as session:
         query = (session.query(models.File).
@@ -181,10 +194,11 @@ def file_download(file_id):
 
 @app.route('/file/<signed_file_id>', methods=["PUT"])
 def set_file_meta(signed_file_id):
-    """
-    PUT /file/{signed_file_id}
-    Updates file metadata.
+    """Update file metadata. ``PUT /file/{signed_file_id}``
+
+    
     :param signed_file_id: signed file identifier
+    :return: JSON containing new metadata of the file 
     """
     try:
         file_id = signer.unsign(signed_file_id).decode('utf-8')
@@ -210,10 +224,11 @@ def set_file_meta(signed_file_id):
 
 @app.route('/file/<signed_file_id>', methods=["DELETE"])
 def delete_file(signed_file_id):
-    """
-    DELETE /file/{signed_file_id}
-    Deletes file from the database and filesystem.
+    """Delete file from the filesystem. ``DELETE /file/{signed_file_id}``
+
+    
     :param signed_file_id: signed file identifier
+    :return: Http response with status code
     """
     try:
         file_id = signer.unsign(signed_file_id).decode('utf-8')
@@ -239,10 +254,10 @@ def delete_file(signed_file_id):
 
 @app.route('/task/<task_id>/status', methods=['GET'])
 def get_task_status(task_id):
-    """
-    GET /task/{task_id}/status
-    Gets the status of the task.
+    """Get the status of the task. ``GET /task/{task_id}/status``
+    
     :param task_id: task identifier
+    :return: JSON response with current job completion status
     """
     with start_session() as session:
         try:
@@ -259,10 +274,10 @@ def get_task_status(task_id):
 
 @app.route('/task/<task_id>/files', methods=['GET'])
 def get_task_files(task_id):
-    """
-    GET /task/{task_id}/files
-    Get the list of file ids associated with this job.
+    """Get the list of file ids of this job. ``GET /task/{task_id}/files``
+
     :param task_id: task identifier
+    :return: JSON response with list of file ids produced by the task.
     """
     with start_session() as session:
         try:
@@ -282,6 +297,10 @@ def get_task_files(task_id):
 
 @app.route('/echo', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def echo():
+    """Return request method and POST and GET arguments.
+
+    :return: JSON response with basic request information.
+    """
     return JsonResponse(
         dict(
             method=request.method,
@@ -295,32 +314,39 @@ def echo():
 # noinspection PyUnusedLocal
 @app.errorhandler(404)
 def not_found_404(e):
+    """Custom 404 error JSON response."""
     return JsonResponse({"error": "not found"}, 404)
 
 
 # noinspection PyUnusedLocal
 @app.errorhandler(405)
 def not_allowed_405(e):
+    """Custom 405 error JSON response."""
     return JsonResponse({"error": "method not allowed"}, 405)
 
 
 # noinspection PyUnusedLocal
 @app.errorhandler(500)
 def server_error_500(e):
+    """Custom 500 error JSON resoinse."""
     return JsonResponse({"error": "internal server error"}, 500)
 
 
 # noinspection PyPep8Naming
 def JsonResponse(content, status=200, **kwargs):
-    """
-    A helper function creating json response
-    :param content: dictionary representing response content
+    """Create JSON response form a dictionary.
+
+    This is a wrapper function around a ``flask.Response`` object which
+    automatically serializes ``content`` as a JSON object and sets response
+    mimetype to *application/json*.
+
+    :param content: dictionary with response content
     :param status: HTTP response status code
-    :param kwargs: arguments passed to the Response object
+    :param kwargs: additional arguments passed to the Response object
     :return: JSON response object
     """
     return Response(
-        response=json.dumps(content, indent=4),
+        response=json.dumps(content, indent=2),
         status=status,
         mimetype="application/json",
         **kwargs

@@ -8,9 +8,16 @@ from .exceptions import ValidationError
 
 
 class BaseField:
+    """Base class for all form fields.
+
+    :param name: parameter id
+    :param default: default value of the field
+    :raise ValidationError: default value is not valid
+    """
     def __init__(self, name, default=None, required=True):
         """
         Initializes the values of the field and sets the default value.
+
         :param name: parameter id
         :param default: default value of the field
         :raise ValidationError: default value is not valid

@@ -5,3 +5,7 @@ build/
 Slivka.egg-info/
 dist/
 dev/
+
+sphinx-docs/_build
+sphinx-docs/_static
+sphinx-docs/_templates

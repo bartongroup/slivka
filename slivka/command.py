@@ -1,3 +1,12 @@
+"""Entry points for command line interface.
+
+This module provides a collection of functions which are called directly from
+the command line interface. Each function corresponds to the command with the
+same name as the function, which is passed as a first parameter to the script
+call. Additionally, some of the functions process additional arguments
+usually specified just after the command name.
+"""
+
 import logging.config
 import os
 import stat
@@ -12,6 +21,23 @@ import slivka.utils
 @click.command()
 @click.argument("name")
 def setup(name):
+    """Setup a new project in the current working directory.
+
+    This function initializes a new project in the current working directory
+    and populates it with necessary directory tree and configuration files.
+    Project name should be specified as a command argument and corresponds to
+    the name of the new project folder.
+    Using ``"."`` (dot) as a folder name will set up the project in the current
+    directory.
+
+    All templates are fetched form ``slivka/data/template`` populated
+    with data specific to the project and copied to the project directory.
+
+    Calling this fuction is a default behaviuor when a slivka module is
+    executed.
+
+    :param name: name of the project folder
+    """
     project_dir = os.path.abspath(os.path.join(os.getcwd(), name))
     managepy_path = os.path.join(project_dir, "manage.py")
     settingspy_path = os.path.join(project_dir, "settings.py")
@@ -83,6 +109,11 @@ def setup(name):
 
 @click.group()
 def admin():
+    """Initialize logger.
+
+    Function groups all command making sure that the logger is always
+    initialized before the program is started.
+    """
     logging.config.dictConfig(slivka.settings.LOGGER_CONF)
 
 
@@ -104,7 +135,7 @@ def scheduler():
 
 @click.command()
 def server():
-    """Starts server."""
+    """Starts HTTP server."""
     from slivka.server.forms import init_forms
     from slivka.server.serverapp import app
 
@@ -124,7 +155,7 @@ def initdb():
 
 
 @click.command()
-@click.confirmation_option(prompt="Are you sure you want to drop the db?")
+@click.confirmation_option(prompt="Are you sure you want to drop the database?")
 def dropdb():
     """Drops the database."""
     from slivka.db import drop_db
