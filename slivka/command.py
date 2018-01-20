@@ -15,6 +15,7 @@ import click
 import jinja2
 import pkg_resources
 
+import slivka
 import slivka.utils
 
 
@@ -140,6 +141,11 @@ def server():
     from slivka.server.serverapp import app
 
     init_forms(slivka.settings.SERVICE_INI)
+    app.config.update(
+        DEBUG=True,
+        MEDIA_DIR=slivka.settings.MEDIA_DIR,
+        SECRET_KEY=slivka.settings.SECRET_KEY
+    )
     app.run(
         host=slivka.settings.SERVER_HOST,
         port=slivka.settings.SERVER_PORT,

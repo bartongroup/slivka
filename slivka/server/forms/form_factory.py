@@ -12,9 +12,9 @@ from .fields import (IntegerField, DecimalField, FileField, TextField,
 
 class BaseForm:
 
-    # TODO: fields should be a list of fields
+    # TODO: dict keys are redundant, they are stored in BaseField.name, use list
     _fields = {}
-    _service = None
+    _service = None  # field initialized by the FormFactory
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -23,8 +23,10 @@ class BaseForm:
 
     def __init__(self, values=None):
         """
-        Binds the form to given values and fills its fields.
-        :param values: dictionary of values passed to the fields
+        Creates a form instance with its fields.
+        If values are provided binds the form to them and fills the fields.
+
+        :param values: dictionary of values further passed to the fields
         """
         self._is_valid = None
         if values is None:
@@ -62,7 +64,8 @@ class BaseForm:
 
     def is_valid(self):
         """
-        Checks if the form and its fields are valid.
+        Checks if the form and all its fields individually are valid.
+
         :return: boolean that indicates if the orm is valid
         """
         if self._is_valid is None:
@@ -71,9 +74,13 @@ class BaseForm:
 
     def save(self, session):
         """
-        Adds new request to the session and fills options from the form fields.
+        Adds a new job request to the database session and fills options from
+        the form fields.
         Session must be committed after calling this method.
+
         :param session: a current database session
+        :return: request object added to the database session
+        :rtype: Request
         """
         if not self.is_valid():
             raise ValidationError
@@ -96,8 +103,8 @@ class FormFactory:
 
     @staticmethod
     def get_form_class(form_name, service, form_file):
-        """
-        Constructs a form class from a parameters configuration file
+        """Constructs a form class from a parameters configuration file.
+
         :param form_name: name given to a new form class
         :param service: service name the form is bound to
         :param form_file: a path to json file describing form fields
@@ -118,15 +125,17 @@ class FormFactory:
 
     @staticmethod
     def _load_fields(fields):
-        """
-        Loads the list of form fields from the json description.
+        """Loads the list of form fields from the json description.
+
         :param fields: list of field descriptions
         :return: iterable of field objects
         """
         for name, field in fields.items():
+            # access the underlying function of the staticmethod object
             factory = FormFactory.field_factory[field['value']['type']].__func__
             yield (name, factory(name, field))
 
+    # todo: move parameters extracting to each Field class
     @staticmethod
     def _get_integer_field(name, field):
         value = field['value']

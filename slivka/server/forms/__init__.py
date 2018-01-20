@@ -11,7 +11,7 @@ def init_forms(config_file):
 
     Load services and their parameter files from configuration and
     dynamically creates corresponding form classes. The classes are dynamically
-    added to the forms module.
+    added to the ``forms`` module.
 
     :param config_file:
     """

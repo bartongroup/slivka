@@ -151,6 +151,7 @@ class Worker(threading.Thread):
                 logger.info("%s completed %s", self.name, self._job)
                 self._queue.task_done()
                 self._job = None
+        # noinspection PyUnreachableCode
         logger.debug("%s died.", self.name)
 
 
@@ -188,9 +189,7 @@ class QueueServer(threading.Thread):
         return self._running
 
     def shutdown(self):
-        """
-        Stops the server.
-        """
+        """Stops the server."""
         self._running = False
         logger.debug("Poking server to stop.")
         dummy_conn = socket.socket()
@@ -207,7 +206,6 @@ class QueueServer(threading.Thread):
         incoming connections and manages job submissions and status checking.
         When client is connected, a new thread is spawned to handle the
         request and produce response.
-        :return:
         """
         self._server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server.bind((self._host, self._port))
@@ -279,6 +277,7 @@ class QueueServer(threading.Thread):
         Reads json request of the given length from the client socket.
         Specified length must be available in the socket; otherwise function
         will raise BlockingIOError.
+
         :param conn: active client socket to read data from
         :param length: length of the json content
         :return: dictionary corresponding to received json
@@ -350,8 +349,9 @@ class QueueServer(threading.Thread):
     def check_connection(address=None):
         """
         Tests if the queue server is running properly and accepting connections.
+
         :param address: address to connect to (defaults to (settings.QUEUE_HOST
-            settings.QUEUE_PORT))
+         settings.QUEUE_PORT))
         :return: whether the server accepted connection properly
         """
         if address is None:

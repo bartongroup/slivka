@@ -20,6 +20,7 @@ logger = logging.getLogger('slivka.scheduler.scheduler')
 # noinspection PyAbstractClass
 class Executor:
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, *, bin="", options=None, qargs=None, result_paths=None,
                  log_paths=None, env=None):
         """
@@ -45,6 +46,12 @@ class Executor:
         self._env = env or {}
 
     def __call__(self, values):
+        """Launch the new job.
+
+        Creates a current working directory for the new job and issues the
+        submit command which launches the job.
+        Returns the Job instance for the future reference to that job.
+        """
         cwd = os.path.join(slivka.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
         try:
@@ -103,14 +110,13 @@ class Executor:
         return self._log_paths
 
     def submit(self, values, cwd):
-        """
-        Submits the job with given options
-        """
+        """Submit the job with given options."""
         raise NotImplementedError
 
     @staticmethod
     def get_job_cls():
-        """
+        """Get the job class used by this executor.
+
         :return: Class of the associated job
         """
         raise NotImplementedError
@@ -245,6 +251,14 @@ class Job:
         ]
 
     def get_status(self, job_id):
+        """Return the completion status of the job.
+
+        This method should be overridden in all ``Job`` subclasses to check
+        the job status in a way specific to the execution method.
+        It returns one of the status constants specified in the class fields.
+
+        :param job_id: unique identificator allowing to recognise the job.
+        """
         raise NotImplementedError
 
     def get_result(self, job_id):
