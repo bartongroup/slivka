@@ -43,6 +43,7 @@ class BaseField:
     def type(self):
         """
         Get the type of the field based on the class name.
+
         :return: string representation of field type
         """
         return self.__class__.__name__[:-5].lower()
@@ -51,6 +52,7 @@ class BaseField:
     def default(self):
         """
         Make `default` as a read-only property.
+
         :return: default value of the field
         """
         return self._default
@@ -74,6 +76,7 @@ class BaseField:
     def value(self):
         """
         Returns field's value. If it wasn't set yet then returns default value.
+
         :return: value assigned to the field or default.
         """
         if self._value is None:
@@ -85,6 +88,7 @@ class BaseField:
     def value(self, value):
         """
         Sets the value of the field and invalidates it.
+
         :param value: new value of the field
         """
         self._value = value
@@ -100,9 +104,11 @@ class BaseField:
     @property
     def is_valid(self):
         """
-        Checks if the field has a valid value by calling subclass' `_validate`
-        method and catching ValidationError.
-        If the validation is successful it sets `_cleaned_value`.
+        Checks if the field has a valid value by calling subclass'
+        ``validate`` method and catching the ValidationError.
+        If the validation is successful it sets ``_cleaned_value`` to the
+        value returned by ``validate``.
+
         :return: whether the field is valid
         """
         if self._valid is None:
@@ -119,7 +125,8 @@ class BaseField:
     def cleaned_value(self):
         """
         Returns the value of the field after casting it into an appropriate
-        form.
+        format.
+
         :return: cleaned field value
         :raise ValidationError: form is not valid
         """
@@ -135,6 +142,10 @@ class BaseField:
         more specialised subclasses.
         If the field is valid, this method should return cleaned value;
         otherwise, it raises ValidationError with error description.
+
+        Default behaviour checks if the field is required and raises an
+        exception when the field value is not provided.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -163,8 +174,10 @@ class IntegerField(BaseField):
 
     def validate(self, value):
         """
-        Validates if the field's value can be casted to an integer.
-        It check if the value meets minimum and maximum constraints.
+        Extends the default behaviour checking if the field's value can be
+        casted to an integer and if the value meets minimum and maximum
+        constraints.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -200,6 +213,7 @@ class DecimalField(BaseField):
         Sets the field and its constraints.
         Inclusive and exclusive limits are mutually exclusive and at least
         one in each pair must be None.
+
         :param name: parameter id
         :param default: default value of the field
         :param minimum: minimum accepted value
@@ -213,8 +227,9 @@ class DecimalField(BaseField):
 
     def validate(self, value):
         """
-        Validates if the value can be casted to a float number and
-        meets all constraints.
+        Extends the default behavoiur checking if the value can be cast to
+        flaot and meets all value constraints.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -293,8 +308,10 @@ class FileField(BaseField):
 
     def validate(self, value):
         """
-        Checks if the filename fits the regular expression and compares checks
-        its extension.
+        Extends the default behavoiur checking if the file with a given id is
+        registered in the database and the path to that file exists.
+        Validation converts file id to the actual file path in the filesystem.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -347,8 +364,9 @@ class TextField(BaseField):
 
     def validate(self, value):
         """
-        Checks if the value can be casted to string and checks if the
-        length of that string fits into the limits.
+        Extends the default behavoiur checking if the value can be cast to
+        string and the length of that string fits into the limits.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -396,8 +414,10 @@ class BooleanField(BaseField):
 
     def validate(self, value):
         """
-        Compares if the value is one of the string literals indicating false.
-        Returns False if so; otherwise evaluates value as a boolean.
+        Extends the default behavoiur validating boolean values.
+        If the value is one of the string literals indicating false returns
+        False; otherwise evaluates the value as a boolean.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid
@@ -406,6 +426,9 @@ class BooleanField(BaseField):
         if (type(value) == str and
                 value.lower() in self.false_literals):
             value = False
+        # TODO: Possibly shouldn't return None if value is False???
+        # suggestion:
+        # return bool(value) if value is not None else None
         return bool(value) or None
 
 
@@ -424,7 +447,11 @@ class ChoiceField(BaseField):
 
     def validate(self, value):
         """
-        Checks if the value is one of the specified choices.
+        Extends the default behavoiur checking if the selected value is one of
+        the available choices. If so, return value assigned to that choice,
+        if ``None`` and the field is not required return ``None``, otherwise
+        raise a ``ValidationError``.
+
         :param value: value to be validated and cleaned
         :return: cleaned value
         :raise ValidationError: field value is invalid

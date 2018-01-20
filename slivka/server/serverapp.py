@@ -28,12 +28,6 @@ from slivka.utils import snake_to_camel
 app = Flask('slivka', root_path=os.path.dirname(__file__))
 """Flask object implementing WSGI application."""
 
-# fixme: slivka.settings is not instantiated during documentation generation
-app.config.update(
-    DEBUG=True,
-    MEDIA_DIR=slivka.settings.MEDIA_DIR,
-    SECRET_KEY=slivka.settings.SECRET_KEY
-)
 
 signer = itsdangerous.Signer(app.config["SECRET_KEY"])
 
