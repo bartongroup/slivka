@@ -8,8 +8,8 @@
     
     <title>slivka.server.forms &#8212; Slivka 0.1.dev1 documentation</title>
     
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -21,14 +21,14 @@
         SOURCELINK_SUFFIX: '.txt'
       };
     </script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="prev" title="slivka.server" href="slivka.server.html" />
    
-  <link rel="stylesheet" href="static/custom.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
@@ -105,9 +105,17 @@
 <dt id="slivka.server.forms.fields.BaseField.cleaned_value">
 <code class="descname">cleaned_value</code><a class="headerlink" href="#slivka.server.forms.fields.BaseField.cleaned_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the value of the field after casting it into an appropriate
-form.
-:return: cleaned field value
-:raise ValidationError: form is not valid</p>
+format.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">cleaned field value</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; form is not valid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -118,8 +126,15 @@ form.
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.BaseField.default">
 <code class="descname">default</code><a class="headerlink" href="#slivka.server.forms.fields.BaseField.default" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make <cite>default</cite> as a read-only property.
-:return: default value of the field</p>
+<dd><p>Make <cite>default</cite> as a read-only property.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">default value of the field</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -135,10 +150,18 @@ form.
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.BaseField.is_valid">
 <code class="descname">is_valid</code><a class="headerlink" href="#slivka.server.forms.fields.BaseField.is_valid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if the field has a valid value by calling subclass&#8217; <cite>_validate</cite>
-method and catching ValidationError.
-If the validation is successful it sets <cite>_cleaned_value</cite>.
-:return: whether the field is valid</p>
+<dd><p>Checks if the field has a valid value by calling subclass&#8217;
+<code class="docutils literal"><span class="pre">validate</span></code> method and catching the ValidationError.
+If the validation is successful it sets <code class="docutils literal"><span class="pre">_cleaned_value</span></code> to the
+value returned by <code class="docutils literal"><span class="pre">validate</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">whether the field is valid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -162,8 +185,15 @@ If the validation is successful it sets <cite>_cleaned_value</cite>.
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.BaseField.type">
 <code class="descname">type</code><a class="headerlink" href="#slivka.server.forms.fields.BaseField.type" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the type of the field based on the class name.
-:return: string representation of field type</p>
+<dd><p>Get the type of the field based on the class name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">string representation of field type</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -172,17 +202,35 @@ If the validation is successful it sets <cite>_cleaned_value</cite>.
 <dd><p>Method validating the field value which should be overridden in
 more specialised subclasses.
 If the field is valid, this method should return cleaned value;
-otherwise, it raises ValidationError with error description.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+otherwise, it raises ValidationError with error description.</p>
+<p>Default behaviour checks if the field is required and raises an
+exception when the field value is not provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.BaseField.value">
 <code class="descname">value</code><a class="headerlink" href="#slivka.server.forms.fields.BaseField.value" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns field&#8217;s value. If it wasn&#8217;t set yet then returns default value.
-:return: value assigned to the field or default.</p>
+<dd><p>Returns field&#8217;s value. If it wasn&#8217;t set yet then returns default value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">value assigned to the field or default.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -193,17 +241,27 @@ otherwise, it raises ValidationError with error description.
 <dd><p>Bases: <a class="reference internal" href="#slivka.server.forms.fields.BaseField" title="slivka.server.forms.fields.BaseField"><code class="xref py py-class docutils literal"><span class="pre">slivka.server.forms.fields.BaseField</span></code></a></p>
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.BooleanField.false_literals">
-<code class="descname">false_literals</code><em class="property"> = {'0', 'false', 'null', 'no'}</em><a class="headerlink" href="#slivka.server.forms.fields.BooleanField.false_literals" title="Permalink to this definition">¶</a></dt>
+<code class="descname">false_literals</code><em class="property"> = {'0', 'null', 'false', 'no'}</em><a class="headerlink" href="#slivka.server.forms.fields.BooleanField.false_literals" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="slivka.server.forms.fields.BooleanField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.BooleanField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compares if the value is one of the string literals indicating false.
-Returns False if so; otherwise evaluates value as a boolean.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behavoiur validating boolean values.
+If the value is one of the string literals indicating false returns
+False; otherwise evaluates the value as a boolean.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -220,10 +278,22 @@ Returns False if so; otherwise evaluates value as a boolean.
 <dl class="method">
 <dt id="slivka.server.forms.fields.ChoiceField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.ChoiceField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if the value is one of the specified choices.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behavoiur checking if the selected value is one of
+the available choices. If so, return value assigned to that choice,
+if <code class="docutils literal"><span class="pre">None</span></code> and the field is not required return <code class="docutils literal"><span class="pre">None</span></code>, otherwise
+raise a <code class="docutils literal"><span class="pre">ValidationError</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -240,11 +310,20 @@ Returns False if so; otherwise evaluates value as a boolean.
 <dl class="method">
 <dt id="slivka.server.forms.fields.DecimalField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.DecimalField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Validates if the value can be casted to a float number and
-meets all constraints.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behavoiur checking if the value can be cast to
+flaot and meets all value constraints.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -260,17 +339,27 @@ meets all constraints.
 
 <dl class="attribute">
 <dt id="slivka.server.forms.fields.FileField.size_multiplier">
-<code class="descname">size_multiplier</code><em class="property"> = {'': 1, 'M': 1048576, 'K': 1024, 'G': 1073741824, 'T': 1099511627776}</em><a class="headerlink" href="#slivka.server.forms.fields.FileField.size_multiplier" title="Permalink to this definition">¶</a></dt>
+<code class="descname">size_multiplier</code><em class="property"> = {'': 1, 'K': 1024, 'T': 1099511627776, 'M': 1048576, 'G': 1073741824}</em><a class="headerlink" href="#slivka.server.forms.fields.FileField.size_multiplier" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="slivka.server.forms.fields.FileField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.FileField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if the filename fits the regular expression and compares checks
-its extension.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behavoiur checking if the file with a given id is
+registered in the database and the path to that file exists.
+Validation converts file id to the actual file path in the filesystem.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -287,11 +376,21 @@ its extension.
 <dl class="method">
 <dt id="slivka.server.forms.fields.IntegerField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.IntegerField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Validates if the field&#8217;s value can be casted to an integer.
-It check if the value meets minimum and maximum constraints.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behaviour checking if the field&#8217;s value can be
+casted to an integer and if the value meets minimum and maximum
+constraints.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -308,11 +407,20 @@ It check if the value meets minimum and maximum constraints.
 <dl class="method">
 <dt id="slivka.server.forms.fields.TextField.validate">
 <code class="descname">validate</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.fields.TextField.validate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if the value can be casted to string and checks if the
-length of that string fits into the limits.
-:param value: value to be validated and cleaned
-:return: cleaned value
-:raise ValidationError: field value is invalid</p>
+<dd><p>Extends the default behavoiur checking if the value can be cast to
+string and the length of that string fits into the limits.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value to be validated and cleaned</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">cleaned value</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#slivka.server.forms.exceptions.ValidationError" title="slivka.server.forms.exceptions.ValidationError"><strong>ValidationError</strong></a> &#8211; field value is invalid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -350,16 +458,35 @@ length of that string fits into the limits.
 <dl class="method">
 <dt id="slivka.server.forms.form_factory.BaseForm.is_valid">
 <code class="descname">is_valid</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.form_factory.BaseForm.is_valid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if the form and its fields are valid.
-:return: boolean that indicates if the orm is valid</p>
+<dd><p>Checks if the form and all its fields individually are valid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">boolean that indicates if the orm is valid</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="slivka.server.forms.form_factory.BaseForm.save">
 <code class="descname">save</code><span class="sig-paren">(</span><em>session</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.form_factory.BaseForm.save" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds new request to the session and fills options from the form fields.
-Session must be committed after calling this method.
-:param session: a current database session</p>
+<dd><p>Adds a new job request to the database session and fills options from
+the form fields.
+Session must be committed after calling this method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>session</strong> &#8211; a current database session</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">request object added to the database session</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="slivka.db.html#slivka.db.models.Request" title="slivka.db.models.Request">Request</a></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -370,18 +497,32 @@ Session must be committed after calling this method.
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <dl class="attribute">
 <dt id="slivka.server.forms.form_factory.FormFactory.field_factory">
-<code class="descname">field_factory</code><em class="property"> = {'float': &lt;staticmethod object at 0x0000000006C58710&gt;, 'boolean': &lt;staticmethod object at 0x0000000006C58FD0&gt;, 'int': &lt;staticmethod object at 0x0000000006B9C160&gt;, 'text': &lt;staticmethod object at 0x0000000006C58D30&gt;, 'choice': &lt;staticmethod object at 0x0000000006C58470&gt;, 'file': &lt;staticmethod object at 0x0000000006C58E80&gt;}</em><a class="headerlink" href="#slivka.server.forms.form_factory.FormFactory.field_factory" title="Permalink to this definition">¶</a></dt>
+<code class="descname">field_factory</code><em class="property"> = {'float': &lt;staticmethod object at 0x0000000006C3A320&gt;, 'choice': &lt;staticmethod object at 0x0000000006C3A3C8&gt;, 'int': &lt;staticmethod object at 0x0000000006C3A2E8&gt;, 'file': &lt;staticmethod object at 0x0000000006C3A400&gt;, 'boolean': &lt;staticmethod object at 0x0000000006C3A390&gt;, 'text': &lt;staticmethod object at 0x0000000006C3A358&gt;}</em><a class="headerlink" href="#slivka.server.forms.form_factory.FormFactory.field_factory" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="staticmethod">
 <dt id="slivka.server.forms.form_factory.FormFactory.get_form_class">
 <em class="property">static </em><code class="descname">get_form_class</code><span class="sig-paren">(</span><em>form_name</em>, <em>service</em>, <em>form_file</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka.server.forms.form_factory.FormFactory.get_form_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructs a form class from a parameters configuration file
-:param form_name: name given to a new form class
-:param service: service name the form is bound to
-:param form_file: a path to json file describing form fields
-:return: new BaseForm subclass with fields loaded from the param file
-:raise jsonschema.exceptions.ValidationError:</p>
+<dd><p>Constructs a form class from a parameters configuration file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>form_name</strong> &#8211; name given to a new form class</li>
+<li><strong>service</strong> &#8211; service name the form is bound to</li>
+<li><strong>form_file</strong> &#8211; a path to json file describing form fields</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">new BaseForm subclass with fields loaded from the param file</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><strong>jsonschema.exceptions.ValidationError</strong> &#8211; </p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -428,7 +569,7 @@ Session must be committed after calling this method.
 <dd><p>Initialize <code class="docutils literal"><span class="pre">forms</span></code> module.</p>
 <p>Load services and their parameter files from configuration and
 dynamically creates corresponding form classes. The classes are dynamically
-added to the forms module.</p>
+added to the <code class="docutils literal"><span class="pre">forms</span></code> module.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -476,7 +617,7 @@ added to the forms module.</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="sources/slivka.server.forms.rst.txt"
+      <li><a href="_sources/slivka.server.forms.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -502,7 +643,7 @@ added to the forms module.</p>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
       
       |
-      <a href="sources/slivka.server.forms.rst.txt"
+      <a href="_sources/slivka.server.forms.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
