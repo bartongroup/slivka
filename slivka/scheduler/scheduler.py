@@ -10,8 +10,9 @@ from sqlalchemy.orm import joinedload
 import slivka.utils
 from slivka.db import Session, start_session
 from slivka.db.models import Request, File, JobModel
-from .exc import QueueBrokenError, QueueUnavailableError, JobNotFoundError
-from .executors import Executor, Job
+from slivka.scheduler.exceptions import QueueBrokenError, \
+    QueueUnavailableError, JobNotFoundError
+from slivka.scheduler.executors import Executor, Job
 
 
 class Scheduler:

@@ -15,7 +15,7 @@ from collections import namedtuple, deque
 from select import select
 
 import slivka
-from slivka.scheduler.exc import ServerError, JobNotFoundError
+from slivka.scheduler.exceptions import ServerError, JobNotFoundError
 
 logger = logging.getLogger(__name__)
 

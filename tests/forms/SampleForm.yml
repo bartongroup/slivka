@@ -55,7 +55,7 @@ zeta:
             choice-a: -a
             choice-b: --b
             choice-c: -ccc
-        default: -a
+        default: choice-a
 
 eta:
     label: Eta

@@ -9,10 +9,11 @@ import sys
 import uuid
 
 import slivka
-from .command import CommandOption, PathWrapper, PatternPathWrapper
-from .exc import QueueBrokenError, QueueError, QueueUnavailableError, \
-    JobNotFoundError
-from .task_queue import QueueServer
+from slivka.scheduler.command import CommandOption, PathWrapper, \
+    PatternPathWrapper
+from slivka.scheduler.exceptions import QueueBrokenError, QueueError, \
+    QueueUnavailableError, JobNotFoundError
+from slivka.scheduler.task_queue import QueueServer
 
 logger = logging.getLogger('slivka.scheduler.scheduler')
 

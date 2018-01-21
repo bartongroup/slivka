@@ -62,7 +62,10 @@ class TestOptionElementParser(unittest.TestCase):
         zeta_field = self.fields['zeta']
         field = FormFactory._get_choice_field('zeta', zeta_field)
         self.assertIsInstance(field, ChoiceField)
-        self.assertSetEqual(set(field._choices), {"-a", "--b", "-ccc"})
+        self.assertSetEqual(
+            set(field.choices),
+            {"choice-a", "choice-b", "choice-c"}
+        )
 
     def test_file_field(self):
         eta_field = self.fields['eta']
