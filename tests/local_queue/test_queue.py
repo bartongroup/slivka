@@ -3,7 +3,7 @@ import sys
 import types
 import unittest
 
-from slivka.scheduler.exc import JobNotFoundError
+from slivka.scheduler.exceptions import JobNotFoundError
 from slivka.scheduler.task_queue import QueueServer, TaskQueue, KILL_WORKER
 
 try:

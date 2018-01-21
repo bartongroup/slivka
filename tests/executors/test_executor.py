@@ -2,8 +2,8 @@ import tempfile
 import unittest
 
 from slivka.scheduler.command import CommandOption, PathWrapper
-from slivka.scheduler.exc import QueueUnavailableError, QueueBrokenError, \
-    JobNotFoundError
+from slivka.scheduler.exceptions import QueueUnavailableError, \
+    QueueBrokenError, JobNotFoundError
 from slivka.scheduler.executors import Executor, Job, GridEngineExec, \
     GridEngineJob
 
