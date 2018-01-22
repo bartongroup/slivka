@@ -5,11 +5,13 @@ Slivka Documentation
 Slivka is a server application for Python intended for easy and flexible
 configuration of REST API for various web services. The server is based on
 Flask_ microframework and SQLAlchemy_. The scheduler uses native Python
-queuing mechanism and sqlite_ database.
+queuing mechanism and sqlite_ database. More information can be found
+in the documentation_.
 
 .. _Flask: https://github.com/pallets/flask
 .. _SQLAlchemy: https://github.com/zzzeek/sqlalchemy
 .. _sqlite: https://www.sqlite.org/
+.. _documentation: http://warownia1.github.io/Slivka/
 
 
 =============================
