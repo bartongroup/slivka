@@ -48,7 +48,7 @@ class Settings:
     DEBUG = True
 
     def __init__(self, settings=None):
-        """Initialize settings object with module of dictionary
+        """Initialize settings object with module or dictionary
 
         Creates a settings object which will validate and store the parameters
         passed to it as a module file or a dictionary.
@@ -116,8 +116,10 @@ class Settings:
             raise ImproperlyConfigured("QUEUE_PORT must be an integer")
 
         self.LOGGER_CONF = _LOGGER_CONF_TEMPLATE.copy()
+        # noinspection PyTypeChecker
         self.LOGGER_CONF['handlers']['scheduler_file']['filename'] = \
             os.path.join(self.LOG_DIR, 'Scheduler.log')
+        # noinspection PyTypeChecker
         self.LOGGER_CONF['handlers']['task_queue_file']['filename'] = \
             os.path.join(self.LOG_DIR, 'TaskQueue.log')
 

@@ -40,35 +40,34 @@ class TaskQueue:
         )
         self._job_id_counter = itertools.count(1)
 
-    def start(self, async=False):
+    def start(self, block=True):
         """Start the server thread and workers.
 
         Launches the task queue. Starts the server thread and all
         worker threads. Then, it waits for KeyboardInterrupt signal
         to call ``shutdown`` function and stop execution of the server and
         workers.
-        If ``async`` parameter is set to true, queue will not block after
+        If ``block`` parameter is set to False, queue will not block after
         starting server and workers and ``shutdown`` must be called manually
         from the main thread. This option is useful for interactive debugging
         and unit testing.
 
-        :param async: don't block after starting (default: False)
-        :type async: bool
+        :param block: block after starting (default: True)
+        :type block: bool
         """
         logger.info("Starting server.")
         self._server.start()
         logger.info("Starting workers.")
         for worker in self._workers:
             worker.start()
-        if async:
-            return
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            logger.info("Shutting down...")
-            self.shutdown()
-            logger.info("Finished")
+        if block:
+            try:
+                while True:
+                    time.sleep(3600)
+            except KeyboardInterrupt:
+                logger.info("Shutting down...")
+                self.shutdown()
+                logger.info("Finished")
 
     def shutdown(self):
         """Finish the work of the task queue.
@@ -145,7 +144,7 @@ class Worker(threading.Thread):
                     break
                 else:
                     self._job.run()
-            except:
+            except Exception:
                 logger.exception("Failed to execute command.")
             finally:
                 logger.info("%s completed %s", self.name, self._job)
@@ -170,9 +169,9 @@ class QueueServer(threading.Thread):
         :param host: queue server host
         :param port: queue server port
         :param get_job: job getter function
-        :type get_job: (dict, int) -> LocalCommand
+        :type get_job: (int) -> LocalCommand
         :param add_job: job adder function
-        :type add_job: (TaskQueue, LocalCommand) -> int
+        :type add_job: (LocalCommand) -> int
         """
         super(QueueServer, self).__init__(name='QueueServer')
         self._running = False
@@ -316,7 +315,8 @@ class QueueServer(threading.Thread):
         except KeyError:
             logger.exception('Invalid json request')
             return self.STATUS_ERROR
-        return self.STATUS_OK + self.serialize_json(response)
+        else:
+            return self.STATUS_OK + self.serialize_json(response)
 
     @staticmethod
     def serialize_json(obj):
@@ -568,7 +568,7 @@ class LocalCommand:
                 cwd=self._cwd
             )
             self._process.wait()
-        except:
+        except Exception:
             self._status = self.STATUS_FAILED
             raise
         else:

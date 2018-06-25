@@ -54,7 +54,7 @@ class TestTaskQueueBase(unittest.TestCase):
         self.mock_queue.put.assert_called_once_with(mock.sentinel.job)
 
     def test_start(self):
-        self.task_queue.start(True)
+        self.task_queue.start(block=False)
         self.mock_server.start.assert_called_once_with()
         self.assertEqual(self.mock_worker.start.call_count, self.NUM_WORKERS)
 

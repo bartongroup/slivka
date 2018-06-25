@@ -130,8 +130,7 @@ def worker():
 def scheduler():
     """Starts job scheduler."""
     from slivka.scheduler.scheduler import Scheduler
-    sched = Scheduler()
-    sched.start()
+    Scheduler().start()
 
 
 @click.command()

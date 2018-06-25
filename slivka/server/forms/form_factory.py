@@ -132,10 +132,11 @@ class FormFactory:
         """
         for name, field in fields.items():
             # access the underlying function of the staticmethod object
+            # noinspection PyUnresolvedReferences
             factory = FormFactory.field_factory[field['value']['type']].__func__
             yield (name, factory(name, field))
 
-    # todo: move parameters extracting to each Field class
+    # todo: move parameters extracting to individual FormField classes
     @staticmethod
     def _get_integer_field(name, field):
         value = field['value']

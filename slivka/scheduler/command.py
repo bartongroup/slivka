@@ -25,11 +25,10 @@ class CommandOption:
     'arg'
     """
 
-    # noinspection PyShadowingBuiltins
     def __init__(self, name, param, default=None):
         """
-        :param name: name of the option
-        :param param: parameter template
+        :param name: option name referring to the form field
+        :param param: command parameter template
         :param default: default value
         """
         self._name = name
@@ -39,19 +38,23 @@ class CommandOption:
     def get_cmd_option(self, value=None):
         """Return command option with inserted value.
 
-        Insert specified value to option template. If ``value`` is not
+        Inserts specified value to option template. If ``value`` is not
         given then use default value. If the value still evaluates to
         ``None``, return ``None`` so the option will be skipped in further
         processing.
 
         :param value: value of the field
         :return: command option string
+        :rtype: str
         """
         if value is None:
             value = self._default
         if value is None:
             return None
-        return self._param_template.substitute(value=shlex.quote(str(value)))
+        else:
+            return self._param_template.substitute(
+                value=shlex.quote(str(value))
+            )
 
     @property
     def name(self):

@@ -18,7 +18,6 @@ from slivka.scheduler.task_queue import QueueServer
 logger = logging.getLogger('slivka.scheduler.scheduler')
 
 
-# noinspection PyAbstractClass
 class Executor:
 
     # noinspection PyShadowingBuiltins
@@ -50,8 +49,13 @@ class Executor:
         """Launch the new job.
 
         Creates a current working directory for the new job and issues the
-        submit command which launches the job.
+        submit command which launches the job. Parameter ``values`` is a
+        dictionary mapping the form field names to their values.
         Returns the Job instance for the future reference to that job.
+
+        :param values: dict mapping field names to their values
+        :return: job handler
+        :rtype: Job
         """
         cwd = os.path.join(slivka.settings.WORK_DIR, uuid.uuid4().hex)
         os.mkdir(cwd)
@@ -59,12 +63,13 @@ class Executor:
             job_id = self.submit(values, cwd)
         except QueueError:
             raise
-        except:
+        except Exception:
             logger.critical("Critical error occurred when submitting the job",
                             exc_info=True)
             raise QueueBrokenError
-        job = self.get_job_cls()(job_id, cwd, self)
-        return job
+        job_wrapper_class = self.get_job_wrapper_class()
+        job_wrapper = job_wrapper_class(job_id, cwd, self)
+        return job_wrapper
 
     @property
     def qargs(self):
@@ -84,11 +89,19 @@ class Executor:
 
     @property
     def env(self):
+        """
+        :return: environment variables
+        :rtype: dict[str, str]
+        """
         return self._env
 
     def get_options(self, values):
-        """
-        :return: list of command options
+        """Fill command option templates and concatenate them.
+
+        For each option picks the corresponding value and inserts into template.
+        Then, options are concatenated into the list of command line arguments.
+
+        :return: list of command arguments
         :rtype: list[str]
         """
         options = [
@@ -115,7 +128,7 @@ class Executor:
         raise NotImplementedError
 
     @staticmethod
-    def get_job_cls():
+    def get_job_wrapper_class():
         """Get the job class used by this executor.
 
         :return: Class of the associated job
@@ -129,46 +142,57 @@ class Executor:
         :return: dictionary of executors for each configuration
         :rtype: (dict[str, Executor], JobLimits)
         """
-        options = [
+        options = Executor._make_option_templates(conf.get('options', []))
+        (result_wrappers, log_wrappers) = (
+            Executor._make_output_file_wrappers(conf.get('result', []))
+        )
+        executors = {}
+        for name, configuration in conf.get('configurations', {}).items():
+            executor_class = getattr(
+                sys.modules[__name__], configuration['execClass']
+            )
+            executors[name] = executor_class(
+                bin=configuration['bin'],
+                options=options,
+                qargs=configuration.get('queueArgs'),
+                result_paths=result_wrappers,
+                log_paths=log_wrappers,
+                env=configuration.get('env')
+            )
+
+        limits = pydoc.locate(conf['limits'], forceload=1)
+        if limits is None:
+            raise ImportError(conf['limits'])
+        return executors, limits
+
+    @staticmethod
+    def _make_option_templates(options):
+        return [
             CommandOption(
                 name=option['ref'],
                 param=option['param'],
                 default=option.get('val')
             )
-            for option in conf.get('options', [])
+            for option in options
         ]
-        result_files = []
-        log_files = []
-        for res in conf.get('result', []):
-            if "path" in res:
-                file = PathWrapper(res['path'])
-            elif "pattern" in res:
-                file = PatternPathWrapper(res['pattern'])
+
+    @staticmethod
+    def _make_output_file_wrappers(outputs):
+        result_wrappers = []
+        log_wrappers = []
+        for result in outputs:
+            if "path" in result:
+                wrapper = PathWrapper(result['path'])
+            elif "pattern" in result:
+                wrapper = PatternPathWrapper(result['pattern'])
             else:
-                raise ValueError("No property \"pattern\" or \"path\"")
-            if res['type'] == 'result':
-                result_files.append(file)
-            elif res['type'] == 'log' or res['type'] == 'error':
-                log_files.append(file)
+                assert False, "\"pattern\" or \"path\" missing"
+            if result['type'] == 'result':
+                result_wrappers.append(wrapper)
+            elif result['type'] == 'log' or result['type'] == 'error':
+                log_wrappers.append(wrapper)
             else:
-                raise ValueError("Invalid file type: \"%s\"" % res['type'])
-        executors = {}
-        for name, configuration in conf.get('configurations', {}).items():
-            exec_cls = getattr(
-                sys.modules[__name__], configuration['execClass']
-            )
-            executors[name] = exec_cls(
-                bin=configuration['bin'],
-                options=options,
-                qargs=configuration.get('queueArgs'),
-                result_paths=result_files,
-                log_paths=log_files,
-                env=configuration.get('env')
-            )
-        limits = pydoc.locate(conf['limits'], forceload=1)
-        if limits is None:
-            raise ImportError(conf['limits'])
-        return executors, limits
+                raise ValueError("Invalid output type: \"%s\"" % result['type'])
 
 
 class Job:
@@ -180,17 +204,17 @@ class Job:
     STATUS_FAILED = 'failed'
     STATUS_ERROR = 'error'
 
-    def __init__(self, job_id, cwd, exe):
+    def __init__(self, job_id, cwd, executor):
         """
         :param job_id:
         :param cwd:
-        :param exe:
-        :type exe: Executor
+        :param executor:
+        :type executor: Executor
         """
         self.id = job_id
         self._cwd = cwd
-        self._result_paths = exe.result_paths
-        self._log_paths = exe.log_paths
+        self._result_paths = executor.result_paths
+        self._log_paths = executor.log_paths
         self._cached_status = None
 
     @property
@@ -208,7 +232,7 @@ class Job:
         except QueueError:
             self._cached_status = self.STATUS_ERROR
             raise
-        except:
+        except Exception:
             self._cached_status = self.STATUS_ERROR
             logger.critical(
                 "Critical error occurred when retrieving job status",
@@ -224,7 +248,7 @@ class Job:
             return self.get_result(self.id)
         except QueueError:
             raise
-        except:
+        except Exception:
             logger.critical(
                 "Critical error occurred when retrieving job result",
                 exc_info=True
@@ -258,7 +282,7 @@ class Job:
         the job status in a way specific to the execution method.
         It returns one of the status constants specified in the class fields.
 
-        :param job_id: unique identificator allowing to recognise the job.
+        :param job_id: unique identifier allowing to recognise the job.
         """
         raise NotImplementedError
 
@@ -273,6 +297,7 @@ class JobLimits:
 
     configurations = []
 
+    # todo: rename to `select_configuration`
     def get_conf(self, fields):
         # noinspection PyBroadException
         try:
@@ -287,7 +312,7 @@ class JobLimits:
             limit_check = getattr(self, "limit_%s" % conf, None)
             # noinspection PyBroadException
             try:
-                if limit_check is not None and limit_check(fields):
+                if limit_check(fields):
                     return conf
             except Exception:
                 logger.critical(
@@ -316,7 +341,7 @@ class ShellExec(Executor):
         )
 
     @staticmethod
-    def get_job_cls():
+    def get_job_wrapper_class():
         return ShellJob
 
 
@@ -334,7 +359,7 @@ class ShellJob(Job):
             raise JobNotFoundError
         if status is None:
             return self.STATUS_RUNNING
-        if status == 0:
+        elif status == 0:
             return self.STATUS_COMPLETED
         else:
             return self.STATUS_FAILED
@@ -357,7 +382,7 @@ class LocalExec(Executor):
             raise QueueUnavailableError
 
     @staticmethod
-    def get_job_cls():
+    def get_job_wrapper_class():
         return LocalJob
 
 
@@ -405,7 +430,7 @@ class GridEngineExec(Executor):
         return match.group(1)
 
     @staticmethod
-    def get_job_cls():
+    def get_job_wrapper_class():
         return GridEngineJob
 
 

@@ -133,7 +133,7 @@ class TestExecutorOptions(unittest.TestCase):
 
 # noinspection PyUnusedLocal
 @mock.patch('slivka.scheduler.executors.Executor.submit')
-@mock.patch('slivka.scheduler.executors.Executor.get_job_cls')
+@mock.patch('slivka.scheduler.executors.Executor.get_job_wrapper_class')
 @mock.patch('slivka.scheduler.executors.slivka.settings', new=settings_mock)
 class TestExecutorSubmit(unittest.TestCase):
 
