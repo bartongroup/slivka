@@ -1,5 +1,7 @@
 .idea/
 **/__pycache__/
+venv/
+env/
 
 build/
 Slivka.egg-info/
