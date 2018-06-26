@@ -193,6 +193,7 @@ class Executor:
                 log_wrappers.append(wrapper)
             else:
                 raise ValueError("Invalid output type: \"%s\"" % result['type'])
+        return result_wrappers, log_wrappers
 
 
 class Job:
