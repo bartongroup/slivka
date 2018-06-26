@@ -110,17 +110,12 @@ def setup(name):
 
 @click.group()
 def admin():
-    """Initialize logger.
-
-    Function groups all command making sure that the logger is always
-    initialized before the program is started.
-    """
     logging.config.dictConfig(slivka.settings.LOGGER_CONF)
 
 
 @click.command()
 def worker():
-    """Starts task queue workers."""
+    """Start task queue workers."""
     from slivka.scheduler.task_queue import TaskQueue
     queue = TaskQueue()
     queue.start()
@@ -128,14 +123,14 @@ def worker():
 
 @click.command()
 def scheduler():
-    """Starts job scheduler."""
+    """Start job scheduler."""
     from slivka.scheduler.scheduler import Scheduler
     Scheduler().start()
 
 
 @click.command()
 def server():
-    """Starts HTTP server."""
+    """Start HTTP server."""
     from slivka.server.forms import init_forms
     from slivka.server.serverapp import app
 
@@ -154,7 +149,7 @@ def server():
 
 @click.command()
 def initdb():
-    """Initializes the database."""
+    """Initialize the database."""
     from slivka.db import create_db
     create_db()
 
@@ -162,14 +157,14 @@ def initdb():
 @click.command()
 @click.confirmation_option(prompt="Are you sure you want to drop the database?")
 def dropdb():
-    """Drops the database."""
+    """Drop the database."""
     from slivka.db import drop_db
     drop_db()
 
 
 @click.command()
 def shell():
-    """Starts python interactive shell with project configuration"""
+    """Start an interactive shell."""
     import code
     code.interact()
 
