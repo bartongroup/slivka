@@ -186,7 +186,7 @@ class Scheduler:
                     job_model.status = JobModel.STATUS_ERROR
                 else:
                     job_model.status = JobModel.STATUS_QUEUED
-                    job_model.job_ref_id = job_wrapper.id
+                    job_model.job_ref_id = str(job_wrapper.id)
                     job_model.working_dir = job_wrapper.cwd
                     job_model.files = [
                         File(path=path) for path in job_wrapper.log_paths

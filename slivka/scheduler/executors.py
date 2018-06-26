@@ -212,11 +212,15 @@ class Job:
         :param executor:
         :type executor: Executor
         """
-        self.id = job_id
+        self._id = job_id
         self._cwd = cwd
         self._result_paths = executor.result_paths
         self._log_paths = executor.log_paths
         self._cached_status = None
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def cached_status(self):
@@ -352,6 +356,8 @@ class ShellJob(Job):
         """
         :type process: subprocess.Popen
         """
+        if isinstance(process, str):
+            return self.STATUS_FAILED
         try:
             status = process.poll()
         except OSError:
