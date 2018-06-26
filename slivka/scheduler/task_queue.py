@@ -57,9 +57,10 @@ class TaskQueue:
         """
         logger.info("Starting server.")
         self._server.start()
-        logger.info("Starting workers.")
+        logger.info("Starting %d workers.", len(self._workers))
         for worker in self._workers:
             worker.start()
+        logger.info("Ready")
         if block:
             try:
                 while True:

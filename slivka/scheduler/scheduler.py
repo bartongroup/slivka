@@ -97,6 +97,7 @@ class Scheduler:
         self._collector_thread.start()
         self._poll_thread.start()
         if block:
+            self.logger.info("Child threads started. Press Ctrl+C to quit")
             try:
                 while self.is_running:
                     time.sleep(3600)
@@ -110,6 +111,7 @@ class Scheduler:
         Sends shutdown signal and starts exit process.
         """
         self._shutdown_event.set()
+        self.logger.debug("Shutdown event set")
 
     def join(self):
         """
@@ -135,7 +137,7 @@ class Scheduler:
         Keeps checking database for pending requests.
         Submits a new job if one is found.
         """
-        self.logger.info("Scheduler starts watching database.")
+        self.logger.info("Scheduler is watching database.")
         while self.is_running:
             session = Session()
             pending_requests = (
@@ -160,6 +162,7 @@ class Scheduler:
         :param request: request database record
         :type request: Request
         """
+        self.logger.info("Processing job request")
         options = {
             option.name: option.value
             for option in request.options
@@ -192,6 +195,10 @@ class Scheduler:
                     self._ongoing_tasks.add(RunningTask(job_wrapper, request.id))
         request.job = job_model
         request.pending = False
+        if job_model.status == JobModel.STATUS_QUEUED:
+            self.logger.info("Job queued")
+        else:
+            self.logger.warning("Job submission failed")
 
     def collector_loop(self):
         """
@@ -199,13 +206,14 @@ class Scheduler:
         For each finished job it starts final procedures and saves the result
         to the database.
         """
-        self.logger.info("Scheduler starts collecting tasks.")
+        self.logger.info("Scheduler is collecting tasks.")
         while self.is_running:
             session = Session()
             # noinspection PyBroadException
             try:
                 finished, broken = self._collect_tasks()
                 for task in finished:
+                    self.logger.info("Task completed.")
                     try:
                         self._finalize_task(task, session)
                     except QueueUnavailableError:
@@ -214,6 +222,7 @@ class Scheduler:
                         self.logger.error("Couldn't retrieve job result.")
                         broken.add(task)
                 for task in broken:
+                    self.logger.info("Task broken.")
                     self._dispose_task(task, session)
             except Exception:
                 self._logger.critical(
