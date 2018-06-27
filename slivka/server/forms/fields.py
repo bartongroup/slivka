@@ -464,7 +464,7 @@ class ChoiceField(BaseField):
 
     def get_constraints_list(self):
         return [
-            ("choices", self.choices)
+            ("choices", list(self.choices))
         ]
 
     @property
