@@ -224,6 +224,8 @@ class Scheduler:
                 for task in broken:
                     self.logger.info("Task broken.")
                     self._dispose_task(task, session)
+                with self._tasks_lock:
+                    self._ongoing_tasks.difference_update(finished, broken)
             except Exception:
                 self._logger.critical(
                     "Critical error occurred, scheduler shuts down.",
@@ -270,9 +272,7 @@ class Scheduler:
         :raise JobNotFoundError:
         :raise QueueUnavailableError:
         """
-        self.logger.debug('Completed job %s', task.job)
-        with self._tasks_lock:
-            self._ongoing_tasks.remove(task)
+        self.logger.debug('Finalizing completed job %s', task.job)
         job_model = (session.query(JobModel)
                      .filter(JobModel.request_id == task.request_id)
                      .one())
@@ -291,8 +291,7 @@ class Scheduler:
         :param session: current open database session
         :type session: sqlalchemy.orm.Session
         """
-        with self._tasks_lock:
-            self._ongoing_tasks.remove(task)
+        self.logger.debug('Disposing broken job %s', task.job)
         (session.query(JobModel)
          .filter(JobModel.request_id == task.request_id)
          .update({"status": task.job.cached_status}))
