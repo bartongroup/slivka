@@ -79,14 +79,12 @@ class TestOptionElementParser(unittest.TestCase):
 class TestForm(unittest.TestCase):
 
     def setUp(self):
-        form_file = os.path.join(
-            os.path.dirname(__file__), "LittleForm.yml"
-        )
+        form_file = os.path.join(os.path.dirname(__file__), "LittleForm.yml")
         with open(form_file) as f:
-            instance = yaml.load(f)
-        jsonschema.validate(instance, FORM_SCHEMA)
-        self.LittleForm = FormFactory.get_form_class(
-            "LittleForm", "Little", form_file
+            configuration = yaml.load(f)
+        jsonschema.validate(configuration, FORM_SCHEMA)
+        self.LittleForm = FormFactory.create_form_class(
+            "LittleForm", "Little", configuration
         )
 
     def test_separate_option_instances(self):

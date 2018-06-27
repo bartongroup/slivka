@@ -57,64 +57,62 @@ Navigate to the folder where you want to create your project and run: ::
   slivka-setup <name>
 
 It will create a new folder ``<name>`` and upload three core files to it:
-*settings.py*, *manage.py* and *services.ini*. You usually need to modify
-only the last one. Slivka will also include sample service and its
-configuration.
+*settings.yml*, *manage.py* and *configurations/services.ini*.
+You usually need to modify only the last one. Slivka will also include sample
+service and its configuration.
 
 :manage.py:
   a main executable script which configures Slivka and runs its components.
-:settings.py:
-  a settings Python module which contains project constants.
-:service.ini:
+:settings.yml:
+  a yaml file containing project constants.
+:services.ini:
   manages services execution and points to configuration files
 
 
 Configuring settings
 --------------------
 
-``settings.py`` is a Python module file which provides execution constants:
+``settings.yml`` is a yaml file which provides all runtime constants.
+The data is represented as key-value pairs using yaml format.
+The following fields are required for proper operation:
 
 :``BASE_DIR``:
-  Must be set to the absolute location of the project folder. It tells the
-  script the path all other paths are relative to. It defaults to the
-  directory containing the settings file.
+  Must point to the location of the project folder (relative to the
+  ``manage.py`` script or absolute path). It defines the path which all other
+  paths are relative to. It defaults to the current working directory.
 
   .. code-block:: python
 
-    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    BASE_DIR: <path-to-projet-directory>
 
-  You can set it to any path using ``os.path.join`` wrapped in ``os.path.abspath``.
   Relative paths should be avoided as they start at current work directory
-  which may be different for each execution.
-  It's recommended to leave it unchanged.
+  which may be different for each run. It's recommended to leave it unchanged.
 
   Example:
 
   .. code-block:: python
 
-    BASE_DIR = os.path.abspath(os.path.join("/", "var", "slivka"))
+    BASE_DIR: /var/slivka
     # /var/slivka (Unix)
     # C:\var\slivka (Windows)
 
-    BASE_DIR = os.path.abspath("/home/user/slivka/")
+    BASE_DIR: /home/user/slivka/
     # /home/user/slivka (Unix)
     # C:\home\user\slivka (Windows)
 
-    BASE_DIR = os.path.abspath("C:\\Windows\\system32")
+    BASE_DIR: C:\\Windows\\system32
     # C:\Windows\system32 (Windows)
     # (some nasty output on Linux)
 
 :``SECRET_KEY``:
-  A string of bytes used for signatures. Changing this key will invalidate all
-  identifier signatures. Please keep this key secret.
+  A string of characters used for signatures. Changing this key will invalidate
+  all identifier signatures. Please keep this key secret and random.
 
   The key can be set to either bytes or unicode characters.
 
   .. code-block:: python
 
-    SECRET_KEY = b'\x00\x01\x02\x03'
-
-    SECRET_KEY = "Lorem ipsum dolor sit amet"
+    SECRET_KEY : "Lorem ipsum dolor sit amet"
 
 :``MEDIA_DIR``:
   Directory where all files uploaded by users and produced by services are
@@ -125,8 +123,8 @@ Configuring settings
   A folder where execution work directories will be created. Can be either
   an absolute path or path relative to the ``BASE_DIR``.
 
-:``SERVICE_INI``:
-  Path to *service.ini* file, absolute or relative to ``BASE_DIR``.
+:``SERVICES_INI``:
+  Path to *services.ini* file, absolute or relative to ``BASE_DIR``.
 
 :``LOG_DIR``:
   Path to directory where log files will be stored. Can be either absolute
@@ -157,12 +155,14 @@ Configuring settings
 Configuring services
 --------------------
 
-A general service configuration is contained in the *service.ini* file.
+A general service configuration is contained in the
+*configurations/services.ini* file. Sections are names enclosed in the square
+brackets. Key-value pars are separated with a colon.
 The ``[DEFAULT]`` section is ignored by the application and can
 be used to define constants i.e. project directory. These constants can be
-referred using ``%(key)s`` placeholder.
+referred later using ``%(key)s`` placeholder.
 
-``address`` field in the following example
+Example: ``address`` field in
 
 .. code-block:: ini
 
@@ -174,8 +174,7 @@ referred using ``%(key)s`` placeholder.
 will be evaluated to ``example.com:80``
 
 Each section (except ``[DEFAULT]``) corresponds to one service configuration
-defined in the services list in the *settings.py* file.
-The section must contain two keys:
+and must contain two keys:
 
 :``config``:
   The path to the command definition file described in the section
@@ -185,32 +184,33 @@ The section must contain two keys:
   The path to user form definition file descriped in the section
   `Form description`_.
 
-A sample configuration section of service Lorem may look like this:
+A sample configuration section of service Lorem having two files
+``LoremConfig.yml`` and ``LoremForm.yml`` respectively could be:
 
 .. code-block:: ini
 
   [DEFAULT]
-  root_path = /home/myself/slivka-project
+  root_path: /home/slivka/my-project
 
   [Lorem]
-  config = %(root_path)s/config/LoremConfig.yml
-  form = %(root_path)/config/LoremForm.yml
+  config: %(root_path)s/config/LoremConfig.yml
+  formL %(root_path)/config/LoremForm.yml
 
 
 Form description
 ----------------
 
 Form description file specified what fields are presented to the front end user
-and what values are expected. File should contain a json object where keys are
-fields names and values are specifications of the fields.
-Field specification object may have three fields:
+and what values are expected. File should contain a json or yaml object whose
+keys are fields names and values are detailed specifications of the fields.
+Field specification object has three fields:
 
 ``label``:
   Human readable name of the field (required)
 ``description``:
   Detailed description of the fields or help text (optional)
 ``value``:
-  `Value object`_ describing accepted field values (required)
+  `Value object`_ description of accepted values (required)
 
 .. code-block:: json
 
@@ -334,7 +334,7 @@ All other properties are optional and they are specific for different types.
         "Beta": "--beta",
         "Gamma": "--gamma"
       },
-      "default": "--alpha"
+      "default": "Alpha"
     }
 
 :file:
@@ -389,7 +389,7 @@ Optionally you may add ``val`` if you want to use default value.
 
 :``val``:
   Value used if corresponding field in the form is not found or evaluates to
-  ``None``. Useful when you need to specify constants like output file flag.
+  ``None``. Useful when you need to specify constants such as output file flag.
 
 Example:
 

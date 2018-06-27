@@ -48,11 +48,11 @@ result:
 configurations:
     local:
         execClass: LocalExec
-        bin: python "{{ pydummy_path }}"
+        bin: python "{{ script }}"
 
     cluster:
         execClass: GridEngineExec
-        bin: python "{{ pydummy_path }}"
+        bin: python "{{ script }}"
 
-limits: config.limits.PydummyLimits
+limits: configurations.limits.PydummyLimits
 ...

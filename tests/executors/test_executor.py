@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 
+import slivka
 from slivka.scheduler.command import CommandOption, PathWrapper
 from slivka.scheduler.exceptions import QueueUnavailableError, \
     QueueBrokenError, JobNotFoundError
@@ -12,13 +13,11 @@ try:
 except ImportError:
     import mock
 
-import slivka.config
 
 mock.patch.object = mock.patch.object
 
-settings_mock = mock.create_autospec(slivka.config.Settings)
 tmp_dir = tempfile.TemporaryDirectory()
-settings_mock.WORK_DIR = tmp_dir.name
+slivka.settings.set('WORK_DIR', tmp_dir.name)
 
 
 class TestExecutorBase(unittest.TestCase):
@@ -134,7 +133,6 @@ class TestExecutorOptions(unittest.TestCase):
 # noinspection PyUnusedLocal
 @mock.patch('slivka.scheduler.executors.Executor.submit')
 @mock.patch('slivka.scheduler.executors.Executor.get_job_wrapper_class')
-@mock.patch('slivka.scheduler.executors.slivka.settings', new=settings_mock)
 class TestExecutorSubmit(unittest.TestCase):
 
     def test_submit_called(self, mock_get_job, mock_submit):

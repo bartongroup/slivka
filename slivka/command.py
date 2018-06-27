@@ -10,6 +10,7 @@ usually specified just after the command name.
 import logging.config
 import os
 import stat
+from base64 import b64encode
 
 import click
 import jinja2
@@ -34,83 +35,113 @@ def setup(name):
     All templates are fetched form ``slivka/data/template`` populated
     with data specific to the project and copied to the project directory.
 
-    Calling this fuction is a default behaviuor when a slivka module is
+    Calling this function is a default behaviour when the slivka module is
     executed.
 
     :param name: name of the project folder
     """
     project_dir = os.path.abspath(os.path.join(os.getcwd(), name))
-    managepy_path = os.path.join(project_dir, "manage.py")
-    settingspy_path = os.path.join(project_dir, "settings.py")
-    servicesini_path = os.path.join(project_dir, "services.ini")
-    form_path = os.path.join(project_dir, 'config', 'pydummyForm.yml')
-    conf_path = os.path.join(project_dir, 'config', 'pydummyConf.yml')
-    limits_path = os.path.join(project_dir, 'config', 'limits.py')
-    pydummy_path = os.path.join(project_dir, 'bin', 'pydummy.py')
-
     if os.path.isdir(project_dir):
         click.confirm(
             "Directory already exist. Do you want to set the project here?",
             abort=True
         )
-    os.makedirs(project_dir, exist_ok=True)
-    os.mkdir(os.path.dirname(form_path))
-    os.mkdir(os.path.dirname(pydummy_path))
+    ProjectBuilder(project_dir).build()
 
-    # copy manage.py template
-    with open(managepy_path, "wb") as f:
-        f.write(pkg_resources.resource_string(
-            "slivka", "data/template/manage.py.jinja2"
-        ))
-    os.chmod(managepy_path, stat.S_IRWXU)
 
-    # copy settings.py template
-    settings_tpl = jinja2.Template(
-        pkg_resources.resource_string(
-            "slivka", "data/template/settings.py.jinja2").decode())
-    tpl_stream = settings_tpl.stream(secret_key=os.urandom(32))
-    with open(settingspy_path, "w") as f:
-        tpl_stream.dump(f)
+class ProjectBuilder:
+    def __init__(self, project_dir):
+        self._dir = project_dir
+        os.makedirs(project_dir, exist_ok=True)
+        os.makedirs(os.path.join(project_dir, 'binaries'), exist_ok=True)
+        os.makedirs(os.path.join(project_dir, 'configurations'), exist_ok=True)
 
-    # copy services.ini template
-    services_tpl = jinja2.Template(
-        pkg_resources.resource_string(
-            "slivka", "data/template/services.ini.jinja2").decode())
-    tpl_stream = services_tpl.stream(form_path=form_path, config_path=conf_path)
-    with open(servicesini_path, "w") as f:
-        tpl_stream.dump(f)
+    def build(self):
+        self._make_manage()
+        self._make_settings()
+        script_path = self._make_script()
+        form_path = self._make_form()
+        command_config_path = self._make_command_configuration(script_path)
+        self._make_limits()
+        self._make_services_ini(form_path, command_config_path)
 
-    # copy form description
-    with open(form_path, 'wb') as f:
-        f.write(pkg_resources.resource_string(
-            "slivka", "data/template/config/pydummyForm.yml"
-        ))
+    def _make_manage(self):
+        path = os.path.join(self._dir, 'manage.py')
+        with open(path, 'wb') as f:
+            f.write(pkg_resources.resource_string(
+                'slivka', 'data/template/manage.py'
+            ))
+        os.chmod(path, stat.S_IRWXU)
 
-    # copy pydummy configuration
-    conf_tpl = jinja2.Template(
-        pkg_resources.resource_string(
-            "slivka", "data/template/config/pydummyConf.yml").decode())
-    tpl_stream = conf_tpl.stream(pydummy_path=pydummy_path)
-    with open(conf_path, 'w') as f:
-        tpl_stream.dump(f)
+    def _make_settings(self):
+        path = os.path.join(self._dir, 'settings.yml')
+        template = jinja2.Template(
+            pkg_resources.resource_string(
+                'slivka', 'data/template/settings.yml.jinja2'
+            ).decode()
+        )
+        stream = template.stream(
+            base_dir=self._dir,
+            secret_key=b64encode(os.urandom(32)).decode('utf-8')
+        )
+        with open(path, 'w') as f:
+            stream.dump(f)
 
-    # copy service limits
-    with open(limits_path, 'wb') as f:
-        f.write(pkg_resources.resource_string(
-            'slivka', 'data/template/config/limits.py'
-        ))
-    open(os.path.join(os.path.dirname(limits_path), '__init__.py'), 'w').close()
+    def _make_script(self):
+        path = os.path.join(self._dir, 'binaries', 'pydummy.py')
+        with open(path, 'wb') as f:
+            f.write(pkg_resources.resource_string(
+                'slivka', 'data/template/binaries/pydummy.py'
+            ))
+        os.chmod(path, stat.S_IRWXU)
+        return path
 
-    with open(pydummy_path, 'wb') as f:
-        f.write(pkg_resources.resource_string(
-            "slivka", "data/template/binaries/pydummy.py"
-        ))
-    os.chmod(pydummy_path, stat.S_IRWXU)
+    def _make_form(self):
+        path = os.path.join(self._dir, 'configurations', 'pydummyForm.yml')
+        with open(path, 'wb') as f:
+            f.write(pkg_resources.resource_string(
+                'slivka', 'data/template/configurations/pydummyForm.yml'
+            ))
+        return path
+
+    def _make_command_configuration(self, script_path):
+        path = os.path.join(self._dir, 'configurations', 'pydummyCommand.yml')
+        template = jinja2.Template(
+            pkg_resources.resource_string(
+                'slivka', 'data/template/configurations/pydummyCommand.yml'
+            ).decode()
+        )
+        stream = template.stream(script=script_path)
+        with open(path, 'w') as f:
+            stream.dump(f)
+        return path
+
+    def _make_limits(self):
+        path = os.path.join(self._dir, 'configurations', 'limits.py')
+        with open(path, 'wb') as f:
+            f.write(pkg_resources.resource_string(
+                'slivka', 'data/template/configurations/limits.py'
+            ))
+        open(os.path.join(os.path.dirname(path), '__init__.py'), 'w').close()
+        return path
+
+    def _make_services_ini(self, form_path, command_config_path):
+        path = os.path.join(self._dir, 'configurations', 'services.ini')
+        template = jinja2.Template(
+            pkg_resources.resource_string(
+                'slivka', 'data/template/configurations/services.ini.jinja2'
+            ).decode()
+        )
+        stream = template.stream(form_path=form_path,
+                                 config_path=command_config_path)
+        with open(path, 'w') as f:
+            stream.dump(f)
 
 
 @click.group()
 def admin():
-    logging.config.dictConfig(slivka.settings.LOGGER_CONF)
+    slivka.settings.init_logs()
+    logging.config.dictConfig(slivka.settings.LOGGER_CONFIG)
 
 
 @click.command()
@@ -131,10 +162,12 @@ def scheduler():
 @click.command()
 def server():
     """Start HTTP server."""
-    from slivka.server.forms import init_forms
+    from slivka.server.forms import FormFactory
     from slivka.server.serverapp import app
 
-    init_forms(slivka.settings.SERVICE_INI)
+    form_factory = FormFactory()
+    for configuration in slivka.settings.service_configurations.values():
+        form_factory.add_form(configuration)
     app.config.update(
         DEBUG=True,
         MEDIA_DIR=slivka.settings.MEDIA_DIR,
@@ -142,8 +175,8 @@ def server():
     )
     app.run(
         host=slivka.settings.SERVER_HOST,
-        port=slivka.settings.SERVER_PORT,
-        debug=slivka.settings.DEBUG
+        port=int(slivka.settings.SERVER_PORT),
+        debug=bool(slivka.settings.DEBUG)
     )
 
 

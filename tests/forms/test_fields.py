@@ -171,7 +171,7 @@ class TestFileField(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import slivka.config
+        import slivka
         from slivka.db import models, start_session, create_db
 
         cls.temp_dir = tempfile.TemporaryDirectory()
@@ -179,13 +179,13 @@ class TestFileField(unittest.TestCase):
             BASE_DIR=cls.temp_dir.name,
             MEDIA_DIR=".",
             SECRET_KEY=b'\x00',
-            SERVICE_INI='service.ini'
+            SERVICES_INI='service.ini'
         )
         open(os.path.join(cls.temp_dir.name, 'service.ini'), 'w').close()
         path = os.path.join(cls.temp_dir.name, "foo")
         with open(path, "w") as f:
             f.write("bar bar")
-        slivka.settings = slivka.config.Settings(settings)
+        slivka.settings.read_dict(settings)
         create_db()
         with start_session() as session:
             file = models.File(id="foo", path=path)

@@ -5,7 +5,6 @@ import shutil
 
 import pkg_resources
 
-
 FORM_SCHEMA = json.loads(
     pkg_resources.resource_string(
         "slivka",
@@ -19,6 +18,15 @@ CONF_SCHEMA = json.loads(
         "data/config/ConfDescriptionSchema.json"
     ).decode()
 )
+
+
+class Singleton(type):
+    __instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls.__instances:
+            cls.__instances[cls] = super().__call__(*args, **kwargs)
+        return cls.__instances[cls]
 
 
 def copytree(src, dst):

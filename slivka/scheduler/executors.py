@@ -140,7 +140,7 @@ class Executor:
         """
         :param conf: configuration dictionary grabbed from the config file
         :return: dictionary of executors for each configuration
-        :rtype: (dict[str, Executor], JobLimits)
+        :rtype: (dict[str, Executor], type[JobLimits])
         """
         options = Executor._make_option_templates(conf.get('options', []))
         (result_wrappers, log_wrappers) = (

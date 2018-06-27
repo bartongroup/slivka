@@ -2,8 +2,6 @@ import logging
 import threading
 import time
 
-import jsonschema
-import yaml
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
@@ -46,15 +44,14 @@ class Scheduler:
         For each service specifies in services.ini loads its configuration
         data and constructs executor for each configuration.
         """
-        parser = slivka.settings.CONFIG
         self._executors = {}
         self._limits = {}
-        for service in parser.sections():
-            with open(parser.get(service, 'config')) as file:
-                conf_data = yaml.load(file)
-            jsonschema.validate(conf_data, slivka.utils.CONF_SCHEMA)
-            (self._executors[service], self._limits[service]) = \
-                Executor.make_from_conf(conf_data)
+        for configuration in slivka.settings.service_configurations.values():
+            executors, limits = Executor.make_from_conf(
+                configuration.execution_config
+            )
+            self._executors[configuration.service] = executors
+            self._limits[configuration.service] = limits
 
     def _restore_jobs(self):
         """

@@ -5,7 +5,7 @@ import time
 import unittest
 from unittest import mock as mock
 
-import slivka.config
+import slivka
 from slivka.scheduler.task_queue import KILL_WORKER, Worker
 
 
@@ -18,10 +18,10 @@ class TestWorker(unittest.TestCase):
             BASE_DIR=temp_dir.name,
             MEDIA_DIR=".",
             SECRET_KEY=b'\x00',
-            SERVICE_INI='config.ini'
+            SERVICES_INI='config.ini'
         )
         open(os.path.join(temp_dir.name, 'config.ini'), 'w').close()
-        slivka.settings = slivka.config.Settings(settings)
+        slivka.settings.read_dict(settings)
 
     def setUp(self):
         self.q = queue.Queue()

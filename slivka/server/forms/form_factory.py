@@ -1,20 +1,16 @@
 from copy import deepcopy
 
-import jsonschema
-import yaml
-
 from slivka.db.models import Request, Option
-from slivka.utils import FORM_SCHEMA
+from slivka.utils import Singleton
 from .exceptions import ValidationError
 from .fields import (IntegerField, DecimalField, FileField, TextField,
                      BooleanField, ChoiceField)
 
 
 class BaseForm:
-
-    # TODO: dict keys are redundant, they are stored in BaseField.name, use list
     _fields = {}
-    _service = None  # field initialized by the FormFactory
+    _service = None
+    # fields initialized by the FormFactory
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -56,7 +52,7 @@ class BaseForm:
     @property
     def errors(self):
         if not self.is_valid():
-            return{
+            return {
                 field.name: field.error
                 for field in self.fields
                 if field.error is not None
@@ -99,26 +95,40 @@ class BaseForm:
         return "<{}> bound={}".format(self.__class__.__name__, self._bound)
 
 
-class FormFactory:
+class FormFactory(metaclass=Singleton):
+
+    def __init__(self):
+        self._forms = {}
+
+    def add_form(self, service_config):
+        """
+        :type service_config: slivka.settings.ServiceConfigurationProvider
+        """
+        form_class = self.create_form_class(
+            form_name=service_config.service.capitalize() + 'Form',
+            service=service_config.service,
+            configuration=service_config.form
+        )
+        self._forms[service_config.service] = form_class
+
+    def get_form_class(self, service):
+        return self._forms[service]
 
     @staticmethod
-    def get_form_class(form_name, service, form_file):
-        """Constructs a form class from a parameters configuration file.
+    def create_form_class(form_name, service, configuration):
+        """Constructs a form class from the configuration.
 
         :param form_name: name given to a new form class
         :param service: service name the form is bound to
-        :param form_file: a path to json file describing form fields
+        :param configuration: form fields description
         :return: new BaseForm subclass with fields loaded from the param file
         :raise jsonschema.exceptions.ValidationError:
         """
-        with open(form_file, "r") as f:
-            instance = yaml.load(f)
-        jsonschema.validate(instance, FORM_SCHEMA)
-        fields = list(FormFactory._load_fields(instance))
+        fields = dict(FormFactory._load_fields(configuration))
         return type(
-            form_name, (BaseForm, ),
+            form_name, (BaseForm,),
             {
-                "_fields": dict(fields),
+                "_fields": fields,
                 "_service": service
             }
         )

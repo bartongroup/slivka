@@ -22,7 +22,7 @@ from flask import Flask, Response, json, request, abort
 
 import slivka
 from slivka.db import Session, models, start_session
-from slivka.server.forms import get_form
+from slivka.server.forms import FormFactory
 from slivka.utils import snake_to_camel
 
 app = Flask('slivka', root_path=os.path.dirname(__file__))
@@ -38,7 +38,7 @@ def get_services():
 
     :return: JSON response with list of service names
     """
-    return JsonResponse({"services": slivka.settings.SERVICES})
+    return JsonResponse({"services": slivka.settings.services})
 
 
 @app.route('/service/<service>/form', methods=["GET"])
@@ -48,9 +48,9 @@ def get_service_form(service):
     :param service: service name
     :return: JSON response with service form
     """
-    if service not in slivka.settings.SERVICES:
+    if service not in slivka.settings.services:
         raise abort(404)
-    form_cls = get_form(service)
+    form_cls = FormFactory().get_form_class(service)
     form = form_cls()
     response = {
         "form": form_cls.__name__,
@@ -82,9 +82,9 @@ def post_service_form(service):
     :param service: service name
     :return: JSON response with submitted task id
     """
-    if service not in slivka.settings.SERVICES:
+    if service not in slivka.settings.services:
         raise abort(404)
-    form_cls = get_form(service)
+    form_cls = FormFactory().get_form_class(service)
     form = form_cls(request.form)
     if form.is_valid():
         with start_session() as session:

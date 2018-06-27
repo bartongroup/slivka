@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-from importlib import import_module
+import os
+
+SETTINGS_FILE = 'settings.yml'
+
 
 if __name__ == "__main__":
     try:
@@ -11,12 +14,9 @@ if __name__ == "__main__":
             "and available on you PYTHONPATH environment variable. "
             "Check if you activated virtual environment."
         )
-    try:
-        settings_module = import_module("settings")
-    except ImportError:
-        raise ImportError(
-            "Couldn't find settings module. Make sure there is a settings.py "
-            "file in the project root directory."
-        )
-    slivka.setup(settings_module)
+    settings_full_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        SETTINGS_FILE
+    )
+    slivka.settings.read_yaml_file(settings_full_path)
     slivka.command.admin()
