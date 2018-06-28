@@ -227,8 +227,8 @@ class DecimalField(BaseField):
 
     def validate(self, value):
         """
-        Extends the default behavoiur checking if the value can be cast to
-        flaot and meets all value constraints.
+        Extends the default behaviour checking if the value can be cast to
+        float and meets all value constraints.
 
         :param value: value to be validated and cleaned
         :return: cleaned value
@@ -308,7 +308,7 @@ class FileField(BaseField):
 
     def validate(self, value):
         """
-        Extends the default behavoiur checking if the file with a given id is
+        Extends the default behaviour checking if the file with a given id is
         registered in the database and the path to that file exists.
         Validation converts file id to the actual file path in the filesystem.
 
@@ -364,7 +364,7 @@ class TextField(BaseField):
 
     def validate(self, value):
         """
-        Extends the default behavoiur checking if the value can be cast to
+        Extends the default behaviour checking if the value can be cast to
         string and the length of that string fits into the limits.
 
         :param value: value to be validated and cleaned
@@ -414,7 +414,7 @@ class BooleanField(BaseField):
 
     def validate(self, value):
         """
-        Extends the default behavoiur validating boolean values.
+        Extends the default behaviour validating boolean values.
         If the value is one of the string literals indicating false returns
         False; otherwise evaluates the value as a boolean.
 
@@ -426,9 +426,6 @@ class BooleanField(BaseField):
         if (type(value) == str and
                 value.lower() in self.false_literals):
             value = False
-        # TODO: Possibly shouldn't return None if value is False???
-        # suggestion:
-        # return bool(value) if value is not None else None
         return bool(value) or None
 
 
@@ -447,7 +444,7 @@ class ChoiceField(BaseField):
 
     def validate(self, value):
         """
-        Extends the default behavoiur checking if the selected value is one of
+        Extends the default behaviour checking if the selected value is one of
         the available choices. If so, return value assigned to that choice,
         if ``None`` and the field is not required return ``None``, otherwise
         raise a ``ValidationError``.

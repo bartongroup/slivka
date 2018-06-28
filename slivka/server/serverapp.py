@@ -149,9 +149,9 @@ def get_file_meta(file_id):
     """
     session = Session()
     try:
-        file = (session.query(models.File).
-                filter(models.File.id == file_id).
-                one())
+        file = (session.query(models.File)
+                .filter(models.File.id == file_id)
+                .one())
     except sqlalchemy.orm.exc.NoResultFound:
         raise abort(404)
     finally:
@@ -166,16 +166,15 @@ def get_file_meta(file_id):
 @app.route('/file/<file_id>/download', methods=["GET"])
 def file_download(file_id):
     """Download file contents. ``GET /file/{file_id}/download``
-
     
     :param file_id: file identifier
     :return: requested file contents
     """
     with start_session() as session:
-        query = (session.query(models.File).
-                 filter(models.File.id == file_id))
         try:
-            file = query.one()
+            file = (session.query(models.File)
+                    .filter(models.File.id == file_id)
+                    .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
         return flask.send_from_directory(

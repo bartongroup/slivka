@@ -157,7 +157,8 @@ class FormFactory:
             name,
             default=value.get("default"),
             required=value.get("required", True),
-            minimum=value.get("min"), maximum=value.get("max"),
+            minimum=value.get("min"),
+            maximum=value.get("max"),
             min_exclusive=value.get("minExclusive", False),
             max_exclusive=value.get("maxExclusive", False)
         )
