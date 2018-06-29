@@ -28,8 +28,7 @@ from slivka.utils import snake_to_camel
 app = Flask('slivka', root_path=os.path.dirname(__file__))
 """Flask object implementing WSGI application."""
 
-
-signer = itsdangerous.Signer(app.config["SECRET_KEY"])
+signer = itsdangerous.Signer(slivka.settings.SECRET_KEY)
 
 
 @app.route('/services', methods=['GET'])
