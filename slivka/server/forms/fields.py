@@ -454,7 +454,9 @@ class ChoiceField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
-        if not(value in self._choices.keys() or value is None):
+        if not(value in self._choices.keys() or
+               value in self._choices.values() or
+               value is None):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return self._choices.get(value)
