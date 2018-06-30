@@ -1,0 +1,590 @@
+openapi: 3.0.0
+info:
+  title: Slivka Web API
+  description: ""
+  version: 0.2.dev0
+
+servers:
+- url: http://localhost:8000
+
+tags:
+- name: services
+  description: Services availability and tasks submisison.
+- name: files
+  description: Uploading and downloading data files.
+- name: tasks
+  description: Task status and results.
+
+paths:
+  /services:
+    get:
+      summary: Returns a list of available services.
+      tags: [services]
+      responses:
+        '200':
+          description: A JSON array of service names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 200
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+
+  /service/{serviceName}/form:
+    get:
+      summary: Returns the submission form for the service
+      tags: [services]
+      parameters:
+      - name: serviceName
+        in: path
+        required: true
+        description: Service name
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Form definition
+          content:
+            application/json:
+              schema:
+                allOf:
+                - properties:
+                    statuscode:
+                      type: integer
+                      example: 200
+                - $ref: '#/components/schemas/Form'
+        '404':
+          description: Specified service does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '503':
+          description: Specified service is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+    post:
+      summary: Submits the form and issues a new job request
+      tags: [services]
+      parameters:
+      - name: serviceName
+        in: path
+        required: true
+        description: Service name
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                <name1>:
+                  type: string
+                <name2>:
+                  type: string
+              additionalProperties:
+                type: string
+      responses:
+        '202':
+          description: Unique identifier of the submitted task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 202
+                  taskId:
+                    type: string
+                    format: uuid
+                    example: 147a8f7a9da54fca93987b971b89286d
+                  checkStatusURI:
+                    type: string
+                    format: uri
+                    example: /task/147a8f7a9da54fca93987b971b89286d/status
+
+        '404':
+          description: Specified service does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '503':
+          description: Specified service is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+        '420':
+          description: Submitted form contains errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 420
+                  error:
+                    type: string
+                    example: Incorrect data
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        errorCode:
+                          type: string
+                        message:
+                          type: string
+                      example:
+                        field: num-iters
+                        errorCode: max
+                        message: Value must be less than 20
+
+  /file:
+    post:
+      summary: Upload the file to the server
+      tags: [files]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                mimetype:
+                  type: string
+                  example: text/plain
+                file:
+                  type: string
+                  format: file content
+                  example: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+      responses:
+        '201':
+          description: Created file data
+          content:
+            application/json:
+              schema:
+                allOf:
+                - properties:
+                   statuscode:
+                    type: integer
+                    example: 201
+                - $ref: '#/components/schemas/SignedFileData'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '415':
+          description: File type not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnsupportedMediaTypeError'
+        '507':
+          description: Insuficient storage. File too large.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsufficientStorageError'
+
+  /file/{fileId}:
+    get:
+      summary: Retrieve file metadata
+      tags: [files]
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        description: Unique file identifier
+        schema:
+          type: string
+          format: uuid
+          example: dd660bcf78bf4d90a67672c8d442da8c
+      responses:
+        '200':
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                allOf:
+                - properties:
+                    statuscode:
+                      type: integer
+                      example: 200
+                - $ref: '#/components/schemas/FileData'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+    put:
+      summary: Update file metadata
+      tags: [files]
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        description: Unique file identifier with signature
+        schema:
+          type: string
+          format: uuid
+          example: dd660bcf78bf4d90a67672c8d442da8c.iiWT8yTKDq5Qk2sLSHGpkEj1SOs
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: input.txt
+      responses:
+        '200':
+          description: Updated metadata
+          content:
+            application/json:
+              schema:
+                allOf:
+                - properties:
+                    statuscode:
+                      type: integer
+                      example: 200
+                - $ref: '#/components/schemas/SignedFileData'
+        '401':
+          description: Invalid signature. No permission to edit metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorisedError'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+    delete:
+      summary: Delete the file from the server
+      tags: [files]
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        description: Unique file identifier with signature
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: File deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 200
+        '401':
+          description: Invalid signature. No permission to edit metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorisedError'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /file/{fileId}/download:
+    get:
+      summary: Download file content from the server
+      tags: [files]
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        description: Unique file identifier
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: File content
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: >-
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                  Proin consequat mi quis ligula tristique, sit amet mollis ex sagittis.
+                  Fusce orci ipsum, consectetur eget egestas ut, eleifend sed lacus.
+                  In varius leo ac nisi dapibus, id tempus dui pharetra.
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /task/{taskId}/status:
+    get:
+      summary: Check the status of the running task
+      tags: [tasks]
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Unique task id issued on form submission
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Task status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 200
+                  execution:
+                    type: string
+                    enum:
+                    - pending
+                    - queued
+                    - running
+                    - completed
+                    - failed
+                    - error
+                  ready:
+                    type: boolean
+                  resultURI:
+                    type: string
+                    format: uri
+                    example: /task/147a8f7a9da54fca93987b971b89286d/result
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /task/{taskId}/result:
+    get:
+      summary: Returns a list of output file identifiers
+      tags: [tasks]
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Unique task id issued on form submission
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: A JSON array of file ids produced by the task.
+          content:
+            application/json:
+              schema:
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 200
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileData'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+components:
+  schemas:
+    Service:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Clustalo
+        submitURI:
+          type: string
+          format: uri
+          example: /service/Clustalo/form
+    Form:
+      type: object
+      properties:
+        form:
+          type: string
+          example: ClustaloForm
+        service:
+          type: string
+          example: Clustalo
+        submitURI:
+          type: string
+          format: uri
+          example: /service/Clustalo/form
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+                enum: [int, float, text, boolean, choice, file]
+              required:
+                type: boolean
+              default:
+                nullable: true
+              constraints:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value: {}
+          example:
+          - name: input
+            type: file
+            required: true
+            default: null
+            constraints: []
+          - name: num-iters
+            type: int
+            required: false
+            default: 10
+            constraints:
+            - name: max
+              value: 20
+            - name: min
+              value: 0
+
+    SignedFileData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: dd660bcf78bf4d90a67672c8d442da8c
+        signedId:
+          type: string
+          format: signature
+          example: dd660bcf78bf4d90a67672c8d442da8c.iiWT8yTKDq5Qk2sLSHGpkEj1SOs
+        title:
+          type: string
+          example: file.txt
+        mimetype:
+          type: string
+          example: text/plain
+        downloadURI:
+          type: string
+          format: uri
+          example: /file/dd660bcf78bf4d90a67672c8d442da8c/download
+
+    FileData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: dd660bcf78bf4d90a67672c8d442da8c
+        title:
+          type: string
+          example: file.txt
+        mimetype:
+          type: string
+          example: text/plain
+        downloadURI:
+          type: string
+          format: uri
+          example: /file/dd660bcf78bf4d90a67672c8d442da8c/download
+
+    NotFoundError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: Not found
+
+    ServiceUnavailableError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 503
+        error:
+          type: string
+          example: Service unavailable
+
+    BadRequestError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad request
+
+    UnauthorisedError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 401
+        error:
+          type: string
+          example: Unauthorized
+
+    InsufficientStorageError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 507
+        error:
+          type: string
+          example: Insufficient storage
+
+    UnsupportedMediaTypeError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          example: 415
+        error:
+          type: string
+          example: Unsupported media type
+...
