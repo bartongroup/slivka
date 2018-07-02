@@ -1,12 +1,11 @@
 import os.path
 import unittest
 
-import jsonschema
 import yaml
 
 from slivka.server.forms import FormFactory
 from slivka.server.forms.fields import *
-from slivka.utils import FORM_SCHEMA
+from slivka.utils import FORM_VALIDATOR
 
 
 class TestOptionElementParser(unittest.TestCase):
@@ -17,7 +16,7 @@ class TestOptionElementParser(unittest.TestCase):
         )
         with open(form_file) as f:
             instance = yaml.load(f)
-        jsonschema.validate(instance, FORM_SCHEMA)
+        FORM_VALIDATOR.validate(instance)
         self.fields = instance
 
     def test_integer_field(self):
@@ -82,7 +81,7 @@ class TestForm(unittest.TestCase):
         form_file = os.path.join(os.path.dirname(__file__), "LittleForm.yml")
         with open(form_file) as f:
             configuration = yaml.load(f)
-        jsonschema.validate(configuration, FORM_SCHEMA)
+        FORM_VALIDATOR.validate(configuration)
         self.LittleForm = FormFactory.create_form_class(
             "LittleForm", "Little", configuration
         )

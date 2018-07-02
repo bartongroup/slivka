@@ -1,23 +1,31 @@
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 import os
 import re
 import shutil
 
+import jsonschema
 import pkg_resources
 
-FORM_SCHEMA = json.loads(
+_FORM_SCHEMA_JSON = json.loads(
     pkg_resources.resource_string(
         "slivka",
         "data/config/FormDescriptionSchema.json"
     ).decode()
 )
+jsonschema.Draft4Validator.check_schema(_FORM_SCHEMA_JSON)
+FORM_VALIDATOR = jsonschema.Draft4Validator(_FORM_SCHEMA_JSON)
 
-CONF_SCHEMA = json.loads(
+_COMMAND_SCHEMA_JSON = json.loads(
     pkg_resources.resource_string(
         "slivka",
         "data/config/ConfDescriptionSchema.json"
     ).decode()
 )
+jsonschema.Draft4Validator.check_schema(_COMMAND_SCHEMA_JSON)
+COMMAND_VALIDATOR = jsonschema.Draft4Validator(_COMMAND_SCHEMA_JSON)
 
 
 class Singleton(type):

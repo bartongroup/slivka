@@ -1,10 +1,12 @@
+import logging
 import os.path
+import sys
 from configparser import ConfigParser
 
 import jsonschema
 import yaml
 
-from slivka.utils import FORM_SCHEMA, CONF_SCHEMA, Singleton
+from slivka.utils import FORM_VALIDATOR, COMMAND_VALIDATOR, Singleton
 
 _LOGS_DIR = 'logs'
 
@@ -114,12 +116,33 @@ class ServiceConfigurationProvider:
 
     def __init__(self, service, form_file, execution_config_file):
         self._service = service
+
         with open(form_file, 'r') as f:
-            self._form = yaml.load(f)
-        jsonschema.validate(self._form, FORM_SCHEMA)
+            form = yaml.load(f)
+        try:
+            FORM_VALIDATOR.validate(form)
+        except jsonschema.exceptions.ValidationError as exc:
+            logging.error(
+                'Error validating form definition file %s', form_file
+            )
+            print('\n', exc, sep='')
+            sys.exit(1)
+        else:
+            self._form = form
+
         with open(execution_config_file, 'r') as f:
-            self._execution_config = yaml.load(f)
-        jsonschema.validate(self._execution_config, CONF_SCHEMA)
+            config = yaml.load(f)
+        try:
+            COMMAND_VALIDATOR.validate(config)
+            self._execution_config = config
+        except jsonschema.exceptions.ValidationError as exc:
+            logging.exception(
+                'Error validating configuration file %s', form_file
+            )
+            print('\n', exc, sep='')
+            sys.exit(1)
+        else:
+            self._execution_config = config
 
     @property
     def service(self):
