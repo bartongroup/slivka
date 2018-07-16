@@ -153,6 +153,8 @@ class FormFactory(metaclass=Singleton):
         assert value['type'] == 'int'
         return IntegerField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             minimum=value.get("min"),
             maximum=value.get("max"),
             default=value.get("default"),
@@ -165,6 +167,8 @@ class FormFactory(metaclass=Singleton):
         assert value['type'] == "float"
         return DecimalField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             default=value.get("default"),
             required=value.get("required", True),
             minimum=value.get("min"),
@@ -179,6 +183,8 @@ class FormFactory(metaclass=Singleton):
         assert value['type'] == 'text'
         return TextField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             default=value.get("default"),
             required=value.get("required", True),
             min_length=value.get("minLength"),
@@ -191,6 +197,8 @@ class FormFactory(metaclass=Singleton):
         assert value["type"] == "boolean"
         return BooleanField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             default=value.get("default"),
             required=value.get("required", True),
         )
@@ -201,6 +209,8 @@ class FormFactory(metaclass=Singleton):
         assert value['type'] == 'choice'
         return ChoiceField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             default=value.get("default"),
             required=value.get("required", True),
             choices=value.get("choices")
@@ -212,6 +222,8 @@ class FormFactory(metaclass=Singleton):
         assert value["type"] == "file"
         return FileField(
             name,
+            label=field["label"],
+            description=field.get("description", ""),
             default=value.get("default"),
             required=value.get("required", True),
             extension=value.get("extension"),

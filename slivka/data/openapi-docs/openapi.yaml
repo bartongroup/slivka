@@ -460,6 +460,10 @@ components:
               type:
                 type: string
                 enum: [int, float, text, boolean, choice, file]
+              label:
+                type: string
+              description:
+                type: string
               required:
                 type: boolean
               default:

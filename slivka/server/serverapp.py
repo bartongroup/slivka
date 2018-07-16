@@ -70,6 +70,8 @@ def get_service_form(service):
             {
                 'name': field.name,
                 'type': field.type,
+                'label': field.label,
+                'description': field.description,
                 'required': field.required,
                 'default': field.default,
                 'constraints': [

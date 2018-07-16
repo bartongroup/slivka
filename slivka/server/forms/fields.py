@@ -14,7 +14,8 @@ class BaseField:
     :param default: default value of the field
     :raise ValidationError: default value is not valid
     """
-    def __init__(self, name, default=None, required=True):
+    def __init__(self, name, label, description='',
+                 default=None, required=True):
         """
         Initializes the values of the field and sets the default value.
 
@@ -23,6 +24,8 @@ class BaseField:
         :raise ValidationError: default value is not valid
         """
         self._name = name
+        self._label = label
+        self._description = description
         if default is not None:
             default = self.validate(default)
         self._default = default
@@ -38,6 +41,14 @@ class BaseField:
         :return: option id
         """
         return self._name
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def description(self):
+        return self._description
 
     @property
     def type(self):
@@ -160,8 +171,8 @@ class BaseField:
 
 
 class IntegerField(BaseField):
-    def __init__(self, name, default=None, required=True, minimum=None,
-                 maximum=None):
+    def __init__(self, name, label, description,
+                 default=None, required=True, minimum=None, maximum=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -170,7 +181,8 @@ class IntegerField(BaseField):
         """
         self._min = minimum
         self._max = maximum
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
@@ -207,8 +219,9 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
-    def __init__(self, name, required=True, default=None, minimum=None,
-                 maximum=None, min_exclusive=False, max_exclusive=False):
+    def __init__(self, name, label, description, required=True,
+                 default=None, minimum=None, maximum=None,
+                 min_exclusive=False, max_exclusive=False):
         """
         Sets the field and its constraints.
         Inclusive and exclusive limits are mutually exclusive and at least
@@ -223,7 +236,8 @@ class DecimalField(BaseField):
         """
         self._min = (minimum, min_exclusive)
         self._max = (maximum, max_exclusive)
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
@@ -287,8 +301,8 @@ class FileField(BaseField):
         "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
     }
 
-    def __init__(self, name, default=None, required=True, mimetype=None,
-                 extension=None, max_size=None):
+    def __init__(self, name, label, description, default=None, required=True,
+                 mimetype=None, extension=None, max_size=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -304,7 +318,8 @@ class FileField(BaseField):
             size_val = int(match.group(1))
             max_size = size_val * self.size_multiplier[match.group(2)]
         self._max_size = max_size
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
@@ -340,8 +355,8 @@ class FileField(BaseField):
 
 
 class TextField(BaseField):
-    def __init__(self, name, default=None, required=True, min_length=None,
-                 max_length=None):
+    def __init__(self, name, label, description, default=None, required=True,
+                 min_length=None, max_length=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -360,7 +375,8 @@ class TextField(BaseField):
                              "length")
         self._min_length = min_length
         self._max_length = max_length
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
@@ -405,12 +421,13 @@ class TextField(BaseField):
 class BooleanField(BaseField):
     false_literals = {'no', 'false', '0', 'null'}
 
-    def __init__(self, name, default=None, required=True):
+    def __init__(self, name, label, description, default=None, required=True):
         """
         :param name: parameter id
         :param default: default value of the field
         """
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
@@ -430,7 +447,8 @@ class BooleanField(BaseField):
 
 
 class ChoiceField(BaseField):
-    def __init__(self, name, default=None, required=True, choices=None):
+    def __init__(self, name, label, description,
+                 default=None, required=True, choices=None):
         """
         :param required:
         :param name: parameter id
@@ -440,7 +458,8 @@ class ChoiceField(BaseField):
         if choices is None:
             choices = {}
         self._choices = choices
-        super().__init__(name, default, required)
+        super().__init__(name=name, label=label, description=description,
+                         default=default, required=required)
 
     def validate(self, value):
         """
