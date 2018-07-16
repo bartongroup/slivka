@@ -37,6 +37,33 @@ class Singleton(type):
         return cls.__instances[cls]
 
 
+def locate(path):
+    """Imports any module or object accessible from the PYTHONPATH.
+
+    Improved implementation of the __import__ function that can fetch
+    members and attributes in addition to the modules.
+    :param path: dot separated path to the object
+    :return: object
+    :raises ModuleNotFoundError: if the module is not found
+    :raises AttributeError: if the object attribute is missing
+    """
+    parts = path.split('.')
+    n = 1
+    obj = None
+    while n < len(parts):
+        try:
+            obj = __import__('.'.join(parts[:-n]))
+        except ImportError:
+            n += 1
+        else:
+            break
+    if obj is None:
+        raise ImportError('No module named \'%s\'' % parts[0])
+    for part in parts[1:]:
+        obj = getattr(obj, part)
+    return obj
+
+
 def copytree(src, dst):
     """Copy directory tree recursively.
     

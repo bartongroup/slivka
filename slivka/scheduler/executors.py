@@ -1,14 +1,13 @@
 import getpass
 import logging
 import os
-import pydoc
 import re
 import shlex
 import subprocess
-import sys
 import uuid
 
 import slivka
+import slivka.utils
 from slivka.scheduler.command import CommandOption, PathWrapper, \
     PatternPathWrapper
 from slivka.scheduler.exceptions import QueueBrokenError, QueueError, \
@@ -148,9 +147,11 @@ class Executor:
         )
         executors = {}
         for name, configuration in conf.get('configurations', {}).items():
-            executor_class = getattr(
-                sys.modules[__name__], configuration['execClass']
-            )
+            if '.' not in configuration['execClass']:
+                exec_class_path = __name__ + '.' + configuration['execClass']
+            else:
+                exec_class_path = configuration['execClass']
+            executor_class = slivka.utils.locate(exec_class_path)
             executors[name] = executor_class(
                 bin=configuration['bin'],
                 options=options,
@@ -159,8 +160,7 @@ class Executor:
                 log_paths=log_wrappers,
                 env=configuration.get('env')
             )
-
-        limits = pydoc.locate(conf['limits'], forceload=1)
+        limits = slivka.utils.locate(conf['limits'])
         if limits is None:
             raise ImportError(conf['limits'])
         return executors, limits
