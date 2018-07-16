@@ -263,39 +263,68 @@ class TestTextField(unittest.TestCase):
 
 
 class TestBooleanField(unittest.TestCase):
-    def setUp(self):
-        self.field = BooleanField('', required=False)
 
     def test_is_valid(self):
-        self.field.value = True
-        self.assertTrue(self.field.is_valid)
-        self.field.value = "yes"
-        self.assertTrue(self.field.is_valid)
-        self.field.value = 0
-        self.assertTrue(self.field.is_valid)
-        self.field.value = False
-        self.assertTrue(self.field.is_valid)
+        field = BooleanField('', required=False)
+        field.value = True
+        self.assertTrue(field.is_valid)
+        field.value = "yes"
+        self.assertTrue(field.is_valid)
+        field.value = 0
+        self.assertTrue(field.is_valid)
+        field.value = False
+        self.assertTrue(field.is_valid)
 
     def test_cleaned_data_true(self):
+        field = BooleanField('', required=False)
         for value in [1, True, 'yes', 'true', 'TRUE', 'True', 'LOL', '1',
                       object(), type('', (), {})]:
-            self.field.value = value
+            field.value = value
             self.assertTrue(
-                self.field.cleaned_value,
+                field.cleaned_value,
                 "invalid value for %s" % value
             )
 
     def test_cleaned_data_false(self):
+        field = BooleanField('', required=False)
         for value in [0, False, 'no', 'false', 'FALSE', 'False', '0', 'null']:
-            self.field.value = value
+            field.value = value
             self.assertIsNone(
-                self.field.cleaned_value,
+                field.cleaned_value,
                 "invalid value for %r" % (value,)
             )
 
     def test_cleaned_data_none(self):
-        self.field.value = None
-        self.assertIsNone(self.field.cleaned_value)
+        field = BooleanField('', required=False)
+        field.value = None
+        self.assertIsNone(field.cleaned_value)
+
+    def test_required_with_none(self):
+        field = BooleanField('', required=True)
+        with self.assertRaises(ValidationError) as cm:
+            field.validate(None)
+        self.assertEqual(cm.exception.code, 'required')
+
+    def test_required_with_true(self):
+        field = BooleanField('', required=True)
+        try:
+            field.validate(True)
+        except ValidationError:
+            self.fail('Unexpected ValidationError')
+
+    def test_required_with_false(self):
+        field = BooleanField('', required=True)
+        with self.assertRaises(ValidationError) as cm:
+            field.validate(False)
+        self.assertEqual(cm.exception.code, 'required')
+
+    def test_required_default_true(self):
+        field = BooleanField('', required=True, default=True)
+        self.assertTrue(field.is_valid)
+
+    def test_required_false_default(self):
+        field = BooleanField('', required=True, default=False)
+        self.assertFalse(field.is_valid)
 
 
 class TestSelectField(unittest.TestCase):
