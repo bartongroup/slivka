@@ -26,10 +26,10 @@ class BaseField:
         self._name = name
         self._label = label
         self._description = description
-        if default is not None:
-            default = self.validate(default)
-        self._default = default
         self._required = required
+        if default is not None:
+            self.validate(default)
+        self._default = default
         self._value = None
         self._cleaned_value = None
         self._error = None
@@ -444,7 +444,10 @@ class BooleanField(BaseField):
         if (type(value) == str and
                 value.lower() in self.false_literals):
             value = False
-        return bool(value) or None
+        value = bool(value)
+        if not value and self.required:
+            raise ValidationError("required", "This field is required")
+        return value or None
 
 
 class ChoiceField(BaseField):
@@ -474,9 +477,7 @@ class ChoiceField(BaseField):
         :raise ValidationError: field value is invalid
         """
         value = super().validate(value)
-        if not(value in self._choices.keys() or
-               value in self._choices.values() or
-               value is None):
+        if not(value in self._choices.keys() or value is None):
             raise ValidationError("choice", "Invalid choice %s." % value)
         else:
             return self._choices.get(value)

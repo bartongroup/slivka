@@ -323,8 +323,10 @@ class TestBooleanField(unittest.TestCase):
         self.assertTrue(field.is_valid)
 
     def test_required_false_default(self):
-        field = BooleanField('', required=True, default=False)
-        self.assertFalse(field.is_valid)
+        with self.assertRaises(ValidationError) as cm:
+            # value cannot be required and false
+            BooleanField('', required=True, default=False)
+        self.assertEqual(cm.exception.code, 'required')
 
 
 class TestSelectField(unittest.TestCase):
