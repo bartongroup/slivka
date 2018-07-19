@@ -14,7 +14,7 @@ class BaseField:
     :param default: default value of the field
     :raise ValidationError: default value is not valid
     """
-    def __init__(self, name, label, description='',
+    def __init__(self, name, label='', description='',
                  default=None, required=True):
         """
         Initializes the values of the field and sets the default value.
@@ -171,7 +171,7 @@ class BaseField:
 
 
 class IntegerField(BaseField):
-    def __init__(self, name, label, description,
+    def __init__(self, name, label='', description='',
                  default=None, required=True, minimum=None, maximum=None):
         """
         :param name: parameter id
@@ -219,7 +219,7 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
-    def __init__(self, name, label, description, required=True,
+    def __init__(self, name, label='', description='', required=True,
                  default=None, minimum=None, maximum=None,
                  min_exclusive=False, max_exclusive=False):
         """
@@ -301,8 +301,8 @@ class FileField(BaseField):
         "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
     }
 
-    def __init__(self, name, label, description, default=None, required=True,
-                 mimetype=None, extension=None, max_size=None):
+    def __init__(self, name, label='', description='', default=None,
+                 required=True, mimetype=None, extension=None, max_size=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -355,8 +355,8 @@ class FileField(BaseField):
 
 
 class TextField(BaseField):
-    def __init__(self, name, label, description, default=None, required=True,
-                 min_length=None, max_length=None):
+    def __init__(self, name, label='', description='', default=None,
+                 required=True, min_length=None, max_length=None):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -421,7 +421,8 @@ class TextField(BaseField):
 class BooleanField(BaseField):
     false_literals = {'no', 'false', '0', 'null'}
 
-    def __init__(self, name, label, description, default=None, required=True):
+    def __init__(self, name, label='', description='', default=None,
+                 required=True):
         """
         :param name: parameter id
         :param default: default value of the field
@@ -447,7 +448,7 @@ class BooleanField(BaseField):
 
 
 class ChoiceField(BaseField):
-    def __init__(self, name, label, description,
+    def __init__(self, name, label='', description='',
                  default=None, required=True, choices=None):
         """
         :param required:
