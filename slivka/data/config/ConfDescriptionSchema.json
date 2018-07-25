@@ -6,7 +6,7 @@
       "items": {"$ref": "#/definitions/option"},
       "additionalItems": false
     },
-    "result": {
+    "results": {
       "type": "array",
       "items": {"$ref": "#/definitions/result"},
       "additionalItems": false
@@ -21,7 +21,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["options", "result", "configurations"],
+  "required": ["options", "results", "configurations"],
   "definitions": {
     "option": {
       "type": "object",
@@ -37,26 +37,20 @@
       "type": "object",
       "properties": {
         "type": {
-          "enum": ["result", "error", "log"]
+          "enum": ["output", "error", "log"]
         },
         "mimetype": {"type": "string"},
-        "method": {
-          "enum": ["file"]
-        },
-        "path": {"type": "string"},
-        "pattern": {"type": "string"}
+        "title": {"type": "string"},
+        "path": {"type": "string"}
       },
-      "oneOf": [
-        {"required": ["path"]},
-        {"required": ["pattern"]}
-      ],
+      "required": ["type", "path"],
       "additionalProperties": false
     },
     "configuration": {
       "type": "object",
       "properties": {
-        "execClass": {"type": "string"},
-        "bin": {"type": "string"},
+        "runner": {"type": "string"},
+        "executable": {"type": "string"},
         "env": {
           "oneOf": [
             {
@@ -86,7 +80,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["execClass", "bin"]
+      "required": ["runner", "executable"]
     }
   }
 }

@@ -1,13 +1,15 @@
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import enum
 import os
 import re
 import shutil
 
 import jsonschema
 import pkg_resources
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 _FORM_SCHEMA_JSON = json.loads(
     pkg_resources.resource_string(
@@ -96,6 +98,15 @@ def copytree(src, dst):
     return dst
 
 
+def recursive_scandir(path='.'):
+    """Returns an iterator of ``os.DirEntry`` of files in the directory."""
+    for entry in os.scandir(path):
+        if entry.is_dir():
+            yield from recursive_scandir(entry.path)
+        else:
+            yield entry
+
+
 def snake_to_camel(name):
     """Convert snake_case name to lowercase camelCase
     
@@ -114,3 +125,16 @@ def camel_to_snake(name):
     """
     s = re.sub('([A-Z])([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+
+
+class JobStatus(enum.Enum):
+
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    QUEUED = 'queued'
+    RUNNING = 'running'
+    COMPLETED = 'completed'
+    DELETED = 'deleted'
+    FAILED = 'failed'
+    ERROR = 'error'
+    UNDEFINED = 'undefined'

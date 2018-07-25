@@ -374,11 +374,13 @@ paths:
                     type: string
                     enum:
                     - pending
+                    - accepted
                     - queued
                     - running
                     - completed
                     - failed
                     - error
+                    - undefined
                   ready:
                     type: boolean
                   resultURI:

@@ -1,58 +1,55 @@
 ---
 options:
-    -
-        ref: message
-        param: -m $value
-    -
-        ref: error
-        param: -e $value
-    -
-        ref: returnCode
-        param: -r $value
-    -
-        ref: number
-        param: -n $value
-    -
-        ref: out
-        param: -o $value
-        val: output.fasta
-    -
-        ref: wait
-        param: --wait $value
+  -
+    ref: input
+    param: -i ${file:input.txt}
+  -
+    ref: message
+    param: -m ${value}
+  -
+    ref: error
+    param: -e ${value}
+  -
+    ref: returnCode
+    param: -r ${value}
+  -
+    ref: number
+    param: -n ${value}
+  -
+    ref: out
+    param: -o ${value}
+    val: output.fasta
+  -
+    ref: wait
+    param: --wait ${value}
 
-result:
-    -
-        type: result
-        mimetype: text/plain
-        method: file
-        path: stdout.txt
-    -
-        type: error
-        mimetype: text/plain
-        method: file
-        path: stderr.txt
-    -
-        type: result
-        method: file
-        path: DefaultOutput.txt
-    -
-        type: result
-        mimetype: text/plain
-        method: file
-        path: output.fasta
-    -
-        type: result
-        method: file
-        pattern: part\d+.txt
+results:
+  -
+    type: output
+    path: out.out
+  -
+    type: output
+    mimetype: text/plain
+    path: stdout.txt
+  -
+    type: error
+    mimetype: text/plain
+    path: stderr.txt
+  -
+    type: output
+    path: DefaultOutput.txt
+  -
+    type: output
+    mimetype: text/plain
+    path: output.fasta
+  -
+    type: output
+    path: part*.txt
 
 configurations:
-    local:
-        execClass: LocalExec
-        bin: python "{{ script }}"
-
-    cluster:
-        execClass: GridEngineExec
-        bin: python "{{ script }}"
+  local:
+    runner: LocalQueueRunner
+    executable: python "{{ script }}"
 
 limits: configurations.limits.PydummyLimits
 ...

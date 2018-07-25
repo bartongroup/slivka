@@ -1,7 +1,7 @@
-from slivka.scheduler.executors import JobLimits
+from slivka.scheduler.limits import LimitsBase
 
 
-class PydummyLimits(JobLimits):
+class PydummyLimits(LimitsBase):
 
     configurations = ['local']
 

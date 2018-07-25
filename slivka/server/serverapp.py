@@ -272,15 +272,15 @@ def get_task_status(task_id):
     """
     with start_session() as session:
         try:
-            job_req = (session.query(models.Request).
-                       filter_by(uuid=task_id).
-                       one())
+            job_request = (session.query(models.Request)
+                           .filter_by(uuid=task_id)
+                           .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
         return JsonResponse({
             'statuscode': 200,
-            'execution': job_req.status,
-            'ready': job_req.is_finished,
+            'execution': job_request.status_string,
+            'ready': job_request.is_finished(),
             'resultURI': '/task/%s/result' % task_id
         })
 
@@ -294,15 +294,15 @@ def get_task_result(task_id):
     """
     with start_session() as session:
         try:
-            req = (session.query(models.Request).
-                   filter_by(uuid=task_id).
-                   one())
+            req = (session.query(models.Request)
+                   .filter_by(uuid=task_id)
+                   .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
 
-        files = (session.query(models.File).
-                 filter_by(job=req.job).
-                 all())
+        files = (session.query(models.File)
+                 .filter_by(request=req)
+                 .all())
         return JsonResponse({
             'statuscode': 200,
             'files': [

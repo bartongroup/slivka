@@ -8,7 +8,7 @@ except ImportError:
 
 setup(
     name="Slivka",
-    version="0.2.dev1",
+    version="0.3.dev0",
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
         "click==6.6",
@@ -35,9 +35,10 @@ setup(
 
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
-        "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3 :: Only",
         "Topic :: Scientific/Engineering :: Bio-Informatics"
     ]

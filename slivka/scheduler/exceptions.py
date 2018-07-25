@@ -23,7 +23,7 @@ class ServerError(QueueBrokenError):
     """
 
 
-class QueueUnavailableError(QueueError):
+class QueueTemporarilyUnavailableError(QueueError):
     """
     Exception raised when the queue is temporarily not available but resource
     will be accessible in the future

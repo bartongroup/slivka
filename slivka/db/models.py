@@ -2,7 +2,8 @@ import os
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean
+from slivka.utils import JobStatus
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -17,27 +18,34 @@ class Request(Base):
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String, nullable=False)
     uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
-    pending = Column(Boolean, default=True)
+    status_string = Column(
+        String(16), default=JobStatus.PENDING.value, nullable=False
+    )
+    working_dir = Column(String(128), default=None, nullable=True)
+    serial_job_handler = Column(String(128), nullable=True, default=None)
+    run_configuration = Column(String(16), nullable=True, default=None)
 
-    options = relationship("Option", back_populates="request")
-    job = relationship("JobModel", back_populates="request", uselist=False)
-
-    @property
-    def is_finished(self):
-        return self.status in {
-            JobModel.STATUS_COMPLETED, JobModel.STATUS_FAILED,
-            JobModel.STATUS_ERROR
-        }
+    options = relationship('Option', back_populates='request')
+    files = relationship('File', back_populates='request')
 
     @property
     def status(self):
-        if self.job is None:
-            return JobModel.STATUS_PENDING
-        else:
-            return self.job.status
+        return JobStatus(self.status_string)
+
+    @status.setter
+    def status(self, job_status):
+        self.status_string = job_status.value
+
+    def is_finished(self):
+        return self.status not in {
+            JobStatus.PENDING,
+            JobStatus.ACCEPTED,
+            JobStatus.QUEUED,
+            JobStatus.RUNNING
+        }
 
     def __repr__(self):
-        return ("<Request(id={id}, service={service})>"
+        return ('<Request(id={id}, service={service})>'
                 .format(id=self.id, service=self.service))
 
 
@@ -53,39 +61,11 @@ class Option(Base):
         ForeignKey('requests.id', ondelete='CASCADE')
     )
 
-    request = relationship("Request", back_populates="options", uselist=False)
+    request = relationship('Request', back_populates='options', uselist=False)
 
     def __repr__(self):
         return ("<Option(name={name}, value={value}>"
                 .format(name=self.name, value=self.value))
-
-
-class JobModel(Base):
-
-    STATUS_PENDING = "pending"
-    STATUS_QUEUED = "queued"
-    STATUS_RUNNING = "running"
-    STATUS_COMPLETED = "completed"
-    STATUS_FAILED = "failed"
-    STATUS_ERROR = "error"
-
-    __tablename__ = "jobs"
-
-    id = Column(Integer, primary_key=True)
-    request_id = Column(
-        Integer,
-        ForeignKey('requests.id', ondelete='CASCADE'),
-        nullable=False
-    )
-    status = Column(String(16), default=STATUS_QUEUED, nullable=False)
-    job_ref_id = Column(String(32))
-    working_dir = Column(String(256))
-    service = Column(String(16), nullable=False)
-    configuration = Column(String(16), nullable=False)
-    return_code = Column(String(8), nullable=True)
-
-    request = relationship("Request", back_populates="job", uselist=False)
-    files = relationship("File", back_populates="job")
 
 
 def default_title(context):
@@ -100,14 +80,14 @@ class File(Base):
     title = Column(String(32), default=default_title)
     path = Column(String(256), nullable=False)
     mimetype = Column(String(32))
-    job_id = Column(
+    request_id = Column(
         Integer,
-        ForeignKey("jobs.id", ondelete="SET NULL"),
+        ForeignKey('requests.id', ondelete='SET NULL'),
         nullable=True,
         default=None
     )
 
-    job = relationship("JobModel", back_populates="files", uselist=False)
+    request = relationship('Request', back_populates='files', uselist=False)
 
     def __repr__(self):
         return ("<File(id={id}, title={title}>"

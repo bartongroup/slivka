@@ -51,10 +51,13 @@ class start_session:
     This class helps to easily start and close session even if the exception
     occurs while operating on the session.
     On entering, it creates and returns a new session object which can be used
-    to communicate database queries. Changes are not committed on exit so
-    any uncaught exception raised inside of the context manager or not
+    to communicate database queries. By default, changes are not committed on
+    exit so any uncaught exception raised inside of the context manager or not
     committing changes manually results in rolling back all changes.
     """
+
+    def __init__(self, commit_on_exit=False):
+        self._commit = commit_on_exit
 
     def __enter__(self):
         """Create a new database session.
@@ -68,4 +71,6 @@ class start_session:
     # noinspection PyUnusedLocal
     def __exit__(self, exc_type, exc_value, traceback):
         """Close a database session."""
+        if self._commit:
+            self._session.commit()
         self._session.close()

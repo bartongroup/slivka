@@ -1,41 +1,47 @@
 ---
+input:
+  label: Input file
+  value:
+    required: yes
+    type: file
+
 message:
-    label: Message
-    description: Message sent to stdout
-    value:
-        required: yes
-        type: text
+  label: Message
+  description: Message sent to stdout
+  value:
+    required: yes
+    type: text
 
 error:
-    label: Error
-    description: Message sent to stderr
-    value:
-        required: no
-        type: text
+  label: Error
+  description: Message sent to stderr
+  value:
+    required: no
+    type: text
 
 returnCode:
-    label: Return code
-    description: Code returned by the script
-    value:
-        required: yes
-        type: int
-        default: 0
-        min: 0
-        max: 32
+  label: Return code
+  description: Code returned by the script
+  value:
+    required: yes
+    type: int
+    default: 0
+    min: 0
+    max: 32
 
 number:
-    label: Number of files
-    description: Specifies the number of files to generate
-    value:
-        required: yes
-        type: int
-        default: 1
+  label: Number of files
+  description: Specifies the number of files to generate
+  value:
+    required: yes
+    type: int
+    default: 1
 
 wait:
-    label: Time to wait
-    description: Stop the process for the specified number of seconds
-    value:
-        required: no
-        type: int
-        default: 0
+  label: Time to wait
+  description: Stop the process for the specified number of seconds
+  value:
+    required: no
+    type: int
+    default: 0
 ...
