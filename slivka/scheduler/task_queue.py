@@ -15,6 +15,7 @@ from collections import namedtuple, deque
 from select import select
 
 import slivka
+from slivka import JobStatus
 from slivka.scheduler.exceptions import ServerError, JobNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -532,17 +533,13 @@ class LocalCommand:
     :type _status: str
     :type _return_code: str
     """
-    STATUS_QUEUED = 'queued'
-    STATUS_RUNNING = 'running'
-    STATUS_FAILED = 'failed'
-    STATUS_COMPLETED = 'completed'
 
     def __init__(self, cmd, cwd, env=None):
         self._cmd = cmd
         self._env = env
         self._cwd = cwd
         self._process = None
-        self._status = self.STATUS_QUEUED
+        self._status = JobStatus.QUEUED.value
         self._return_code = None
 
     def run(self):
@@ -553,7 +550,6 @@ class LocalCommand:
         :raise FileNotFoundError: working dir from settings does not exist
         :raise OSError: error occurred when starting the process
         """
-        self._status = self.STATUS_RUNNING
         logger.debug(
             "Starting local command cmd=%r env=%r cwd=%s",
             self._cmd, self._env, self._cwd
@@ -568,13 +564,14 @@ class LocalCommand:
                 env=dict(os.environ, **self._env),
                 cwd=self._cwd
             )
+            self._status = JobStatus.RUNNING.value
             self._process.wait()
         except Exception:
-            self._status = self.STATUS_FAILED
+            self._status = JobStatus.FAILED.value
             raise
         else:
             self._return_code = self._process.returncode
-            self._status = self.STATUS_COMPLETED
+            self._status = JobStatus.COMPLETED.value
         finally:
             stdout.close()
             stderr.close()
@@ -622,8 +619,7 @@ class LocalCommand:
             )
 
     def is_finished(self):
-        return (self._status == self.STATUS_COMPLETED or
-                self._status == self.STATUS_FAILED)
+        return JobStatus(self._status).is_finished()
 
     def __repr__(self):
         return "<{0}>".format(self.__class__.__name__)

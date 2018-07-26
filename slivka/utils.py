@@ -138,3 +138,7 @@ class JobStatus(enum.Enum):
     FAILED = 'failed'
     ERROR = 'error'
     UNDEFINED = 'undefined'
+
+    def is_finished(self):
+        return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
+                            JobStatus.QUEUED, JobStatus.RUNNING)
