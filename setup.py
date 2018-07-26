@@ -1,3 +1,5 @@
+import os
+
 try:
     from setuptools import setup, find_packages
 except ImportError:
@@ -5,22 +7,27 @@ except ImportError:
     ez_setup.use_setuptools()
     from setuptools import setup, find_packages
 
+about = {}
+
+with open(os.path.join(
+        os.path.dirname(__file__), 'slivka', '__about__.py')) as f:
+    exec(f.read(), about)
 
 setup(
     name="Slivka",
-    version="0.3.dev0",
+    version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
-        "click==6.6",
-        "Flask==0.11.1",
-        "itsdangerous==0.24",
-        "Jinja2==2.8",
+        "click>=6.6",
+        "Flask>=0.11.1",
+        "itsdangerous>=0.24",
+        "Jinja2>=2.8",
         "jsonschema>=2.5.1",
-        "MarkupSafe==0.23",
+        "MarkupSafe>=0.23",
         "PyYAML>=3.11",
         "simplejson>=3.16.0",
-        "SQLAlchemy==1.0.13",
-        "Werkzeug==0.11.10",
+        "SQLAlchemy>=1.0.13",
+        "Werkzeug>=0.11.10",
     ],
     include_package_data=True,
 
