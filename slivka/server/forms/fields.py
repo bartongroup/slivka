@@ -28,7 +28,10 @@ class BaseField:
         self._description = description
         self._required = required
         if default is not None:
-            self.validate(default)
+            try:
+                self.validate(default)
+            except ValidationError as e:
+                raise RuntimeError('Invalid default in field %s' % name) from e
         self._default = default
         self._value = None
         self._cleaned_value = None

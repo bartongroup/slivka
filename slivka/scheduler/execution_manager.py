@@ -33,8 +33,10 @@ class RunnerFactory:
         :type configurations: dict[str, RunConfiguration]
         """
         if set(limits.configurations) != set(configurations.keys()):
-            raise ValueError('configurations list in limits does not match '
-                             'configurations in the command description')
+            raise ValueError('configurations list in %s %s does not match '
+                             'those in the command description %s'
+                             % (limits.__name__, limits.configurations,
+                                list(configurations)))
         self._options = options
         self._results = results
         self._configurations = configurations
