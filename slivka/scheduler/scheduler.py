@@ -1,6 +1,5 @@
 import logging
 import os
-import signal
 import threading
 import time
 from collections import namedtuple, deque
@@ -238,10 +237,13 @@ class Scheduler:
                 try:
                     session.add(request)
                     request.status = job_handler.get_status()
-                    if request.is_finished():
-                        request.files = self._collect_output_files(
-                            request.service, job_handler.cwd
+                    skip_paths = {f.path for f in request.files}
+                    request.files.extend(
+                        self._collect_output_files(
+                            request.service, job_handler.cwd, skip_paths
                         )
+                    )
+                    if request.is_finished():
                         self.logger.info('Job finished')
                         disposable_jobs.add(pair)
                 except QueueTemporarilyUnavailableError:
@@ -261,13 +263,14 @@ class Scheduler:
             session.commit()
             session.close()
 
-    def _collect_output_files(self, service, cwd):
+    def _collect_output_files(self, service, cwd, skip_paths=set()):
         results = self._runner_factories[service].results
         return [
             File(path=entry.path, mimetype=result.mimetype)
             for entry in slivka.utils.recursive_scandir(cwd)
             for result in results
-            if fnmatch(os.path.relpath(entry.path, cwd), result.path)
+            if ((entry.path not in skip_paths) and
+                fnmatch(os.path.relpath(entry.path, cwd), result.path))
         ]
 
     @property
