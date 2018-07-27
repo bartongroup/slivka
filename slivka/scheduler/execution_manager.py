@@ -1,5 +1,6 @@
 import logging
 import os
+import platform
 import re
 import shlex
 from abc import ABCMeta, abstractmethod
@@ -12,7 +13,6 @@ from slivka.scheduler.limits import LimitsBase
 from slivka.utils import JobStatus
 
 logger = logging.getLogger('slivka.scheduler.scheduler')
-
 
 CommandOption = namedtuple('CommandOption', ['name', 'param', 'default'])
 RunConfiguration = namedtuple(
@@ -58,10 +58,14 @@ class RunnerFactory:
             if '.' not in runner_cp:
                 runner_cp = 'slivka.scheduler.runners.' + runner_cp
             runner_class = slivka.utils.locate(runner_cp)
+            executable = (configuration['executable']
+                          .replace('${project_dir}', slivka.settings.BASE_DIR))
+            if platform.system() == 'Windows':
+                executable = executable.replace('\\', '\\\\')
             configurations[name] = RunConfiguration(
                 name=name,
                 runner=runner_class,
-                executable=configuration['executable'],
+                executable=executable,
                 queue_args=configuration.get('queueArgs'),
                 env=configuration.get('env')
             )
