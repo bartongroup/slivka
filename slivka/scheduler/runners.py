@@ -17,6 +17,7 @@ class ShellRunner(Runner):
     class Job(JobHandler):
 
         def __init__(self, process: subprocess.Popen):
+            super().__init__()
             self._process = process
 
         @property
@@ -60,6 +61,7 @@ class LocalQueueRunner(Runner):
 
     class Job(JobHandler):
         def __init__(self, job_id):
+            super().__init__()
             self._id = job_id
 
         @property

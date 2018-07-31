@@ -2,7 +2,7 @@ import logging
 import os
 import threading
 import time
-from collections import namedtuple, deque
+from collections import namedtuple, deque, defaultdict
 from fnmatch import fnmatch
 
 from sqlalchemy import or_
@@ -12,7 +12,7 @@ import slivka.utils
 from slivka.db import Session, start_session
 from slivka.db.models import Request, File
 from slivka.scheduler.exceptions import QueueBrokenError, \
-    QueueTemporarilyUnavailableError, JobNotFoundError, QueueError
+    QueueTemporarilyUnavailableError, QueueError
 from slivka.scheduler.execution_manager import RunnerFactory
 from slivka.utils import JobStatus
 
@@ -33,7 +33,7 @@ class Scheduler:
     def __init__(self):
         self._logger = logging.getLogger(__name__)
         self._shutdown_event = threading.Event()
-        self._running_jobs = set()
+        self._running_jobs = defaultdict(set)
         self._running_jobs_lock = threading.RLock()
         self._pending_runners = deque()
 
@@ -90,7 +90,12 @@ class Scheduler:
                                .deserialize(request.serial_job_handler))
                 if job_handler is not None:
                     job_handler.cwd = request.working_dir
-                    self._running_jobs.add(
+                    runner_class = (
+                        self._runner_factories[request.service]
+                        .get_runner_class(request.run_configuration)
+                    )
+                    job_handler.runner_class = runner_class
+                    self._running_jobs[runner_class].add(
                         JobHandlerRequestPair(job_handler, request)
                     )
                 else:
@@ -218,7 +223,7 @@ class Scheduler:
                     request.status = JobStatus.QUEUED
                     request.serial_job_handler = job_handler.serialize()
                     with self._running_jobs_lock:
-                        self._running_jobs.add(
+                        self._running_jobs[runner.__class__].add(
                             JobHandlerRequestPair(job_handler, request)
                         )
         finally:
@@ -230,29 +235,34 @@ class Scheduler:
         session = Session()
         self._running_jobs_lock.acquire()
         try:
-            disposable_jobs = set()
-            for pair in self._running_jobs:
-                job_handler = pair.job_handler
-                request = pair.request
+            for runner_class, jobs in self._running_jobs.items():
+                if not jobs:
+                    continue
+                disposable_jobs = set()
+                handlers = [job.job_handler for job in jobs]
                 try:
-                    session.add(request)
-                    request.status = job_handler.get_status()
-                    skip_paths = {f.path for f in request.files}
-                    request.files.extend(
-                        self._collect_output_files(
-                            request.service, job_handler.cwd, skip_paths
+                    statuses = dict(runner_class.get_job_status(handlers))
+                    for job in jobs:
+                        handler, request = job
+                        session.add(request)
+                        request.status = statuses[handler]
+                        skip_paths = {f.path for f in request.files}
+                        request.files.extend(
+                            self._collect_output_files(
+                                request.service, handler.cwd, skip_paths
+                            )
                         )
-                    )
-                    if request.is_finished():
-                        self.logger.info('Job finished')
-                        disposable_jobs.add(pair)
+                        if request.is_finished():
+                            self.logger.info('Job finished')
+                            disposable_jobs.add(job)
                 except QueueTemporarilyUnavailableError:
                     self.logger.warning('Queue not available')
-                except (QueueBrokenError, JobNotFoundError):
-                    request.status = JobStatus.UNDEFINED
-                    self.logger.exception('Could not retrieve job status.')
-                    disposable_jobs.add(pair)
-            self._running_jobs.difference_update(disposable_jobs)
+                except QueueBrokenError:
+                    for job in jobs:
+                        job.request.status = JobStatus.UNDEFINED
+                        self.logger.exception('Could not retrieve job status.')
+                        disposable_jobs.add(job)
+                jobs.difference_update(disposable_jobs)
         except Exception:
             self.logger.exception(
                 'Critical error occurred, scheduler shuts down'

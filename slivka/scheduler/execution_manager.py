@@ -5,7 +5,7 @@ import re
 import shlex
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Type, Optional, List, Dict
+from typing import Type, Optional, List, Dict, Tuple
 
 import slivka.utils
 from slivka.scheduler.exceptions import QueueBrokenError, QueueError
@@ -187,6 +187,7 @@ class Runner(metaclass=ABCMeta):
         try:
             job_handler = self.submit()
             job_handler.cwd = self.cwd
+            job_handler.runner = self.__class__
         except QueueError:
             raise
         except Exception as e:
@@ -204,8 +205,20 @@ class Runner(metaclass=ABCMeta):
     def get_job_handler_class(cls) -> Type['JobHandler']:
         pass
 
+    @staticmethod
+    def get_job_status(job_handlers: List['JobHandler']) \
+            -> List[Tuple['JobHandler', JobStatus]]:
+        return [
+            (handler, handler.get_status())
+            for handler in job_handlers
+        ]
+
 
 class JobHandler(metaclass=ABCMeta):
+
+    def __init__(self, cwd=None, runner_class=None):
+        self._runner_class = runner_class
+        self._cwd = cwd
 
     @property
     @abstractmethod
@@ -219,6 +232,14 @@ class JobHandler(metaclass=ABCMeta):
     @cwd.setter
     def cwd(self, value):
         self._cwd = value
+
+    @property
+    def runner_class(self):
+        return self._runner_class
+
+    @runner_class.setter
+    def runner_class(self, value):
+        self._runner_class = value
 
     @abstractmethod
     def get_status(self) -> JobStatus:
