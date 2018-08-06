@@ -1,0 +1,92 @@
+#!/bin/bash
+
+
+if [ $(id -u) -eq 0 ]; then
+    PID_PATH="/var/run"
+else
+    PID_PATH="$HOME/"
+    echo "Not running as root. PID files will be stored in $PID_PATH."
+fi
+SLIVKA_PROJECT_DIR=""
+PYTHON="/usr/bin/env python3"
+
+
+function start {
+    case $1 in
+        server)
+            local PID_FILE="$PID_PATH/slivka-server.pid";;
+        scheduler)
+            local PID_FILE="$PID_PATH/slivka-scheduler.pid";;
+        worker)
+            local PID_FILE="$PID_PATH/slivka-workers.pid";;
+        all|"")
+            start "server"
+            start "scheduler"
+            start "worker"
+            return 0;;
+        *)
+            echo "Invalid parameter \"$1\"; use: $0 start {server|scheduler|worker|all}."
+            return 1
+    esac
+    if [ -e ${PID_FILE} ] && kill -0 $(cat ${PID_FILE}); then
+        echo "Slivka $1 already running."
+        return 2
+    fi
+    echo "Starting Slivka $1"
+    pushd ${SLIVKA_PROJECT_DIR}
+    ${PYTHON} "manage.py" $1 &
+    popd
+    echo $! > ${PID_FILE}
+    return 0
+}
+
+
+function stop {
+    case $1 in
+        server)
+            local PID_FILE="$PID_PATH/slivka-server.pid";;
+        scheduler)
+            local PID_FILE="$PID_PATH/slivka-scheduler.pid";;
+        worker)
+            local PID_FILE="$PID_PATH/slivka-workers.pid";;
+        all|"")
+            stop "server"
+            stop "scheduler"
+            stop "worker"
+            return 0;;
+        *)
+            echo "Invalid parameter \"$1\"; use: $0 stop {server|scheduler|worker|all}."
+            return 1
+    esac
+    if [ ! -e ${PID_FILE} ] || ! kill -0 $(cat ${PID_FILE}); then
+        echo "Slivka $1 is not running."
+        return 2
+    fi
+    local PID=$(cat ${PID_FILE})
+    kill -15 ${PID} 2> /dev/null
+    local COUNT=0
+    echo -ne "Stopping $1"
+    while kill -0 ${PID} 2> /dev/null && [ ${COUNT} -le 10 ]; do
+        sleep 0.5
+        COUNT=$[$COUNT+1]
+        echo -ne "."
+    done
+    echo
+    if kill -0 ${PID} 2> /dev/null; then
+        echo "Slivka $1 is still running with PID=$PID"
+    else
+        rm ${PID_FILE}
+    fi
+    return 0
+}
+
+
+case $1 in
+start) start $2;;
+stop) stop $2;;
+restart) stop $2; start $2;;
+*)
+    echo "Invalid parameter \"$1\"; use: $0 {start|stop|restart} {server|scheduler|worker|all}"
+    exit 1
+esac
+exit $?

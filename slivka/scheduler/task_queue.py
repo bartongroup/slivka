@@ -29,6 +29,7 @@ class TaskQueue:
         :param port: server port
         :param num_workers: number of concurrent workers to spawn
         """
+        self._running = False
         if host is None or port is None:
             host, port = (
                 slivka.settings.QUEUE_HOST, slivka.settings.QUEUE_PORT
@@ -40,6 +41,14 @@ class TaskQueue:
             host, port, self._jobs.get, self._enqueue_command
         )
         self._job_id_counter = itertools.count(1)
+
+    def register_terminate_signal(self, *signals):
+        for sig in signals:
+            signal.signal(sig, self.terminate_signal_handler)
+
+    def terminate_signal_handler(self, _signum, _frame):
+        logger.warning("Termination signal received.")
+        self.stop()
 
     def start(self, block=True):
         """Start the server thread and workers.
@@ -56,6 +65,7 @@ class TaskQueue:
         :param block: block after starting (default: True)
         :type block: bool
         """
+        self._running = True
         logger.info("Starting server.")
         self._server.start()
         logger.info("Starting %d workers.", len(self._workers))
@@ -64,12 +74,18 @@ class TaskQueue:
         logger.info("Ready")
         if block:
             try:
-                while True:
-                    time.sleep(3600)
+                while self._running:
+                    time.sleep(1)
             except KeyboardInterrupt:
-                logger.info("Shutting down...")
+                logger.info("Keyboard Interrupt; Shutting down...")
+                self.stop()
+            finally:
                 self.shutdown()
                 logger.info("Finished")
+
+    def stop(self):
+        """Stop the loop when running in the blocking mode."""
+        self._running = False
 
     def shutdown(self):
         """Finish the work of the task queue.
@@ -81,8 +97,8 @@ class TaskQueue:
         This function should not be called manually unless using asynchronous
         interactive mode.
         """
-        logger.debug("Shutdown signal.")
-
+        if self._running:
+            raise RuntimeError("Can't shutdown while running.")
         logger.debug("Shutting down the server.")
         self._server.shutdown()
 

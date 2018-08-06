@@ -149,6 +149,7 @@ def worker():
     """Start task queue workers."""
     from slivka.scheduler.task_queue import TaskQueue
     queue = TaskQueue()
+    queue.register_terminate_signal(2, 15)
     queue.start()
 
 
@@ -156,7 +157,9 @@ def worker():
 def scheduler():
     """Start job scheduler."""
     from slivka.scheduler.scheduler import Scheduler
-    Scheduler().start()
+    scheduler = Scheduler()
+    scheduler.register_terminate_signal(2, 15)
+    scheduler.start()
 
 
 @click.command()

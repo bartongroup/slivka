@@ -1,7 +1,7 @@
 import logging
 import os
+import signal
 import threading
-import time
 from collections import namedtuple, deque, defaultdict
 from fnmatch import fnmatch
 
@@ -102,6 +102,14 @@ class Scheduler:
                     request.status = JobStatus.UNDEFINED
             session.commit()
 
+    def register_terminate_signal(self, *signals):
+        for sig in signals:
+            signal.signal(sig, self.terminate_signal_handler)
+
+    def terminate_signal_handler(self, _signum, _frame):
+        self.logger.warning("Termination signal received.")
+        self.stop()
+
     def start(self, block=True):
         """Start the scheduler and it's working threads.
 
@@ -125,18 +133,26 @@ class Scheduler:
             self.logger.info("Child threads started. Press Ctrl+C to quit")
             try:
                 while self.is_running:
-                    time.sleep(3600)
+                    self._shutdown_event.wait(1)
             except KeyboardInterrupt:
-                self.logger.info("Shutting down...")
+                self.logger.info("Keyboard Interrupt; Shutting down...")
+                self.stop()
+            finally:
                 self.shutdown()
-                self.join()
+                self.logger.info("Finished")
+
+    def stop(self):
+        self._shutdown_event.set()
 
     def shutdown(self):
         """
         Sends shutdown signal and starts exit process.
         """
+        if self.is_running:
+            raise RuntimeError("Can't shutdown while running")
         self._shutdown_event.set()
         self.logger.debug("Shutdown event set")
+        self.join()
 
     def join(self):
         """
@@ -159,9 +175,9 @@ class Scheduler:
                 .filter_by(status_string=JobStatus.PENDING.value)
                 .all()
             )
-            self.logger.debug("Found %d requests", len(pending_requests))
             runners = []
             for request in pending_requests:
+                self.logger.debug('Processing request %r', request)
                 try:
                     runner = self._build_runner(request)
                     if runner is None:
