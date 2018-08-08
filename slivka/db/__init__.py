@@ -6,16 +6,12 @@ It creates a SQLite engine instance and binds a session factory object to it.
 """
 
 
-import os
-
 import sqlalchemy.orm.session
 
+import slivka
 from .models import Base
 
-DB_FILENAME = 'sqlite3.db'
-engine = sqlalchemy.create_engine(
-    'sqlite:///{}'.format(DB_FILENAME), echo=False
-)
+engine = sqlalchemy.create_engine(slivka.settings.DATABASE_URL, echo=False)
 
 Session = sqlalchemy.orm.sessionmaker(bind=engine)
 
@@ -34,15 +30,7 @@ def drop_db():
 
     Since the SQLite backend is used, delete the database file.
     """
-    try:
-        os.remove(DB_FILENAME)
-    except FileNotFoundError as e:
-        print(str(e))
-
-
-def check_db():
-    """Test if database is present."""
-    return os.path.exists(DB_FILENAME)
+    Base.metadata.drop_all(engine)
 
 
 class start_session:
