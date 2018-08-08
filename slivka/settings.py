@@ -87,7 +87,7 @@ class SettingsProvider(metaclass=Singleton):
                 self[key] = os.path.abspath(os.path.join(self.BASE_DIR, value))
                 os.makedirs(self[key], exist_ok=True)
         self['SERVICES_INI'] = os.path.abspath(
-             os.path.join(self.BASE_DIR, self.SERVICES_INI))
+            os.path.join(self.BASE_DIR, self.SERVICES_INI))
 
     @staticmethod
     def _load_services_ini(path):
@@ -106,8 +106,10 @@ class SettingsProvider(metaclass=Singleton):
             self._service_configurations[section] = (
                 ServiceConfigurationProvider(
                     service=section,
-                    form_file=parser.get(section, 'form'),
-                    execution_config_file=parser.get(section, 'config')
+                    form_file=os.path.join(
+                        self.BASE_DIR, parser.get(section, 'form')),
+                    execution_config_file=os.path.join(
+                        self.BASE_DIR, parser.get(section, 'config'))
                 )
             )
 
