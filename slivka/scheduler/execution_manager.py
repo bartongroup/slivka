@@ -120,6 +120,11 @@ class Runner(metaclass=ABCMeta):
         self._configuration = configuration
         self._values = values
         self._cwd = os.path.normpath(cwd)
+        env = (configuration.env or {}).copy()
+        for key, val in env:
+            env[key] = val.format(**os.environ)
+        self._env = os.environ.copy()
+        self._env.update(env)
         self._links = []
         self._args = self.__build_args(factory.options, values)
 
@@ -181,7 +186,7 @@ class Runner(metaclass=ABCMeta):
 
     @property
     def env(self) -> Dict[str, str]:
-        return self._configuration.env or {}
+        return self._env
 
     def start(self) -> 'JobHandler':
         try:
