@@ -127,7 +127,6 @@ def file_upload():
     :return: JSON containing internal metadata of the uploaded file
     """
     try:
-        mimetype = request.form['mimetype']
         file = request.files['file']
     except KeyError:
         raise abort(400)
@@ -137,7 +136,7 @@ def file_upload():
         file.save(tf)
     file_record = models.File(
         title=filename,
-        mimetype=mimetype,
+        mimetype=file.mimetype,
         path=tf.name
     )
     with start_session() as session:
@@ -150,7 +149,7 @@ def file_upload():
         'signedId':
             signer.sign(itsdangerous.want_bytes(file_id)).decode('utf-8'),
         'title': filename,
-        'mimetype': mimetype,
+        'mimetype': file.mimetype,
         'downloadURI': '/file/%s/download' % file_id
     }, status=201)
 

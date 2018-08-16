@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Slivka Web API
   description: ""
-  version: 0.2.dev0
+  version: 0.3a1dev3
 
 servers:
 - url: http://localhost:8000
@@ -164,15 +164,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
               properties:
-                mimetype:
-                  type: string
-                  example: text/plain
                 file:
                   type: string
-                  format: file content
-                  example: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                  format: binary
       responses:
         '201':
           description: Created file data
