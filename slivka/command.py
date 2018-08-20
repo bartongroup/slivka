@@ -57,6 +57,7 @@ class ProjectBuilder:
 
     def build(self):
         self._make_manage()
+        self._make_wsgi()
         self._make_settings()
         script_path = self._make_script()
         form_path = self._make_form()
@@ -71,6 +72,13 @@ class ProjectBuilder:
                 'slivka', 'data/template/manage.py'
             ))
         os.chmod(path, stat.S_IRWXU)
+
+    def _make_wsgi(self):
+        path = os.path.join(self._dir, 'wsgi.py')
+        with open(path, 'wb') as f:
+            f.write(pkg_resources.resource_string(
+                'slivka', 'data/template/wsgi.py'
+            ))
 
     def _make_settings(self):
         path = os.path.join(self._dir, 'settings.yml')
