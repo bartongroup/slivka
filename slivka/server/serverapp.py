@@ -24,6 +24,7 @@ from flask import Flask, Response, json, request, abort
 import slivka
 from slivka.db import Session, models, start_session
 from slivka.server.forms import FormFactory
+from slivka.server.file_validators import validate_file_type
 from slivka.utils import snake_to_camel
 
 app = Flask('slivka', root_path=os.path.dirname(__file__))
@@ -130,6 +131,9 @@ def file_upload():
         file = request.files['file']
     except KeyError:
         raise abort(400)
+    if not validate_file_type(file._file, file.mimetype):
+        raise abort(415)
+    file.stream.seek(0)
     filename = werkzeug.utils.secure_filename(file.filename)
     with tempfile.NamedTemporaryFile(
             dir=app.config['MEDIA_DIR'], delete=False) as tf:
