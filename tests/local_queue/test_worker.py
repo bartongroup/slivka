@@ -6,6 +6,8 @@ import unittest
 from unittest import mock as mock
 
 import slivka
+slivka.settings.configure()
+
 from slivka.scheduler.task_queue import KILL_WORKER, Worker
 
 
@@ -14,14 +16,11 @@ class TestWorker(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         temp_dir = tempfile.TemporaryDirectory()
-        settings = dict(
-            BASE_DIR=temp_dir.name,
-            MEDIA_DIR=".",
-            SECRET_KEY=b'\x00',
-            SERVICES_INI='config.ini'
-        )
         open(os.path.join(temp_dir.name, 'config.ini'), 'w').close()
-        slivka.settings.read_dict(settings)
+        slivka.settings.BASE_DIR = temp_dir.name
+        slivka.settings.MEDIA_DIR = '.'
+        slivka.settings.SECRET_KEY=b'\x00'
+        slivka.settings.SERVICES_INI = 'service.ini'
 
     def setUp(self):
         self.q = queue.Queue()

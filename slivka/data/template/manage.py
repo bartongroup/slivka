@@ -6,6 +6,10 @@ SETTINGS_FILE = 'settings.yml'
 
 
 if __name__ == "__main__":
+    settings_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), SETTINGS_FILE
+    )
+    os.environ.setdefault('SLIVKA_SETTINGS', settings_path)
     try:
         import slivka.command
     except ImportError:
@@ -14,9 +18,4 @@ if __name__ == "__main__":
             "and available on you PYTHONPATH environment variable. "
             "Check if you activated virtual environment."
         )
-    settings_full_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        SETTINGS_FILE
-    )
-    slivka.settings.read_yaml_file(settings_full_path)
-    slivka.command.admin()
+    slivka.command.manager()

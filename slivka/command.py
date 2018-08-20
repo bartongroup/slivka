@@ -7,7 +7,6 @@ call. Additionally, some of the functions process additional arguments
 usually specified just after the command name.
 """
 
-import logging.config
 import os
 import stat
 from base64 import b64encode
@@ -139,9 +138,8 @@ class ProjectBuilder:
 
 
 @click.group()
-def admin():
-    slivka.settings.init_logs()
-    logging.config.dictConfig(slivka.settings.LOGGER_CONFIG)
+def manager():
+    pass
 
 
 @click.command()
@@ -165,17 +163,7 @@ def scheduler():
 @click.command()
 def server():
     """Start HTTP server."""
-    from slivka.server.forms import FormFactory
     from slivka.server.serverapp import app
-
-    form_factory = FormFactory()
-    for configuration in slivka.settings.service_configurations.values():
-        form_factory.add_form(configuration)
-    app.config.update(
-        DEBUG=True,
-        MEDIA_DIR=slivka.settings.MEDIA_DIR,
-        SECRET_KEY=slivka.settings.SECRET_KEY
-    )
     app.run(
         host=slivka.settings.SERVER_HOST,
         port=int(slivka.settings.SERVER_PORT),
@@ -205,9 +193,9 @@ def shell():
     code.interact()
 
 
-admin.add_command(worker)
-admin.add_command(scheduler)
-admin.add_command(server)
-admin.add_command(initdb)
-admin.add_command(dropdb)
-admin.add_command(shell)
+manager.add_command(worker)
+manager.add_command(scheduler)
+manager.add_command(server)
+manager.add_command(initdb)
+manager.add_command(dropdb)
+manager.add_command(shell)

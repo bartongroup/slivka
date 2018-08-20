@@ -6,6 +6,9 @@ try:
 except ImportError:
     import mock
 
+import slivka
+slivka.settings.configure(DATABASE_URL='sqlite://')
+
 from slivka.server.forms import ValidationError
 from slivka.server.forms.fields import (
     BaseField, IntegerField, DecimalField, FileField,
@@ -175,20 +178,17 @@ class TestFileField(unittest.TestCase):
         from slivka.db import models, start_session, create_db
 
         cls.temp_dir = tempfile.TemporaryDirectory()
-        settings = dict(
-            BASE_DIR=cls.temp_dir.name,
-            MEDIA_DIR=".",
-            SECRET_KEY=b'\x00',
-            SERVICES_INI='service.ini'
-        )
         open(os.path.join(cls.temp_dir.name, 'service.ini'), 'w').close()
-        path = os.path.join(cls.temp_dir.name, "foo")
-        with open(path, "w") as f:
+        dummy_path = os.path.join(cls.temp_dir.name, "foo")
+        with open(dummy_path, "w") as f:
             f.write("bar bar")
-        slivka.settings.read_dict(settings)
+        slivka.settings.BASE_DIR = cls.temp_dir.name
+        slivka.settings.MEDIA_DIR = '.'
+        slivka.settings.SECRET_KEY = b'\x00'
+        slivka.settings.SERVICES_INI = 'service.ini'
         create_db()
         with start_session() as session:
-            file = models.File(id="foo", path=path)
+            file = models.File(id="foo", path=dummy_path)
             session.add(file)
             session.commit()
 
@@ -323,10 +323,9 @@ class TestBooleanField(unittest.TestCase):
         self.assertTrue(field.is_valid)
 
     def test_required_false_default(self):
-        with self.assertRaises(ValidationError) as cm:
+        with self.assertRaises(RuntimeError):
             # value cannot be required and false
             BooleanField('', required=True, default=False)
-        self.assertEqual(cm.exception.code, 'required')
 
 
 class TestSelectField(unittest.TestCase):

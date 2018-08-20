@@ -3,6 +3,9 @@ import unittest
 
 import yaml
 
+import slivka
+slivka.settings.configure(DATABASE_URL='sqlite://')
+
 from slivka.server.forms import FormFactory
 from slivka.server.forms.fields import *
 from slivka.utils import FORM_VALIDATOR

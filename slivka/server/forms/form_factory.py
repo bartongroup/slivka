@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+import slivka
+
 from slivka.db.models import Request, Option
 from slivka.utils import Singleton
 from .exceptions import ValidationError
@@ -99,10 +101,12 @@ class FormFactory(metaclass=Singleton):
 
     def __init__(self):
         self._forms = {}
+        for conf in slivka.settings.service_configurations.values():
+            self.add_form(conf)
 
     def add_form(self, service_config):
         """
-        :type service_config: slivka.settings.ServiceConfigurationProvider
+        :type service_config: slivka.settings_provider.ServiceConfigurationProvider
         """
         form_class = self.create_form_class(
             form_name=service_config.service.capitalize() + 'Form',

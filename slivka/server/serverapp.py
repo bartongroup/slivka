@@ -27,8 +27,13 @@ from slivka.server.forms import FormFactory
 from slivka.server.file_validators import validate_file_type
 from slivka.utils import snake_to_camel
 
-app = Flask('slivka', root_path=os.path.dirname(__file__))
+app = Flask('slivka', root_path=slivka.settings.BASE_DIR)
 """Flask object implementing WSGI application."""
+app.config.update(
+    DEBUG=slivka.settings.DEBUG,
+    MEDIA_DIR=slivka.settings.MEDIA_DIR,
+    SECRET_KEY=slivka.settings.SECRET_KEY
+)
 
 signer = itsdangerous.Signer(slivka.settings.SECRET_KEY)
 
