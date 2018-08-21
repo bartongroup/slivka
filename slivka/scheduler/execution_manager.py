@@ -3,6 +3,7 @@ import os
 import platform
 import re
 import shlex
+import shutil
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from typing import Type, Optional, List, Dict, Tuple
@@ -166,7 +167,14 @@ class Runner(metaclass=ABCMeta):
         if not os.path.isdir(self._cwd):
             os.mkdir(self._cwd)
         for link in self._links:
-            os.link(link.src, os.path.join(self._cwd, link.dst))
+            destination = os.path.join(self._cwd, link.dst)
+            try:
+                os.symlink(link.src, destination)
+            except OSError:
+                try:
+                    os.link(link.src, destination)
+                except OSError:
+                    shutil.copyfile(link.src, destination)
 
     @property
     def configuration(self) -> RunConfiguration:
