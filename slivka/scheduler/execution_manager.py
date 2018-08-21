@@ -185,6 +185,10 @@ class Runner(metaclass=ABCMeta):
         return self._args
 
     @property
+    def queue_args(self) -> List[str]:
+        return self._configuration.queue_args or []
+
+    @property
     def executable(self) -> List[str]:
         return shlex.split(self._configuration.executable)
 
