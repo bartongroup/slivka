@@ -1,7 +1,10 @@
 import logging
 import os
+import re
+import shlex
 import subprocess
-from typing import Type, Optional
+from collections import defaultdict
+from typing import Type, Optional, List, Tuple
 
 from slivka.scheduler.exceptions import QueueBrokenError, \
     QueueTemporarilyUnavailableError
@@ -96,83 +99,96 @@ class LocalQueueRunner(Runner):
         return cls.Job
 
 
-# class GridEngineExec(Executor):
-#
-#     job_submission_regex = re.compile(
-#         r'Your job (\d+) \(.+\) has been submitted'
-#     )
-#
-#     def submit(self, values, cwd):
-#         queue_command = [
-#             'qsub', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'
-#         ] + self.qargs
-#         process = subprocess.Popen(
-#             queue_command,
-#             stdout=subprocess.PIPE,
-#             stderr=subprocess.PIPE,
-#             stdin=subprocess.PIPE,
-#             cwd=cwd,
-#             env=self.env,
-#             universal_newlines=True
-#         )
-#         command_chunks = self.bin + self.get_options(values)
-#         command = ' '.join(shlex.quote(s) for s in command_chunks)
-#         stdin = ("echo > started;\n"
-#                  "%s;\n"
-#                  "echo > finished;") % command
-#         stdout, stderr = process.communicate(stdin)
-#         match = self.job_submission_regex.match(stdout)
-#         return match.group(1)
-#
-#     @staticmethod
-#     def get_job_wrapper_class():
-#         return GridEngineJob
-#
-#
-# class GridEngineJob(Job):
-#
-#     job_status_regex_pattern = (
-#         r'^{0}\s+[\d\.]+\s+.*?\s+[\w-]+\s+(\w{{1,3}})\s+[\d/]+\s+[\d:]+\s+'
-#         r'[\w@\.-]*\s+\d+$'
-#     )
-#
-#     def get_status(self, job_id):
-#         username = getpass.getuser()
-#         process = subprocess.Popen(
-#             "qstat -u '%s'" % (username or '*'),
-#             stdout=subprocess.PIPE,
-#             shell=True,
-#             universal_newlines=True
-#         )
-#         out, err = process.communicate()
-#         regex = self.job_status_regex_pattern.format(job_id)
-#         match = re.search(regex, out, re.MULTILINE)
-#         if match is None:
-#             try:
-#                 time_started = os.path.getmtime(
-#                     os.path.join(self.cwd, 'started'))
-#             except FileNotFoundError:
-#                 return self.STATUS_QUEUED
-#             try:
-#                 time_finished = os.path.getmtime(
-#                     os.path.join(self.cwd, 'finished'))
-#             except FileNotFoundError:
-#                 return self.STATUS_RUNNING
-#             else:
-#                 if time_finished >= time_started:
-#                     return self.STATUS_COMPLETED
-#                 else:
-#                     return self.STATUS_RUNNING
-#         else:
-#             status = match.group(1)
-#             if status == 'r' or status == 't':
-#                 return self.STATUS_RUNNING
-#             elif status == 'qw' or status == 'T':
-#                 return self.STATUS_QUEUED
-#             elif status == 'd':
-#                 return self.STATUS_DELETED
-#             else:
-#                 raise QueueTemporarilyUnavailableError
-#
-#     def get_result(self, job_id):
-#         return 0
+class GridEngineRunner(Runner):
+
+    _job_submission_regex = re.compile(
+        r'Your job (\d+) \(.+\) has been submitted'
+    )
+    _job_status_regex = re.compile(
+        r'^\s*?(\d+).+?([rtdERTwhSszq]{1,3})\s+?[\d/]{10}\s+?[\d:]{8}'
+    )
+    _runner_script_template = (
+        "#! /bin/sh\n"
+        "touch started\n"
+        "{command}\n"
+        "echo $? > finished\n"
+    )
+    _status_letters = defaultdict(lambda: JobStatus.UNDEFINED, {
+        'r': JobStatus.RUNNING,
+        't': JobStatus.RUNNING,
+        's': JobStatus.RUNNING,
+        'qw': JobStatus.QUEUED,
+        'T': JobStatus.QUEUED,
+        'd': JobStatus.DELETED,
+        'E': JobStatus.ERROR,
+        'Eqw': JobStatus.ERROR
+    })
+
+    def submit(self) -> 'JobHandler':
+        with open(os.path.join(self.cwd, 'runner_script.sh'), 'w') as f:
+            f.write(self._runner_script_template.format(
+                command=list2unix_command(self.executable + self.args)
+            ))
+        queue_command = (
+            ['qsub'] +
+            self.queue_args +
+            ['-V', '-cwd', '-e', 'stderr.txt', '-o', 'stdout.txt'] +
+            ['runner_script.sh']
+        )
+        process = subprocess.Popen(
+            queue_command,
+            stdout=subprocess.PIPE,
+            cwd=self.cwd,
+            env=self.env,
+            universal_newlines=True
+        )
+        stdout, _ = process.communicate()
+        match = self._job_submission_regex.match(stdout)
+        if match is None:
+            raise QueueBrokenError('%r doesn\'t match' % stdout)
+        return self.Job(match.group(1))
+
+    @classmethod
+    def get_job_handler_class(cls) -> Type['JobHandler']:
+        return cls.Job
+
+    @staticmethod
+    def get_job_status(job_handlers: List['JobHandler']) \
+            -> List[Tuple['JobHandler', JobStatus]]:
+        process = subprocess.Popen(
+            ['qstat'],
+            stdout=subprocess.PIPE,
+            universal_newlines=True
+        )
+        stdout, _ = process.communicate()
+        job_status = {}
+        for match in GridEngineRunner._job_status_regex.findall(stdout):
+            job_id, status = match
+            job_status[job_id] = GridEngineRunner._status_letters[status]
+        return [
+            (handler, job_status.get(handler.id, JobStatus.COMPLETED))
+            for handler in job_handlers
+        ]
+
+    class Job(JobHandler):
+        @property
+        def id(self) -> str:
+            return self._id
+
+        def get_status(self) -> JobStatus:
+            raise NotImplementedError("Get single job status not supported")
+
+        def serialize(self) -> str:
+            return self.id
+
+        @classmethod
+        def deserialize(cls, serial) -> 'JobHandler':
+            return cls(serial)
+
+        def __init__(self, job_id):
+            super().__init__()
+            self._id = job_id
+
+
+def list2unix_command(args):
+    return ' '.join(shlex.quote(a) for a in args)
