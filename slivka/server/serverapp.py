@@ -38,6 +38,14 @@ app.config.update(
 signer = itsdangerous.Signer(slivka.settings.SECRET_KEY)
 
 
+@app.route('/version', methods=['GET'])
+def get_version():
+    return JsonResponse({
+        'statuscode': 200,
+        'version': slivka.__version__
+    })
+
+
 @app.route('/services', methods=['GET'])
 def get_services():
     """Return the list of services. ``GET /services``
