@@ -21,7 +21,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["options", "results", "configurations"],
+  "required": ["options", "results", "configurations", "limits"],
   "definitions": {
     "option": {
       "type": "object",
