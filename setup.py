@@ -27,8 +27,12 @@ setup(
         "PyYAML>=3.11",
         "simplejson>=3.16.0",
         "SQLAlchemy>=1.0.13",
+        'typing>=3.6;python_version<"3.5"',
         "Werkzeug>=0.11.10",
     ],
+    extras_require={
+        'bioinformatics': ['biopython>=1.72']
+    },
     include_package_data=True,
 
     entry_points={
