@@ -51,11 +51,12 @@ def setup(name):
 class ProjectBuilder:
     def __init__(self, project_dir):
         self._dir = project_dir
-        os.makedirs(project_dir, exist_ok=True)
-        os.makedirs(os.path.join(project_dir, 'binaries'), exist_ok=True)
-        os.makedirs(os.path.join(project_dir, 'configurations'), exist_ok=True)
 
     def build(self):
+        os.makedirs(self._dir, exist_ok=True)
+        os.makedirs(os.path.join(self._dir, 'binaries'), exist_ok=True)
+        os.makedirs(os.path.join(self._dir, 'configurations'), exist_ok=True)
+        os.makedirs(os.path.join(self._dir, 'scripts'), exist_ok=True)
         self._make_manage()
         self._make_wsgi()
         self._make_settings()
@@ -124,10 +125,10 @@ class ProjectBuilder:
         return path
 
     def _make_limits(self):
-        path = os.path.join(self._dir, 'configurations', 'limits.py')
+        path = os.path.join(self._dir, 'scripts', 'limits.py')
         with open(path, 'wb') as f:
             f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/configurations/limits.py'
+                'slivka', 'data/template/scripts/limits.py'
             ))
         open(os.path.join(os.path.dirname(path), '__init__.py'), 'w').close()
         return path
