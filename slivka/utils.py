@@ -50,12 +50,15 @@ def locate(path):
     :raises AttributeError: if the object attribute is missing
     """
     parts = path.split('.')
-    n = 1
+    n = 0
     obj = None
     while n < len(parts):
+        import_path = '.'.join(parts[:len(parts)-n])
         try:
-            obj = __import__('.'.join(parts[:-n]))
-        except ImportError:
+            obj = __import__(import_path)
+        except ImportError as e:
+            if e.name != import_path:
+                raise
             n += 1
         else:
             break
