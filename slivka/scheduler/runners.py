@@ -4,7 +4,7 @@ import re
 import shlex
 import subprocess
 from collections import defaultdict
-from typing import Type, Optional, List, Tuple
+from typing import Type, Optional, List, Tuple, Iterable
 
 from slivka.scheduler.exceptions import QueueBrokenError, \
     QueueTemporarilyUnavailableError
@@ -154,7 +154,7 @@ class GridEngineRunner(Runner):
 
     @staticmethod
     def get_job_status(job_handlers: List['JobHandler']) \
-            -> List[Tuple['JobHandler', JobStatus]]:
+            -> Iterable[Tuple['JobHandler', JobStatus]]:
         process = subprocess.Popen(
             ['qstat'],
             stdout=subprocess.PIPE,
@@ -165,10 +165,14 @@ class GridEngineRunner(Runner):
         for match in GridEngineRunner._job_status_regex.findall(stdout):
             job_id, status = match
             job_status[job_id] = GridEngineRunner._status_letters[status]
-        return [
-            (handler, job_status.get(handler.id, JobStatus.COMPLETED))
-            for handler in job_handlers
-        ]
+        for handler in job_handlers:
+            status = job_status.get(handler.id)
+            if status is None:
+                if os.path.exists(os.path.join(handler.cwd, 'finished')):
+                    status = JobStatus.COMPLETED
+                else:
+                    status = JobStatus.RUNNING
+            yield (handler, status)
 
     class Job(JobHandler):
         @property

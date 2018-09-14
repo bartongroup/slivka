@@ -6,7 +6,7 @@ import shlex
 import shutil
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Type, Optional, List, Dict, Tuple
+from typing import Type, Optional, List, Dict, Tuple, Iterable
 
 import slivka.utils
 from slivka.scheduler.exceptions import QueueBrokenError, QueueError
@@ -224,7 +224,7 @@ class Runner(metaclass=ABCMeta):
 
     @staticmethod
     def get_job_status(job_handlers: List['JobHandler']) \
-            -> List[Tuple['JobHandler', JobStatus]]:
+            -> Iterable[Tuple['JobHandler', JobStatus]]:
         return [
             (handler, handler.get_status())
             for handler in job_handlers
