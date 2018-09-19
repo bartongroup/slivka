@@ -110,6 +110,10 @@ class RunnerFactory:
 
 class Runner(metaclass=ABCMeta):
 
+    pattern = re.compile(
+        r'\${(?:(?P<value>value)|(?:file:(?P<file>.+?))|(?P<env>\w+?))}'
+    )
+
     def __init__(self, factory, configuration, values, cwd):
         """
         :type factory: RunnerFactory
@@ -135,31 +139,32 @@ class Runner(metaclass=ABCMeta):
         :type values: dict[str, str]
         """
         args = []
-        for option in options:
-            value = values.get(option.name)
-            if value is None:
-                if option.default is not None:
-                    value = option.default
-                else:
-                    continue
-            match = re.search(r'\${file:(.+?)}', option.param)
-            if match is not None:
-                destination = os.path.normpath(match.group(1))
+
+        def replace(match):
+            if match.group('file'):
+                destination = os.path.normpath(match.group('file'))
                 source = os.path.normpath(value)
                 if destination.startswith('..'):
                     raise ValueError(
                         'Input file points outside the working directory'
                     )
-                self._links.append(
-                    Link(src=source, dst=destination)
-                )
-                token = option.param.replace(
-                    match.group(), shlex.quote(match.group(1))
-                )
-            else:
-                token = option.param.replace(
-                    '${value}', shlex.quote(value)
-                )
+                self._links.append(Link(src=source, dst=destination))
+                return shlex.quote(match.group('file'))
+            if match.group('value'):
+                return shlex.quote(value)
+            if match.group('env'):
+                try:
+                    return self._env[match.group('env')]
+                except KeyError:
+                    return match.group(0)
+
+        for option in options:
+            value = values.get(option.name)
+            if value is None:
+                value = option.default
+            if value is None:
+                continue
+            token = self.pattern.sub(replace, option.param)
             args.extend(shlex.split(token))
         return args
 
