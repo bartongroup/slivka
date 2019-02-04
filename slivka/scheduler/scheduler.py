@@ -211,6 +211,7 @@ class Scheduler:
             while self.is_running:
                 self._submit_runners()
                 self._update_job_statuses()
+                self._shutdown_event.wait(0.5)
         except Exception:
             self.logger.exception(
                 'Critical error occurred, scheduler shuts down'
