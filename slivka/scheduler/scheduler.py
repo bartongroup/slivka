@@ -183,12 +183,15 @@ class Scheduler:
                     if runner is None:
                         raise QueueError('Runner could not be created')
                     runner.prepare()
+                    request.run_configuration = runner.configuration.name
                     request.status = JobStatus.ACCEPTED
+                    request.working_dir = runner.cwd
                     runners.append(RunnerRequestPair(runner, request))
                 except Exception:
                     request.status = JobStatus.ERROR
                     self.logger.exception("Setting up the runner failed.")
-            session.commit()
+                finally:
+                    session.commit()
             session.close()
             self._pending_runners.extend(runners)
             self._shutdown_event.wait(0.5)
@@ -201,7 +204,6 @@ class Scheduler:
         runner_factory = self._runner_factories[request.service]
         if new_cwd:
             cwd = os.path.join(slivka.settings.WORK_DIR, request.uuid)
-            request.working_dir = cwd
         else:
             cwd = request.working_dir
         return runner_factory.new_runner(values, cwd)
