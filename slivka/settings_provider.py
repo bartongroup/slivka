@@ -32,7 +32,7 @@ class LazySettings:
                 'variable SLIVKA_SETTINGS.'
             )
         with open(settings_file) as f:
-            options = yaml.load(f).items()
+            options = yaml.safe_load(f).items()
         self._settings = SettingsProvider(options)
 
     def configure(self, **options):
@@ -111,7 +111,7 @@ class ServiceConfigurationProvider:
         self._service = service
 
         with open(form_file, 'r') as f:
-            form = yaml.load(f)
+            form = yaml.safe_load(f)
         try:
             FORM_VALIDATOR.validate(form)
         except jsonschema.exceptions.ValidationError as exc:
@@ -124,7 +124,7 @@ class ServiceConfigurationProvider:
             self._form = form
 
         with open(command_file, 'r') as f:
-            config = yaml.load(f)
+            config = yaml.safe_load(f)
         try:
             COMMAND_VALIDATOR.validate(config)
             self._execution_config = config

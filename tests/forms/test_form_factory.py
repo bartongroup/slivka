@@ -18,7 +18,7 @@ class TestOptionElementParser(unittest.TestCase):
             os.path.dirname(__file__), "SampleForm.yml"
         )
         with open(form_file) as f:
-            instance = yaml.load(f)
+            instance = yaml.safe_load(f)
         FORM_VALIDATOR.validate(instance)
         self.fields = instance
 
@@ -83,7 +83,7 @@ class TestForm(unittest.TestCase):
     def setUp(self):
         form_file = os.path.join(os.path.dirname(__file__), "LittleForm.yml")
         with open(form_file) as f:
-            configuration = yaml.load(f)
+            configuration = yaml.safe_load(f)
         FORM_VALIDATOR.validate(configuration)
         self.LittleForm = FormFactory.create_form_class(
             "LittleForm", "Little", configuration
