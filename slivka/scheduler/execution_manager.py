@@ -128,8 +128,9 @@ class Runner(metaclass=ABCMeta):
         self._values = values
         self._cwd = os.path.normpath(cwd)
         env = (configuration.env or {}).copy()
+        def replace(m): return os.environ.get(m.group(1))
         for key, val in env.items():
-            env[key] = val.format(**os.environ)
+            env[key] = re.sub(r'\${(\w+?)}', replace, val)
         self._env = os.environ.copy()
         self._env.update(env)
         self._links = []
