@@ -226,7 +226,6 @@ class Scheduler:
         try:
             while self._pending_runners:
                 runner, request = self._pending_runners.popleft()
-                session.add(request)
                 try:
                     job_handler = runner.start()
                     self.logger.info('Job submitted')
@@ -234,19 +233,22 @@ class Scheduler:
                     retry_runners.append(RunnerRequestPair(runner, request))
                     self.logger.info('Job submission deferred')
                 except QueueError:
+                    session.add(request)
                     request.status = JobStatus.ERROR
+                    session.commit()
                     self.logger.exception(
                         'Job cannot be scheduled due to the queue error'
                     )
                 else:
+                    session.add(request)
                     request.status = JobStatus.QUEUED
                     request.serial_job_handler = job_handler.serialize()
+                    session.commit()
                     with self._running_jobs_lock:
                         self._running_jobs[runner.__class__].add(
                             JobHandlerRequestPair(job_handler, request)
                         )
         finally:
-            session.commit()
             session.close()
             self._pending_runners.extend(retry_runners)
 
@@ -264,13 +266,15 @@ class Scheduler:
                     for job in jobs:
                         handler, request = job
                         session.add(request)
-                        request.status = statuses[handler]
                         skip_paths = {f.path for f in request.files}
+                        # FIXME: call _collect_output_files outside the transaction
                         request.files.extend(
                             self._collect_output_files(
                                 request.service, handler.cwd, skip_paths
                             )
                         )
+                        request.status = statuses[handler]
+                        session.commit()
                         if request.is_finished():
                             self.logger.info('Job finished')
                             disposable_jobs.add(job)
@@ -281,6 +285,9 @@ class Scheduler:
                         job.request.status = JobStatus.UNDEFINED
                         self.logger.exception('Could not retrieve job status.')
                         disposable_jobs.add(job)
+                    session.commit()
+                finally:
+                    session.rollback()
                 jobs.difference_update(disposable_jobs)
         except Exception:
             self.logger.exception(
@@ -289,7 +296,6 @@ class Scheduler:
             self.shutdown()
         finally:
             self._running_jobs_lock.release()
-            session.commit()
             session.close()
 
     def _collect_output_files(self, service, cwd, skip_paths=set()):
