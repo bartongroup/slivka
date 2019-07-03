@@ -63,11 +63,14 @@ class RunnerFactory:
                           .replace('${project_dir}', slivka.settings.BASE_DIR))
             if platform.system() == 'Windows':
                 executable = executable.replace('\\', '\\\\')
+            queue_args = configuration.get('queueArgs')
+            if isinstance(queue_args, str):
+                queue_args = shlex.split(queue_args)
             configurations[name] = RunConfiguration(
                 name=name,
                 runner=runner_class,
                 executable=executable,
-                queue_args=configuration.get('queueArgs'),
+                queue_args=queue_args,
                 env=configuration.get('env')
             )
         limits = slivka.utils.locate(config['limits'])
@@ -109,7 +112,6 @@ class RunnerFactory:
 
 
 class Runner(metaclass=ABCMeta):
-
     pattern = re.compile(
         r'\${(?:(?P<value>value)|(?:file:(?P<file>.+?))|(?P<env>\w+?))}'
     )
