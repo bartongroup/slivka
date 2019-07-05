@@ -176,7 +176,7 @@ def server():
     app.run(
         host=slivka.settings.SERVER_HOST,
         port=int(slivka.settings.SERVER_PORT),
-        debug=bool(slivka.settings.DEBUG)
+        debug=True
     )
 
 

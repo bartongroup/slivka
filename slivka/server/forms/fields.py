@@ -341,7 +341,7 @@ class FileField(BaseField):
         with start_session() as session:
             try:
                 file = (session.query(models.File)
-                        .filter(models.File.id == value)
+                        .filter(models.File.uuid == value)
                         .one())
             except sqlalchemy.orm.exc.NoResultFound:
                 raise ValidationError("file", "File does not exist.")

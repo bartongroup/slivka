@@ -4,6 +4,7 @@ import signal
 import threading
 from collections import namedtuple, deque, defaultdict
 from fnmatch import fnmatch
+from pathlib import PurePath, PurePosixPath
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -203,7 +204,7 @@ class Scheduler:
         }
         runner_factory = self._runner_factories[request.service]
         if new_cwd:
-            cwd = os.path.join(slivka.settings.WORK_DIR, request.uuid)
+            cwd = os.path.join(slivka.settings.TASKS_DIR, request.uuid)
         else:
             cwd = request.working_dir
         return runner_factory.new_runner(values, cwd)
@@ -300,13 +301,23 @@ class Scheduler:
 
     def _collect_output_files(self, service, cwd, skip_paths=set()):
         results = self._runner_factories[service].results
-        return [
-            File(path=entry.path, mimetype=result.mimetype)
-            for entry in slivka.utils.recursive_scandir(cwd)
-            for result in results
-            if ((entry.path not in skip_paths) and
-                fnmatch(os.path.relpath(entry.path, cwd), result.path))
-        ]
+        for entry in slivka.utils.recursive_scandir(cwd):
+            if entry.path in skip_paths:
+                continue
+            for result in results:
+                if fnmatch(os.path.relpath(entry.path, cwd), result.path):
+                    file_path = PurePath(entry.path)
+                    tasks_path = PurePath(slivka.settings.TASKS_DIR)
+                    assert tasks_path in file_path.parents
+                    url_path = str(PurePosixPath(
+                        slivka.settings.TASKS_URL_PATH,
+                        file_path.relative_to(tasks_path)
+                    ))
+                    yield File(
+                        mimetype=result.mimetype,
+                        path=entry.path,
+                        url_path=url_path
+                    )
 
     @property
     def logger(self):

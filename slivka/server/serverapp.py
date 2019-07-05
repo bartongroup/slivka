@@ -11,27 +11,24 @@ server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
 """
 
 import os.path
-import tempfile
+from uuid import uuid4
 
 import flask
 import itsdangerous
 import pkg_resources
 import sqlalchemy.orm.exc
-import werkzeug.exceptions
-import werkzeug.utils
 from flask import Flask, Response, json, request, abort
 
 import slivka
 from slivka.db import Session, models, start_session
-from slivka.server.forms import FormFactory
 from slivka.server.file_validators import validate_file_type
+from slivka.server.forms import FormFactory
 from slivka.utils import snake_to_camel
 
 app = Flask('slivka', root_path=slivka.settings.BASE_DIR)
 """Flask object implementing WSGI application."""
 app.config.update(
-    DEBUG=slivka.settings.DEBUG,
-    MEDIA_DIR=slivka.settings.MEDIA_DIR,
+    UPLOADS_DIR=slivka.settings.UPLOADS_DIR,
     SECRET_KEY=slivka.settings.SECRET_KEY
 )
 
@@ -57,14 +54,14 @@ def get_services():
         'services': [
             {
                 'name': service,
-                'submitURI': '/service/%s/form' % service
+                'URI': flask.url_for('get_service_form', service=service)
             }
             for service in slivka.settings.services
         ]
     })
 
 
-@app.route('/service/<service>/form', methods=['GET'])
+@app.route('/services/<service>', methods=['GET'])
 def get_service_form(service):
     """Gets service request form. ``GET /service/{service}/form``
 
@@ -77,9 +74,8 @@ def get_service_form(service):
     form = form_cls()
     response = {
         'statuscode': 200,
-        'form': form_cls.__name__,
-        'service': service,
-        'submitURI': '/service/%s/form' % service,
+        'name': service,
+        'URI': flask.url_for('post_service_form', service=service),
         'fields': [
             {
                 'name': field.name,
@@ -88,13 +84,7 @@ def get_service_form(service):
                 'description': field.description,
                 'required': field.required,
                 'default': field.default,
-                'constraints': [
-                    {
-                        'name': snake_to_camel(constraint['name']),
-                        'value': constraint['value']
-                    }
-                    for constraint in field.constraints
-                ]
+                **{snake_to_camel(c['name']): c['value'] for c in field.constraints},
             }
             for field in form.fields
         ]
@@ -102,7 +92,7 @@ def get_service_form(service):
     return JsonResponse(response, status=200)
 
 
-@app.route('/service/<service>/form', methods=['POST'])
+@app.route('/services/<service>', methods=['POST'])
 def post_service_form(service):
     """Send form data and starts new task. ``POST /service/{service}/form``
 
@@ -119,8 +109,8 @@ def post_service_form(service):
             session.commit()
             response = JsonResponse({
                 'statuscode': 202,
-                'taskId': job_request.uuid,
-                'checkStatusURI': '/task/%s/status' % job_request.uuid
+                'uuid': job_request.uuid,
+                'URI': flask.url_for('get_task_status', task_uuid=job_request.uuid)
             }, status=202)
     else:
         response = JsonResponse({
@@ -134,9 +124,9 @@ def post_service_form(service):
     return response
 
 
-@app.route('/file', methods=['POST'])
+@app.route('/files', methods=['POST'])
 def file_upload():
-    """Upload the file to the server. ``POST /file``
+    """Upload the file to the server. ``POST /files``
 
     :return: JSON containing internal metadata of the uploaded file
     """
@@ -147,41 +137,40 @@ def file_upload():
     if not validate_file_type(file._file, file.mimetype):
         raise abort(415)
     file.stream.seek(0)
-    filename = werkzeug.utils.secure_filename(file.filename)
-    with tempfile.NamedTemporaryFile(
-            dir=app.config['MEDIA_DIR'], delete=False) as tf:
-        file.save(tf)
+    file_uuid = uuid4().hex
+    file_path = os.path.join(app.config['UPLOADS_DIR'], file_uuid)
+    file.save(file_path)
     file_record = models.File(
-        title=filename,
+        uuid=file_uuid,
+        title=file.filename,
         mimetype=file.mimetype,
-        path=tf.name
+        path=file_path,
+        url_path=flask.url_for('uploads', filename=file_uuid)
     )
     with start_session() as session:
         session.add(file_record)
         session.commit()
-        file_id = file_record.id
     return JsonResponse({
         'statuscode': 201,
-        'id': file_id,
-        'signedId':
-            signer.sign(itsdangerous.want_bytes(file_id)).decode('utf-8'),
-        'title': filename,
+        'uuid': file_uuid,
+        'title': file.filename,
         'mimetype': file.mimetype,
-        'downloadURI': '/file/%s/download' % file_id
+        'URI': flask.url_for('get_file_metadata', file_uuid=file_uuid),
+        'contentURI': flask.url_for('uploads', filename=file_uuid)
     }, status=201)
 
 
-@app.route('/file/<file_id>', methods=['GET'])
-def get_file_meta(file_id):
-    """Get file metadata. ``GET /file/{file_id}``
+@app.route('/files/<file_uuid>', methods=['GET'])
+def get_file_metadata(file_uuid):
+    """Get file metadata. ``GET /file/{file_uuid}``
 
-    :param file_id: file identifier
+    :param file_uuid: file identifier
     :return: JSON containing internal metadata of the file
     """
     session = Session()
     try:
         file = (session.query(models.File)
-                .filter(models.File.id == file_id)
+                .filter(models.File.uuid == file_uuid)
                 .one())
     except sqlalchemy.orm.exc.NoResultFound:
         raise abort(404)
@@ -189,129 +178,72 @@ def get_file_meta(file_id):
         session.close()
     return JsonResponse({
         'statuscode': 200,
-        'id': file.id,
+        'uuid': file.uuid,
         'title': file.title,
         'mimetype': file.mimetype,
-        'downloadURI': '/file/%s/download' % file.id
+        'URI': flask.url_for('get_file_metadata', file_uuid=file_uuid),
+        'contentURI': file.url_path
     }, status=200)
 
 
-@app.route('/file/<file_id>/download', methods=['GET'])
-def file_download(file_id):
-    """Download file contents. ``GET /file/{file_id}/download``
-
-    :param file_id: file identifier
-    :return: requested file contents
-    """
-    with start_session() as session:
-        try:
-            file = (session.query(models.File)
-                    .filter(models.File.id == file_id)
-                    .one())
-        except sqlalchemy.orm.exc.NoResultFound:
-            raise abort(404)
-        return flask.send_from_directory(
-            directory=os.path.dirname(file.path),
-            filename=os.path.basename(file.path),
-            attachment_filename=file.title or os.path.basename(file.path),
-            mimetype=file.mimetype
-        )
+@app.route(slivka.settings.UPLOADS_URL_PATH + '/<path:filename>',
+           endpoint='uploads',
+           methods=['GET'])
+def serve_uploads_file(filename):
+    return flask.send_from_directory(
+        directory=slivka.settings.UPLOADS_DIR,
+        filename=filename
+    )
 
 
-@app.route('/file/<signed_file_id>', methods=['PUT'])
-def set_file_meta(signed_file_id):
-    """Update file metadata. ``PUT /file/{signed_file_id}``
-
-    :param signed_file_id: signed file identifier
-    :return: JSON containing new metadata of the file
-    """
-    try:
-        file_id = signer.unsign(signed_file_id).decode('utf-8')
-    except itsdangerous.BadSignature:
-        raise abort(401)
-    with start_session() as session:
-        try:
-            file = (session.query(models.File).
-                    filter(models.File.id == file_id).
-                    one())
-        except sqlalchemy.orm.exc.NoResultFound:
-            raise abort(404)
-        new_title = request.form.get('title')
-        if new_title is not None:
-            file.title = new_title
-        session.commit()
-        return JsonResponse({
-            'statuscode': 200,
-            'id': file.id,
-            'signedId': signed_file_id,
-            'title': file.title,
-            'mimetype': file.mimetype,
-            'downloadURI': '/file/%s/download' % file.id
-        }, status=200)
+@app.route(slivka.settings.TASKS_URL_PATH + '/<path:filename>',
+           endpoint='tasks',
+           methods=['GET'])
+def serve_tasks_file(filename):
+    return flask.send_from_directory(
+        directory=slivka.settings.TASKS_DIR,
+        filename=filename
+    )
 
 
-@app.route('/file/<signed_file_id>', methods=['DELETE'])
-def delete_file(signed_file_id):
-    """Delete file from the filesystem. ``DELETE /file/{signed_file_id}``
+@app.route('/tasks/<task_uuid>', methods=['GET'])
+def get_task_status(task_uuid):
+    """Get the status of the task. ``GET /task/{task_uuid}/status``
 
-    :param signed_file_id: signed file identifier
-    :return: Http response with status code
-    """
-    try:
-        file_id = signer.unsign(signed_file_id).decode('utf-8')
-    except itsdangerous.BadSignature:
-        raise abort(401)
-    path = None
-    with start_session() as session:
-        try:
-            file = (session.query(models.File).
-                    filter(models.File.id == file_id).
-                    one())
-        except sqlalchemy.orm.exc.NoResultFound:
-            raise abort(404)
-        path = file.path
-        session.delete(file)
-        session.commit()
-    try:
-        os.remove(path)
-    except FileNotFoundError:
-        raise abort(404)
-    return JsonResponse({'statuscode': 200}, status=200)
-
-
-@app.route('/task/<task_id>/status', methods=['GET'])
-def get_task_status(task_id):
-    """Get the status of the task. ``GET /task/{task_id}/status``
-
-    :param task_id: task identifier
+    :param task_uuid: task identifier
     :return: JSON response with current job completion status
     """
     with start_session() as session:
         try:
             job_request = (session.query(models.Request)
-                           .filter_by(uuid=task_id)
+                           .filter_by(uuid=task_uuid)
                            .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
         return JsonResponse({
             'statuscode': 200,
-            'execution': job_request.status_string,
+            'status': job_request.status_string,
             'ready': job_request.is_finished(),
-            'resultURI': '/task/%s/result' % task_id
+            'filesURI': flask.url_for('get_task_files', task_uuid=task_uuid)
         })
 
 
-@app.route('/task/<task_id>/result', methods=['GET'])
-def get_task_result(task_id):
+@app.route('/tasks/<task_uuid>', methods=['DELETE'])
+def cancel_task(task_uuid):
+    raise NotImplementedError
+
+
+@app.route('/tasks/<task_uuid>/files', methods=['GET'])
+def get_task_files(task_uuid):
     """Get the list of output files. ``GET /task/{task_id}/files``
 
-    :param task_id: task identifier
+    :param task_uuid: task identifier
     :return: JSON response with list of files produced by the task.
     """
     with start_session() as session:
         try:
             req = (session.query(models.Request)
-                   .filter_by(uuid=task_id)
+                   .filter_by(uuid=task_uuid)
                    .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
@@ -323,10 +255,11 @@ def get_task_result(task_id):
             'statuscode': 200,
             'files': [
                 {
-                    'id': file.id,
+                    'uuid': file.uuid,
                     'title': file.title,
                     'mimetype': file.mimetype,
-                    'downloadURI': '/file/%s/download' % file.id
+                    'URI': flask.url_for('get_file_metadata', file_uuid=file.uuid),
+                    'contentURI': file.url_path
                 }
                 for file in files
             ]

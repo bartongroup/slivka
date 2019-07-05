@@ -76,9 +76,11 @@ class File(Base):
 
     __tablename__ = "files"
 
-    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    id = Column(Integer, primary_key=True)
+    uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
     title = Column(String(32), default=default_title)
     path = Column(String(256), nullable=False)
+    url_path = Column(String(256), nullable=False)
     mimetype = Column(String(32))
     request_id = Column(
         Integer,

@@ -79,12 +79,12 @@ Here is the list of constants created on project set-up with description.
 
     SECRET_KEY = "Lorem ipsum dolor sit amet"
 
-:``MEDIA_DIR``:
+:``UPLOADS_DIR``:
   Directory where all files uploaded by users and produced by services are
   stored. It can be either an absolute path or path relative to the
   ``BASE_DIR``.
 
-:``WORK_DIR``:
+:``TASKS_DIR``:
   A folder where execution work directories will be created. Can be either
   an absolute path or path relative to the ``BASE_DIR``.
 

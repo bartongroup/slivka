@@ -52,9 +52,9 @@ class SettingsProvider:
         self._service_configs = {}
 
         # check if all required fields are present
-        required_options = ['BASE_DIR', 'MEDIA_DIR', 'WORK_DIR', 'SERVICES_INI',
-                            'QUEUE_HOST', 'QUEUE_PORT', 'DATABASE_URL',
-                            'ACCEPTED_FILE_TYPES']
+        required_options = ['BASE_DIR', 'UPLOADS_DIR', 'TASKS_DIR', 'SERVICES_INI',
+                            'UPLOADS_URL_PATH', 'TASKS_URL_PATH', 'ACCEPTED_FILE_TYPES',
+                            'SERVER_HOST', 'SERVER_PORT', 'QUEUE_HOST', 'QUEUE_PORT', 'DATABASE_URL']
         for option in required_options:
             if not hasattr(self, option):
                 raise ImproperlyConfigured(
@@ -63,9 +63,9 @@ class SettingsProvider:
 
         # join paths with BASE_DIR
         self.BASE_DIR = os.path.abspath(self.BASE_DIR)
-        self.MEDIA_DIR = norm_join_path(self.BASE_DIR, self.MEDIA_DIR)
-        self.WORK_DIR = norm_join_path(self.BASE_DIR, self.WORK_DIR)
-        for path in [self.MEDIA_DIR, self.WORK_DIR]:
+        self.UPLOADS_DIR = norm_join_path(self.BASE_DIR, self.UPLOADS_DIR)
+        self.TASKS_DIR = norm_join_path(self.BASE_DIR, self.TASKS_DIR)
+        for path in [self.UPLOADS_DIR, self.TASKS_DIR]:
             os.makedirs(path, exist_ok=True)
         self.SERVICES_INI = norm_join_path(self.BASE_DIR, self.SERVICES_INI)
 

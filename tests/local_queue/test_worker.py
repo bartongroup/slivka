@@ -18,7 +18,7 @@ class TestWorker(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
         open(os.path.join(temp_dir.name, 'config.ini'), 'w').close()
         slivka.settings.BASE_DIR = temp_dir.name
-        slivka.settings.MEDIA_DIR = '.'
+        slivka.settings.UPLOADS_DIR = '.'
         slivka.settings.SECRET_KEY=b'\x00'
         slivka.settings.SERVICES_INI = 'service.ini'
 

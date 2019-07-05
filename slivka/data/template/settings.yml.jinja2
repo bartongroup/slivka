@@ -1,10 +1,13 @@
 BASE_DIR: {{ base_dir }}
-MEDIA_DIR: ./media
-WORK_DIR: ./work_dir
+UPLOADS_DIR: ./media/uploads
+TASKS_DIR: ./media/tasks
 LOG_DIR: ./logs
 SERVICES_INI: ./configurations/services.ini
 
-SERVER_HOST: 0.0.0.0
+UPLOADS_URL_PATH: /media/uploads
+TASKS_URL_PATH: /media/tasks
+
+SERVER_HOST: 127.0.0.1
 SERVER_PORT: 8000
 SECRET_KEY: {{ secret_key }}
 
@@ -12,5 +15,3 @@ QUEUE_HOST: localhost
 QUEUE_PORT: 3397
 
 DATABASE_URL: "sqlite:///sqlite3.db"
-
-DEBUG: on

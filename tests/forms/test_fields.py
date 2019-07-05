@@ -1,6 +1,8 @@
 import os
 import tempfile
 import unittest
+from uuid import uuid4
+
 try:
     import unittest.mock as mock
 except ImportError:
@@ -183,12 +185,13 @@ class TestFileField(unittest.TestCase):
         with open(dummy_path, "w") as f:
             f.write("bar bar")
         slivka.settings.BASE_DIR = cls.temp_dir.name
-        slivka.settings.MEDIA_DIR = '.'
+        slivka.settings.UPLOADS_DIR = '.'
         slivka.settings.SECRET_KEY = b'\x00'
         slivka.settings.SERVICES_INI = 'service.ini'
         create_db()
         with start_session() as session:
-            file = models.File(id="foo", path=dummy_path)
+            cls.file_uuid = uuid4().hex
+            file = models.File(uuid=cls.file_uuid, path=dummy_path, url_path=dummy_path)
             session.add(file)
             session.commit()
 
@@ -200,23 +203,19 @@ class TestFileField(unittest.TestCase):
 
     def test_file_not_exist(self):
         field = FileField('')
-        field.value = "bar"
+        field.value = uuid4().hex
         self.assertFalse(field.is_valid)
 
     def test_file_exists(self):
         field = FileField('')
-        field.value = "foo"
+        field.value = self.file_uuid
         self.assertTrue(field.is_valid)
 
     def test_file_path(self):
         field = FileField('')
-        cleaned = field.validate("foo")
-        self.assertEqual(
-            os.path.dirname(cleaned), self.temp_dir.name
-        )
-        self.assertEqual(
-            os.path.basename(cleaned), "foo"
-        )
+        cleaned = field.validate(self.file_uuid)
+        self.assertEqual(os.path.dirname(cleaned), self.temp_dir.name)
+        self.assertEqual(os.path.basename(cleaned), "foo")
 
     @classmethod
     def tearDownClass(cls):
