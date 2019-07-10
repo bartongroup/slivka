@@ -1,11 +1,11 @@
-openapi: 3.0.0
+openapi: 3.0.2
 info:
   title: Slivka Web API
-  description: ""
-  version: 0.3a1dev3
+  version: "1.0"
 
 servers:
-- url: http://localhost:8000
+- url: http://gjb-www-1.cluster.lifesci.dundee.ac.uk:3203
+  description: Compbio Development Server
 
 tags:
 - name: services
@@ -34,14 +34,22 @@ paths:
                   services:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Service'
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: Clustalo
+                        URI:
+                          type: string
+                          format: uri
+                          example: /services/Clustalo
 
-  /service/{serviceName}/form:
+  /services/{service}:
     get:
-      summary: Returns the submission form for the service
+      summary: Returns the service information and possible submission parameters.
       tags: [services]
       parameters:
-      - name: serviceName
+      - name: service
         in: path
         required: true
         description: Service name
@@ -49,16 +57,23 @@ paths:
           type: string
       responses:
         '200':
-          description: Form definition
+          description: Service information and available submission parametes.
           content:
             application/json:
               schema:
-                allOf:
-                - properties:
-                    statuscode:
-                      type: integer
-                      example: 200
-                - $ref: '#/components/schemas/Form'
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                  name:
+                    type: string
+                  URI:
+                    type: string
+                    format: uri
+                  fields:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FormField"
         '404':
           description: Specified service does not exist
           content:
@@ -72,10 +87,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServiceUnavailableError'
     post:
-      summary: Submits the form and issues a new job request
+      summary: Submits a new job request.
       tags: [services]
       parameters:
-      - name: serviceName
+      - name: service
         in: path
         required: true
         description: Service name
@@ -87,11 +102,6 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              properties:
-                <name1>:
-                  type: string
-                <name2>:
-                  type: string
               additionalProperties:
                 type: string
       responses:
@@ -105,14 +115,14 @@ paths:
                   statuscode:
                     type: integer
                     example: 202
-                  taskId:
+                  uuid:
                     type: string
                     format: uuid
                     example: 147a8f7a9da54fca93987b971b89286d
-                  checkStatusURI:
+                  URI:
                     type: string
                     format: uri
-                    example: /task/147a8f7a9da54fca93987b971b89286d/status
+                    example: /task/147a8f7a9da54fca93987b971b89286d
 
         '404':
           description: Specified service does not exist
@@ -155,7 +165,7 @@ paths:
                         errorCode: max
                         message: Value must be less than 20
 
-  /file:
+  /files:
     post:
       summary: Upload the file to the server
       tags: [files]
@@ -174,12 +184,24 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - properties:
-                   statuscode:
+                properties:
+                  statuscode:
                     type: integer
                     example: 201
-                - $ref: '#/components/schemas/SignedFileData'
+                  uuid:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  mimetype:
+                    type: string
+                  URI:
+                    type: string
+                    format: uri
+                  contentURI:
+                    type: string
+                    format: uri
+                
         '400':
           description: Invalid request
           content:
@@ -199,12 +221,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/InsufficientStorageError'
 
-  /file/{fileId}:
+  /file/{uuid}:
     get:
       summary: Retrieve file metadata
       tags: [files]
       parameters:
-      - name: fileId
+      - name: uuid
         in: path
         required: true
         description: Unique file identifier
@@ -223,87 +245,7 @@ paths:
                     statuscode:
                       type: integer
                       example: 200
-                - $ref: '#/components/schemas/FileData'
-        '404':
-          description: File not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-    put:
-      summary: Update file metadata
-      tags: [files]
-      parameters:
-      - name: fileId
-        in: path
-        required: true
-        description: Unique file identifier with signature
-        schema:
-          type: string
-          format: uuid
-          example: dd660bcf78bf4d90a67672c8d442da8c.iiWT8yTKDq5Qk2sLSHGpkEj1SOs
-      requestBody:
-        required: false
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  example: input.txt
-      responses:
-        '200':
-          description: Updated metadata
-          content:
-            application/json:
-              schema:
-                allOf:
-                - properties:
-                    statuscode:
-                      type: integer
-                      example: 200
-                - $ref: '#/components/schemas/SignedFileData'
-        '401':
-          description: Invalid signature. No permission to edit metadata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UnauthorisedError'
-        '404':
-          description: File not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-    delete:
-      summary: Delete the file from the server
-      tags: [files]
-      parameters:
-      - name: fileId
-        in: path
-        required: true
-        description: Unique file identifier with signature
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: File deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                    example: 200
-        '401':
-          description: Invalid signature. No permission to edit metadata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UnauthorisedError'
+                - $ref: '#/components/schemas/File'
         '404':
           description: File not found
           content:
@@ -311,30 +253,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /file/{fileId}/download:
+  /media/uploads/{path}:
     get:
-      summary: Download file content from the server
+      summary: Download the content of the uploaded file.
       tags: [files]
       parameters:
-      - name: fileId
-        in: path
-        required: true
-        description: Unique file identifier
-        schema:
-          type: string
-          format: uuid
+        - name: path
+          in: path
+          required: true
+          description: Path to the file
+          schema:
+            type: string
       responses:
         '200':
-          description: File content
+          description: File can be downloaded.
           content:
-            text/plain:
+            "*/*":
               schema:
                 type: string
-                example: >-
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Proin consequat mi quis ligula tristique, sit amet mollis ex sagittis.
-                  Fusce orci ipsum, consectetur eget egestas ut, eleifend sed lacus.
-                  In varius leo ac nisi dapibus, id tempus dui pharetra.
+                format: binary
         '404':
           description: File not found
           content:
@@ -342,12 +279,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /task/{taskId}/status:
+  /media/tasks/{uuid}/{path}:
+    get:
+      summary: Download the content of the job output file.
+      tags: [files]
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          description: Unique identifier of the task.
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          description: Path to the file
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File can be downloaded.
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /tasks/{uuid}:
     get:
       summary: Check the status of the running task
       tags: [tasks]
       parameters:
-      - name: taskId
+      - name: uuid
         in: path
         required: true
         description: Unique task id issued on form submission
@@ -365,7 +334,7 @@ paths:
                   statuscode:
                     type: integer
                     example: 200
-                  execution:
+                  status:
                     type: string
                     enum:
                     - pending
@@ -378,10 +347,10 @@ paths:
                     - undefined
                   ready:
                     type: boolean
-                  resultURI:
+                  filesURI:
                     type: string
                     format: uri
-                    example: /task/147a8f7a9da54fca93987b971b89286d/result
+                    example: /task/147a8f7a9da54fca93987b971b89286d/files
         '404':
           description: Task not found
           content:
@@ -389,12 +358,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /task/{taskId}/result:
+  /tasks/{uuid}/files:
     get:
       summary: Returns a list of output file identifiers
       tags: [tasks]
       parameters:
-      - name: taskId
+      - name: uuid
         in: path
         required: true
         description: Unique task id issued on form submission
@@ -414,7 +383,7 @@ paths:
                   files:
                     type: array
                     items:
-                      $ref: '#/components/schemas/FileData'
+                      $ref: '#/components/schemas/File'
         '404':
           description: Task not found
           content:
@@ -424,110 +393,71 @@ paths:
 
 components:
   schemas:
-    Service:
+    FormField:
       type: object
       properties:
         name:
           type: string
-          example: Clustalo
-        submitURI:
+        type:
           type: string
-          format: uri
-          example: /service/Clustalo/form
-    Form:
-      type: object
-      properties:
-        form:
+          enum: [integer, decimal, text, boolean, choice, file]
+        label:
           type: string
-          example: ClustaloForm
-        service:
+        description:
           type: string
-          example: Clustalo
-        submitURI:
-          type: string
-          format: uri
-          example: /service/Clustalo/form
-        fields:
+        required:
+          type: boolean
+        default:
+          nullable: true
+        min:
+          type: number
+          nullable: true
+        max:
+          type: number
+          nullable: true
+        minExclusive:
+          type: boolean
+          nullable: true
+        maxExclusive:
+          type: boolean
+          nullable: true
+        minLength:
+          type: integer
+          nullable: true
+        maxLength:
+          type: integer
+          nullable: true
+        choices:
           type: array
+          nullable: true
           items:
-            type: object
-            properties:
-              name:
-                type: string
-              type:
-                type: string
-                enum: [int, float, text, boolean, choice, file]
-              label:
-                type: string
-              description:
-                type: string
-              required:
-                type: boolean
-              default:
-                nullable: true
-              constraints:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    value: {}
-          example:
-          - name: input
-            type: file
-            required: true
-            default: null
-            constraints: []
-          - name: num-iters
-            type: int
-            required: false
-            default: 10
-            constraints:
-            - name: max
-              value: 20
-            - name: min
-              value: 0
-
-    SignedFileData:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: dd660bcf78bf4d90a67672c8d442da8c
-        signedId:
-          type: string
-          format: signature
-          example: dd660bcf78bf4d90a67672c8d442da8c.iiWT8yTKDq5Qk2sLSHGpkEj1SOs
-        title:
-          type: string
-          example: file.txt
+            type: string
         mimetype:
           type: string
-          example: text/plain
-        downloadURI:
+          nullable: true
+        extension:
           type: string
-          format: uri
-          example: /file/dd660bcf78bf4d90a67672c8d442da8c/download
-
-    FileData:
+          nullable: true
+        maxSize:
+          type: integer
+          nullable: true
+    
+    File:
       type: object
       properties:
-        id:
+        uuid:
           type: string
           format: uuid
-          example: dd660bcf78bf4d90a67672c8d442da8c
         title:
           type: string
-          example: file.txt
         mimetype:
           type: string
-          example: text/plain
-        downloadURI:
+        URI:
           type: string
           format: uri
-          example: /file/dd660bcf78bf4d90a67672c8d442da8c/download
+        contentURI:
+          type: string
+          format: uri
 
     NotFoundError:
       type: object

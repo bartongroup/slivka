@@ -114,8 +114,9 @@ def post_service_form(service):
             }, status=202)
     else:
         response = JsonResponse({
+            'statuscode': 420,
+            'error': 'Invalid data',
             'errors': [{
-                'statuscode': 420,
                 'field': name,
                 'errorCode': error.code,
                 'message': error.reason
