@@ -1,0 +1,994 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Installation &#8212; Slivka 0.3.a5 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to Slivka’s documentation!" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Slivka’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.3.a5 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>Installation requires Python 3.5+ (Developed and tested using Python 3.5).
+Additional requirements that will be downloaded and installed automatically, include:</p>
+<ul class="simple">
+<li><p>click (&gt;6.6)</p></li>
+<li><p>Flask (&gt;0.11.1)</p></li>
+<li><p>Jinja2 (&gt;2.8)</p></li>
+<li><p>jsonschema (&gt;2.5.1)</p></li>
+<li><p>PyYAML (&gt;3.11)</p></li>
+<li><p>SQLAlchemy (&gt;1.0.13)</p></li>
+</ul>
+</div>
+<div class="section" id="installing-slivka-package">
+<h2>Installing Slivka package<a class="headerlink" href="#installing-slivka-package" title="Permalink to this headline">¶</a></h2>
+<p>It’s recommended to install Slivka inside a virtual environment using virtualenv or conda.
+You can install virtualenv by running <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">virtualenv</span></code> (on some Linux distributions
+you may need to install a system package via <code class="docutils literal notranslate"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-virtualenv</span></code>).
+Run <code class="docutils literal notranslate"><span class="pre">virtualenv</span> <span class="pre">env</span></code>, wait for it to create a new environment in <code class="docutils literal notranslate"><span class="pre">env</span></code>
+directory and activate using <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">env/bin/activate</span></code> on Unix/OS X or
+<code class="docutils literal notranslate"><span class="pre">env\Scripts\activate.bat</span></code> on Windows.
+More information about the virtualenv package can be found in <a class="reference external" href="https://virtualenv.pypa.io/en/stable/">virtualenv documentation</a>.
+For conda users, create a new environment using <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">create</span> <span class="pre">-n</span> <span class="pre">slivka</span> <span class="pre">python=3.5</span></code>
+and activate with <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">slivka</span></code>.
+More details can be found in <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a>.</p>
+<p>In order to install Slivka download Slivka choose the suitable zip or tar archive
+form the <a class="reference external" href="https://github.com/warownia1/Slivka/releases">repository</a> and run install inside your virtual environment with
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">Slivka-&lt;version&gt;.(zip|tar)</span></code>.
+Alternatively, you can install the most recent version directly from our github
+repository with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">git+git://github.com/warownia1/Slivka</span></code>.
+Setuptools and all other requirements will be downloaded if not present, so internet
+connection is required during the installation.</p>
+<p>After the installation, a new executable <code class="docutils literal notranslate"><span class="pre">slivka-setup</span></code> will be added to your Python
+scripts directory. It will be used to create new Slivka projects. Make sure that it is
+available in your <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p>
+</div>
+<div class="section" id="creating-new-project">
+<h2>Creating new project<a class="headerlink" href="#creating-new-project" title="Permalink to this headline">¶</a></h2>
+<p>In order to create a new Slivka project navigate to the folder where you want
+it to be set-up and run the executable created during the installation.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span><span class="o">-</span><span class="n">setup</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Replacing <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> with the name of the new project directory that will be created.
+Use <code class="docutils literal notranslate"><span class="pre">.</span></code> if you wish to set-up the project in the current directory.
+If the executable cannot be accessed (e.g. it is not in the PATH), you
+can equivalently run the slivka module with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">slivka</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>It will create a new folder named <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> and initialize project files in it.
+Additionally, an example service and its configuration will be included.</p>
+</div>
+</div>
+<div class="section" id="project-structure">
+<h1>Project Structure<a class="headerlink" href="#project-structure" title="Permalink to this headline">¶</a></h1>
+<p>The Slivka project exists separately from the Slivka package and contains its own set
+of configurations. You can create as many project as you like with one Slivka installations.
+Each project contains three core files:</p>
+<dl class="field-list simple">
+<dt class="field-odd">manage.py</dt>
+<dd class="field-odd"><p>The main executable script which configures Slivka and runs its components.</p>
+</dd>
+<dt class="field-even">settings.yml</dt>
+<dd class="field-even"><p>A settings file which defines project-wide parameters.</p>
+</dd>
+<dt class="field-odd">services.ini</dt>
+<dd class="field-odd"><p>A list of available services with paths to their respective configuration files.</p>
+</dd>
+<dt class="field-even">wsgi.py</dt>
+<dd class="field-even"><p>Module containing a wsgi application for dedicated wsgi servers.</p>
+</dd>
+</dl>
+<p>Additionally, you need to create configuration files for each of your services
+and add them to the <code class="docutils literal notranslate"><span class="pre">services.ini</span></code> file.</p>
+<p>The configuration files are unicode text files and can be edited with any text editor.
+It is not advisable, however, to edit the main executable <code class="docutils literal notranslate"><span class="pre">manage.py</span></code> and <code class="docutils literal notranslate"><span class="pre">wsgi.py</span></code>.</p>
+<div class="section" id="settings-file">
+<h2>Settings file<a class="headerlink" href="#settings-file" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">settings.yml</span></code> is a yaml formatted file defining constants and parameters used
+throughout the application. The parameters are case sensitive and should be written
+using capital letters.</p>
+<p>The following list shows all the parameters required by the Slivka application.</p>
+<dl class="field-list">
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code></dt>
+<dd class="field-odd"><p>Indicates the location of the project directory. Absolute paths are preferred.
+The location must be accessible for the user running the application.
+It tells Slivka the path to the project files and where all relative paths should start from.
+It defaults to the directory containing the <code class="docutils literal notranslate"><span class="pre">manage.py</span></code> file and it’s recommended to leave it this way.</p>
+<p>Examples:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">BASE_DIR</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/slivka/project</span>
+
+<span class="nt">BASE_DIR</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">C:\Users\slivka\project</span>
+</pre></div>
+</div>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">UPLOADS_DIR</span></code></dt>
+<dd class="field-even"><p>Directory where all user uploaded files are stored.
+It’s recommended to serve files directly from this directory.
+It can be either an absolute path or a path relative to the <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">./media/uploads</span></code></p>
+</dd>
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">TASKS_DIR</span></code></dt>
+<dd class="field-odd"><p>A folder where job working directories are created and output files are stored.
+It’s recommended to serve files directly from this directory.
+Can be either an absolute path or path relative to the <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">./media/tasks</span></code></p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">LOG_DIR</span></code></dt>
+<dd class="field-even"><p>Path to directory where log files are be stored.
+Can be either an absolute path or a path relative to the <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">./logs</span></code></p>
+</dd>
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">SERVICE_INI</span></code></dt>
+<dd class="field-odd"><p>Path to the <em>service.ini</em> file containing the list of available services.
+Can be either an absolute path or a path relative to the <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">./configurations/services.ini</span></code></p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">UPLOADS_URL_PATH</span></code></dt>
+<dd class="field-even"><p>The URL path where the uploaded files will be available from.
+This setting enables you to set the path so the files can be served with a third-party proxy server
+e.g. Apache or Nginx.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">/media/uploads</span></code></p>
+</dd>
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">TASKS_URL_PATH</span></code></dt>
+<dd class="field-odd"><p>The URL path where the tasks output files will be available from.
+This setting enables you to set the path so the files can be served with a third-party proxy server
+e.g. Apache or Nginx.</p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">ACCEPTED_FILE_TYPES</span></code></dt>
+<dd class="field-even"><p>The list of media mime-types that will be accepted by the server.
+The names can be listed using either json or yaml syntax</p>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">ACCEPTED_FILE_TYPES</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="s">&quot;text/plain&quot;</span><span class="p p-Indicator">,</span> <span class="s">&quot;application/json&quot;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">ACCEPTED_FILE_TYPES</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">text/plain</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">application/json</span>
+</pre></div>
+</div>
+</dd>
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">SERVER_HOST</span></code></dt>
+<dd class="field-odd"><p>The hostname which the server will be available at. Setting it to 0.0.0.0 makes the app accept any connection.
+If the slivka server is running behind a proxy, it’s recommended to accept the connections from the proxy
+server only e.g. 127.0.0.1.</p>
+<p><em>This parameter is ignored when running slivka server through wsgi application such as uwsgi or Gunicorn and will
+be removed in the future.</em></p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">SERVER_PORT</span></code></dt>
+<dd class="field-even"><p>Port used for listening to the requests.
+Remember that using  port number lower than 1024 may be not allowed for normal users.
+You might use one of the ports commonly used for development e.g. 8000, 8080 or 8888.</p>
+<p><em>This parameter is ignored when running slivka server through wsgi application such as uwsgi or Gunicorn and will
+be removed in the future.</em></p>
+</dd>
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">QUEUE_HOST</span></code></dt>
+<dd class="field-odd"><p>Address which the worker queue is running at.
+<strong>It’s highly recommended to use localhost, since accepting connections from the outside may be a security issue.</strong></p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">QUEUE_PORT</span></code></dt>
+<dd class="field-even"><p>Port which the worker queue is accepting connections at.
+It must not collide with any commonly used ports and must be between 1024 and 65535.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="services-configuration">
+<h2>Services configuration<a class="headerlink" href="#services-configuration" title="Permalink to this headline">¶</a></h2>
+<p>The services configuration file (<em>configurations/services.ini</em> by default) contains
+the collection of all available services and paths to their respective configuration files.
+Each section in the file whose name written in square brackets <code class="docutils literal notranslate"><span class="pre">[section]</span></code> defines one service.
+The section name is followed by the list of colon-separated parameter name and value pairs.</p>
+<p>The special <code class="docutils literal notranslate"><span class="pre">[DEFAULT]</span></code> section is ignored by the application and can
+be used to define constants i.e. project directory.
+These constants can be referred to in the file using <code class="docutils literal notranslate"><span class="pre">${key}</span></code> placeholder.
+In the following example, the <code class="docutils literal notranslate"><span class="pre">form</span></code> parameter of the <em>LoremIpsum</em> service evaluates to
+<code class="docutils literal notranslate"><span class="pre">/home/slivka/config/Slivka_form.yml</span></code></p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[DEFAULT]</span>
+<span class="na">configdir: /home/slivka/config</span>
+<span class="na">formsuffix: _form.yml</span>
+
+<span class="k">[LoremIpsum]</span>
+<span class="na">form: ${configdir}/Slivka${formsuffix}</span>
+</pre></div>
+</div>
+<p>Each section (except for <code class="docutils literal notranslate"><span class="pre">[DEFAULT]</span></code>) corresponds to one service configuration.
+A separate service can be i.e. a different executable or a different set of options
+for the same executable. Each section must contain two parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">form</span></code></dt>
+<dd class="field-odd"><p>The path to the form definition file described in the <a class="reference internal" href="#form-description">Form Description</a> section.</p>
+</dd>
+<dt class="field-even"><code class="docutils literal notranslate"><span class="pre">config</span></code></dt>
+<dd class="field-even"><p>The path to the run configuration file which structure is described in the
+<a class="reference internal" href="#run-configuration">Run Configuration</a> section.</p>
+</dd>
+</dl>
+<p>A sample configuration of a <em>LoremIpsum</em> service is presented in the following example:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[DEFAULT]</span>
+<span class="na">project_dir: /home/slivka/slivka-project</span>
+
+<span class="k">[LoremIpsum]</span>
+<span class="na">config: ${project_dir}/config/Lorem_run.yml</span>
+<span class="na">form: ${project_dir}/config/Lorem_form.yml</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="form-description">
+<h2>Form Description<a class="headerlink" href="#form-description" title="Permalink to this headline">¶</a></h2>
+<p>Form description file specified the parameters which are presented to the front end user through the web API.
+It defines the name, description and expected value for each parameter.
+The file should contain a single YAML object with keys representing unique field names and
+<a class="reference internal" href="#field-object">Field object</a> values.</p>
+<div class="section" id="field-object">
+<h3>Field Object<a class="headerlink" href="#field-object" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 34%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>label</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> A human readable field name.</p></td>
+</tr>
+<tr class="row-odd"><td><p>description</p></td>
+<td><p>string</p></td>
+<td><p>Detailed information about the field (help text)</p></td>
+</tr>
+<tr class="row-even"><td><p>value</p></td>
+<td><p><a class="reference internal" href="#value-object">Value Object</a></p></td>
+<td><p>Value object which provides information about
+the expected value.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example of the form accepting two fields: input and format is shown below.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+  <span class="nt">label</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Input file</span>
+  <span class="nt">description</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">JSON, YAML or XML file containing input data.</span>
+  <span class="nt">value</span><span class="p">:</span>
+    <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">file</span>
+    <span class="nt">maxSize</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2KB</span>
+    <span class="nt">required</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">yes</span>
+<span class="nt">format</span><span class="p">:</span>
+  <span class="nt">label</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">File format</span>
+  <span class="nt">value</span><span class="p">:</span>
+    <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">choice</span>
+    <span class="nt">choices</span><span class="p">:</span>
+      <span class="nt">JSON</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">json</span>
+      <span class="nt">YAML</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">yaml</span>
+      <span class="nt">XML</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">xml</span>
+    <span class="nt">required</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">yes</span>
+    <span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">JSON</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="value-object">
+<h3>Value object<a class="headerlink" href="#value-object" title="Permalink to this headline">¶</a></h3>
+<p>Value objects define the content of each field. They are used for validating the user input.
+The value object properties may differ depending on the field type.
+However <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">required</span></code> and <code class="docutils literal notranslate"><span class="pre">default</span></code> are common for every field type.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 11%" />
+<col style="width: 76%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>type</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Type of the field,
+must be: int, float, text, boolean, choice or file.</p></td>
+</tr>
+<tr class="row-odd"><td><p>required</p></td>
+<td><p>boolean</p></td>
+<td><p><strong>Required.</strong> Whether the value is must be provided</p></td>
+</tr>
+<tr class="row-even"><td><p>default</p></td>
+<td><p>any</p></td>
+<td><p>Default value, type of the parameter must match the type of the field.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Note that supplying the default value automatically makes the field not required since the default
+value is used when the field is empty.</p>
+<p>All other properties are optional and they are specific to different field types.</p>
+<div class="section" id="integer-value-object">
+<h4>Integer Value object<a class="headerlink" href="#integer-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 15%" />
+<col style="width: 66%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>min</p></td>
+<td><p>integer</p></td>
+<td><p>Minimum value, unbound if not provided.</p></td>
+</tr>
+<tr class="row-odd"><td><p>max</p></td>
+<td><p>integer</p></td>
+<td><p>Maximum value, unbound if not provided.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">int</span>
+<span class="nt">required</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">min</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="nt">max</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">5</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="float-value-object">
+<h4>Float Value object<a class="headerlink" href="#float-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 14%" />
+<col style="width: 63%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>min</p></td>
+<td><p>float</p></td>
+<td><p>Minimum value, unbound if not provided</p></td>
+</tr>
+<tr class="row-odd"><td><p>max</p></td>
+<td><p>float</p></td>
+<td><p>Maximum value, unbound if not provided</p></td>
+</tr>
+<tr class="row-even"><td><p>minExclusive</p></td>
+<td><p>boolean</p></td>
+<td><p>Whether the minimum should be excluded.</p></td>
+</tr>
+<tr class="row-odd"><td><p>maxExclusive</p></td>
+<td><p>boolean</p></td>
+<td><p>Whether the maximum should be excluded.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">float</span>
+<span class="nt">min</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-4.0</span>
+<span class="nt">minExclusive</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">max</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4.5</span>
+<span class="nt">maxExlusive</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="text-value-object">
+<h4>Text Value object<a class="headerlink" href="#text-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 17%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>minLength</p></td>
+<td><p>integer</p></td>
+<td><p>The minimum length of the text.</p></td>
+</tr>
+<tr class="row-odd"><td><p>maxLength</p></td>
+<td><p>integer</p></td>
+<td><p>The maximum length of the text.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">text</span>
+<span class="nt">minLength</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">maxLength</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">8</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="boolean-value-object">
+<h4>Boolean Value object<a class="headerlink" href="#boolean-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 20%" />
+<col style="width: 54%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td colspan="3"><p><em>(no additional properties)</em></p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">boolean,</span>
+<span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="choice-value-object">
+<h4>Choice Value object<a class="headerlink" href="#choice-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 26%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>choices</p></td>
+<td><p>object[string, string]</p></td>
+<td><p>List of available choices.
+Keys should represent the values presented to the user
+while values the command line parameter the choice is
+interpreted as.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">choice</span>
+<span class="nt">choices</span><span class="p">:</span>
+  <span class="nt">Alpha</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">--alpha</span>
+  <span class="nt">Beta</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">--no-alpha</span>
+  <span class="nt">Gamma</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">--third-option</span>
+<span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Alpha</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="file-value-object">
+<h4>File Value object<a class="headerlink" href="#file-value-object" title="Permalink to this headline">¶</a></h4>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 10%" />
+<col style="width: 76%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>mimetype</p></td>
+<td><p>string</p></td>
+<td><p>Accepted content type e.g. text/plain</p></td>
+</tr>
+<tr class="row-odd"><td><p>maxSize</p></td>
+<td><p>string</p></td>
+<td><p>The maximum size of the file. The size is represented
+with an integer and one of the allowed units: B, KB, MB, GB, TB
+e.g. 5MB</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">file</span>
+<span class="nt">mimetype</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">text/plain</span>
+<span class="nt">maxSize</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1KB</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="run-configuration">
+<h2>Run configuration<a class="headerlink" href="#run-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Run configuration tells Slivka how to construct the command line parameters
+for the executable file and how to submit it to the queuing system along with
+extra arguments and environment variables.
+The file follows YAML format (JSON is also allowed) and needs to have the following
+properties:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 40%" />
+<col style="width: 44%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>options</p></td>
+<td><p>array[<a class="reference internal" href="#argument-object">Argument Object</a>]</p></td>
+<td><p>List of command line arguments
+this application accepts.</p></td>
+</tr>
+<tr class="row-odd"><td><p>results</p></td>
+<td><p>array[<a class="reference internal" href="#result-object">Result Object</a>]</p></td>
+<td><p>List of produced output files.</p></td>
+</tr>
+<tr class="row-even"><td><p>configurations</p></td>
+<td><p>map[string, <a class="reference internal" href="#configuration-object">Configuration Object</a>]</p></td>
+<td><p>List of possible run configurations.</p></td>
+</tr>
+<tr class="row-odd"><td><p>limits</p></td>
+<td><p>string</p></td>
+<td><p>Path to the <a class="reference external" href="Limits">limiters</a> object.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <code class="docutils literal notranslate"><span class="pre">options</span></code> property defines the list of command line arguments passed to the program,
+<code class="docutils literal notranslate"><span class="pre">results</span></code> contains the list of the output files produced by the task and
+<code class="docutils literal notranslate"><span class="pre">configurations</span></code> is the list of available run configurations.
+Additionally, <code class="docutils literal notranslate"><span class="pre">limits</span></code> property defines the path to the Python class controlling
+the choice of the run configurations.</p>
+<div class="section" id="argument-object">
+<h3>Argument Object<a class="headerlink" href="#argument-object" title="Permalink to this headline">¶</a></h3>
+<p>Each argument object corresponds to a single command line parameter passed
+to the executable. They will be inserted in the order they are listed in the
+configuration file skipping those which have empty values.
+Each argument object have two required properties <code class="docutils literal notranslate"><span class="pre">ref</span></code> and <code class="docutils literal notranslate"><span class="pre">param</span></code>.
+Optionally you may add <code class="docutils literal notranslate"><span class="pre">val</span></code> if you want to specify a default value.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 6%" />
+<col style="width: 81%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ref</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Name of the form field which value is passed to this parameter.</p></td>
+</tr>
+<tr class="row-odd"><td><p>param</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Command line parameter template.</p></td>
+</tr>
+<tr class="row-even"><td><p>val</p></td>
+<td><p>string</p></td>
+<td><p>Default parameter value.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">ref</span></code> defines which value from the Form will be inserted to the
+command line parameter template.
+The value should match one of the field names in the form description.
+If you want to add a command line parameter which doesn’t have a corresponding form field
+it is recomment to prepend the <code class="docutils literal notranslate"><span class="pre">ref</span></code> name with an underscore <code class="docutils literal notranslate"><span class="pre">_</span></code>.
+Note that this parameter value will always be empty and will be skipped
+unless a default value is provided into the <code class="docutils literal notranslate"><span class="pre">val</span></code> parameter.</p>
+<p>The command line parameter contains a template where the value will be
+substituted into and then passed as a command line argument.
+The placeholder <code class="docutils literal notranslate"><span class="pre">${value}</span></code> is used in place of the value.
+If the value is a file, then it will be converted to an absolute path to that file.
+In case the executable requires its input file to be located in the current working
+directory or having a specific name, it is possible to use <code class="docutils literal notranslate"><span class="pre">${file:&lt;name&gt;}</span></code>
+syntax substituting the file name for <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>. It will create a link to the
+original file in the specified location.</p>
+<p>All placeholders which do not match <code class="docutils literal notranslate"><span class="pre">${value}</span></code> or <code class="docutils literal notranslate"><span class="pre">${file:&lt;name&gt;}</span></code> syntax are
+treated as environment variables and are substituted in runtime if such variable
+exists.</p>
+<p>Here is an exmaple of the command line parameters definition corresponding
+to the form having <code class="docutils literal notranslate"><span class="pre">input</span></code> and <code class="docutils literal notranslate"><span class="pre">format</span></code> fields:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">options</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="nt">ref</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">input</span>
+    <span class="nt">param</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-i ${file:inputfile.txt}</span>
+  <span class="p p-Indicator">-</span> <span class="nt">ref</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">format</span>
+    <span class="nt">param</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">--format=${value}</span>
+  <span class="p p-Indicator">-</span> <span class="nt">ref</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">_output</span>
+    <span class="nt">param</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-o ${value}</span>
+    <span class="nt">val</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">outputfile.out</span>
+</pre></div>
+</div>
+<p>If the values passed to <code class="docutils literal notranslate"><span class="pre">input</span></code> and <code class="docutils literal notranslate"><span class="pre">format</span></code> are <em>/home/slivka/media/input.json</em> and
+<em>json</em> respectively, the constructed command line paratemers will be
+<code class="docutils literal notranslate"><span class="pre">-i</span> <span class="pre">inputfile.txt</span> <span class="pre">--format=json</span> <span class="pre">-o</span> <span class="pre">outputfile.out</span></code> and <em>/home/slivka/media/input.json</em>
+will be linked to <em>/current/working/directory/inputfile.txt</em>.</p>
+</div>
+<div class="section" id="result-object">
+<h3>Result Object<a class="headerlink" href="#result-object" title="Permalink to this headline">¶</a></h3>
+<p>Result objects describe a single file or a group of files produced by
+the program. The following properties are available:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 8%" />
+<col style="width: 77%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>type</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Type of the output that this file represents.
+The value must be one of <em>output</em> for a regular output file,
+<em>log</em> for standard execution logs or <em>error</em> for error logs.</p></td>
+</tr>
+<tr class="row-odd"><td><p>path</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Path to the output file relative to the
+current working directory. Glob patterns are supported.</p></td>
+</tr>
+<tr class="row-even"><td><p>mimetype</p></td>
+<td><p>string</p></td>
+<td><p>Media (mime) type of the file.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The standard output and standard error are redirected to <em>stdout.txt</em> and
+<em>stderr.txt</em> respectively.
+The paths are evaluated lazily as the job is running and match
+as many files as possible. Every defined result file is treated as optional
+and its absence on job completion does not raise error.</p>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">results</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">output</span>
+    <span class="nt">path</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">outputfile.xml</span>
+    <span class="nt">mimetype</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">application/xml</span>
+  <span class="p p-Indicator">-</span> <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">output</span>
+    <span class="nt">path</span><span class="p">:</span> <span class="nv">*_aux</span><span class="l l-Scalar l-Scalar-Plain">.json</span>
+    <span class="nt">mimetype</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">application/json</span>
+  <span class="p p-Indicator">-</span> <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">log</span>
+    <span class="nt">path</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">stdout.txt</span>
+    <span class="nt">mimetype</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">text/plain</span>
+  <span class="p p-Indicator">-</span> <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">error</span>
+    <span class="nt">path</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">stderr.txt</span>
+    <span class="nt">mimetype</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">text/plain</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="configuration-object">
+<h3>Configuration Object<a class="headerlink" href="#configuration-object" title="Permalink to this headline">¶</a></h3>
+<p>Each configuration describes how the command will be dispatched to the queuing system.
+It can be either running a subprocess or submitting to the Local Slivka Queue or
+Univa Grid Engine. More submission methods can be added by subclassing
+<code class="docutils literal notranslate"><span class="pre">slivka.scheduler.runners.Runner</span></code> class.</p>
+<p>Each key of the <code class="docutils literal notranslate"><span class="pre">configuration</span></code> object represents the name of a run configuration which
+will be referenced in the limits module. Each value should be a following Configuration Object:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 20%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>runner</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Name or path to the Runner class to be used.</p></td>
+</tr>
+<tr class="row-odd"><td><p>executable</p></td>
+<td><p>string</p></td>
+<td><p><strong>Required.</strong> Path to executable script or binary file.
+<code class="docutils literal notranslate"><span class="pre">${project_dir}</span></code> variable is allowed and will be substituted
+for the absolute path to the project directory.</p></td>
+</tr>
+<tr class="row-even"><td><p>env</p></td>
+<td><p>map[string, string]</p></td>
+<td><p>Additional environment variables.</p></td>
+</tr>
+<tr class="row-odd"><td><p>queueArgs</p></td>
+<td><p>array[string]</p></td>
+<td><p>Additional arguments passed to the queuing system.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">configurations</span><span class="p">:</span>
+  <span class="nt">local</span><span class="p">:</span>
+    <span class="nt">runner</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">LocalQueueRunner</span>
+    <span class="nt">executable</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">bash ${project_dir}/binaries/Runnable.sh</span>
+    <span class="nt">env</span><span class="p">:</span>
+      <span class="nt">JAVAPATH</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">/usr/bin/jdk-1.8/bin</span>
+  <span class="nt">gridengine</span><span class="p">:</span>
+    <span class="nt">runner</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">GridEngineRunner</span>
+    <span class="nt">executable</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">bash ${project_dir}/binaries/Runnable.sh</span>
+    <span class="nt">env</span><span class="p">:</span>
+      <span class="nt">JAVAPATH</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">/usr/bin/jdk-1.8/bin</span>
+    <span class="nt">queueArgs</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">-P</span><span class="p p-Indicator">,</span> <span class="nv">webservices</span><span class="p p-Indicator">,</span> <span class="nv">-R</span><span class="p p-Indicator">,</span> <span class="nv">y</span><span class="p p-Indicator">,</span> <span class="nv">-q</span><span class="p p-Indicator">,</span> <span class="nv">64bit-pri.q</span><span class="p p-Indicator">,</span>
+                <span class="nv">-pe</span><span class="p p-Indicator">,</span> <span class="nv">smp</span><span class="p p-Indicator">,</span> <span class="s">&quot;4&quot;</span><span class="p p-Indicator">,</span> <span class="nv">-l</span><span class="p p-Indicator">,</span> <span class="nv">ram=3400M</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="limits">
+<h3>Limits<a class="headerlink" href="#limits" title="Permalink to this headline">¶</a></h3>
+<p>The job of limiters is to choose one of the listed configurations based on the
+input data. It can filter-out long jobs and redirect them to the dedicated
+queuing system while running small jobs locally.
+The value of the parameter should contain the path to the Python
+<a class="reference external" href="CreatingLimiter">limiter class</a> which performs selection of the configuration
+for the given service. The path must point to the class located
+in the module importable for the current python interpreter.
+The format of the path follows <em>package[.subpackages].classname</em> pattern.
+The directory containing Python script file must be a valid python package
+i.e. the directory and all its parent directories must contain an empty
+<em>__init__.py</em> and should be listed in the PYTHONPATH environment variable
+if not available from the current working directory.</p>
+</div>
+</div>
+<div class="section" id="creating-limiter">
+<h2>Creating Limiter<a class="headerlink" href="#creating-limiter" title="Permalink to this headline">¶</a></h2>
+<p>In your project configuration you should create one or more Python modules
+containing limiter classes. Each class should contain methods that allows to
+pick one configuration from the configurations list based on the values
+provided by the user.</p>
+<p>The limiter class must extend <code class="docutils literal notranslate"><span class="pre">slivka.scheduler.limits.LimitsBase</span></code> and
+if must define a class attribute <code class="docutils literal notranslate"><span class="pre">configurations</span></code> containing the list of
+configuration names.
+Additionally, for each configuration named <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> it needs to have
+a method named <code class="docutils literal notranslate"><span class="pre">limit_&lt;name&gt;(self,</span> <span class="pre">values)</span></code>.
+Paramter <code class="docutils literal notranslate"><span class="pre">values</span></code> passed to the function contains the dictionary of
+the values for the command line application.
+The method must return <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> depending on whether this
+run confguration can be used with these particular input values.
+The configurations are tested in the order they are specified in the list
+and the first confguration whose limit method returns <code class="docutils literal notranslate"><span class="pre">True</span></code> will be used.</p>
+<p>Additionally, you can define <code class="docutils literal notranslate"><span class="pre">setup(self,</span> <span class="pre">values)</span></code> method which will be
+run before all tests. It can be used to perform long operations and prepare
+some parameters.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">slivka.scheduler.limits</span> <span class="kn">import</span> <span class="n">LimitsBase</span>
+
+<span class="k">class</span> <span class="nc">MyLimits</span><span class="p">(</span><span class="n">LimitsBase</span><span class="p">):</span>
+
+    <span class="c1"># Use two configurations named fast and long</span>
+    <span class="n">configurations</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fast&#39;</span><span class="p">,</span> <span class="s1">&#39;long&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup is run before all tests. It can perform lengthy</span>
+<span class="sd">        file operations or data parsing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_file</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">]</span>
+        <span class="n">statinfo</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">=</span> <span class="n">statinfo</span><span class="o">.</span><span class="n">st_size</span>
+
+    <span class="k">def</span> <span class="nf">limit_fast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The &quot;fast&quot; configuration test method.</span>
+<span class="sd">        It accepts the input only if format is json and file is less than</span>
+<span class="sd">        100 bytes long or xml and less than 20 bytes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;json&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yaml&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">limit_long</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The &quot;long&quot; configuration test method. Tried if &quot;fast&quot; test fails.</span>
+<span class="sd">        It accepts any input file less than 1000 bytes,</span>
+<span class="sd">        otherwise, the job will be rejected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+</pre></div>
+</div>
+<p>First, the <code class="docutils literal notranslate"><span class="pre">setup</span></code> method retrieves input file path, checks its size
+in bytes and stores the value in the <code class="docutils literal notranslate"><span class="pre">input_file_size</span></code> property.
+Next, the criteria for the first configuration, less than 100B
+json file or less than 20B yaml file, are tested.
+If they are not met, the program continues to the second configuration
+which is executed if the file size does not exceed 1000B.
+Otherwise, the scheduler will refuse to start the job altogether.</p>
+<p>All values in the <code class="docutils literal notranslate"><span class="pre">values</span></code> dictionary are strings formatted as they
+are entered into the shell and may require prior conversion to other types.</p>
+</div>
+</div>
+<div class="section" id="launching-the-project">
+<h1>Launching the Project<a class="headerlink" href="#launching-the-project" title="Permalink to this headline">¶</a></h1>
+<p>Slivka consists of two core parts: RESTful HTTP server and job scheduler (dispatcher).
+Their separation allows to run them independently of each other.
+In situaitions when the scheduler is down, the server keeps collecting
+the requests stashing them in the database,
+When the scheduler is working again it can catch up with the server
+and dispatch all pending requests.
+Similarly, when the server is down, the currently submitted jobs
+are unaffected and can still be processed.
+Additionally, you can use a simple worker queue shipped with Slivka to run tasks
+on the local machine without additional queuing system installed.</p>
+<p>Each component is started through the <em>manage.py</em> script created in the project’s
+root directory.</p>
+<p>Before the project can be started for the first time, Slivka needs to
+initialize the database schema. The task is performed by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">initdb</span>
+</pre></div>
+</div>
+<p>By default it will create an <em>sqlite.db</em> file in the current working directory and
+automatically create all required tables.</p>
+<p>In order to delete the database, you may call</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">dropdb</span>
+</pre></div>
+</div>
+<p>or remove it manually fom the file system.</p>
+<p>Next, you need to launch the REST server and the scheduler processes.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">server</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">scheduler</span>
+</pre></div>
+</div>
+<p>The built-in slivka server is intended for development only.
+In production, use dedicated wsgi server such as Gunicorn and provide it
+a <code class="docutils literal notranslate"><span class="pre">wsgi</span></code> module from the project root directory e.g.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gunicorn</span> <span class="o">-</span><span class="n">b</span> <span class="mf">0.0</span><span class="o">.</span><span class="mf">0.0</span><span class="p">:</span><span class="mi">8000</span> <span class="o">-</span><span class="n">w</span> <span class="mi">4</span> <span class="o">-</span><span class="n">n</span> <span class="n">slivka</span><span class="o">-</span><span class="n">http</span> <span class="n">wsgi</span>
+</pre></div>
+</div>
+<p>If you decide to use the local queue to process jobs, you can run it with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">worker</span>
+</pre></div>
+</div>
+<p>To stop any of these processes, send the <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code> (2) “interrupt” or
+<code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code> (15) “terminate” signal to the process or press <strong>Ctrl + C</strong>
+to send <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code> to the current process.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#installing-slivka-package">Installing Slivka package</a></li>
+<li><a class="reference internal" href="#creating-new-project">Creating new project</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#project-structure">Project Structure</a><ul>
+<li><a class="reference internal" href="#settings-file">Settings file</a></li>
+<li><a class="reference internal" href="#services-configuration">Services configuration</a></li>
+<li><a class="reference internal" href="#form-description">Form Description</a><ul>
+<li><a class="reference internal" href="#field-object">Field Object</a></li>
+<li><a class="reference internal" href="#value-object">Value object</a><ul>
+<li><a class="reference internal" href="#integer-value-object">Integer Value object</a></li>
+<li><a class="reference internal" href="#float-value-object">Float Value object</a></li>
+<li><a class="reference internal" href="#text-value-object">Text Value object</a></li>
+<li><a class="reference internal" href="#boolean-value-object">Boolean Value object</a></li>
+<li><a class="reference internal" href="#choice-value-object">Choice Value object</a></li>
+<li><a class="reference internal" href="#file-value-object">File Value object</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#run-configuration">Run configuration</a><ul>
+<li><a class="reference internal" href="#argument-object">Argument Object</a></li>
+<li><a class="reference internal" href="#result-object">Result Object</a></li>
+<li><a class="reference internal" href="#configuration-object">Configuration Object</a></li>
+<li><a class="reference internal" href="#limits">Limits</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-limiter">Creating Limiter</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#launching-the-project">Launching the Project</a></li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to Slivka’s documentation!</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/getting_started.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Slivka’s documentation!"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.3.a5 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Mateusz Maciej Warowny.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.2.
+    </div>
+  </body>
+</html>

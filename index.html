@@ -1,41 +1,35 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Welcome to Slivka’s documentation! &#8212; Slivka 0.1.dev1 documentation</title>
-    
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <meta charset="utf-8" />
+    <title>Welcome to Slivka’s documentation! &#8212; Slivka 0.3.a5 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.1.dev1',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Requirements" href="installation.html" />
-   
-  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
-
-  </head>
-  <body role="document">
-  
+    <link rel="next" title="Installation" href="getting_started.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="getting_started.html" title="Installation"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Slivka 0.3.a5 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
 
     <div class="document">
       <div class="documentwrapper">
@@ -43,7 +37,7 @@
           <div class="body" role="main">
             
   <div class="section" id="welcome-to-slivka-s-documentation">
-<h1>Welcome to Slivka&#8217;s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
+<h1>Welcome to Slivka’s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>Slivka is a server application for Python, intended for easy and flexible
 configuration of REST API for various web services. The server is based on
 <a class="reference external" href="https://github.com/pallets/flask">Flask</a> microframework and <a class="reference external" href="https://github.com/zzzeek/sqlalchemy">SQLAlchemy</a>. The scheduler uses native Python
@@ -54,33 +48,30 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
 </div>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="installation.html#installation">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="configuration.html">Starting the project</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#settings-file">Settings file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#services-configuration">Services configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#form-description">Form description</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#command-description">Command description</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#limits-class">Limits class</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#installing-slivka-package">Installing Slivka package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#creating-new-project">Creating new project</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="running_project.html">Running the app</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">Slivka Module Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="slivka.html">slivka</a></li>
-<li class="toctree-l2"><a class="reference internal" href="slivka.db.html">slivka.db</a></li>
-<li class="toctree-l2"><a class="reference internal" href="slivka.scheduler.html">slivka.scheduler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="slivka.server.html">slivka.server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html#project-structure">Project Structure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#settings-file">Settings file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#services-configuration">Services configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#form-description">Form Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#run-configuration">Run configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#creating-limiter">Creating Limiter</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html#launching-the-project">Launching the Project</a></li>
 </ul>
 </div>
 </div>
 <div class="section" id="indices-and-tables">
 <h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
-<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
-<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
 </ul>
 </div>
 </div>
@@ -91,9 +82,9 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="#">Table Of Contents</a></h3>
+  <h3><a href="#">Table of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to Slivka&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#">Welcome to Slivka’s documentation!</a><ul>
 <li><a class="reference internal" href="#table-of-contents">Table of contents</a><ul>
 </ul>
 </li>
@@ -101,14 +92,10 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
 </ul>
 </li>
 </ul>
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="#">Documentation overview</a><ul>
-      <li>Next: <a href="installation.html" title="next chapter">Requirements</a></li>
-  </ul></li>
-</ul>
-</div>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="getting_started.html"
+                        title="next chapter">Installation</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -117,33 +104,34 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="footer">
-      &copy;2017, Mateusz Maciej Warowny.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
-      
-      |
-      <a href="_sources/index.rst.txt"
-          rel="nofollow">Page source</a>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="getting_started.html" title="Installation"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Slivka 0.3.a5 documentation</a> &#187;</li> 
+      </ul>
     </div>
-
-    
-
-    
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Mateusz Maciej Warowny.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.2.
+    </div>
   </body>
 </html>
