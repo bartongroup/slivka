@@ -14,7 +14,6 @@ import os.path
 from uuid import uuid4
 
 import flask
-import itsdangerous
 import pkg_resources
 import sqlalchemy.orm.exc
 from flask import Flask, Response, json, request, abort
@@ -28,11 +27,8 @@ from slivka.utils import snake_to_camel
 app = Flask('slivka', root_path=slivka.settings.BASE_DIR)
 """Flask object implementing WSGI application."""
 app.config.update(
-    UPLOADS_DIR=slivka.settings.UPLOADS_DIR,
-    SECRET_KEY=slivka.settings.SECRET_KEY
+    UPLOADS_DIR=slivka.settings.UPLOADS_DIR
 )
-
-signer = itsdangerous.Signer(slivka.settings.SECRET_KEY)
 
 
 @app.route('/version', methods=['GET'])

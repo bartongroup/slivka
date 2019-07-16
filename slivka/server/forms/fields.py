@@ -347,6 +347,8 @@ class FileField(BaseField):
                 raise ValidationError("file", "File does not exist.")
         if not os.path.exists(file.path):
             raise ValidationError("file", "File does not exist.")
+        # TODO check againts mimetype and maxsize
+        # TODO drop support for extension as it is irrelevant
         return file.path
 
     def get_constraints_list(self):
