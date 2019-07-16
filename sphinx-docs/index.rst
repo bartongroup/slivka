@@ -16,8 +16,9 @@ queuing mechanism and sqlite_ database.
 .. _SQLAlchemy: https://github.com/zzzeek/sqlalchemy
 .. _sqlite: https://www.sqlite.org/
 
+-----------------
 Table of contents
-=================
+-----------------
 .. toctree::
    :hidden:
 
@@ -26,15 +27,12 @@ Table of contents
 .. toctree::
    :maxdepth: 2
 
-   installation
-   configuration
-   running_project
-   modules
+   getting_started
 
 
-
+------------------
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
