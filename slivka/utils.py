@@ -133,10 +133,12 @@ def camel_to_snake(name):
 class JobStatus(enum.Enum):
 
     PENDING = 'pending'
+    REJECTED = 'rejected'
     ACCEPTED = 'accepted'
     QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
+    TERMINATED = 'terminated'
     DELETED = 'deleted'
     FAILED = 'failed'
     ERROR = 'error'

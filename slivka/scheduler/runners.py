@@ -164,14 +164,16 @@ class GridEngineRunner(Runner):
         job_status = {}
         for match in GridEngineRunner._job_status_regex.findall(stdout):
             job_id, status = match
-            job_status[job_id] = GridEngineRunner._status_letters[status]
+            job_status[job_id] = GridEngineRunner._status_letters.get(
+                status, JobStatus.UNDEFINED
+            )
         for handler in job_handlers:
             status = job_status.get(handler.id)
             if status is None:
                 if os.path.exists(os.path.join(handler.cwd, 'finished')):
                     status = JobStatus.COMPLETED
                 else:
-                    status = JobStatus.RUNNING
+                    status = JobStatus.UNDEFINED
             yield (handler, status)
 
     class Job(JobHandler):

@@ -189,7 +189,7 @@ class Scheduler:
                     request.working_dir = runner.cwd
                     runners.append(RunnerRequestPair(runner, request))
                 except Exception:
-                    request.status = JobStatus.ERROR
+                    request.status = JobStatus.REJECTED
                     self.logger.exception("Setting up the runner failed.")
                 finally:
                     session.commit()
