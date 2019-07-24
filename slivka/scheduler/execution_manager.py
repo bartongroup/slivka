@@ -271,11 +271,7 @@ class JobHandler(metaclass=ABCMeta):
         pass
 
     def is_finished(self):
-        return self.get_status() not in {
-            JobStatus.PENDING,
-            JobStatus.STATUS_QUEUED,
-            JobStatus.STATUS_RUNNING
-        }
+        return self.get_status().is_finished()
 
     @abstractmethod
     def serialize(self) -> str:

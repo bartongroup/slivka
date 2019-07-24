@@ -6,10 +6,11 @@ import subprocess
 from collections import defaultdict
 from typing import Type, Optional, List, Tuple, Iterable
 
+import slivka
+from slivka.local_queue import LocalQueueClient
 from slivka.scheduler.exceptions import QueueBrokenError, \
     QueueTemporarilyUnavailableError
 from slivka.scheduler.execution_manager import Runner, JobHandler
-from slivka.scheduler.task_queue import QueueServer
 from slivka.utils import JobStatus
 
 logger = logging.getLogger('slivka.scheduler.scheduler')
@@ -62,6 +63,11 @@ class ShellRunner(Runner):
 
 class LocalQueueRunner(Runner):
 
+    client = LocalQueueClient(
+        (slivka.settings.QUEUE_HOST, slivka.settings.QUEUE_PORT),
+        secret=slivka.settings.SECRET_KEY.encode()
+    )
+
     class Job(JobHandler):
         def __init__(self, job_id):
             super().__init__()
@@ -73,26 +79,32 @@ class LocalQueueRunner(Runner):
 
         def get_status(self) -> JobStatus:
             try:
-                return JobStatus(QueueServer.get_job_status(self.id))
-            except ConnectionError:
-                raise QueueTemporarilyUnavailableError
+                response = LocalQueueRunner.client.get_job_status(self.id)
+                return JobStatus[response.status]
+            except ConnectionError as e:
+                raise QueueTemporarilyUnavailableError from e
+            except RuntimeError as e:
+                raise QueueBrokenError from e
 
         def serialize(self) -> str:
-            return self.id
+            return str(self.id)
 
         @classmethod
         def deserialize(cls, serial) -> 'JobHandler':
-            return cls(serial)
+            return cls(int(serial))
 
     def submit(self) -> 'JobHandler':
         try:
-            return self.Job(
-                QueueServer.submit_job(
-                    self.executable + self.args, self.cwd, self.env
-                )
+            response = self.client.submit_job(
+                cmd=list2unix_command(self.executable + self.args),
+                cwd=self.cwd,
+                env=self.env
             )
-        except ConnectionError:
-            raise QueueTemporarilyUnavailableError
+            return self.Job(response.id)
+        except ConnectionError as e:
+            raise QueueTemporarilyUnavailableError from e
+        except RuntimeError as e:
+            raise QueueBrokenError from e
 
     @classmethod
     def get_job_handler_class(cls) -> Type['JobHandler']:

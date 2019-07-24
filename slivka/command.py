@@ -151,13 +151,14 @@ def manager():
     pass
 
 
-@click.command()
-def worker():
+@click.command('local-queue')
+@click.option('--log-level', default='INFO')
+def worker(log_level):
     """Start task queue workers."""
-    from slivka.scheduler.task_queue import TaskQueue
-    queue = TaskQueue()
-    queue.register_terminate_signal(2, 15)
-    queue.start()
+    os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
+    os.execlp('python', 'python', '-m', 'slivka.local_queue',
+              '-p', str(slivka.settings.QUEUE_PORT),
+              '--log-level', log_level)
 
 
 @click.command()
@@ -170,14 +171,22 @@ def scheduler():
 
 
 @click.command()
-def server():
+@click.option('--server-type', '-t', default='devel',
+              type=click.Choice(['gunicorn', 'devel']))
+def server(server_type):
     """Start HTTP server."""
-    from slivka.server.serverapp import app
-    app.run(
-        host=slivka.settings.SERVER_HOST,
-        port=int(slivka.settings.SERVER_PORT),
-        debug=True
-    )
+    host = slivka.settings.SERVER_HOST
+    port = int(slivka.settings.SERVER_PORT)
+    if server_type == 'devel':
+        from slivka.server.serverapp import app
+        app.run(host=host, port=port, debug=True)
+    elif server_type == 'gunicorn':
+        os.chdir(slivka.settings.BASE_DIR)
+        os.execlp('gunicorn', 'gunicorn',
+                  '--bind=%s:%d' % (host, port),
+                  '--workers=4',
+                  '--name=slivka-http',
+                  'wsgi:app')
 
 
 @click.command()

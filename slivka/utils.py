@@ -138,7 +138,7 @@ class JobStatus(enum.Enum):
     QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
-    TERMINATED = 'terminated'
+    INTERRUPTED = 'interrupted'
     DELETED = 'deleted'
     FAILED = 'failed'
     ERROR = 'error'
