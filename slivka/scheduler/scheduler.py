@@ -1,6 +1,7 @@
 import logging
 import os
 import signal
+import tempfile
 import threading
 from collections import namedtuple, deque, defaultdict
 from fnmatch import fnmatch
@@ -204,7 +205,7 @@ class Scheduler:
         }
         runner_factory = self._runner_factories[request.service]
         if new_cwd:
-            cwd = os.path.join(slivka.settings.TASKS_DIR, request.uuid)
+            cwd = tempfile.mkdtemp('', '', slivka.settings.TASKS_DIR)
         else:
             cwd = request.working_dir
         return runner_factory.new_runner(values, cwd)

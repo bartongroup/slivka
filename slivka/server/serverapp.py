@@ -11,7 +11,7 @@ server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
 """
 
 import os.path
-from uuid import uuid4
+from tempfile import mkstemp
 
 import flask
 import pkg_resources
@@ -131,29 +131,30 @@ def file_upload():
         file = request.files['file']
     except KeyError:
         raise abort(400)
-    if not validate_file_type(file._file, file.mimetype):
+    if not validate_file_type(file, file.mimetype):
         raise abort(415)
-    file.stream.seek(0)
-    file_uuid = uuid4().hex
-    file_path = os.path.join(app.config['UPLOADS_DIR'], file_uuid)
-    file.save(file_path)
+    file.seek(0)
+    (fd, path) = mkstemp('', '', dir=app.config['UPLOADS_DIR'], text=False)
+    fname = os.path.basename(path)
+    with os.fdopen(fd, 'wb') as fp:
+        file.save(fp)
     file_record = models.File(
-        uuid=file_uuid,
         title=file.filename,
         mimetype=file.mimetype,
-        path=file_path,
-        url_path=flask.url_for('uploads', filename=file_uuid)
+        path=path,
+        url_path=flask.url_for('uploads', filename=fname)
     )
     with start_session() as session:
+        session.expire_on_commit = False
         session.add(file_record)
         session.commit()
     return JsonResponse({
         'statuscode': 201,
-        'uuid': file_uuid,
+        'uuid': file_record.uuid,
         'title': file.filename,
         'mimetype': file.mimetype,
-        'URI': flask.url_for('get_file_metadata', file_uuid=file_uuid),
-        'contentURI': flask.url_for('uploads', filename=file_uuid)
+        'URI': flask.url_for('get_file_metadata', file_uuid=file_record.uuid),
+        'contentURI': file_record.url_path
     }, status=201)
 
 
