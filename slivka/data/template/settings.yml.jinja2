@@ -7,11 +7,14 @@ SERVICES_INI: ./configurations/services.ini
 UPLOADS_URL_PATH: /media/uploads
 TASKS_URL_PATH: /media/tasks
 
+ACCEPTED_FILE_TYPES:
+  - text/plain
+
 SERVER_HOST: 127.0.0.1
 SERVER_PORT: 8000
-SECRET_KEY: {{ secret_key }}
 
 QUEUE_HOST: localhost
 QUEUE_PORT: 3397
+SECRET_KEY: {{ secret_key }}
 
 DATABASE_URL: "sqlite:///sqlite3.db"
