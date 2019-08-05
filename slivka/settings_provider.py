@@ -7,14 +7,14 @@ import jsonschema
 import warnings
 import yaml
 
-from slivka.utils import FORM_VALIDATOR, COMMAND_VALIDATOR
+from slivka.utils import FORM_VALIDATOR, COMMAND_VALIDATOR, SafeOrderedLoader
 
 
 class ImproperlyConfigured(Exception):
     pass
 
 
-class LazySettings:
+class LazySettingsProxy:
 
     def __init__(self):
         self._settings = None
@@ -32,8 +32,7 @@ class LazySettings:
                 'variable SLIVKA_SETTINGS.'
             )
         with open(settings_file) as f:
-            options = yaml.safe_load(f).items()
-        self._settings = SettingsProvider(options)
+            self._settings = Settings(yaml.safe_load(f))
 
     def configure(self, **options):
         if self._settings is not None:
@@ -43,17 +42,17 @@ class LazySettings:
             setattr(self._settings, name, value)
 
 
-class SettingsProvider:
+class Settings:
 
-    def __init__(self, options):
-        for name, value in options:
+    def __init__(self, json_data):
+        for name, value in json_data.items():
             if name.isupper():
                 setattr(self, name, value)
         self._service_configs = {}
 
         # check if all required fields are present
         required_options = ['BASE_DIR', 'UPLOADS_DIR', 'TASKS_DIR', 'SERVICES_INI',
-                            'UPLOADS_URL_PATH', 'TASKS_URL_PATH', 'ACCEPTED_FILE_TYPES',
+                            'UPLOADS_URL_PATH', 'TASKS_URL_PATH', 'ACCEPTED_MEDIA_TYPES',
                             'SERVER_HOST', 'SERVER_PORT', 'QUEUE_HOST', 'QUEUE_PORT', 'DATABASE_URL']
         for option in required_options:
             if not hasattr(self, option):
@@ -78,7 +77,7 @@ class SettingsProvider:
             form_file = services_config.get(section, 'form')
             command_file = services_config.get(section, 'config')
             self._service_configs[section] = (
-                ServiceConfigurationProvider(
+                ServiceConfig(
                     service=section,
                     form_file=os.path.join(self.BASE_DIR, form_file),
                     command_file=os.path.join(self.BASE_DIR, command_file)
@@ -105,13 +104,13 @@ def norm_join_path(*args):
     return os.path.normpath(os.path.join(*args))
 
 
-class ServiceConfigurationProvider:
+class ServiceConfig:
 
     def __init__(self, service, form_file, command_file):
         self._service = service
 
         with open(form_file, 'r') as f:
-            form = yaml.safe_load(f)
+            form = yaml.load(f, SafeOrderedLoader)
         try:
             FORM_VALIDATOR.validate(form)
         except jsonschema.exceptions.ValidationError as exc:

@@ -15,16 +15,15 @@ from tempfile import mkstemp
 
 import flask
 import pkg_resources
-import sqlalchemy.orm.exc
-from flask import Flask, Response, json, request, abort
-
 import slivka
+import sqlalchemy.orm.exc
+from flask import json, request, abort
 from slivka.db import Session, models, start_session
-from slivka.server.file_validators import validate_file_type
-from slivka.server.forms import FormFactory
-from slivka.utils import snake_to_camel
+from slivka.server.file_validators import validate_file_content
 
-app = Flask('slivka', root_path=slivka.settings.BASE_DIR)
+from .forms import FormLoader
+
+app = flask.Flask('slivka', root_path=slivka.settings.BASE_DIR)
 """Flask object implementing WSGI application."""
 app.config.update(
     UPLOADS_DIR=slivka.settings.UPLOADS_DIR
@@ -66,24 +65,13 @@ def get_service_form(service):
     """
     if service not in slivka.settings.services:
         raise abort(404)
-    form_cls = FormFactory().get_form_class(service)
+    form_cls = FormLoader.instance[service]
     form = form_cls()
     response = {
         'statuscode': 200,
         'name': service,
         'URI': flask.url_for('post_service_form', service=service),
-        'fields': [
-            {
-                'name': field.name,
-                'type': field.type,
-                'label': field.label,
-                'description': field.description,
-                'required': field.required,
-                'default': field.default,
-                **{snake_to_camel(c['name']): c['value'] for c in field.constraints},
-            }
-            for field in form.fields
-        ]
+        'fields': [field.__json__() for field in form]
     }
     return JsonResponse(response, status=200)
 
@@ -97,28 +85,28 @@ def post_service_form(service):
     """
     if service not in slivka.settings.services:
         raise abort(404)
-    form_cls = FormFactory().get_form_class(service)
-    form = form_cls(request.form)
+    form_cls = FormLoader.instance[service]
+    form = form_cls(request.form, request.files)
     if form.is_valid():
         with start_session() as session:
             job_request = form.save(session)
             session.commit()
-            response = JsonResponse({
+            return JsonResponse({
                 'statuscode': 202,
                 'uuid': job_request.uuid,
                 'URI': flask.url_for('get_task_status', task_uuid=job_request.uuid)
             }, status=202)
     else:
-        response = JsonResponse({
+        return JsonResponse({
             'statuscode': 420,
             'error': 'Invalid data',
-            'errors': [{
-                'field': name,
-                'errorCode': error.code,
-                'message': error.reason
-            } for name, error in form.errors.items()]
+            'errors': [
+                {'field': name,
+                 'message': error.message,
+                 'errorCode': error.code}
+                for name, error in form.errors.items()
+            ]
         }, status=420)
-    return response
 
 
 @app.route('/files', methods=['POST'])
@@ -131,7 +119,7 @@ def file_upload():
         file = request.files['file']
     except KeyError:
         raise abort(400)
-    if not validate_file_type(file, file.mimetype):
+    if not validate_file_content(file, file.mimetype):
         raise abort(415)
     file.seek(0)
     (fd, path) = mkstemp('', '', dir=app.config['UPLOADS_DIR'], text=False)
@@ -252,16 +240,33 @@ def get_task_files(task_uuid):
         return JsonResponse({
             'statuscode': 200,
             'files': [
-                {
-                    'uuid': file.uuid,
-                    'title': file.title,
-                    'mimetype': file.mimetype,
-                    'URI': flask.url_for('get_file_metadata', file_uuid=file.uuid),
-                    'contentURI': file.url_path
-                }
+                {'uuid': file.uuid,
+                 'title': file.title,
+                 'mimetype': file.mimetype,
+                 'URI': flask.url_for('get_file_metadata', file_uuid=file.uuid),
+                 'contentURI': file.url_path}
                 for file in files
             ]
         }, status=200)
+
+
+@app.route('/webapp/<service>', methods=['GET', 'POST'])
+def webapp_form(service):
+    Form = FormLoader.instance[service]
+    if request.method == 'GET':
+        form = Form()
+        return flask.render_template('form.jinja2', form=form)
+    elif request.method == 'POST':
+        form = Form(data=request.form, files=request.files)
+        if form.is_valid():
+            with start_session(expire_on_commit=False) as session:
+                job_request = form.save(session)
+                session.commit()
+            url =flask.url_for('get_task_status', task_uuid=job_request.uuid)
+            print(url)
+            return flask.redirect(url)
+        else:
+            return flask.render_template('form.jinja2', form=form)
 
 
 @app.route('/api/')
@@ -317,7 +322,7 @@ def JsonResponse(content, status=200, **kwargs):
     :param kwargs: additional arguments passed to the Response object
     :return: JSON response object
     """
-    return Response(
+    return flask.Response(
         response=json.dumps(content, indent=2),
         status=status,
         mimetype='application/json',

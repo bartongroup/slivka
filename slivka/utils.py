@@ -2,14 +2,18 @@ import enum
 import os
 import re
 import shutil
+from collections import OrderedDict
 
 import jsonschema
 import pkg_resources
+import yaml.resolver
 
 try:
     import simplejson as json
 except ImportError:
     import json
+
+# ## JSON validators ##
 
 _FORM_SCHEMA_JSON = json.loads(
     pkg_resources.resource_string(
@@ -30,6 +34,8 @@ jsonschema.Draft4Validator.check_schema(_COMMAND_SCHEMA_JSON)
 COMMAND_VALIDATOR = jsonschema.Draft4Validator(_COMMAND_SCHEMA_JSON)
 
 
+# ## Singleton metaclass ##
+
 class Singleton(type):
     __instances = {}
 
@@ -38,6 +44,29 @@ class Singleton(type):
             cls.__instances[cls] = super().__call__(*args, **kwargs)
         return cls.__instances[cls]
 
+    @property
+    def instance(cls):
+        return cls()
+
+
+# ## Yaml loaders using OrderedDict ##
+
+def _construct_mapping(loader, node):
+    loader.flatten_mapping(node)
+    return OrderedDict(loader.construct_pairs(node))
+
+
+class SafeOrderedLoader(yaml.SafeLoader):
+    pass
+
+
+SafeOrderedLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_mapping
+)
+
+
+# ## Path and file traversal utilities ##
 
 def locate(path):
     """Imports any module or object accessible from the PYTHONPATH.

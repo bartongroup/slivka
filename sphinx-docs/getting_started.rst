@@ -153,7 +153,7 @@ The following list shows all the parameters required by the Slivka application.
   This setting enables you to set the path so the files can be served with a third-party proxy server
   e.g. Apache or Nginx.
 
-:``ACCEPTED_FILE_TYPES``:
+:``ACCEPTED_MEDIA_TYPES``:
   The list of media mime-types that will be accepted by the server.
   The names can be listed using either json or yaml syntax
 
@@ -161,11 +161,11 @@ The following list shows all the parameters required by the Slivka application.
 
   .. code-block:: yaml
 
-    ACCEPTED_FILE_TYPES: ["text/plain", "application/json"]
+    ACCEPTED_MEDIA_TYPES: ["text/plain", "application/json"]
 
   .. code-block:: yaml
 
-    ACCEPTED_FILE_TYPES:
+    ACCEPTED_MEDIA_TYPES:
       - text/plain
       - application/json
 

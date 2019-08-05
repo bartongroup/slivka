@@ -1,7 +1,7 @@
 {
   "type": "object",
   "properties": {
-    "version": {"type": "string"}
+    "__version__": {"type": "string"}
   },
   "additionalProperties": {"$ref": "#/definitions/field"},
 
@@ -21,7 +21,16 @@
           "properties": {
             "type": {
                 "type": "string",
-                "enum": ["int", "float", "text", "boolean", "choice", "file"]
+                "enum": [
+                  "int",
+                  "float",
+                  "decimal",
+                  "text",
+                  "boolean",
+                  "flag",
+                  "choice",
+                  "file"
+                ]
             },
             "required": {"type": "boolean"}
           },
@@ -55,11 +64,11 @@
     "decimalField": {
       "title": "decimal value validation schema",
       "properties": {
-        "type": {"enum": ["float"]},
+        "type": {"enum": ["float", "decimal"]},
         "min": {"type": "number"},
         "max": {"type": "number"},
-        "minExclusive": {"type": "boolean"},
-        "maxExclusive": {"type": "boolean"},
+        "min-exclusive": {"type": "boolean"},
+        "max-exclusive": {"type": "boolean"},
         "default": {"type": "number"},
         "required": {}
       },
@@ -70,11 +79,11 @@
       "title": "text value validation schema",
       "properties": {
         "type": {"enum": ["text"]},
-        "minLength": {
+        "min-length": {
           "type": "integer",
           "minimum": 0
         },
-        "maxLength": {
+        "max-length": {
           "type": "integer",
           "minimum": 0
         },
@@ -89,7 +98,7 @@
     "booleanField": {
       "title": "boolean value validation schema",
       "properties": {
-        "type": {"enum": ["boolean"]},
+        "type": {"enum": ["boolean", "flag"]},
         "default": {
           "type": "boolean"
         },
@@ -119,9 +128,12 @@
       "title": "file value validation schema",
       "properties": {
         "type": {"enum": ["file"]},
-        "mimetype": {"type": "string"},
-        "extension": {"type": "string"},
-        "maxSize": {
+        "media-type": {"type": "string"},
+        "extensions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "max-size": {
           "type": "string",
           "pattern": "^\\d+\\s*(|K|M|G|T)B$"
         },

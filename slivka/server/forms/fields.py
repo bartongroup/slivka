@@ -1,497 +1,505 @@
+import itertools
 import os
-import re
+import pathlib
+import shutil
+from collections import OrderedDict
+from functools import partial
 
-import sqlalchemy.orm.exc
+import sqlalchemy.orm
 
 from slivka.db import start_session, models
-from .exceptions import ValidationError
+from slivka.server.file_validators import validate_file_content
+from werkzeug.datastructures import FileStorage
+
+from .widgets import *
+
+__all__ = [
+    'BaseField',
+    'IntegerField',
+    'DecimalField',
+    'TextField',
+    'BooleanField',
+    'FlagField',
+    'ChoiceField',
+    'FileField',
+    'ValidationError',
+    'FileWrapper'
+]
+
+EMPTY_VALUES = ({}, set(), [], (), None, '')
 
 
 class BaseField:
-    """Base class for all form fields.
+    def __init__(self,
+                 name,
+                 label='',
+                 description='',
+                 default=None,
+                 required=True):
+        self.name = name
+        self.label = label
+        self.description = description
+        self.default = default
+        self.required = required
+        self.validators = []
+        self._widget = None
 
-    :param name: parameter id
-    :param default: default value of the field
-    :raise ValidationError: default value is not valid
-    """
-    def __init__(self, name, label='', description='',
-                 default=None, required=True):
-        """
-        Initializes the values of the field and sets the default value.
+    def value_from_request_data(self, data, files):
+        return data.get(self.name)
 
-        :param name: parameter id
-        :param default: default value of the field
-        :raise ValidationError: default value is not valid
-        """
-        self._name = name
-        self._label = label
-        self._description = description
-        self._required = required
-        if default is not None:
-            try:
-                self.validate(default)
-            except ValidationError as e:
-                raise RuntimeError('Invalid default in field %s' % name) from e
-        self._default = default
-        self._value = None
-        self._cleaned_value = None
-        self._error = None
-        self._valid = None
+    def to_python(self, value):
+        raise NotImplementedError
 
-    @property
-    def name(self):
-        """
-        :return: option id
-        """
-        return self._name
-
-    @property
-    def label(self):
-        return self._label
-
-    @property
-    def description(self):
-        return self._description
-
-    @property
-    def type(self):
-        """
-        Get the type of the field based on the class name.
-
-        :return: string representation of field type
-        """
-        return self.__class__.__name__[:-5].lower()
-
-    @property
-    def default(self):
-        """
-        Make `default` as a read-only property.
-
-        :return: default value of the field
-        """
-        return self._default
-
-    @property
-    def required(self):
-        return self._required
-
-    @property
-    def constraints(self):
-        return [
-            {"name": name, "value": value}
-            for (name, value) in self.get_constraints_list()
-            if value is not None
-        ]
-
-    def get_constraints_list(self):
-        return []
-
-    @property
-    def value(self):
-        """
-        Returns field's value. If it wasn't set yet then returns default value.
-
-        :return: value assigned to the field or default.
-        """
-        if self._value is None:
-            return self._default
+    def run_validation(self, value):
+        if value is None:
+            if self.required:
+                raise ValidationError("Field is required", 'required')
         else:
-            return self._value
-
-    @value.setter
-    def value(self, value):
-        """
-        Sets the value of the field and invalidates it.
-
-        :param value: new value of the field
-        """
-        self._value = value
-        self._valid = None
-
-    @property
-    def error(self):
-        if self._valid is False:
-            return self._error
-        else:
-            return None
-
-    @property
-    def is_valid(self):
-        """
-        Checks if the field has a valid value by calling subclass'
-        ``validate`` method and catching the ValidationError.
-        If the validation is successful it sets ``_cleaned_value`` to the
-        value returned by ``validate``.
-
-        :return: whether the field is valid
-        """
-        if self._valid is None:
-            try:
-                self._cleaned_value = self.validate(self.value)
-            except ValidationError as e:
-                self._error = e
-                self._valid = False
-            else:
-                self._valid = True
-        return self._valid
-
-    @property
-    def cleaned_value(self):
-        """
-        Returns the value of the field after casting it into an appropriate
-        format.
-
-        :return: cleaned field value
-        :raise ValidationError: form is not valid
-        """
-        if self.is_valid:
-            return self._cleaned_value
-        else:
-            assert self._error, "Exception was not saved."
-            raise self._error
+            for validator in self.validators:
+                validator(value)
 
     def validate(self, value):
-        """
-        Method validating the field value which should be overridden in
-        more specialised subclasses.
-        If the field is valid, this method should return cleaned value;
-        otherwise, it raises ValidationError with error description.
-
-        Default behaviour checks if the field is required and raises an
-        exception when the field value is not provided.
-
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        if value is None and self.required:
-            raise ValidationError("required", "This field is required")
+        value = self.to_python(value)
+        if value is None and self.default is not None:
+            return self.default
+        self.run_validation(value)
         return value
 
-    def __repr__(self):
-        return ("<{} {}: {!r}>"
-                .format(self.__class__.__name__, self._name, self.value))
+    def _validate_default(self):
+        if self.default is not None:
+            try:
+                self.run_validation(self.default)
+            except ValidationError as e:
+                raise RuntimeError("Invalid default value") from e
+
+    def to_cmd_parameter(self, value):
+        return str(value) if value is not None else None
+
+    def __json__(self):
+        return {
+            'name': self.name,
+            'label': self.label,
+            'description': self.description or "",
+            'required': self.required,
+            'default': self.default
+        }
+
+    @property
+    def widget(self):
+        raise NotImplementedError
+
+    @property
+    def input_tag(self):
+        return self.widget.render()
 
 
 class IntegerField(BaseField):
-    def __init__(self, name, label='', description='',
-                 default=None, required=True, minimum=None, maximum=None):
-        """
-        :param name: parameter id
-        :param default: default value of the field
-        :param minimum: minimum accepted value (inclusive)
-        :param maximum: maximum accepted value (inclusive)
-        """
-        self._min = minimum
-        self._max = maximum
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
+    # noinspection PyShadowingBuiltins
+    def __init__(self,
+                 name,
+                 min=None,
+                 max=None,
+                 **kwargs):
+        super().__init__(name, **kwargs)
+        self.min = min
+        self.max = max
+        if max is not None:
+            self.validators.append(partial(_max_value_validator, max))
+        if min is not None:
+            self.validators.append(partial(_min_value_validator, min))
+        self._validate_default()
 
-    def validate(self, value):
-        """
-        Extends the default behaviour checking if the field's value can be
-        casted to an integer and if the value meets minimum and maximum
-        constraints.
+    @property
+    def widget(self):
+        if self._widget is None:
+            widget = NumberInputWidget(self.name)
+            widget['min'] = self.min
+            widget['max'] = self.max
+            widget['value'] = self.default
+            widget['required'] = self.required
+            self._widget = widget
+        return self._widget
 
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if value is None:
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
             return None
         try:
-            cleaned_value = int(value)
+            value = int(value)
         except (ValueError, TypeError):
-            raise ValidationError("type", "Not a valid integer.")
-        if self._min is not None and cleaned_value < self._min:
-            raise ValidationError(
-                "min", "Value must be greater than %d." % self._min
-            )
-        if self._max is not None and cleaned_value > self._max:
-            raise ValidationError(
-                "max", "Value must be less than %d." % self._max
-            )
-        return cleaned_value
+            raise ValidationError("Invalid integer value", 'invalid')
+        return value
 
-    def get_constraints_list(self):
-        return [
-            ("min", self._min),
-            ("max", self._max)
-        ]
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'integer'
+        if self.min is not None: j['min'] = self.min
+        if self.max is not None: j['max'] = self.max
+        return j
 
 
 class DecimalField(BaseField):
-    def __init__(self, name, label='', description='', required=True,
-                 default=None, minimum=None, maximum=None,
-                 min_exclusive=False, max_exclusive=False):
-        """
-        Sets the field and its constraints.
-        Inclusive and exclusive limits are mutually exclusive and at least
-        one in each pair must be None.
+    # noinspection PyShadowingBuiltins
+    def __init__(self,
+                 name,
+                 min=None,
+                 max=None,
+                 min_exclusive=False,
+                 max_exclusive=False,
+                 **kwargs):
+        super().__init__(name, **kwargs)
+        self.min = min
+        self.max = max
+        self.min_exclusive = min_exclusive
+        self.max_exclusive = max_exclusive
+        if max is not None:
+            validator = (_exclusive_max_value_validator
+                         if max_exclusive else _max_value_validator)
+            self.validators.append(partial(validator, max))
+        if min is not None:
+            validator = (_exclusive_min_value_validator
+                         if min_exclusive else _min_value_validator)
+            self.validators.append(partial(validator, min))
+        self._validate_default()
 
-        :param name: parameter id
-        :param default: default value of the field
-        :param minimum: minimum accepted value
-        :param maximum: maximum accepted value
-        :param min_exclusive: whether minimum value is exclusive
-        :param max_exclusive: whether maximum value is exclusive
-        """
-        self._min = (minimum, min_exclusive)
-        self._max = (maximum, max_exclusive)
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
+    @property
+    def widget(self):
+        if self._widget is None:
+            widget = NumberInputWidget(self.name)
+            widget['min'] = self.min
+            widget['max'] = self.max
+            widget['value'] = self.default
+            widget['required'] = self.required
+            self._widget = widget
+        return self._widget
 
-    def validate(self, value):
-        """
-        Extends the default behaviour checking if the value can be cast to
-        float and meets all value constraints.
-
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if value is None:
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
             return None
         try:
-            cleaned_value = float(value)
+            value = float(value)
         except (ValueError, TypeError):
-            raise ValidationError("type", "Not a valid decimal.")
-        if self._min[0] is not None:
-            if self._min[1]:
-                # cleaned value should be > minimum
-                if cleaned_value <= self._min[0]:
-                    raise ValidationError(
-                        "min",
-                        "Value must be less or equal to %d." % self._min[0]
-                    )
-            else:
-                # cleaned value should be >= minimum
-                if cleaned_value < self._min[0]:
-                    raise ValidationError(
-                        "min",
-                        "Value must be less than %d." % self._min[0]
-                    )
-        if self._max[0] is not None:
-            if self._max[1]:
-                # cleaned value should be < maximum
-                if cleaned_value >= self._max[0]:
-                    raise ValidationError(
-                        "max",
-                        "Value must be greater or equal to %d." % self._max[0]
-                    )
-            else:
-                # cleaned value should be < maximum
-                if cleaned_value > self._max[0]:
-                    raise ValidationError(
-                        "max",
-                        "Value must be greater than %d." % self._max[0]
-                    )
-        return cleaned_value
+            raise ValidationError("Invalid decimal number", 'invalid')
+        return value
 
-    def get_constraints_list(self):
-        return [
-            ("min", self._min[0]),
-            ("min_exclusive", bool(self._min[1])),
-            ("max", self._max[0]),
-            ("max_exclusive", bool(self._max[1]))
-        ]
-
-
-class FileField(BaseField):
-    size_multiplier = {
-        "": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4
-    }
-
-    def __init__(self, name, label='', description='', default=None,
-                 required=True, mimetype=None, extension=None, max_size=None):
-        """
-        :param name: parameter id
-        :param default: default value of the field
-        :param extension: extension the file must have
-        :raise ValueError: invalid `max_size` format
-        """
-        self._mimetype = mimetype
-        self._extension = extension
-        if max_size is not None:
-            match = re.match(r"(\d+)\s*([KMGT]?)B$", max_size)
-            if not match:
-                raise ValueError("Invalid max_size format %s" % max_size)
-            size_val = int(match.group(1))
-            max_size = size_val * self.size_multiplier[match.group(2)]
-        self._max_size = max_size
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
-
-    def validate(self, value):
-        """
-        Extends the default behaviour checking if the file with a given id is
-        registered in the database and the path to that file exists.
-        Validation converts file id to the actual file path in the filesystem.
-
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if value is None:
-            return None
-        file = None
-        with start_session() as session:
-            try:
-                file = (session.query(models.File)
-                        .filter(models.File.uuid == value)
-                        .one())
-            except sqlalchemy.orm.exc.NoResultFound:
-                raise ValidationError("file", "File does not exist.")
-        if not os.path.exists(file.path):
-            raise ValidationError("file", "File does not exist.")
-        # TODO check againts mimetype and maxsize
-        # TODO drop support for extension as it is irrelevant
-        return file.path
-
-    def get_constraints_list(self):
-        return [
-            ("mimetype", self._mimetype),
-            ("extension", self._extension),
-            ("max_size", self._max_size)
-        ]
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'decimal'
+        if self.max is not None: j['max'] = self.max
+        if self.min is not None: j['min'] = self.min
+        if self.min_exclusive is not None: j['minExclusive'] = self.min_exclusive
+        if self.max_exclusive is not None: j['maxExclusive'] = self.max_exclusive
+        return j
 
 
 class TextField(BaseField):
-    def __init__(self, name, label='', description='', default=None,
-                 required=True, min_length=None, max_length=None):
-        """
-        :param name: parameter id
-        :param default: default value of the field
-        :param min_length: minimum length of the string
-        :param max_length: maximum length of the string
-        :raise ValueError: length constraint is negative
-        :raise ValueError: maximum limit is lower than minimum limit
-        """
-        if ((min_length is not None and min_length < 0) or
-                (max_length is not None and max_length < 0)):
-            raise ValueError("Length can't be negative")
-        if (min_length is not None and
-            max_length is not None and
-                min_length > max_length):
-            raise ValueError("Maximum length must be greater than minimum "
-                             "length")
-        self._min_length = min_length
-        self._max_length = max_length
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
+    def __init__(self,
+                 name,
+                 min_length=None,
+                 max_length=None,
+                 **kwargs):
+        super().__init__(name, **kwargs)
+        self.min_length = min_length
+        self.max_length = max_length
+        if min_length is not None:
+            self.validators.append(partial(
+                _min_length_validator, min_length
+            ))
+        if max_length is not None:
+            self.validators.append(partial(
+                _max_length_validator, max_length
+            ))
+        self._validate_default()
 
-    def validate(self, value):
-        """
-        Extends the default behaviour checking if the value can be cast to
-        string and the length of that string fits into the limits.
+    @property
+    def widget(self):
+        if self._widget is None:
+            self._widget = TextInputWidget(self.name)
+            self._widget['value'] = self.default
+            self._widget['required'] = self.required
+        return self._widget
 
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if value is None:
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
             return None
-        try:
-            cleaned_value = str(value)
-        except TypeError:
-            raise ValidationError(
-                "type",
-                "Value has no string representation."
-            )
-        if (self._min_length is not None and
-                len(cleaned_value) < self._min_length):
-            raise ValidationError(
-                "min_length",
-                "Value is too short (min %d)." % self._min_length
-            )
-        if (self._max_length is not None and
-                len(cleaned_value) > self._max_length):
-            raise ValidationError(
-                "max_length",
-                "Value is too long (max %d)." % self._max_length
-            )
-        return cleaned_value
+        return str(value)
 
-    def get_constraints_list(self):
-        return [
-            ("min_length", self._min_length),
-            ("max_length", self._max_length)
-        ]
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'text'
+        if self.min_length is not None: j['minLength'] = self.min_length
+        if self.max_length is not None: j['maxLength'] = self.max_length
+        return j
 
 
 class BooleanField(BaseField):
-    false_literals = {'no', 'false', '0', 'null'}
+    FALSE_STR = {'no', 'false', '0', 'n', 'f', 'none', 'null', 'off'}
 
-    def __init__(self, name, label='', description='', default=None,
-                 required=True):
-        """
-        :param name: parameter id
-        :param default: default value of the field
-        """
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
+    def __init__(self, name, **kwargs):
+        super().__init__(name, **kwargs)
+        self._validate_default()
 
-    def validate(self, value):
-        """
-        Extends the default behaviour validating boolean values.
-        If the value is one of the string literals indicating false returns
-        False; otherwise evaluates the value as a boolean.
+    @property
+    def widget(self):
+        if self._widget is None:
+            self._widget = CheckboxInputWidget(self.name, value='true')
+            self._widget['checked'] = bool(self.default)
+            self._widget['required'] = self.required
+        return self._widget
 
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if (type(value) == str and
-                value.lower() in self.false_literals):
-            value = False
-        value = bool(value)
-        if not value and self.required:
-            raise ValidationError("required", "This field is required")
-        return value or None
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
+            return None
+        if isinstance(value, str) and value.lower() in self.FALSE_STR:
+            return None
+        return value and True or None
+
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'boolean'
+        return j
+
+
+FlagField = BooleanField
 
 
 class ChoiceField(BaseField):
-    def __init__(self, name, label='', description='',
-                 default=None, required=True, choices=None):
-        """
-        :param required:
-        :param name: parameter id
-        :param default: default value of the field
-        :param choices: an iterable of allowed choices
-        """
-        if choices is None:
-            choices = {}
-        self._choices = choices
-        super().__init__(name=name, label=label, description=description,
-                         default=default, required=required)
-
-    def validate(self, value):
-        """
-        Extends the default behaviour checking if the selected value is one of
-        the available choices. If so, return value assigned to that choice,
-        if ``None`` and the field is not required return ``None``, otherwise
-        raise a ``ValidationError``.
-
-        :param value: value to be validated and cleaned
-        :return: cleaned value
-        :raise ValidationError: field value is invalid
-        """
-        value = super().validate(value)
-        if not(value in self._choices.keys() or value is None):
-            raise ValidationError("choice", "Invalid choice %s." % value)
-        else:
-            return self._choices.get(value)
-
-    def get_constraints_list(self):
-        return [
-            ("choices", list(self.choices))
-        ]
+    def __init__(self,
+                 name,
+                 choices=(),
+                 **kwargs):
+        super().__init__(name, **kwargs)
+        self.choices = OrderedDict(choices)
+        self.validators.append(partial(
+            _choice_validator,
+            list(itertools.chain(self.choices.keys(), self.choices.values()))
+        ))
+        self._validate_default()
 
     @property
-    def choices(self):
-        return self._choices.keys()
+    def widget(self):
+        if self._widget is None:
+            self._widget = SelectWidget(self.name, options=self.choices)
+            self._widget['required'] = self.required
+        return self._widget
+
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
+            return None
+        return value
+
+    def to_cmd_parameter(self, value):
+        param = self.choices.get(value, value)
+        if param is None:
+            return value
+        else:
+            return param
+
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'choice'
+        j['choices'] = list(self.choices)
+        return j
+
+
+class FileField(BaseField):
+    def __init__(self,
+                 name,
+                 media_type=None,
+                 extensions=(),
+                 **kwargs):
+        assert kwargs.get('default') is None
+        super().__init__(name, **kwargs)
+        self.extensions = extensions
+        self.media_type = media_type
+        if self.extensions:
+            self.validators.append(partial(
+                _file_extension_validator, self.extensions
+            ))
+        if media_type is not None:
+            self.validators.append(partial(
+                _media_type_validator, media_type
+            ))
+
+    def value_from_request_data(self, data, files):
+        return files.get(self.name) or data.get(self.name)
+
+    @property
+    def widget(self):
+        if self._widget is None:
+            widget = FileInputWidget(self.name)
+            widget['accept'] = str.join(
+                ',', ('.%s' % ext for ext in self.extensions)
+            )
+            self._widget = widget
+        return self._widget
+
+    def to_python(self, value):
+        if value in EMPTY_VALUES:
+            return None
+        elif isinstance(value, FileStorage):
+            return FileWrapper.from_file(value)
+        elif isinstance(value, str):
+            try:
+                return FileWrapper.from_uuid(value)
+            except sqlalchemy.orm.exc.NoResultFound:
+                raise ValidationError(
+                    "A file with given uuid does not exist", 'invalid'
+                )
+        else:
+            raise TypeError
+
+    def __json__(self):
+        j = super().__json__()
+        j['type'] = 'file'
+        if self.media_type is not None: j['mimetype'] = self.media_type
+        if self.media_type is not None: j['extensions'] = self.extensions
+        return j
+
+    def to_cmd_parameter(self, value: 'FileWrapper'):
+        if value is not None:
+            assert value.path
+            return value.path
+        else:
+            return None
+
+
+class FileWrapper:
+    def __init__(self):
+        self.uuid = None
+        self.title = ''
+        self.path = None
+        self.media_type = ''
+        self._verified_types = set()
+        self._fp = None
+
+    @classmethod
+    def from_file(cls, file_storage: FileStorage):
+        file = cls()
+        file.title = file_storage.filename
+        file.media_type = file_storage.mimetype
+        file._fp = file_storage
+        return file
+
+    @classmethod
+    def from_uuid(cls, uuid):
+        with start_session() as session:
+            record = session.query(models.File).filter_by(uuid=uuid).one()
+        file = cls()
+        file.uuid = record.uuid
+        file.title = record.title
+        file.path = record.path
+        file.media_type = record.mimetype
+        file._verified_types.add(record.mimetype)
+        return file
+
+    @property
+    def stream(self):
+        if self._fp is None:
+            self._fp = open(self.path, 'rb')
+        return self._fp
+
+    def save_as(self, dst, path=None):
+        self.stream.seek(0)
+        if isinstance(dst, (str, pathlib.PurePath)):
+            path = dst
+            with open(dst, 'wb') as dst:
+                shutil.copyfileobj(self.stream, dst)
+        else:
+            shutil.copyfileobj(self.stream, dst)
+        if self.path is None:
+            self.path = path
+
+    def verify_type(self, media_type=None):
+        if media_type is None:
+            media_type = self.media_type
+        if media_type in self._verified_types:
+            return True
+        self.stream.seek(0)
+        if validate_file_content(self.stream, media_type):
+            self._verified_types.add(media_type)
+            return True
+        else:
+            return False
+
+    def get_detected_media_type(self, *types):
+        types = itertools.chain(
+            {self.media_type}, types, self._verified_types
+        )
+        return next(filter(self.verify_type, types), None)
+
+    def __str__(self):
+        return self.title
+
+    def __repr__(self):
+        return 'File(%s)' % self.title
+
+
+def _max_value_validator(limit, value):
+    if value > limit:
+        raise ValidationError(
+            "Value must be less than or equal to %s" % limit, 'max_value'
+        )
+
+
+def _min_value_validator(limit, value):
+    if value < limit:
+        raise ValidationError(
+            "Value must be greater than or equal to %s" % limit, 'min_value'
+        )
+
+
+def _exclusive_max_value_validator(limit, value):
+    if value >= limit:
+        raise ValidationError(
+            "Value must be less than %s" % limit, 'max_value'
+        )
+
+
+def _exclusive_min_value_validator(limit, value):
+    if value <= limit:
+        raise ValidationError(
+            "Value must be greater than %s" % limit, 'min_value'
+        )
+
+
+def _min_length_validator(limit, value):
+    if len(value) < limit:
+        raise ValidationError(
+            "Value is too short. Min %d characters" % limit, 'min_length'
+        )
+
+
+def _max_length_validator(limit, value):
+    if len(value) > limit:
+        raise ValidationError(
+            "Value is too long. Max %d characters" % limit, 'max_length'
+        )
+
+
+def _choice_validator(choices, value):
+    if value not in choices:
+        raise ValidationError(
+            "Value \"%s\" is not one of the available choices." % value,
+            'invalid'
+        )
+
+
+def _media_type_validator(media_type, file):
+    if not file.verify_type(media_type):
+        raise ValidationError(
+            "This media type is not accepted", 'media_type'
+        )
+
+
+def _file_extension_validator(extensions, file):
+    if not os.path.splitext(file.title)[1].lstrip('.') in extensions:
+        raise ValidationError(
+            "This file extension is not accepted", 'extension'
+        )
+
+
+class ValidationError(Exception):
+    def __init__(self, message, code=None):
+        super().__init__(message, code)
+        self.message = message
+        self.code = code

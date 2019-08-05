@@ -20,6 +20,7 @@ setup(
     install_requires=[
         "click>=6.6",
         "Flask>=0.11.1",
+        "frozendict>=1.2",
         "itsdangerous>=0.24",
         "Jinja2>=2.8",
         "jsonschema>=2.5.1",
