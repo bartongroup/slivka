@@ -5,8 +5,10 @@ channels:
 dependencies:
   - click=7.0
   - flask=1.0
+  - frozendict=1.2
   - gunicorn=19.9
   - jsonschema=2.6
+  - markupsafe=1.0
   - mock=2.0
   - pip=18.0
   - python=3.5
@@ -17,5 +19,3 @@ dependencies:
   - sqlalchemy=1.2
   - sqlite=3.28
   - werkzeug=0.15
-  - pip:
-    - git+git://github.com/warownia1/Slivka
