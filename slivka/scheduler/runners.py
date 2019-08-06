@@ -117,7 +117,8 @@ class GridEngineRunner(Runner):
         r'Your job (\d+) \(.+\) has been submitted'
     )
     _job_status_regex = re.compile(
-        r'^\s*?(\d+).+?([rtdERTwhSszq]{1,3})\s+?[\d/]{10}\s+?[\d:]{8}'
+        r'^\s*(\d+)\s+\d+\.\d*\s+[\w-]+\s+[\w-]+\s+(\w+)',
+        re.MULTILINE
     )
     _runner_script_template = (
         "#! /bin/sh\n"
@@ -174,8 +175,8 @@ class GridEngineRunner(Runner):
         )
         stdout, _ = process.communicate()
         job_status = {}
-        for match in GridEngineRunner._job_status_regex.findall(stdout):
-            job_id, status = match
+        matches = GridEngineRunner._job_status_regex.findall(stdout)
+        for job_id, status in matches:
             job_status[job_id] = GridEngineRunner._status_letters.get(
                 status, JobStatus.UNDEFINED
             )
