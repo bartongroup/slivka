@@ -9,7 +9,7 @@ from .core import Status, ProcessStatus, LocalQueue
 
 
 @click.command()
-@click.option('--port', '-p', type=click.IntRange(1024, 49151), metavar="PORT")
+@click.option('--port', '-p', type=click.IntRange(1024, 65535), metavar="PORT")
 @click.option('--socket', '-s', type=click.Path())
 @click.option('--workers', '-w', type=click.INT, default=2)
 @click.option('--log-level', default='INFO')
