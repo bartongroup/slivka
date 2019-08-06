@@ -65,8 +65,8 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                 cleaned_data[name] = value
                 if value is not None and isinstance(field, FileField):
                     assert isinstance(value, FileWrapper)
-                    # should you care about media type if field validation passed?
-                    # think of any situation where it could be abused
+                    # If no validator has checked for the type we need
+                    # to check here whether it's allowed on the server.
                     media_type = value.get_detected_media_type()
                     if not media_type:
                         raise ValidationError(

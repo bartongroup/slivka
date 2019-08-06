@@ -423,7 +423,7 @@ class FileWrapper:
 
     def get_detected_media_type(self, *types):
         types = itertools.chain(
-            {self.media_type}, types, self._verified_types
+            self._verified_types, types, [self.media_type]
         )
         return next(filter(self.verify_type, types), None)
 
