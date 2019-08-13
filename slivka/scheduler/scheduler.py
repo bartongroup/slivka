@@ -1,18 +1,15 @@
 import logging
-import os
 import signal
 import tempfile
 import threading
 from collections import namedtuple, deque, defaultdict
-from fnmatch import fnmatch
-from pathlib import PurePath, PurePosixPath
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 import slivka.utils
 from slivka.db import Session, start_session
-from slivka.db.models import Request, File
+from slivka.db.models import Request
 from slivka.scheduler.exceptions import QueueBrokenError, \
     QueueTemporarilyUnavailableError, QueueError
 from slivka.scheduler.execution_manager import RunnerFactory
@@ -268,15 +265,9 @@ class Scheduler:
                     for job in jobs:
                         handler, request = job
                         session.add(request)
-                        skip_paths = {f.path for f in request.files}
-                        # FIXME: call _collect_output_files outside the transaction
-                        request.files.extend(
-                            self._collect_output_files(
-                                request.service, handler.cwd, skip_paths
-                            )
-                        )
-                        request.status = statuses[handler]
-                        session.commit()
+                        if request.status != statuses[handler]:
+                            request.status = statuses[handler]
+                            session.commit()
                         if request.is_finished():
                             self.logger.info('Job finished')
                             disposable_jobs.add(job)
@@ -299,26 +290,6 @@ class Scheduler:
         finally:
             self._running_jobs_lock.release()
             session.close()
-
-    def _collect_output_files(self, service, cwd, skip_paths=set()):
-        results = self._runner_factories[service].results
-        for entry in slivka.utils.recursive_scandir(cwd):
-            if entry.path in skip_paths:
-                continue
-            for result in results:
-                if fnmatch(os.path.relpath(entry.path, cwd), result.path):
-                    file_path = PurePath(entry.path)
-                    tasks_path = PurePath(slivka.settings.TASKS_DIR)
-                    assert tasks_path in file_path.parents
-                    url_path = str(PurePosixPath(
-                        slivka.settings.TASKS_URL_PATH,
-                        file_path.relative_to(tasks_path)
-                    ))
-                    yield File(
-                        mimetype=result.mimetype,
-                        path=entry.path,
-                        url_path=url_path
-                    )
 
     @property
     def logger(self):

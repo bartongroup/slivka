@@ -11,16 +11,19 @@ server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
 """
 
 import os.path
+from collections import namedtuple
+from fnmatch import fnmatch
 from tempfile import mkstemp
 
 import flask
 import pkg_resources
-import slivka
 import sqlalchemy.orm.exc
 from flask import json, request, abort
-from slivka.db import Session, models, start_session
-from slivka.server.file_validators import validate_file_content
 
+import slivka
+from slivka import JobStatus
+from slivka.db import models, start_session
+from .file_validators import validate_file_content
 from .forms import FormLoader
 
 app = flask.Flask('slivka', root_path=slivka.settings.BASE_DIR)
@@ -126,11 +129,10 @@ def file_upload():
     fname = os.path.basename(path)
     with os.fdopen(fd, 'wb') as fp:
         file.save(fp)
-    file_record = models.File(
+    file_record = models.UploadedFile(
         title=file.filename,
-        mimetype=file.mimetype,
-        path=path,
-        url_path=flask.url_for('uploads', filename=fname)
+        media_type=file.mimetype,
+        path=path
     )
     with start_session() as session:
         session.expire_on_commit = False
@@ -141,35 +143,61 @@ def file_upload():
         'uuid': file_record.uuid,
         'title': file.filename,
         'mimetype': file.mimetype,
-        'URI': flask.url_for('get_file_metadata', file_uuid=file_record.uuid),
-        'contentURI': file_record.url_path
+        'URI': flask.url_for('get_file_metadata', uid=file_record.uuid),
+        'contentURI': flask.url_for('uploads', filename=fname)
     }, status=201)
 
 
-@app.route('/files/<file_uuid>', methods=['GET'])
-def get_file_metadata(file_uuid):
+@app.route('/files/<path:uid>', methods=['GET'])
+def get_file_metadata(uid):
     """Get file metadata. ``GET /file/{file_uuid}``
 
-    :param file_uuid: file identifier
+    :param uid: file identifier
     :return: JSON containing internal metadata of the file
     """
-    session = Session()
-    try:
-        file = (session.query(models.File)
-                .filter(models.File.uuid == file_uuid)
-                .one())
-    except sqlalchemy.orm.exc.NoResultFound:
+    tokens = uid.split('/', 1)
+    if len(tokens) == 1:
+        uuid, = tokens
+        with start_session() as session:
+            try:
+                file = (session.query(models.UploadedFile)
+                        .filter_by(uuid=uuid)
+                        .one())
+            except sqlalchemy.orm.exc.NoResultFound:
+                raise abort(404)
+        return JsonResponse({
+            'statuscode': 200,
+            'uuid': uuid,
+            'title': file.title,
+            'mimetype': file.media_type,
+            'URI': flask.url_for('get_file_metadata', uid=uid),
+            'contentURI': flask.url_for('uploads', filename=file.basename)
+        })
+    elif len(tokens) == 2:
+        uuid, filename = tokens
+        with start_session() as session:
+            try:
+                req = (session.query(models.Request)
+                       .filter_by(uuid=uuid)
+                       .one())  # type: models.Request
+            except sqlalchemy.orm.exc.NoResultFound:
+                raise abort(404)
+        conf = slivka.settings.get_service_configuration(req.service)
+        output = next(
+            out for out in conf.execution_config['results']
+            if fnmatch(filename, out['path'])
+        )
+        uid = '%s/%s' % (req.work_dir_path.stem, filename)
+        return JsonResponse({
+            'statuscode': 200,
+            'uuid': uuid,
+            'title': filename,
+            'mimetype': output.get('mimetype'),
+            'URI': flask.url_for('get_file_metadata', uid=uid),
+            'contentURI': flask.url_for('outputs', filename=uid)
+        })
+    else:
         raise abort(404)
-    finally:
-        session.close()
-    return JsonResponse({
-        'statuscode': 200,
-        'uuid': file.uuid,
-        'title': file.title,
-        'mimetype': file.mimetype,
-        'URI': flask.url_for('get_file_metadata', file_uuid=file_uuid),
-        'contentURI': file.url_path
-    }, status=200)
 
 
 @app.route(slivka.settings.UPLOADS_URL_PATH + '/<path:filename>',
@@ -183,7 +211,7 @@ def serve_uploads_file(filename):
 
 
 @app.route(slivka.settings.TASKS_URL_PATH + '/<path:filename>',
-           endpoint='tasks',
+           endpoint='outputs',
            methods=['GET'])
 def serve_tasks_file(filename):
     return flask.send_from_directory(
@@ -201,22 +229,25 @@ def get_task_status(task_uuid):
     """
     with start_session() as session:
         try:
-            job_request = (session.query(models.Request)
-                           .filter_by(uuid=task_uuid)
-                           .one())
+            job_req = (session.query(models.Request)
+                       .filter_by(uuid=task_uuid)
+                       .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
-        return JsonResponse({
-            'statuscode': 200,
-            'status': job_request.status_string,
-            'ready': job_request.is_finished(),
-            'filesURI': flask.url_for('get_task_files', task_uuid=task_uuid)
-        })
+    return JsonResponse({
+        'statuscode': 200,
+        'status': job_req.status.value,
+        'ready': job_req.is_finished(),
+        'filesURI': flask.url_for('get_task_files', task_uuid=task_uuid)
+    })
 
 
 @app.route('/tasks/<task_uuid>', methods=['DELETE'])
 def cancel_task(task_uuid):
     raise NotImplementedError
+
+
+OutputFile = namedtuple('OutputFile', 'uuid, title, location, media_type')
 
 
 @app.route('/tasks/<task_uuid>/files', methods=['GET'])
@@ -233,21 +264,34 @@ def get_task_files(task_uuid):
                    .one())
         except sqlalchemy.orm.exc.NoResultFound:
             raise abort(404)
+    if req.status == JobStatus.PENDING:
+        raise abort(404)
 
-        files = (session.query(models.File)
-                 .filter_by(request=req)
-                 .all())
-        return JsonResponse({
-            'statuscode': 200,
-            'files': [
-                {'uuid': file.uuid,
-                 'title': file.title,
-                 'mimetype': file.mimetype,
-                 'URI': flask.url_for('get_file_metadata', file_uuid=file.uuid),
-                 'contentURI': file.url_path}
-                for file in files
-            ]
-        }, status=200)
+    service_conf = slivka.settings.get_service_configuration(req.service)
+    output_files = [
+        OutputFile(
+            uuid='%s/%s' % (req.uuid, path.name),
+            title=path.name,
+            location=path.relative_to(slivka.settings.TASKS_DIR).as_posix(),
+            media_type=o.get('mimetype')
+        )
+        for o in service_conf.execution_config['results']
+        for path in req.work_dir_path.glob(o['path'])
+    ]
+
+    return JsonResponse({
+        'statuscode': 200,
+        'files': [
+            {
+                'uuid': file.uuid,
+                'title': file.title,
+                'mimetype': file.media_type,
+                'URI': flask.url_for('get_file_metadata', uid=file.uuid),
+                'contentURI': flask.url_for('outputs', filename=file.location)
+            }
+            for file in output_files
+        ]
+    }, status=200)
 
 
 @app.route('/webapp/<service>', methods=['GET', 'POST'])
@@ -262,7 +306,7 @@ def webapp_form(service):
             with start_session(expire_on_commit=False) as session:
                 job_request = form.save(session)
                 session.commit()
-            url =flask.url_for('get_task_status', task_uuid=job_request.uuid)
+            url = flask.url_for('get_task_status', task_uuid=job_request.uuid)
             print(url)
             return flask.redirect(url)
         else:

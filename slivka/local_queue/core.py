@@ -28,6 +28,7 @@ class ShellCommandWrapper:
         self.cmd = cmd
         self.cwd = cwd
         self.env = env or {}
+        self.env.setdefault('PATH', os.getenv('PATH'))
 
     def __repr__(self):
         return "Command(id={}, cmd={}, cwd={})".format(self.id, self.cmd, self.cwd)
@@ -68,8 +69,10 @@ class LocalQueue:
             stderr = open(os.path.join(command.cwd, 'stderr.txt'), 'wb')
             proc = await asyncio.create_subprocess_shell(
                 command.cmd,
-                stdout=stdout, stderr=stderr,
-                cwd=command.cwd, env=dict(os.environ, **command.env)
+                stdout=stdout,
+                stderr=stderr,
+                cwd=command.cwd,
+                env=command.env
             )
             self.stats[command.id].status = Status.RUNNING
             try:

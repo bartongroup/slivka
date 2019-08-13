@@ -100,13 +100,10 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                     (fd, path) = mkstemp(dir=slivka.settings.UPLOADS_DIR)
                     with open(fd, 'wb') as fp:
                         value.save_as(fp, path=path)
-                    transient_files.append(models.File(
+                    transient_files.append(models.UploadedFile(
                         title=value.title,
-                        mimetype=value.get_detected_media_type(),
                         path=path,
-                        url_path=flask.url_for(
-                            'uploads', filename=os.path.basename(path)
-                        )
+                        media_type=value.get_detected_media_type()
                     ))
             param = field.to_cmd_parameter(value)
             parameters.append(Option(name=name, value=param))

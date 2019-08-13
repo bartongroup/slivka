@@ -1,13 +1,20 @@
 import os
-import uuid
+import pathlib
+from base64 import b64encode
 from datetime import datetime
+from uuid import uuid4
 
-from slivka.utils import JobStatus
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from slivka.utils import JobStatus
+
 Base = declarative_base()
+
+
+def b64_uuid4():
+    return b64encode(uuid4().bytes, altchars=b'_-').rstrip(b'=').decode()
 
 
 class Request(Base):
@@ -17,7 +24,7 @@ class Request(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     service = Column(String, nullable=False)
-    uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
+    uuid = Column(String(32), default=b64_uuid4, index=True)
     status_string = Column(
         String(16), default=JobStatus.PENDING.value, nullable=False
     )
@@ -26,10 +33,13 @@ class Request(Base):
     run_configuration = Column(String(16), nullable=True, default=None)
 
     options = relationship('Option', back_populates='request')
-    files = relationship('File', back_populates='request')
 
     @property
-    def status(self):
+    def work_dir_path(self):
+        return pathlib.Path(self.working_dir)
+
+    @property
+    def status(self) -> JobStatus:
         return JobStatus(self.status_string)
 
     @status.setter
@@ -68,28 +78,20 @@ class Option(Base):
                 .format(name=self.name, value=self.value))
 
 
-def default_title(context):
+def basename_from_path(context):
     return os.path.basename(context.current_parameters['path'])
 
 
-class File(Base):
+class UploadedFile(Base):
 
-    __tablename__ = "files"
+    __tablename__ = "uploadedfiles"
 
     id = Column(Integer, primary_key=True)
-    uuid = Column(String(32), default=lambda: uuid.uuid4().hex, index=True)
-    title = Column(String(32), default=default_title)
+    uuid = Column(String(32), default=b64_uuid4, index=True)
+    title = Column(String(32))
+    basename = Column(String(32), default=basename_from_path, nullable=False)
     path = Column(String(256), nullable=False)
-    url_path = Column(String(256), nullable=False)
-    mimetype = Column(String(32))
-    request_id = Column(
-        Integer,
-        ForeignKey('requests.id', ondelete='SET NULL'),
-        nullable=True,
-        default=None
-    )
-
-    request = relationship('Request', back_populates='files', uselist=False)
+    media_type = Column(String(32))
 
     def __repr__(self):
         return ("<File(id={id}, title={title}>"

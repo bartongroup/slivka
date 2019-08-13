@@ -3,14 +3,15 @@ import os
 import pathlib
 import shutil
 from collections import OrderedDict
+from fnmatch import fnmatch
 from functools import partial
 
 import sqlalchemy.orm
-
-from slivka.db import start_session, models
-from slivka.server.file_validators import validate_file_content
 from werkzeug.datastructures import FileStorage
 
+import slivka
+from slivka.db import start_session, models
+from slivka.server.file_validators import validate_file_content
 from .widgets import *
 
 __all__ = [
@@ -382,14 +383,46 @@ class FileWrapper:
 
     @classmethod
     def from_uuid(cls, uuid):
+        tokens = uuid.split('/', 1)
+        if len(tokens) == 1:
+            return cls._from_uploaded_file(uuid)
+        elif len(tokens) == 2:
+            uuid, filename = tokens
+            return cls._from_output_file(uuid, filename)
+
+    @classmethod
+    def _from_uploaded_file(cls, uuid):
         with start_session() as session:
-            record = session.query(models.File).filter_by(uuid=uuid).one()
+            uploaded = (session.query(models.UploadedFile)
+                        .filter_by(uuid=uuid)
+                        .one())
         file = cls()
-        file.uuid = record.uuid
-        file.title = record.title
-        file.path = record.path
-        file.media_type = record.mimetype
-        file._verified_types.add(record.mimetype)
+        file.uuid = uploaded.uuid
+        file.title = uploaded.title
+        file.path = uploaded.path
+        if uploaded.media_type:
+            file.media_type = uploaded.media_type
+            file._verified_types.add(uploaded.media_type)
+        return file
+
+    @classmethod
+    def _from_output_file(cls, uuid, filename):
+        with start_session() as session:
+            request = (session.query(models.Request)
+                       .filter_by(uuid=uuid)
+                       .one())
+        conf = slivka.settings.get_service_configuration(request.service)
+        output = next(
+            out for out in conf.execution_config['results']
+            if fnmatch(filename, out['path'])
+        )
+        file = cls()
+        file.uuid = '%s/%s' % (uuid, filename)
+        file.title = filename
+        file.path = os.path.join(request.working_dir, filename)
+        file.media_type = output.get('mimetype', '')
+        if file.media_type:
+            file._verified_types.add(file.media_type)
         return file
 
     @property
