@@ -2,22 +2,17 @@ import logging
 import signal
 import tempfile
 import threading
-from collections import namedtuple, deque, defaultdict
-
-from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
+import time
+from collections import deque, defaultdict
 
 import slivka.utils
-from slivka.db import Session, start_session
-from slivka.db.models import Request
-from slivka.scheduler.exceptions import QueueBrokenError, \
-    QueueTemporarilyUnavailableError, QueueError
-from slivka.scheduler.execution_manager import RunnerFactory
+from slivka.db import mongo
+from slivka.db.documents import JobRequest, JobMetadata
+from .exceptions import (QueueBrokenError,
+                         QueueTemporarilyUnavailableError,
+                         QueueError)
+from .execution_manager import RunnerFactory
 from slivka.utils import JobStatus
-
-RunnerRequestPair = namedtuple('RunnerRequestPair', ['runner', 'request'])
-JobHandlerRequestPair = namedtuple('JobHandlerRequestPair',
-                                   ['job_handler', 'request'])
 
 
 class Scheduler:
@@ -41,8 +36,8 @@ class Scheduler:
                 conf.execution_config)
             for conf in slivka.settings.service_configurations.values()
         }
-        self._restore_runners()
-        self._restore_jobs()
+        # self._restore_runners()
+        # self._restore_jobs()
 
         self._watcher_thread = threading.Thread(
             target=self._database_watcher_loop,
@@ -53,53 +48,53 @@ class Scheduler:
             name="CollectorThread"
         )
 
-    def _restore_runners(self):
-        """Restores runners that has been prepared, but not submitted."""
-        with start_session() as session:
-            accepted_requests = (
-                session.query(Request)
-                .options(joinedload('options'))
-                .filter_by(status_string=JobStatus.ACCEPTED.value)
-                .all()
-            )
-            for request in accepted_requests:
-                runner = self._build_runner(request, new_cwd=False)
-                if runner is None:
-                    request.status = JobStatus.ERROR
-                    self.logger.warning('Runner cannot be restored.')
-                else:
-                    self._pending_runners.append(
-                        RunnerRequestPair(runner, request)
-                    )
-            session.commit()
+    # def _restore_runners(self):
+    #     """Restores runners that has been prepared, but not submitted."""
+    #     with start_session() as session:
+    #         accepted_requests = (
+    #             session.query(Request)
+    #             .options(joinedload('options'))
+    #             .filter_by(status_string=JobStatus.ACCEPTED.value)
+    #             .all()
+    #         )
+    #         for request in accepted_requests:
+    #             runner = self._build_runner(request, new_cwd=False)
+    #             if runner is None:
+    #                 request.status = JobStatus.ERROR
+    #                 self.logger.warning('Runner cannot be restored.')
+    #             else:
+    #                 self._pending_runners.append(
+    #                     RunnerRequestPair(runner, request)
+    #                 )
+    #         session.commit()
 
-    def _restore_jobs(self):
-        """Recreated hob handlers from currently running requests."""
-        with start_session() as session:
-            running_requests = (
-                session.query(Request)
-                .filter(or_(Request.status_string == JobStatus.RUNNING.value,
-                            Request.status_string == JobStatus.QUEUED.value))
-                .all()
-            )
-            for request in running_requests:
-                job_handler = (self._runner_factories[request.service]
-                               .get_runner_class(request.run_configuration)
-                               .get_job_handler_class()
-                               .deserialize(request.serial_job_handler))
-                if job_handler is not None:
-                    job_handler.cwd = request.working_dir
-                    runner_class = (
-                        self._runner_factories[request.service]
-                        .get_runner_class(request.run_configuration)
-                    )
-                    job_handler.runner_class = runner_class
-                    self._running_jobs[runner_class].add(
-                        JobHandlerRequestPair(job_handler, request)
-                    )
-                else:
-                    request.status = JobStatus.UNDEFINED
-            session.commit()
+    # def _restore_jobs(self):
+    #     """Recreated hob handlers from currently running requests."""
+    #     with start_session() as session:
+    #         running_requests = (
+    #             session.query(Request)
+    #             .filter(or_(Request.status_string == JobStatus.RUNNING.value,
+    #                         Request.status_string == JobStatus.QUEUED.value))
+    #             .all()
+    #         )
+    #         for request in running_requests:
+    #             job_handler = (self._runner_factories[request.service]
+    #                            .get_runner_class(request.run_configuration)
+    #                            .get_job_handler_class()
+    #                            .deserialize(request.serial_job_handler))
+    #             if job_handler is not None:
+    #                 job_handler.cwd = request.work_dir
+    #                 runner_class = (
+    #                     self._runner_factories[request.service]
+    #                     .get_runner_class(request.run_configuration)
+    #                 )
+    #                 job_handler.runner_class = runner_class
+    #                 self._running_jobs[runner_class].add(
+    #                     JobHandlerRequestPair(job_handler, request)
+    #                 )
+    #             else:
+    #                 request.status = JobStatus.UNDEFINED
+    #         session.commit()
 
     def register_terminate_signal(self, *signals):
         for sig in signals:
@@ -165,54 +160,61 @@ class Scheduler:
         Keeps checking database for pending requests.
         Submits a new job if one is found.
         """
-        self.logger.info("Scheduler is watching database.")
+        self.logger.info("Scheduler is watching the database.")
         while self.is_running:
-            session = Session()
-            pending_requests = (
-                session.query(Request)
-                .options(joinedload('options'))
-                .filter_by(status_string=JobStatus.PENDING.value)
-                .all()
+            pending_requests = JobRequest.find(
+                mongo.slivkadb, status=JobStatus.PENDING
             )
             runners = []
             for request in pending_requests:
-                self.logger.debug('Processing request %r', request)
+                self.logger.debug('Collecting request %r', request)
                 try:
-                    runner = self._build_runner(request)
+                    runner_factory = self._runner_factories[request.service]
+                    cwd = tempfile.mkdtemp('', '', slivka.settings.TASKS_DIR)
+                    runner = runner_factory.new_runner(dict(request.inputs), cwd)
                     if runner is None:
-                        raise QueueError('Runner could not be created')
+                        request.update_db(mongo.slivkadb, status=JobStatus.REJECTED)
+                        continue
                     runner.prepare()
-                    request.run_configuration = runner.configuration.name
-                    request.status = JobStatus.ACCEPTED
-                    request.working_dir = runner.cwd
-                    runners.append(RunnerRequestPair(runner, request))
+                    runner.uuid = request.uuid
+                    classpath = '%s.%s' % (
+                        runner.__class__.__module__, runner.__class__.__name__
+                    )
+                    job = JobMetadata(
+                        uuid=request.uuid,
+                        service=request.service,
+                        work_dir=cwd,
+                        runner_class=classpath,
+                        identifier=None,
+                        status=JobStatus.ACCEPTED
+                    )
+                    job.insert(mongo.slivkadb)
+                    runners.append(runner)
+                    request.update_db(mongo.slivkadb, status=JobStatus.ACCEPTED)
                 except Exception:
-                    request.status = JobStatus.REJECTED
-                    self.logger.exception("Setting up the runner failed.")
-                finally:
-                    session.commit()
-            session.close()
+                    self.logger.exception("Creating a new runner failed.")
+                    request.update_db(mongo.slivkadb, status=JobStatus.ERROR)
             self._pending_runners.extend(runners)
             self._shutdown_event.wait(0.5)
 
-    def _build_runner(self, request, new_cwd=True):
-        values = {
-            option.name: option.value
-            for option in request.options
-        }
-        runner_factory = self._runner_factories[request.service]
-        if new_cwd:
-            cwd = tempfile.mkdtemp('', '', slivka.settings.TASKS_DIR)
-        else:
-            cwd = request.working_dir
-        return runner_factory.new_runner(values, cwd)
+    # def _build_runner(self, request, new_cwd=True):
+    #     values = {
+    #         option.name: option.value
+    #         for option in request.options
+    #     }
+    #     runner_factory = self._runner_factories[request.service]
+    #     if new_cwd:
+    #         cwd = tempfile.mkdtemp('', '', slivka.settings.TASKS_DIR)
+    #     else:
+    #         cwd = request.working_dir
+    #     return runner_factory.new_runner(values, cwd)
 
     def _runner_observer_loop(self):
         try:
             while self.is_running:
                 self._submit_runners()
                 self._update_job_statuses()
-                self._shutdown_event.wait(0.5)
+                self._shutdown_event.wait(1)
         except Exception:
             self.logger.exception(
                 'Critical error occurred, scheduler shuts down'
@@ -221,75 +223,101 @@ class Scheduler:
 
     def _submit_runners(self):
         retry_runners = []
-        session = Session()
+        submit_start_time = time.time()
+        counter = len(self._pending_runners)
+        self.logger.info('There are %d pending runners.', counter)
         try:
-            while self._pending_runners:
-                runner, request = self._pending_runners.popleft()
+            for _ in range(counter):
+                if not self.is_running:
+                    break
+                runner = self._pending_runners.popleft()
+                request = JobRequest.find_one(
+                    mongo.slivkadb, uuid=runner.uuid
+                )
                 try:
                     job_handler = runner.start()
-                    self.logger.info('Job submitted')
+                    self.logger.debug('Job %s submitted' % request.uuid)
                 except QueueTemporarilyUnavailableError:
-                    retry_runners.append(RunnerRequestPair(runner, request))
-                    self.logger.info('Job submission deferred')
+                    retry_runners.append(runner)
+                    self.logger.debug('Job submission deferred')
                 except QueueError:
-                    session.add(request)
-                    request.status = JobStatus.ERROR
-                    session.commit()
+                    request.update_db(
+                        mongo.slivkadb, status=JobStatus.ERROR
+                    )
+                    mongo.slivkadb.jobs.update_one(
+                        {'uuid': runner.uuid},
+                        {'$set': {'status': JobStatus.ERROR}}
+                    )
                     self.logger.exception(
                         'Job cannot be scheduled due to the queue error'
                     )
                 else:
-                    session.add(request)
-                    request.status = JobStatus.QUEUED
-                    request.serial_job_handler = job_handler.serialize()
-                    session.commit()
+                    request.update_db(
+                        mongo.slivkadb, status=JobStatus.QUEUED
+                    )
+                    mongo.slivkadb.jobs.update_one(
+                        {'uuid': runner.uuid},
+                        {'$set': {
+                            'status': JobStatus.QUEUED,
+                            'identifier': job_handler.serialize()
+                        }}
+                    )
                     with self._running_jobs_lock:
-                        self._running_jobs[runner.__class__].add(
-                            JobHandlerRequestPair(job_handler, request)
-                        )
+                        self._running_jobs[runner.__class__].add((request, job_handler))
         finally:
-            session.close()
             self._pending_runners.extend(retry_runners)
+        self.logger.info('Submitting took %.2f s' % (time.time() - submit_start_time))
 
     def _update_job_statuses(self):
-        session = Session()
         self._running_jobs_lock.acquire()
+        self.logger.info(
+            'There are %d running jobs.',
+            sum(len(j) for j in self._running_jobs.values())
+        )
         try:
             for runner_class, jobs in self._running_jobs.items():
+                if not self.is_running:
+                    break
                 if not jobs:
                     continue
                 disposable_jobs = set()
-                handlers = [job.job_handler for job in jobs]
+                handlers = [job_handler for _, job_handler in jobs]
                 try:
                     statuses = dict(runner_class.get_job_status(handlers))
-                    for job in jobs:
-                        handler, request = job
-                        session.add(request)
-                        if request.status != statuses[handler]:
-                            request.status = statuses[handler]
-                            session.commit()
-                        if request.is_finished():
-                            self.logger.info('Job finished')
-                            disposable_jobs.add(job)
+                    for request, job_handler in jobs:
+                        if request.status != statuses[job_handler]:
+                            request.update_db(
+                                mongo.slivkadb, status=statuses[job_handler]
+                            )
+                            mongo.slivkadb.jobs.update_one(
+                                {'uuid': request.uuid},
+                                {'$set': {'status': request.status}}
+                            )
+                        if request.status.is_finished():
+                            self.logger.debug('Job %s finished' % request.uuid)
+                            disposable_jobs.add((request, job_handler))
                 except QueueTemporarilyUnavailableError:
                     self.logger.warning('Queue not available')
                 except QueueBrokenError:
-                    for job in jobs:
-                        job.request.status = JobStatus.UNDEFINED
+                    for request, job_handler in jobs:
+                        request.update_db(
+                            mongo.slivkadb, status=JobStatus.UNDEFINED
+                        )
+                        mongo.slivkadb.jobs.update_one(
+                            {'uuid': request.uuid},
+                            {'$set': {'status': JobStatus.UNDEFINED}}
+                        )
                         self.logger.exception('Could not retrieve job status.')
-                        disposable_jobs.add(job)
-                    session.commit()
-                finally:
-                    session.rollback()
+                        disposable_jobs.add((request, job_handler))
                 jobs.difference_update(disposable_jobs)
         except Exception:
             self.logger.exception(
                 'Critical error occurred, scheduler shuts down'
             )
+            self.stop()
             self.shutdown()
         finally:
             self._running_jobs_lock.release()
-            session.close()
 
     @property
     def logger(self):

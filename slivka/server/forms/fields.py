@@ -6,11 +6,11 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import partial
 
-import sqlalchemy.orm
 from werkzeug.datastructures import FileStorage
 
 import slivka
-from slivka.db import start_session, models
+from slivka.db import mongo
+from slivka.db.documents import UploadedFile, JobMetadata
 from slivka.server.file_validators import validate_file_content
 from .widgets import *
 
@@ -340,12 +340,12 @@ class FileField(BaseField):
         elif isinstance(value, FileStorage):
             return FileWrapper.from_file(value)
         elif isinstance(value, str):
-            try:
-                return FileWrapper.from_uuid(value)
-            except sqlalchemy.orm.exc.NoResultFound:
+            file = FileWrapper.from_uuid(value)
+            if file is None:
                 raise ValidationError(
-                    "A file with given uuid does not exist", 'invalid'
+                    "A file with given uuid not found", 'not_found'
                 )
+            return file
         else:
             raise TypeError
 
@@ -385,17 +385,16 @@ class FileWrapper:
     def from_uuid(cls, uuid):
         tokens = uuid.split('/', 1)
         if len(tokens) == 1:
-            return cls._from_uploaded_file(uuid)
+            return cls._load_from_uploaded_file(uuid)
         elif len(tokens) == 2:
             uuid, filename = tokens
-            return cls._from_output_file(uuid, filename)
+            return cls._load_from_output_file(uuid, filename)
 
     @classmethod
-    def _from_uploaded_file(cls, uuid):
-        with start_session() as session:
-            uploaded = (session.query(models.UploadedFile)
-                        .filter_by(uuid=uuid)
-                        .one())
+    def _load_from_uploaded_file(cls, uuid):
+        uploaded = UploadedFile.find_one(mongo.slivkadb, uuid=uuid)
+        if uploaded is None:
+            return None
         file = cls()
         file.uuid = uploaded.uuid
         file.title = uploaded.title
@@ -406,12 +405,9 @@ class FileWrapper:
         return file
 
     @classmethod
-    def _from_output_file(cls, uuid, filename):
-        with start_session() as session:
-            request = (session.query(models.Request)
-                       .filter_by(uuid=uuid)
-                       .one())
-        conf = slivka.settings.get_service_configuration(request.service)
+    def _load_from_output_file(cls, uuid, filename):
+        job = JobMetadata.find_one(mongo.slivkadb, uuid=uuid)
+        conf = slivka.settings.get_service_configuration(job.service)
         output = next(
             out for out in conf.execution_config['results']
             if fnmatch(filename, out['path'])
@@ -419,7 +415,7 @@ class FileWrapper:
         file = cls()
         file.uuid = '%s/%s' % (uuid, filename)
         file.title = filename
-        file.path = os.path.join(request.working_dir, filename)
+        file.path = os.path.join(job.work_dir, filename)
         file.media_type = output.get('mimetype', '')
         if file.media_type:
             file._verified_types.add(file.media_type)

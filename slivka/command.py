@@ -190,21 +190,6 @@ def server(server_type):
 
 
 @click.command()
-def initdb():
-    """Initialize the database."""
-    from slivka.db import create_db
-    create_db()
-
-
-@click.command()
-@click.confirmation_option(prompt="Are you sure you want to drop the database?")
-def dropdb():
-    """Drop the database."""
-    from slivka.db import drop_db
-    drop_db()
-
-
-@click.command()
 def shell():
     """Start an interactive shell."""
     import code
@@ -214,6 +199,4 @@ def shell():
 manager.add_command(worker)
 manager.add_command(scheduler)
 manager.add_command(server)
-manager.add_command(initdb)
-manager.add_command(dropdb)
 manager.add_command(shell)

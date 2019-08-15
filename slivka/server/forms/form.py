@@ -1,16 +1,12 @@
 import collections
-import os
 from collections import OrderedDict
 from tempfile import mkstemp
 
-import flask
-import sqlalchemy.orm
 from frozendict import frozendict
 from werkzeug.datastructures import MultiDict
 
 import slivka
-from slivka.db import models
-from slivka.db.models import Option
+from slivka.db.documents import UploadedFile, JobRequest
 from slivka.utils import Singleton
 from .fields import *
 
@@ -85,11 +81,11 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     def __getitem__(self, item):
         return self.fields[item]
 
-    def save(self, session: sqlalchemy.orm.Session):
+    def save(self, database):
         if not self.is_valid():
             raise RuntimeError(self.errors, 'invalid_form')
-        parameters = []
-        transient_files = []
+        inputs = []
+        uploaded_files = []
         for name, field in self.fields.items():
             value = self.cleaned_data[name]
             if value is not None and isinstance(field, FileField):
@@ -100,16 +96,17 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                     (fd, path) = mkstemp(dir=slivka.settings.UPLOADS_DIR)
                     with open(fd, 'wb') as fp:
                         value.save_as(fp, path=path)
-                    transient_files.append(models.UploadedFile(
+                    uploaded_files.append(UploadedFile(
                         title=value.title,
                         path=path,
                         media_type=value.get_detected_media_type()
                     ))
             param = field.to_cmd_parameter(value)
-            parameters.append(Option(name=name, value=param))
-        request = models.Request(service=self.service, options=parameters)
-        session.add(request)
-        session.add_all(transient_files)
+            inputs.append((name, param))
+        request = JobRequest(service=self.service, inputs=inputs)
+        request.insert(database)
+        for file in uploaded_files:
+            file.insert(database)
         return request
 
 

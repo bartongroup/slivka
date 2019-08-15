@@ -73,6 +73,7 @@ def locate(path):
 
     Improved implementation of the __import__ function that can fetch
     members and attributes in addition to the modules.
+
     :param path: dot separated path to the object
     :return: object
     :raises ModuleNotFoundError: if the module is not found
@@ -159,19 +160,19 @@ def camel_to_snake(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
 
 
-class JobStatus(enum.Enum):
+class JobStatus(enum.IntEnum):
 
-    PENDING = 'pending'
-    REJECTED = 'rejected'
-    ACCEPTED = 'accepted'
-    QUEUED = 'queued'
-    RUNNING = 'running'
-    COMPLETED = 'completed'
-    INTERRUPTED = 'interrupted'
-    DELETED = 'deleted'
-    FAILED = 'failed'
-    ERROR = 'error'
-    UNDEFINED = 'undefined'
+    PENDING = 0
+    REJECTED = 1
+    ACCEPTED = 2
+    QUEUED = 3
+    RUNNING = 4
+    COMPLETED = 5
+    INTERRUPTED = 6
+    DELETED = 7
+    FAILED = 8
+    ERROR = 9
+    UNDEFINED = 10
 
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,

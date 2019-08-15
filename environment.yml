@@ -12,6 +12,7 @@ dependencies:
   - mock=2.0
   - pip=18.0
   - python=3.5
+  - pymongo=3.7
   - pyyaml=3.13
   - requests=2.13
   - setuptools=40.4

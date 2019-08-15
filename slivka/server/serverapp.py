@@ -11,18 +11,18 @@ server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
 """
 
 import os.path
+import pathlib
 from collections import namedtuple
 from fnmatch import fnmatch
 from tempfile import mkstemp
 
 import flask
 import pkg_resources
-import sqlalchemy.orm.exc
 from flask import json, request, abort
 
 import slivka
 from slivka import JobStatus
-from slivka.db import models, start_session
+from slivka.db import mongo, documents
 from .file_validators import validate_file_content
 from .forms import FormLoader
 
@@ -91,14 +91,12 @@ def post_service_form(service):
     form_cls = FormLoader.instance[service]
     form = form_cls(request.form, request.files)
     if form.is_valid():
-        with start_session() as session:
-            job_request = form.save(session)
-            session.commit()
-            return JsonResponse({
-                'statuscode': 202,
-                'uuid': job_request.uuid,
-                'URI': flask.url_for('get_task_status', task_uuid=job_request.uuid)
-            }, status=202)
+        request_doc = form.save(mongo.slivkadb)
+        return JsonResponse({
+            'statuscode': 202,
+            'uuid': request_doc.uuid,
+            'URI': flask.url_for('get_job_status', uuid=request_doc.uuid)
+        }, status=202)
     else:
         return JsonResponse({
             'statuscode': 420,
@@ -126,25 +124,22 @@ def file_upload():
         raise abort(415)
     file.seek(0)
     (fd, path) = mkstemp('', '', dir=app.config['UPLOADS_DIR'], text=False)
-    fname = os.path.basename(path)
+    filename = os.path.basename(path)
     with os.fdopen(fd, 'wb') as fp:
         file.save(fp)
-    file_record = models.UploadedFile(
+    file_doc = documents.UploadedFile(
         title=file.filename,
         media_type=file.mimetype,
         path=path
     )
-    with start_session() as session:
-        session.expire_on_commit = False
-        session.add(file_record)
-        session.commit()
+    file_doc.insert(mongo.slivkadb)
     return JsonResponse({
         'statuscode': 201,
-        'uuid': file_record.uuid,
+        'uuid': file_doc.uuid,
         'title': file.filename,
         'mimetype': file.mimetype,
-        'URI': flask.url_for('get_file_metadata', uid=file_record.uuid),
-        'contentURI': flask.url_for('uploads', filename=fname)
+        'URI': flask.url_for('get_file_metadata', uid=file_doc.uuid),
+        'contentURI': flask.url_for('uploads', location=filename)
     }, status=201)
 
 
@@ -158,125 +153,117 @@ def get_file_metadata(uid):
     tokens = uid.split('/', 1)
     if len(tokens) == 1:
         uuid, = tokens
-        with start_session() as session:
-            try:
-                file = (session.query(models.UploadedFile)
-                        .filter_by(uuid=uuid)
-                        .one())
-            except sqlalchemy.orm.exc.NoResultFound:
-                raise abort(404)
+        file = documents.UploadedFile.find_one(
+            mongo.slivkadb, uuid=uuid
+        )
+        if file is None:
+            raise abort(404)
         return JsonResponse({
             'statuscode': 200,
-            'uuid': uuid,
-            'title': file.title,
-            'mimetype': file.media_type,
+            'uuid': file['uuid'],
+            'title': file['title'],
+            'mimetype': file['media_type'],
             'URI': flask.url_for('get_file_metadata', uid=uid),
-            'contentURI': flask.url_for('uploads', filename=file.basename)
+            'contentURI': flask.url_for('uploads', location=file['basename'])
         })
     elif len(tokens) == 2:
         uuid, filename = tokens
-        with start_session() as session:
-            try:
-                req = (session.query(models.Request)
-                       .filter_by(uuid=uuid)
-                       .one())  # type: models.Request
-            except sqlalchemy.orm.exc.NoResultFound:
-                raise abort(404)
-        conf = slivka.settings.get_service_configuration(req.service)
+        job = documents.JobMetadata.find_one(
+            mongo.slivkadb, uuid=uuid
+        )
+        if job is None:
+            raise abort(404)
+        conf = slivka.settings.get_service_configuration(job.service)
         output = next(
             out for out in conf.execution_config['results']
             if fnmatch(filename, out['path'])
         )
-        uid = '%s/%s' % (req.work_dir_path.stem, filename)
+        job_location = os.path.basename(job.work_dir)
+        file_location = '%s/%s' % (job_location, filename)
         return JsonResponse({
             'statuscode': 200,
-            'uuid': uuid,
+            'uuid': uid,
             'title': filename,
             'mimetype': output.get('mimetype'),
             'URI': flask.url_for('get_file_metadata', uid=uid),
-            'contentURI': flask.url_for('outputs', filename=uid)
+            'contentURI': flask.url_for('outputs', location=file_location)
         })
     else:
         raise abort(404)
 
 
-@app.route(slivka.settings.UPLOADS_URL_PATH + '/<path:filename>',
+@app.route(slivka.settings.UPLOADS_URL_PATH + '/<path:location>',
            endpoint='uploads',
            methods=['GET'])
-def serve_uploads_file(filename):
+def serve_uploads_file(location):
     return flask.send_from_directory(
         directory=slivka.settings.UPLOADS_DIR,
-        filename=filename
+        filename=location
     )
 
 
-@app.route(slivka.settings.TASKS_URL_PATH + '/<path:filename>',
+@app.route(slivka.settings.TASKS_URL_PATH + '/<path:location>',
            endpoint='outputs',
            methods=['GET'])
-def serve_tasks_file(filename):
+def serve_tasks_file(location):
     return flask.send_from_directory(
         directory=slivka.settings.TASKS_DIR,
-        filename=filename
+        filename=location
     )
 
 
-@app.route('/tasks/<task_uuid>', methods=['GET'])
-def get_task_status(task_uuid):
-    """Get the status of the task. ``GET /task/{task_uuid}/status``
+@app.route('/tasks/<uuid>', methods=['GET'])
+def get_job_status(uuid):
+    """Get the status of the task. ``GET /task/{uuid}/status``
 
-    :param task_uuid: task identifier
+    :param uuid: task identifier
     :return: JSON response with current job completion status
     """
-    with start_session() as session:
-        try:
-            job_req = (session.query(models.Request)
-                       .filter_by(uuid=task_uuid)
-                       .one())
-        except sqlalchemy.orm.exc.NoResultFound:
-            raise abort(404)
+    job_request = documents.JobRequest.find_one(
+        mongo.slivkadb, uuid=uuid
+    )
+    if job_request is None:
+        raise abort(404)
     return JsonResponse({
         'statuscode': 200,
-        'status': job_req.status.value,
-        'ready': job_req.is_finished(),
-        'filesURI': flask.url_for('get_task_files', task_uuid=task_uuid)
+        'status': job_request.status.name,
+        'ready': job_request.status.is_finished(),
+        'filesURI': flask.url_for('get_job_files', uuid=uuid)
     })
 
 
-@app.route('/tasks/<task_uuid>', methods=['DELETE'])
-def cancel_task(task_uuid):
+@app.route('/tasks/<uuid>', methods=['DELETE'])
+def cancel_task(_):
     raise NotImplementedError
 
 
 OutputFile = namedtuple('OutputFile', 'uuid, title, location, media_type')
 
 
-@app.route('/tasks/<task_uuid>/files', methods=['GET'])
-def get_task_files(task_uuid):
+@app.route('/tasks/<uuid>/files', methods=['GET'])
+def get_job_files(uuid):
     """Get the list of output files. ``GET /task/{task_id}/files``
 
-    :param task_uuid: task identifier
+    :param uuid: task identifier
     :return: JSON response with list of files produced by the task.
     """
-    with start_session() as session:
-        try:
-            req = (session.query(models.Request)
-                   .filter_by(uuid=task_uuid)
-                   .one())
-        except sqlalchemy.orm.exc.NoResultFound:
-            raise abort(404)
-    if req.status == JobStatus.PENDING:
+    job = documents.JobMetadata.find_one(
+        mongo.slivkadb, uuid=uuid
+    )
+    if job is None or job.status == JobStatus.PENDING:
         raise abort(404)
 
-    service_conf = slivka.settings.get_service_configuration(req.service)
+    service_conf = slivka.settings.get_service_configuration(job.service)
+    work_dir = pathlib.Path(job.work_dir)
     output_files = [
         OutputFile(
-            uuid='%s/%s' % (req.uuid, path.name),
+            uuid='%s/%s' % (job.uuid, path.name),
             title=path.name,
             location=path.relative_to(slivka.settings.TASKS_DIR).as_posix(),
             media_type=o.get('mimetype')
         )
         for o in service_conf.execution_config['results']
-        for path in req.work_dir_path.glob(o['path'])
+        for path in work_dir.glob(o['path'])
     ]
 
     return JsonResponse({
@@ -287,7 +274,7 @@ def get_task_files(task_uuid):
                 'title': file.title,
                 'mimetype': file.media_type,
                 'URI': flask.url_for('get_file_metadata', uid=file.uuid),
-                'contentURI': flask.url_for('outputs', filename=file.location)
+                'contentURI': flask.url_for('outputs', location=file.location)
             }
             for file in output_files
         ]
@@ -303,10 +290,8 @@ def webapp_form(service):
     elif request.method == 'POST':
         form = Form(data=request.form, files=request.files)
         if form.is_valid():
-            with start_session(expire_on_commit=False) as session:
-                job_request = form.save(session)
-                session.commit()
-            url = flask.url_for('get_task_status', task_uuid=job_request.uuid)
+            job_request = form.save(mongo.slivkadb)
+            url = flask.url_for('get_job_status', uuid=job_request.uuid)
             print(url)
             return flask.redirect(url)
         else:
