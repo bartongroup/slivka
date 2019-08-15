@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 
 import click
 
@@ -9,17 +8,16 @@ from .core import Status, ProcessStatus, LocalQueue
 
 
 @click.command()
-@click.option('--port', '-p', type=click.IntRange(1024, 65535), metavar="PORT")
-@click.option('--socket', '-s', type=click.Path())
+@click.option('--address', '-b')
 @click.option('--workers', '-w', type=click.INT, default=2)
 @click.option('--log-level', default='INFO')
-def main(port, socket, workers, log_level):
+def main(address, workers, log_level):
     logging.basicConfig(level=log_level)
     logging.getLogger('slivka-queue').setLevel(log_level)
     loop = asyncio.get_event_loop()
     local_queue = LocalQueue(
-        socket or ('localhost', port),
-        workers=workers,
-        secret=os.getenvb(b'SLIVKA_SECRET')
+        address=address,
+        protocol='ipc' if '/' in address else 'tcp',
+        workers=workers
     )
     local_queue.run(loop)

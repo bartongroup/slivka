@@ -157,7 +157,7 @@ def worker(log_level):
     """Start task queue workers."""
     os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
     os.execlp('python', 'python', '-m', 'slivka.local_queue',
-              '-p', str(slivka.settings.QUEUE_PORT),
+              '-b', '127.0.0.1:%d' % slivka.settings.QUEUE_PORT,
               '--log-level', log_level)
 
 

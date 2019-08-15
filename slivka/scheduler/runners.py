@@ -64,8 +64,7 @@ class ShellRunner(Runner):
 class LocalQueueRunner(Runner):
 
     client = LocalQueueClient(
-        (slivka.settings.QUEUE_HOST, slivka.settings.QUEUE_PORT),
-        secret=slivka.settings.SECRET_KEY.encode()
+        address='127.0.0.1:%d' % slivka.settings.QUEUE_PORT
     )
 
     class Job(JobHandler):
