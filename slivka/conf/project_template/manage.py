@@ -14,7 +14,7 @@ if __name__ == "__main__":
         import slivka.command
     except ImportError:
         raise ImportError(
-            "Couldn't import slivka. Make sure it's installed corectly "
+            "Couldn't import slivka. Make sure it's installed correctly "
             "and available on you PYTHONPATH environment variable. "
             "Check if you activated virtual environment."
         )

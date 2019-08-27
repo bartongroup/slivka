@@ -1,0 +1,3 @@
+example:
+  form: conf/exampleForm.yml
+  command: conf/exampleCom.yml

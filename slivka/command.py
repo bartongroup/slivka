@@ -8,11 +8,12 @@ usually specified just after the command name.
 """
 
 import os
+import shutil
 import stat
 from base64 import b64encode
+from string import Template
 
 import click
-import jinja2
 import pkg_resources
 
 import slivka
@@ -45,105 +46,55 @@ def setup(name):
             "Directory already exist. Do you want to set the project here?",
             abort=True
         )
-    ProjectBuilder(project_dir).build()
+    init_project(project_dir)
 
 
-class ProjectBuilder:
-    def __init__(self, project_dir):
-        self._dir = project_dir
+def init_project(base_dir):
+    # create directories
+    for dn in ['bin', 'conf', 'scripts']:
+        os.makedirs(os.path.join(base_dir, dn), exist_ok=True)
 
-    def build(self):
-        os.makedirs(self._dir, exist_ok=True)
-        os.makedirs(os.path.join(self._dir, 'binaries'), exist_ok=True)
-        os.makedirs(os.path.join(self._dir, 'configurations'), exist_ok=True)
-        os.makedirs(os.path.join(self._dir, 'scripts'), exist_ok=True)
-        self._make_manage()
-        self._make_wsgi()
-        self._make_settings()
-        script_path = self._make_script()
-        form_path = self._make_form()
-        command_config_path = self._make_command_configuration(script_path)
-        self._make_limits()
-        self._make_services_ini(form_path, command_config_path)
+    # copy core files
+    for fn in ['manage.py', 'services.yml', 'wsgi.py']:
+        with open(os.path.join(base_dir, fn), 'wb') as dst:
+            src = pkg_resources.resource_stream(
+                'slivka.conf', 'project_template/' + fn
+            )
+            shutil.copyfileobj(src, dst)
+    os.chmod(os.path.join(base_dir, 'manage.py'), stat.S_IRWXU)
 
-    def _make_manage(self):
-        path = os.path.join(self._dir, 'manage.py')
-        with open(path, 'wb') as f:
-            f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/manage.py'
-            ))
-        os.chmod(path, stat.S_IRWXU)
+    # create settings.yml
+    tpl = pkg_resources.resource_string(
+        'slivka.conf', 'project_template/settings.yml.tpl'
+    )
+    with open(os.path.join(base_dir, 'settings.yml'), 'w') as dst:
+        dst.write(Template(tpl.decode()).substitute(
+            base_dir=base_dir,
+            secret_key=b64encode(os.urandom(24)).decode()
+        ))
 
-    def _make_wsgi(self):
-        path = os.path.join(self._dir, 'wsgi.py')
-        with open(path, 'wb') as f:
-            f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/wsgi.py'
-            ))
+    # copy conf/*
+    lstdir = pkg_resources.resource_listdir(
+        'slivka.conf', 'project_template/conf'
+    )
+    for fn in lstdir:
+        with open(os.path.join(base_dir, 'conf', fn), 'wb') as dst:
+            src = pkg_resources.resource_stream(
+                'slivka.conf', 'project_template/conf/' + fn
+            )
+            shutil.copyfileobj(src, dst)
 
-    def _make_settings(self):
-        path = os.path.join(self._dir, 'settings.yml')
-        template = jinja2.Template(
-            pkg_resources.resource_string(
-                'slivka', 'data/template/settings.yml.jinja2'
-            ).decode()
-        )
-        stream = template.stream(
-            base_dir=self._dir,
-            secret_key=b64encode(os.urandom(32)).decode('utf-8')
-        )
-        with open(path, 'w') as f:
-            stream.dump(f)
-
-    def _make_script(self):
-        path = os.path.join(self._dir, 'binaries', 'pydummy.py')
-        with open(path, 'wb') as f:
-            f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/binaries/pydummy.py'
-            ))
-        os.chmod(path, stat.S_IRWXU)
-        return path
-
-    def _make_form(self):
-        path = os.path.join(self._dir, 'configurations', 'pydummyForm.yml')
-        with open(path, 'wb') as f:
-            f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/configurations/pydummyForm.yml'
-            ))
-        return path
-
-    def _make_command_configuration(self, script_path):
-        path = os.path.join(self._dir, 'configurations', 'pydummyCommand.yml')
-        template = jinja2.Template(
-            pkg_resources.resource_string(
-                'slivka', 'data/template/configurations/pydummyCommand.yml'
-            ).decode()
-        )
-        stream = template.stream(script=script_path)
-        with open(path, 'w') as f:
-            stream.dump(f)
-        return path
-
-    def _make_limits(self):
-        path = os.path.join(self._dir, 'scripts', 'limits.py')
-        with open(path, 'wb') as f:
-            f.write(pkg_resources.resource_string(
-                'slivka', 'data/template/scripts/limits.py'
-            ))
-        open(os.path.join(os.path.dirname(path), '__init__.py'), 'w').close()
-        return path
-
-    def _make_services_ini(self, form_path, command_config_path):
-        path = os.path.join(self._dir, 'configurations', 'services.ini')
-        template = jinja2.Template(
-            pkg_resources.resource_string(
-                'slivka', 'data/template/configurations/services.ini.jinja2'
-            ).decode()
-        )
-        stream = template.stream(form_path=form_path,
-                                 config_path=command_config_path)
-        with open(path, 'w') as f:
-            stream.dump(f)
+    # copy scripts/*
+    lstdir = pkg_resources.resource_listdir(
+        'slivka.conf', 'project_template/scripts'
+    )
+    for fn in lstdir:
+        with open(os.path.join(base_dir, 'scripts', fn), 'wb') as dst:
+            src = pkg_resources.resource_stream(
+                'slivka.conf', 'project_template/scripts/' + fn
+            )
+            shutil.copyfileobj(src, dst)
+    os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
 
 
 @click.group()
@@ -153,27 +104,28 @@ def manager():
 
 @click.command('local-queue')
 @click.option('--log-level', default='INFO')
-def worker(log_level):
+def start_workers(log_level):
     """Start task queue workers."""
     os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
     os.execlp('python', 'python', '-m', 'slivka.local_queue',
-              '-b', '127.0.0.1:%d' % slivka.settings.QUEUE_PORT,
+              '-b', slivka.settings.SLIVKA_QUEUE_ADDR,
               '--log-level', log_level)
 
 
-@click.command()
-def scheduler():
+@click.command('scheduler')
+def start_scheduler():
     """Start job scheduler."""
-    from slivka.scheduler.scheduler import Scheduler
+    from slivka.scheduler import Scheduler
     scheduler = Scheduler()
-    scheduler.register_terminate_signal(2, 15)
-    scheduler.start()
+    for service, conf in slivka.settings.service_configurations.items():
+        scheduler.load_service(service, conf.command_def)
+    scheduler.run_forever()
 
 
-@click.command()
+@click.command('server')
 @click.option('--server-type', '-t', default='devel',
               type=click.Choice(['gunicorn', 'devel']))
-def server(server_type):
+def start_server(server_type):
     """Start HTTP server."""
     host = slivka.settings.SERVER_HOST
     port = int(slivka.settings.SERVER_PORT)
@@ -196,7 +148,18 @@ def shell():
     code.interact()
 
 
-manager.add_command(worker)
-manager.add_command(scheduler)
-manager.add_command(server)
+@click.command('check')
+def check():
+    try:
+        slivka.settings.BASE_DIR
+    except Exception:
+        raise
+    else:
+        click.echo("OK")
+
+
+manager.add_command(start_workers)
+manager.add_command(start_scheduler)
+manager.add_command(start_server)
 manager.add_command(shell)
+manager.add_command(check)

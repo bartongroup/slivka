@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {"type": "string"},
+    "__version__": {
+      "type": "string"
+    },
+    "baseCommand": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/def/CommandParameter"
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/def/CommandOutput"
+      }
+    },
+    "runners": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "class"
+        ]
+      },
+      "minProperties": 1
+    },
+    "limiter": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "baseCommand",
+    "inputs",
+    "outputs",
+    "runners"
+  ],
+  "def": {
+    "CommandParameter": {
+      "type": "object",
+      "properties": {
+        "arg": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "file",
+            "flag",
+            "string",
+            "number"
+          ]
+        },
+        "value": {},
+        "symlink": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arg"
+      ],
+      "additionalProperties": false
+    },
+    "CommandOutput": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "media-type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

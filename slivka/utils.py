@@ -4,34 +4,12 @@ import re
 import shutil
 from collections import OrderedDict
 
-import jsonschema
-import pkg_resources
 import yaml.resolver
 
 try:
     import simplejson as json
 except ImportError:
     import json
-
-# ## JSON validators ##
-
-_FORM_SCHEMA_JSON = json.loads(
-    pkg_resources.resource_string(
-        "slivka",
-        "data/config/FormDescriptionSchema.json"
-    ).decode()
-)
-jsonschema.Draft4Validator.check_schema(_FORM_SCHEMA_JSON)
-FORM_VALIDATOR = jsonschema.Draft4Validator(_FORM_SCHEMA_JSON)
-
-_COMMAND_SCHEMA_JSON = json.loads(
-    pkg_resources.resource_string(
-        "slivka",
-        "data/config/ConfDescriptionSchema.json"
-    ).decode()
-)
-jsonschema.Draft4Validator.check_schema(_COMMAND_SCHEMA_JSON)
-COMMAND_VALIDATOR = jsonschema.Draft4Validator(_COMMAND_SCHEMA_JSON)
 
 
 # ## Singleton metaclass ##
@@ -161,18 +139,17 @@ def camel_to_snake(name):
 
 
 class JobStatus(enum.IntEnum):
-
-    PENDING = 0
-    REJECTED = 1
-    ACCEPTED = 2
-    QUEUED = 3
-    RUNNING = 4
-    COMPLETED = 5
-    INTERRUPTED = 6
-    DELETED = 7
-    FAILED = 8
-    ERROR = 9
-    UNDEFINED = 10
+    PENDING = 1
+    REJECTED = 2
+    ACCEPTED = 3
+    QUEUED = 4
+    RUNNING = 5
+    COMPLETED = 6
+    INTERRUPTED = 7
+    DELETED = 8
+    FAILED = 9
+    ERROR = 10
+    UNDEFINED = 11
 
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,

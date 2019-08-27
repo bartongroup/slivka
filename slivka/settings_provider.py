@@ -1,13 +1,14 @@
+import json
 import logging.config
 import os.path
 import sys
-from configparser import ConfigParser
+import warnings
 
 import jsonschema
-import warnings
+import pkg_resources
 import yaml
 
-from slivka.utils import FORM_VALIDATOR, COMMAND_VALIDATOR, SafeOrderedLoader
+from slivka.utils import SafeOrderedLoader
 
 
 class ImproperlyConfigured(Exception):
@@ -53,9 +54,11 @@ class Settings:
         self._service_configs = {}
 
         # check if all required fields are present
-        required_options = ['BASE_DIR', 'UPLOADS_DIR', 'TASKS_DIR', 'SERVICES_INI',
-                            'UPLOADS_URL_PATH', 'TASKS_URL_PATH', 'ACCEPTED_MEDIA_TYPES',
-                            'SERVER_HOST', 'SERVER_PORT', 'QUEUE_HOST', 'QUEUE_PORT', 'DATABASE_URL']
+        required_options = ['BASE_DIR', 'UPLOADS_DIR', 'JOBS_DIR', 'SERVICES',
+                            'UPLOADS_URL_PATH', 'JOBS_URL_PATH',
+                            'ACCEPTED_MEDIA_TYPES',
+                            'SERVER_HOST', 'SERVER_PORT', 'SLIVKA_QUEUE_ADDR',
+                            'MONGODB_ADDR']
         for option in required_options:
             if not hasattr(self, option):
                 raise ImproperlyConfigured(
@@ -65,30 +68,34 @@ class Settings:
         # join paths with BASE_DIR
         self.BASE_DIR = os.path.abspath(self.BASE_DIR)
         self.UPLOADS_DIR = norm_join_path(self.BASE_DIR, self.UPLOADS_DIR)
-        self.TASKS_DIR = norm_join_path(self.BASE_DIR, self.TASKS_DIR)
-        for path in [self.UPLOADS_DIR, self.TASKS_DIR]:
+        self.JOBS_DIR = norm_join_path(self.BASE_DIR, self.JOBS_DIR)
+        for path in [self.UPLOADS_DIR, self.JOBS_DIR]:
             os.makedirs(path, exist_ok=True)
-        self.SERVICES_INI = norm_join_path(self.BASE_DIR, self.SERVICES_INI)
+        self.SERVICES = norm_join_path(self.BASE_DIR, self.SERVICES)
 
         # load services configurations
-        services_config = ConfigParser()
-        services_config.optionxform = lambda opt: opt
-        with open(self.SERVICES_INI) as f:
-            services_config.read_file(f)
-        for section in services_config.sections():
-            form_file = services_config.get(section, 'form')
-            command_file = services_config.get(section, 'config')
-            self._service_configs[section] = (
-                ServiceConfig(
-                    service=section,
-                    form_file=os.path.join(self.BASE_DIR, form_file),
-                    command_file=os.path.join(self.BASE_DIR, command_file)
-                )
+        with open(self.SERVICES) as f:
+            services_config = yaml.safe_load(f)
+        for service, section in services_config.items():
+            self._service_configs[service] = ServiceConfig(
+                service=service,
+                form_file=os.path.join(self.BASE_DIR, section['form']),
+                command_file=os.path.join(self.BASE_DIR, section['command'])
             )
 
         # configure logging
         os.makedirs('logs', exist_ok=True)
         logging.config.dictConfig(_LOGGER_CONFIG_TEMPLATE)
+
+    @property
+    def TASKS_DIR(self):
+        warnings.warn('TASKS_DIR is deprecated', DeprecationWarning)
+        return self.JOBS_DIR
+
+    @property
+    def SERVICES_INI(self):
+        warnings.warn('SERVICES_INI is deprecated', DeprecationWarning)
+        return self.SERVICES
 
     @property
     def service_configurations(self):
@@ -106,6 +113,23 @@ def norm_join_path(*args):
     return os.path.normpath(os.path.join(*args))
 
 
+form_def_schema = json.loads(
+    pkg_resources.resource_string(
+        "slivka.conf", "formDefSchema.json"
+    ).decode()
+)
+jsonschema.Draft4Validator.check_schema(form_def_schema)
+form_def_validator = jsonschema.Draft4Validator(form_def_schema)
+
+command_def_schema = json.loads(
+    pkg_resources.resource_string(
+        "slivka.conf", "commandDefSchema.json"
+    ).decode()
+)
+jsonschema.Draft4Validator.check_schema(command_def_schema)
+command_def_validator = jsonschema.Draft4Validator(command_def_schema)
+
+
 class ServiceConfig:
 
     def __init__(self, service, form_file, command_file):
@@ -114,12 +138,11 @@ class ServiceConfig:
         with open(form_file, 'r') as f:
             form = yaml.load(f, SafeOrderedLoader)
         try:
-            FORM_VALIDATOR.validate(form)
+            form_def_validator.validate(form)
         except jsonschema.exceptions.ValidationError as exc:
             logging.error(
                 'Error validating form definition file %s', form_file
             )
-            print('\n', exc, sep='')
             sys.exit(1)
         else:
             self._form = form
@@ -127,13 +150,12 @@ class ServiceConfig:
         with open(command_file, 'r') as f:
             config = yaml.safe_load(f)
         try:
-            COMMAND_VALIDATOR.validate(config)
+            command_def_validator.validate(config)
             self._execution_config = config
         except jsonschema.exceptions.ValidationError as exc:
             logging.exception(
-                'Error validating configuration file %s', form_file
+                'Error validating configuration file %s', command_file
             )
-            print('\n', exc, sep='')
             sys.exit(1)
         else:
             self._execution_config = config
@@ -147,8 +169,14 @@ class ServiceConfig:
         return self._form
 
     @property
-    def execution_config(self):
+    def command_def(self):
         return self._execution_config
+
+    @property
+    def execution_config(self):
+        warnings.warn('execution_config is deprecated, use command_def',
+                      DeprecationWarning)
+        return self.command_def
 
     def __repr__(self):
         return '<%s ConfigurationProvider>' % self._service

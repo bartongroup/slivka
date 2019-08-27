@@ -4,7 +4,7 @@ import logging
 import click
 
 from .client import LocalQueueClient, RequestError
-from .core import Status, ProcessStatus, LocalQueue
+from .core import ProcessStatus, LocalQueue
 
 
 @click.command()

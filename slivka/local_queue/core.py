@@ -1,5 +1,4 @@
 import asyncio
-import enum
 import itertools
 import logging
 import os
@@ -7,6 +6,8 @@ import time
 
 import zmq
 import zmq.asyncio as aiozmq
+
+from slivka import JobStatus
 
 log = logging.getLogger('slivka-queue')
 
@@ -17,21 +18,11 @@ except AttributeError:
     get_running_loop = asyncio.get_event_loop
 
 
-class Status(enum.Enum):
-    QUEUED = 0
-    RUNNING = 1
-    COMPLETED = 2
-    INTERRUPTED = 3
-    FAILED = 4
-    ERROR = 5
-    UNDEFINED = -1
-
-
 class ShellCommandWrapper:
     counter = itertools.count(1)
 
     def __init__(self, cmd, cwd, env=None):
-        self.id = int(time.time()) << 32 | next(self.counter)
+        self.id = int(time.time()) << 32 | next(self.counter) & 0xffffffff
         self.cmd = cmd
         self.cwd = cwd
         self.env = env or {}
@@ -43,7 +34,7 @@ class ShellCommandWrapper:
 
 class ProcessStatus:
     def __init__(self):
-        self.status = Status.QUEUED
+        self.status = JobStatus.QUEUED
         self.return_code = None
 
 
@@ -67,8 +58,8 @@ class LocalQueue:
             log.debug('Waiting for next command')
             command = await queue.get()  # type: ShellCommandWrapper
             log.info('Starting %r', command)
-            stdout = open(os.path.join(command.cwd, 'stdout.txt'), 'wb')
-            stderr = open(os.path.join(command.cwd, 'stderr.txt'), 'wb')
+            stdout = open(os.path.join(command.cwd, 'stdout'), 'wb')
+            stderr = open(os.path.join(command.cwd, 'stderr'), 'wb')
             proc = await asyncio.create_subprocess_shell(
                 command.cmd,
                 stdout=stdout,
@@ -76,19 +67,19 @@ class LocalQueue:
                 cwd=command.cwd,
                 env=command.env
             )
-            self.stats[command.id].status = Status.RUNNING
+            self.stats[command.id].status = JobStatus.RUNNING
             try:
                 return_code = await proc.wait()
                 self.stats[command.id].return_code = return_code
                 self.stats[command.id].status = (
-                    Status.COMPLETED if return_code == 0 else Status.FAILED
+                    JobStatus.COMPLETED if return_code == 0 else JobStatus.FAILED
                 )
                 log.info('%r completed with status %d', command, return_code)
             except asyncio.CancelledError:
                 log.info('Tearing down')
                 proc.terminate()
                 self.stats[command.id].return_code = await proc.wait()
-                self.stats[command.id].status = Status.INTERRUPTED
+                self.stats[command.id].status = JobStatus.INTERRUPTED
                 break
             finally:
                 try:
@@ -125,14 +116,14 @@ class LocalQueue:
             return {
                 'ok': True,
                 'id': content['id'],
-                'status': Status.UNDEFINED.name,
+                'status': JobStatus.UNDEFINED,
                 'returncode': None
             }
         else:
             return {
                 'ok': True,
                 'id': content['id'],
-                'status': status.status.name,
+                'status': status.status,
                 'returncode': status.return_code
             }
 
@@ -149,7 +140,7 @@ class LocalQueue:
         return {
             'ok': True,
             'id': cmd.id,
-            'status': Status.QUEUED.name,
+            'status': JobStatus.QUEUED,
             'returncode': None
         }
 

@@ -84,7 +84,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     def save(self, database):
         if not self.is_valid():
             raise RuntimeError(self.errors, 'invalid_form')
-        inputs = []
+        inputs = {}
         uploaded_files = []
         for name, field in self.fields.items():
             value = self.cleaned_data[name]
@@ -101,8 +101,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                         path=path,
                         media_type=value.get_detected_media_type()
                     ))
-            param = field.to_cmd_parameter(value)
-            inputs.append((name, param))
+            inputs[name] = field.to_cmd_parameter(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
         for file in uploaded_files:

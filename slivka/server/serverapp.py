@@ -175,7 +175,7 @@ def get_file_metadata(uid):
             raise abort(404)
         conf = slivka.settings.get_service_configuration(job.service)
         output = next(
-            out for out in conf.execution_config['results']
+            out for out in conf.execution_config['outputs'].values()
             if fnmatch(filename, out['path'])
         )
         job_location = os.path.basename(job.work_dir)
@@ -184,7 +184,7 @@ def get_file_metadata(uid):
             'statuscode': 200,
             'uuid': uid,
             'title': filename,
-            'mimetype': output.get('mimetype'),
+            'mimetype': output.get('media-type'),
             'URI': flask.url_for('get_file_metadata', uid=uid),
             'contentURI': flask.url_for('outputs', location=file_location)
         })
@@ -202,7 +202,7 @@ def serve_uploads_file(location):
     )
 
 
-@app.route(slivka.settings.TASKS_URL_PATH + '/<path:location>',
+@app.route(slivka.settings.JOBS_URL_PATH + '/<path:location>',
            endpoint='outputs',
            methods=['GET'])
 def serve_tasks_file(location):
@@ -250,8 +250,13 @@ def get_job_files(uuid):
     job = documents.JobMetadata.find_one(
         mongo.slivkadb, uuid=uuid
     )
-    if job is None or job.status == JobStatus.PENDING:
+    if job is None:
         raise abort(404)
+    if job.status == JobStatus.PENDING:
+        return JsonResponse({
+            'statuscode': 200,
+            'files': []
+        }, status=200)
 
     service_conf = slivka.settings.get_service_configuration(job.service)
     work_dir = pathlib.Path(job.work_dir)
@@ -260,10 +265,10 @@ def get_job_files(uuid):
             uuid='%s/%s' % (job.uuid, path.name),
             title=path.name,
             location=path.relative_to(slivka.settings.TASKS_DIR).as_posix(),
-            media_type=o.get('mimetype')
+            media_type=out.get('media-type')
         )
-        for o in service_conf.execution_config['results']
-        for path in work_dir.glob(o['path'])
+        for out in service_conf.execution_config['outputs'].values()
+        for path in work_dir.glob(out['path'])
     ]
 
     return JsonResponse({
@@ -292,7 +297,6 @@ def webapp_form(service):
         if form.is_valid():
             job_request = form.save(mongo.slivkadb)
             url = flask.url_for('get_job_status', uuid=job_request.uuid)
-            print(url)
             return flask.redirect(url)
         else:
             return flask.render_template('form.jinja2', form=form)
