@@ -1,8 +1,10 @@
+import atexit
 from collections import namedtuple
 
 import zmq
 
 zmq_ctx = zmq.Context()
+atexit.register(zmq_ctx.destroy, 0)
 
 
 class LocalQueueClient:
