@@ -22,7 +22,9 @@ class LazySettingsProxy:
     def __getattr__(self, item):
         if self._settings is None:
             self._setup()
-        return getattr(self._settings, item)
+        val = getattr(self._settings, item)
+        self.__dict__[item] = val
+        return val
 
     def _setup(self):
         settings_file = os.environ.get("SLIVKA_SETTINGS")
