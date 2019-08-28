@@ -37,7 +37,10 @@ setup(
     include_package_data=True,
 
     entry_points={
-        "console_scripts": "slivka-setup=slivka.command:setup"
+        "console_scripts": [
+            "slivka-setup=slivka.command:setup",
+            "slivka-queue=slivka.local_queue:main"
+        ]
     },
 
     author="Mateusz Maciej Warowny",
