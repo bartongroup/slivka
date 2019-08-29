@@ -9,7 +9,6 @@ dependencies:
   - gunicorn=19.9
   - jsonschema=2.6
   - markupsafe=1.0
-  - mock=2.0
   - pip=18.0
   - python=3.5
   - pymongo=3.7
@@ -18,6 +17,4 @@ dependencies:
   - requests=2.13
   - setuptools=40.4
   - simplejson=3.16
-  - sqlalchemy=1.2
-  - sqlite=3.28
   - werkzeug=0.15

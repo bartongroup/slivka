@@ -18,18 +18,17 @@ setup(
     version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
-        "click>=6.6",
-        "Flask>=0.11.1",
+        "click>=7.0",
+        "Flask>=1.0",
         "frozendict>=1.2",
-        "itsdangerous>=0.24",
-        "Jinja2>=2.8",
+        "gunicorn>19.9",
         "jsonschema>=2.5.1",
-        "MarkupSafe>=0.23",
+        "MarkupSafe>=1.0",
+        "pymongo>=3.7",
         "PyYAML>=3.11",
+        "pyzmq>=17.0"
         "simplejson>=3.16.0",
-        "SQLAlchemy>=1.0.13",
-        'typing>=3.6;python_version<"3.5"',
-        "Werkzeug>=0.11.10",
+        "Werkzeug>=0.15",
     ],
     extras_require={
         'bioinformatics': ['biopython>=1.72']
@@ -44,17 +43,19 @@ setup(
     },
 
     author="Mateusz Maciej Warowny",
-    author_email="m.m.warowny@dundee.ac.uk",
+    author_email="m.m.z.warowny@dundee.ac.uk",
     url="https://github.com/warownia1/Slivka",
-    download_url="https://github.com/warownia1/Slivka/archive/master.zip",
+    download_url="https://github.com/warownia1/Slivka/archive/dev.zip",
 
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
-        "Programming Language :: Python :: 3.4",
+        "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3 :: Only",
-        "Topic :: Scientific/Engineering :: Bio-Informatics"
+        "Framework :: Flask",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: System :: Distributed Computing"
     ]
 )
