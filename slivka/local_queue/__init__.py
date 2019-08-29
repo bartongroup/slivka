@@ -1,19 +1,18 @@
 import asyncio
-import logging
 
 import click
+
+import slivka.conf.logging
 
 from .client import LocalQueueClient, RequestError
 from .core import ProcessStatus, LocalQueue
 
 
 @click.command()
-@click.option('--address', '-b')
 @click.option('--workers', '-w', type=click.INT, default=2)
-@click.option('--log-level', default='INFO')
-def main(address, workers, log_level):
-    logging.basicConfig(level=log_level)
-    logging.getLogger('slivka-queue').setLevel(log_level)
+@click.argument('address')
+def main(address, workers):
+    slivka.conf.logging.configure_logging()
     loop = asyncio.get_event_loop()
     local_queue = LocalQueue(
         address=address,

@@ -13,16 +13,13 @@ from .runners import *
 __all__ = ['Scheduler', 'Limiter', 'DefaultLimiter']
 
 
-log = logging.getLogger('slivka.scheduler')
-log.setLevel(logging.DEBUG)
-
-
 def get_classpath(cls):
     return cls.__module__ + '.' + cls.__name__
 
 
 class Scheduler:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.requests = deque()
         self._is_running = False
         self.runner_selector = RunnerSelector()
@@ -57,7 +54,7 @@ class Scheduler:
         if self.is_running:
             raise RuntimeError("Scheduler is already running.")
         self._is_running = True
-        log.info('scheduler started')
+        self.logger.info('scheduler started')
         try:
             while self.is_running:
                 self.run_new_requests()
@@ -75,10 +72,12 @@ class Scheduler:
             runner = self.runner_selector.select_runner(request.service, request.inputs)
             runner_requests[runner].append(request)
         for runner, requests in runner_requests.items():
-            if log.isEnabledFor(logging.INFO):
+            if self.logger.isEnabledFor(logging.INFO):
                 for request in requests:
-                    log.info('starting job %s with %s',
-                             request.uuid, runner.__class__.__name__)
+                    self.logger.info(
+                        'starting job %s with %s',
+                        request.uuid, runner.__class__.__name__
+                    )
             runs = runner.batch_run([r.inputs for r in requests])
             for run, request in zip(runs, requests):
                 if isinstance(run, RunInfo):
@@ -101,7 +100,9 @@ class Scheduler:
             stats = runner_cls.batch_check_status(job['job_id'] for job in jobs)
             for job, new_status in zip(jobs, stats):
                 if job['status'] != new_status:
-                    log.info("job %s status changed to %s", job.uuid, new_status.name)
+                    self.logger.info(
+                        "job %s status changed to %s", job.uuid, new_status.name
+                    )
                     job.update_self(mongo.slivkadb, status=new_status)
                     JobRequest.update_one(
                         mongo.slivkadb,

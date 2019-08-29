@@ -83,10 +83,6 @@ class Settings:
                 command_file=os.path.join(self.BASE_DIR, section['command'])
             )
 
-        # configure logging
-        os.makedirs('logs', exist_ok=True)
-        logging.config.dictConfig(_LOGGER_CONFIG_TEMPLATE)
-
     @property
     def TASKS_DIR(self):
         warnings.warn('TASKS_DIR is deprecated', DeprecationWarning)
@@ -139,7 +135,7 @@ class ServiceConfig:
             form = yaml.load(f, SafeOrderedLoader)
         try:
             form_def_validator.validate(form)
-        except jsonschema.exceptions.ValidationError as exc:
+        except jsonschema.exceptions.ValidationError:
             logging.error(
                 'Error validating form definition file %s', form_file
             )
@@ -152,7 +148,7 @@ class ServiceConfig:
         try:
             command_def_validator.validate(config)
             self._execution_config = config
-        except jsonschema.exceptions.ValidationError as exc:
+        except jsonschema.exceptions.ValidationError:
             logging.exception(
                 'Error validating configuration file %s', command_file
             )
@@ -180,55 +176,3 @@ class ServiceConfig:
 
     def __repr__(self):
         return '<%s ConfigurationProvider>' % self._service
-
-
-_LOGGER_CONFIG_TEMPLATE = {
-    "version": 1,
-    "root": {
-        "level": "DEBUG",
-        "handlers": ["console"]
-    },
-    "loggers": {
-        "slivka.scheduler.scheduler": {
-            "level": "DEBUG",
-            "propagate": True,
-            "handlers": ["scheduler_file"]
-        },
-        "slivka.scheduler.task_queue": {
-            "level": "DEBUG",
-            "propagate": True,
-            "handlers": ["task_queue_file"]
-        }
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "minimal",
-            "level": "INFO",
-            "stream": "ext://sys.stdout"
-        },
-        "scheduler_file": {
-            "class": "logging.FileHandler",
-            "formatter": "default",
-            "level": "DEBUG",
-            "filename": os.path.join('logs', 'scheduler.log'),
-            "encoding": "utf-8"
-        },
-        "task_queue_file": {
-            "class": "logging.FileHandler",
-            "formatter": "default",
-            "level": "DEBUG",
-            "filename": os.path.join('logs', 'queue.log'),
-            "encoding": "utf-8"
-        }
-    },
-    "formatters": {
-        "default": {
-            "format": "%(asctime)s %(name)s %(levelname)s: %(message)s",
-            "datefmt": "%d %b %H:%M:%S"
-        },
-        "minimal": {
-            "format": "%(levelname)s: %(message)s"
-        }
-    }
-}

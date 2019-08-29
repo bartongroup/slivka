@@ -9,8 +9,6 @@ import zmq.asyncio as aiozmq
 
 from slivka import JobStatus
 
-log = logging.getLogger('slivka-queue')
-
 
 try:
     get_running_loop = asyncio.get_running_loop
@@ -29,7 +27,7 @@ class ShellCommandWrapper:
         self.env.setdefault('PATH', os.getenv('PATH'))
 
     def __repr__(self):
-        return "Command(id={}, cmd={}, cwd={})".format(self.id, self.cmd, self.cwd)
+        return "Command(id=%s, cmd=%s, cwd=%s)" % (self.id, self.cmd, self.cwd)
 
 
 class ProcessStatus:
@@ -42,22 +40,23 @@ class LocalQueue:
     zmq_ctx = aiozmq.Context()
 
     def __init__(self, address, protocol='tcp', workers=1, secret=None):
+        self.logger = logging.getLogger(__name__)
         self.address = protocol + '://' + address
         self.num_workers = workers
         self.secret = secret
         if not secret:
-            log.warning('No secret used.')
+            self.logger.warning('No secret used.')
         self.server = None
         self.queue = asyncio.Queue()
         self.workers = []
         self.stats = {}
 
     async def _worker(self, queue):
-        log.info("Worker spawned")
+        self.logger.info("worker spawned")
         while True:
-            log.debug('Waiting for next command')
+            self.logger.debug('waiting for the command')
             command = await queue.get()  # type: ShellCommandWrapper
-            log.info('Starting %r', command)
+            self.logger.info('executing %r', command)
             stdout = open(os.path.join(command.cwd, 'stdout'), 'wb')
             stderr = open(os.path.join(command.cwd, 'stderr'), 'wb')
             proc = await asyncio.create_subprocess_shell(
@@ -74,9 +73,9 @@ class LocalQueue:
                 self.stats[command.id].status = (
                     JobStatus.COMPLETED if return_code == 0 else JobStatus.FAILED
                 )
-                log.info('%r completed with status %d', command, return_code)
+                self.logger.info('%r completed with status %d', command, return_code)
             except asyncio.CancelledError:
-                log.info('Tearing down')
+                self.logger.info('terminating a running process')
                 proc.terminate()
                 self.stats[command.id].return_code = await proc.wait()
                 self.stats[command.id].status = JobStatus.INTERRUPTED
@@ -88,16 +87,13 @@ class LocalQueue:
                     pass
                 stdout.close()
                 stderr.close()
-        log.info("Worker terminated")
 
     async def serve_forever(self):
-        log.info('Starting server')
+        self.logger.info('starting server')
         socket = self.zmq_ctx.socket(zmq.REP)
-        log.debug('REP socket created')
         socket.bind(self.address)
-        log.info('Socket bound to addr %s', self.address)
+        self.logger.info('REP socket bound to %s', self.address)
         while True:
-            log.debug('Awaiting message')
             message = await socket.recv_json()
             if message['method'] == 'GET':
                 response = self.do_GET(message)
@@ -128,7 +124,6 @@ class LocalQueue:
             }
 
     def do_POST(self, content):
-        log.debug("Processing POST")
         cmd = ShellCommandWrapper(
             cmd=content['cmd'],
             cwd=content['cwd'],
@@ -136,7 +131,7 @@ class LocalQueue:
         )
         get_running_loop().call_soon(self.queue.put_nowait, cmd)
         self.stats[cmd.id] = ProcessStatus()
-        log.info('Submitted %r', cmd)
+        self.logger.info('queued %r for execution', cmd)
         return {
             'ok': True,
             'id': cmd.id,
@@ -163,7 +158,6 @@ class LocalQueue:
             loop.create_task(self._worker(self.queue))
             for _ in range(self.num_workers)
         ]
-        log.info('Workers created')
         if self.server is not None:
             raise RuntimeError("Server is already running.")
         self.server = loop.create_task(self.serve_forever())

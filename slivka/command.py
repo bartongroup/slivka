@@ -6,17 +6,18 @@ same name as the function, which is passed as a first parameter to the script
 call. Additionally, some of the functions process additional arguments
 usually specified just after the command name.
 """
-
 import os
 import shutil
 import stat
 from base64 import b64encode
+from logging.handlers import RotatingFileHandler
 from string import Template
 
 import click
 import pkg_resources
 
 import slivka
+import slivka.conf.logging
 import slivka.utils
 
 
@@ -103,23 +104,30 @@ def manager():
 
 
 @click.command('local-queue')
-@click.option('--log-level', default='INFO')
 def start_workers(log_level):
     """Start task queue workers."""
     os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
     os.execlp('python', 'python', '-m', 'slivka.local_queue',
-              '-b', slivka.settings.SLIVKA_QUEUE_ADDR,
-              '--log-level', log_level)
+              slivka.settings.SLIVKA_QUEUE_ADDR)
 
 
 @click.command('scheduler')
 def start_scheduler():
     """Start job scheduler."""
     from slivka.scheduler import Scheduler
-    scheduler = Scheduler()
-    for service, conf in slivka.settings.service_configurations.items():
-        scheduler.load_service(service, conf.command_def)
-    scheduler.run_forever()
+    slivka.conf.logging.configure_logging()
+    handler = RotatingFileHandler(
+        os.path.join(slivka.settings.BASE_DIR, 'logs', 'slivka.log'),
+        maxBytes=100e6
+    )
+    listener = slivka.conf.logging.ZMQQueueListener(
+        'ipc:///tmp/slivka.logging.sock', (handler,)
+    )
+    with listener:
+        scheduler = Scheduler()
+        for service, conf in slivka.settings.service_configurations.items():
+            scheduler.load_service(service, conf.command_def)
+        scheduler.run_forever()
 
 
 @click.command('server')
