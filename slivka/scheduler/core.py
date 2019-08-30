@@ -5,8 +5,8 @@ from importlib import import_module
 from itertools import islice
 from typing import Dict, Type, Optional, List
 
+import slivka.db
 from slivka import JobStatus
-from slivka.db import mongo
 from slivka.db.documents import JobRequest, JobMetadata
 from .runners import *
 
@@ -39,7 +39,7 @@ class Scheduler:
     def reload(self):
         """Reloads running jobs from the database."""
         running_jobs = JobMetadata.find(
-            mongo.slivkadb,
+            slivka.db.mongo.slivkadb,
             {'$or': [
                 {'status': JobStatus.QUEUED},
                 {'status': JobStatus.RUNNING}
@@ -65,7 +65,7 @@ class Scheduler:
 
     def run_new_requests(self, limit=None):
         new_requests = JobRequest.find(
-            mongo.slivkadb, status=JobStatus.PENDING
+            slivka.db.mongo.slivkadb, status=JobStatus.PENDING
         )
         runner_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
         for request in islice(new_requests, limit):
@@ -81,7 +81,9 @@ class Scheduler:
             runs = runner.batch_run([r.inputs for r in requests])
             for run, request in zip(runs, requests):
                 if isinstance(run, RunInfo):
-                    request.update_self(mongo.slivkadb, status=JobStatus.QUEUED)
+                    request.update_self(
+                        slivka.db.mongo.slivkadb, status=JobStatus.QUEUED
+                    )
                     job = JobMetadata(
                         uuid=request['uuid'],
                         service=request['service'],
@@ -90,7 +92,7 @@ class Scheduler:
                         job_id=run.id,
                         status=JobStatus.QUEUED
                     )
-                    job.insert(mongo.slivkadb)
+                    job.insert(slivka.db.mongo.slivkadb)
                     self.running_jobs[runner.__class__].append(job)
 
     def update_running_jobs(self):
@@ -103,9 +105,9 @@ class Scheduler:
                     self.logger.info(
                         "job %s status changed to %s", job.uuid, new_status.name
                     )
-                    job.update_self(mongo.slivkadb, status=new_status)
+                    job.update_self(slivka.db.mongo.slivkadb, status=new_status)
                     JobRequest.update_one(
-                        mongo.slivkadb,
+                        slivka.db.mongo.slivkadb,
                         {'uuid': job['uuid']},
                         {'status': new_status}
                     )

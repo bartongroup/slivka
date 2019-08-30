@@ -9,7 +9,7 @@ from functools import partial
 from werkzeug.datastructures import FileStorage
 
 import slivka
-from slivka.db import mongo
+import slivka.db
 from slivka.db.documents import UploadedFile, JobMetadata
 from slivka.server.file_validators import validate_file_content
 from .widgets import *
@@ -392,7 +392,7 @@ class FileWrapper:
 
     @classmethod
     def _load_from_uploaded_file(cls, uuid):
-        uploaded = UploadedFile.find_one(mongo.slivkadb, uuid=uuid)
+        uploaded = UploadedFile.find_one(slivka.db.mongo.slivkadb, uuid=uuid)
         if uploaded is None:
             return None
         file = cls()
@@ -406,7 +406,7 @@ class FileWrapper:
 
     @classmethod
     def _load_from_output_file(cls, uuid, filename):
-        job = JobMetadata.find_one(mongo.slivkadb, uuid=uuid)
+        job = JobMetadata.find_one(slivka.db.mongo.slivkadb, uuid=uuid)
         conf = slivka.settings.get_service_configuration(job.service)
         output = next(
             out for out in conf.execution_config['results']

@@ -69,24 +69,37 @@ if Bio is not None:
         'application/embl': biopython_validator_factory('embl')
     })
 
-for media_type, path in getattr(slivka.settings, 'FILE_VALIDATORS', {}).items():
-    _built_in_validators[media_type] = slivka.utils.locate(path)
 
-_validators = {}
+class ValidatorDict(dict):
+    def init_from_settings(self):
+        for media_type in slivka.settings.ACCEPTED_MEDIA_TYPES:
+            self.add(media_type)
 
-for media_type in slivka.settings.ACCEPTED_MEDIA_TYPES:
-    if media_type not in _built_in_validators:
-        msg = (
-            "{} has no validator set up. "
-            "Every file with this mime type will be accepted."
-            .format(media_type)
-        )
-        warn(msg, RuntimeWarning)
-    _validators[media_type] = _built_in_validators.get(media_type, pass_validator)
+    def __missing__(self, key):
+        return reject_validator
 
-del _built_in_validators
+    def __setitem__(self, key, validator):
+        if validator is None:
+            if key not in _built_in_validators:
+                msg = (
+                    "Media type %s has no built-in validator available. "
+                    "Every file declaring this media type will be accepted." %
+                    key
+                )
+                warn(msg, RuntimeWarning)
+            validator = _built_in_validators.get(key, pass_validator)
+        dict.__setitem__(self, key, validator)
+
+    def add(self, media_type, validator=None):
+        self[media_type] = validator
+
+
+_validators = None
 
 
 def validate_file_content(file, media_type):
-    validator = _validators.get(media_type, reject_validator)
-    return validator(file)
+    if _validators is None:
+        global _validators
+        _validators = ValidatorDict()
+        _validators.init_from_settings()
+    return _validators[media_type](file)
