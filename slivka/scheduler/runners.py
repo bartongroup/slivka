@@ -9,8 +9,9 @@ import subprocess
 import tempfile
 from collections import namedtuple
 from datetime import datetime
+from functools import partial
 from itertools import islice
-from typing import Iterator, List, Iterable, Tuple
+from typing import Iterator, List, Iterable, Tuple, Match
 
 import pkg_resources
 
@@ -31,12 +32,20 @@ log.setLevel(logging.DEBUG)
 
 RunInfo = namedtuple('RunInfo', 'id, cwd')
 
+_envvar_regex = re.compile(
+    r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
+    re.UNICODE | re.IGNORECASE
+)
+
+
+def _replace_from_env(env: dict, match: Match):
+    if match.group(1):
+        return '$'
+    else:
+        return env.get(match.group(2) or match.group(3))
+
 
 class Runner:
-    _envvar_regex = re.compile(
-        r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
-        re.UNICODE | re.IGNORECASE
-    )
     _name_generator = ('runner-%d' % i for i in itertools.count(1))
     JOBS_DIR = None
 
@@ -46,31 +55,34 @@ class Runner:
         self.name = name or next(self._name_generator)
         self.inputs = command_def['inputs']
         self.outputs = command_def['outputs']
-        self.env = {
+        env = {
             'PATH': os.getenv('PATH'),
             'SLIVKA_HOME': os.getenv('SLIVKA_HOME', os.getcwd())
         }
-        self.env.update(command_def.get('env', {}))
-        base_command = command_def['baseCommand']
+        env.update(command_def.get('env', {}))
+        replace = partial(_replace_from_env, os.environ)
+        for key, val in env.items():
+            # noinspection PyTypeChecker
+            env[key] = _envvar_regex.sub(replace, val)
+        self.env = env
+        replace = partial(_replace_from_env, env)
+        base_command = command_def['baseCommand']  # type: List[str]
         if isinstance(base_command, str):
             base_command = shlex.split(base_command)
+        # noinspection PyTypeChecker
         self.base_command = [
-            self._envvar_regex.sub(self._replace_env_var, arg)
+            _envvar_regex.sub(replace, arg)
             for arg in base_command
         ]
         arguments = command_def.get('arguments', [])
+        # noinspection PyTypeChecker
         self.arguments = [
-            self._envvar_regex.sub(self._replace_env_var, arg)
+            _envvar_regex.sub(replace, arg)
             for arg in arguments
         ]
 
-    def _replace_env_var(self, match):
-        if match.group(1):
-            return '$'
-        else:
-            return self.env.get(match.group(2) or match.group(3))
-
     def get_args(self, values) -> List[str]:
+        replace = partial(_replace_from_env, self.env)
         args = []
         for name, inp in self.inputs.items():
             value = values.get(name, inp.get('value'))
@@ -83,9 +95,12 @@ class Runner:
                 value = str(value)
             elif param_type == 'file':
                 value = inp.get('symlink', value)
-            param = self._envvar_regex.sub(self._replace_env_var, inp['arg'])
-            param = str.replace(param, '$(value)', shlex.quote(value))
-            args.extend(shlex.split(param))
+            # noinspection PyTypeChecker
+            tpl = _envvar_regex.sub(replace, inp['arg'])
+            args.extend([
+                arg.replace('$(value)', value)
+                for arg in shlex.split(tpl)
+            ])
         args.extend(self.arguments)
         return args
 
