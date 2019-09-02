@@ -8,7 +8,7 @@ import jsonschema
 import pkg_resources
 import yaml
 
-from slivka.utils import SafeOrderedLoader
+from slivka.utils import SafeTranscludingOrderedYamlLoader
 
 
 class ImproperlyConfigured(Exception):
@@ -132,7 +132,7 @@ class ServiceConfig:
         self._service = service
 
         with open(form_file, 'r') as f:
-            form = yaml.load(f, SafeOrderedLoader)
+            form = yaml.load(f, SafeTranscludingOrderedYamlLoader)
         try:
             form_def_validator.validate(form)
         except jsonschema.exceptions.ValidationError:
@@ -144,7 +144,7 @@ class ServiceConfig:
             self._form = form
 
         with open(command_file, 'r') as f:
-            config = yaml.safe_load(f)
+            config = yaml.load(f, SafeTranscludingOrderedYamlLoader)
         try:
             command_def_validator.validate(config)
             self._execution_config = config

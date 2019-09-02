@@ -29,18 +29,39 @@ class Singleton(type):
 
 # ## Yaml loaders using OrderedDict ##
 
-def _construct_mapping(loader, node):
+class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
+    def __init__(self, stream):
+        try:
+            self.root_path = os.path.dirname(stream.name)
+        except AttributeError:
+            self.root_path = os.path.curdir
+        self.root_path = os.path.abspath(self.root_path)
+        super().__init__(stream)
+
+
+def _include_constructor(loader: SafeTranscludingOrderedYamlLoader, node: yaml.Node):
+    val = loader.construct_scalar(node).split('#', 1)
+    fn, path = val if len(val) == 2 else (val[0], '/')
+    fn = os.path.join(loader.root_path, fn)
+    with open(fn) as f:
+        obj = yaml.load(f, Loader=loader.__class__)
+    for key in filter(None, path.split('/')):
+        obj = obj[key]
+    return obj
+
+
+def _mapping_constructor(loader, node):
     loader.flatten_mapping(node)
     return OrderedDict(loader.construct_pairs(node))
 
 
-class SafeOrderedLoader(yaml.SafeLoader):
-    pass
-
-
-SafeOrderedLoader.add_constructor(
+SafeTranscludingOrderedYamlLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-    _construct_mapping
+    _mapping_constructor
+)
+
+SafeTranscludingOrderedYamlLoader.add_constructor(
+    '!include', _include_constructor
 )
 
 
