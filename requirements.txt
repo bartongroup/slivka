@@ -5,6 +5,7 @@ gunicorn>=19.9
 jsonschema>=2.5.1
 MarkupSafe>=1.0
 pymongo >= 3.7
+pytest>=3.2.2
 PyYAML>=3.11
 pyzmq>=17.0
 simplejson>=3.16.0
