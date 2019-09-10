@@ -47,3 +47,11 @@ def test_str_to_cmd_parameter(example_field: BaseField):
 
 def test_none_to_cmd_parameter(example_field: BaseField):
     assert example_field.to_cmd_parameter(None) is None
+
+
+def test_true_to_cmd_parameter(example_field: BaseField):
+    assert bool(example_field.to_cmd_parameter(True)) is True
+
+
+def test_false_to_cmd_parameter(example_field: BaseField):
+    assert bool(example_field.to_cmd_parameter(False)) is False

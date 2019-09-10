@@ -249,10 +249,16 @@ class BooleanField(BaseField):
 
     def to_python(self, value):
         if value in EMPTY_VALUES:
-            return None
-        if isinstance(value, str) and value.lower() in self.FALSE_STR:
-            return None
-        return value and True or None
+            value = False
+        elif isinstance(value, str) and value.lower() in self.FALSE_STR:
+            value = False
+        return True if value else None
+
+    def validate(self, value):
+        return True if super().validate(value) else None
+
+    def to_cmd_parameter(self, value):
+        return 'true' if value else None
 
     def __json__(self):
         j = super().__json__()
