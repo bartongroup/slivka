@@ -104,7 +104,7 @@ def manager():
 
 
 @click.command('local-queue')
-def start_workers(log_level):
+def start_workers():
     """Start task queue workers."""
     os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
     os.execlp('python', 'python', '-m', 'slivka.local_queue',
