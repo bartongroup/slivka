@@ -21,7 +21,7 @@ setup(
         "click>=7.0",
         "Flask>=1.0",
         "frozendict>=1.2",
-        "gunicorn>19.9",
+        "gunicorn>=19.9",
         "jsonschema>=2.5.1",
         "MarkupSafe>=1.0",
         "pymongo>=3.7",
