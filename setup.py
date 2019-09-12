@@ -48,7 +48,7 @@ setup(
     download_url="https://github.com/warownia1/Slivka/archive/dev.zip",
 
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
