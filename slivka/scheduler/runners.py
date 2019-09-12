@@ -16,6 +16,7 @@ from typing import Iterator, List, Iterable, Tuple, Match
 import pkg_resources
 
 import slivka
+from slivka.db.documents import JobMetadata
 from slivka.local_queue import LocalQueueClient
 from slivka.utils import JobStatus
 
@@ -147,12 +148,12 @@ class Runner:
         return (self.submit(cmd, cwd) for cmd, cwd in commands)
 
     @classmethod
-    def check_status(cls, job_id) -> JobStatus:
+    def check_status(cls, job_id, cwd) -> JobStatus:
         raise NotImplementedError
 
     @classmethod
-    def batch_check_status(cls, job_ids) -> Iterable[JobStatus]:
-        return map(cls.check_status, job_ids)
+    def batch_check_status(cls, jobs: Iterable[JobMetadata]) -> Iterable[JobStatus]:
+        return (cls.check_status(job.job_id, job.work_dir) for job in jobs)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.name)
@@ -183,7 +184,7 @@ class ShellRunner(Runner):
         return proc.pid
 
     @classmethod
-    def check_status(cls, pid):
+    def check_status(cls, pid, cwd):
         try:
             return_code = cls.procs[pid].poll()
         except KeyError:
@@ -217,7 +218,7 @@ class SlivkaQueueRunner(Runner):
         return response.id
 
     @classmethod
-    def check_status(cls, identifier):
+    def check_status(cls, identifier, cwd):
         response = cls.client.get_job_status(identifier)
         return response.status
 
@@ -321,14 +322,25 @@ class GridEngineRunner(Runner):
         return ids
 
     @classmethod
-    def check_status(cls, job_id):
+    def check_status(cls, job_id, cwd):
         raise NotImplementedError
 
     @classmethod
-    def batch_check_status(cls, job_ids):
+    def batch_check_status(cls, jobs):
         stdout = subprocess.check_output('qstat')
-        stats = {}
+        states = {}
         matches = cls._job_status_regex.findall(stdout)
         for job_id, status in matches:
-            stats[job_id] = cls._status_letters[status]
-        return (stats.get(job_id, JobStatus.COMPLETED) for job_id in job_ids)
+            states[job_id] = cls._status_letters[status]
+        for job in jobs:
+            state = states.get(job.job_id)
+            if state is not None:
+                yield state
+            else:
+                fn = os.path.join(job.work_dir, 'finished')
+                try:
+                    with open(fn) as fp:
+                        return_code = int(fp.read())
+                    yield JobStatus.FAILED if return_code else JobStatus.COMPLETED
+                except FileNotFoundError:
+                    yield JobStatus.INTERRUPTED

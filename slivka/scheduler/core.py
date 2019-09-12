@@ -99,17 +99,17 @@ class Scheduler:
         for runner_cls, jobs in self.running_jobs.items():
             if len(jobs) == 0:
                 continue
-            stats = runner_cls.batch_check_status(job['job_id'] for job in jobs)
-            for job, new_status in zip(jobs, stats):
-                if job['status'] != new_status:
+            states = runner_cls.batch_check_status(jobs)
+            for job, new_state in zip(jobs, states):
+                if job['status'] != new_state:
                     self.logger.info(
-                        "job %s status changed to %s", job.uuid, new_status.name
+                        "job %s status changed to %s", job.uuid, new_state.name
                     )
-                    job.update_self(slivka.db.mongo.slivkadb, status=new_status)
+                    job.update_self(slivka.db.mongo.slivkadb, status=new_state)
                     JobRequest.update_one(
                         slivka.db.mongo.slivkadb,
                         {'uuid': job['uuid']},
-                        {'status': new_status}
+                        {'status': new_state}
                     )
             jobs[:] = (
                 job for job in jobs
