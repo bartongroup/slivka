@@ -170,9 +170,7 @@
         },
         "choices": {
           "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
+          "additionalProperties": true,
           "minProperties": 1
         },
         "default": {
