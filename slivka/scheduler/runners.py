@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import itertools
 import logging
 import os
@@ -117,7 +118,12 @@ class Runner:
         cmd = self.base_command + self.get_args(inputs)
         log.info('%s submitting single command %s %s',
                  self.__class__.__name__, cmd, cwd)
-        return RunInfo(cwd=cwd, id=self.submit(cmd, cwd))
+        try:
+            return RunInfo(cwd=cwd, id=self.submit(cmd, cwd))
+        except Exception:
+            with contextlib.suppress(OSError):
+                shutil.rmtree(cwd)
+            raise
 
     def batch_run(self, inputs_list) -> Iterator[RunInfo]:
         cwds = [
@@ -138,13 +144,30 @@ class Runner:
         for i, cmd, cwd in zip(itertools.count(1), cmds, cwds):
             log.info('%s batch submitting command %s %s (%d/%d)',
                      self.__class__.__name__, cmd, cwd, i, len(cmds))
-        job_ids = self.batch_submit(zip(cmds, cwds))
-        return map(RunInfo._make, zip(job_ids, cwds))
+        try:
+            job_ids = self.batch_submit(zip(cmds, cwds))
+            return map(RunInfo._make, zip(job_ids, cwds))
+        except Exception:
+            for cwd in cwds:
+                with contextlib.suppress(OSError):
+                    shutil.rmtree(cwd)
+            raise
 
     def submit(self, cmd, cwd):
+        """
+        :param cmd: list of command line arguments
+        :param cwd: current working directory for the job
+        :return: json-serializable job id
+        :raise SubmissionError: submission to the queue failed
+        """
         raise NotImplementedError
 
-    def batch_submit(self, commands) -> Iterable:
+    def batch_submit(self, commands: Iterable[Tuple[List[str], str]]) -> Iterable:
+        """
+        :param commands: iterable of command arguments and working directory pairs
+        :return: iterable of json-serializable job ids
+        :raise SubmissionError: submission to the queue failed
+        """
         return (self.submit(cmd, cwd) for cmd, cwd in commands)
 
     @classmethod

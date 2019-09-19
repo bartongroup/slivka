@@ -78,9 +78,19 @@ class Scheduler:
                         'starting job %s with %s',
                         request.uuid, runner.__class__.__name__
                     )
-            runs = runner.batch_run([r.inputs for r in requests])
-            for run, request in zip(runs, requests):
-                if isinstance(run, RunInfo):
+            try:
+                runs = runner.batch_run([r.inputs for r in requests])
+            except Exception:
+                for request in requests:
+                    request.update_self(
+                        slivka.db.mongo.slivkadb, status=JobStatus.ERROR
+                    )
+                self.logger.exception(
+                    "Submitting jobs to %s failed.", runner.__class__.__name__,
+                    exc_info=True
+                )
+            else:
+                for run, request in zip(runs, requests):
                     request.update_self(
                         slivka.db.mongo.slivkadb, status=JobStatus.QUEUED
                     )
@@ -99,18 +109,29 @@ class Scheduler:
         for runner_cls, jobs in self.running_jobs.items():
             if len(jobs) == 0:
                 continue
-            states = runner_cls.batch_check_status(jobs)
-            for job, new_state in zip(jobs, states):
-                if job['status'] != new_state:
-                    self.logger.info(
-                        "job %s status changed to %s", job.uuid, new_state.name
+            try:
+                states = runner_cls.batch_check_status(jobs)
+            except Exception:
+                for job in jobs:
+                    job.update_self(
+                        slivka.db.mongo.slivkadb, status=JobStatus.ERROR
                     )
-                    job.update_self(slivka.db.mongo.slivkadb, status=new_state)
-                    JobRequest.update_one(
-                        slivka.db.mongo.slivkadb,
-                        {'uuid': job['uuid']},
-                        {'status': new_state}
-                    )
+                self.logger.exception(
+                    "Checking job status with %s failed.", runner_cls.__name__,
+                    exc_info=True
+                )
+            else:
+                for job, new_state in zip(jobs, states):
+                    if job['status'] != new_state:
+                        self.logger.info(
+                            "job %s status changed to %s", job.uuid, new_state.name
+                        )
+                        job.update_self(slivka.db.mongo.slivkadb, status=new_state)
+                        JobRequest.update_one(
+                            slivka.db.mongo.slivkadb,
+                            {'uuid': job['uuid']},
+                            {'status': new_state}
+                        )
             jobs[:] = (
                 job for job in jobs
                 if not JobStatus(job['status']).is_finished()
