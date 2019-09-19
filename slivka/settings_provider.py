@@ -78,9 +78,11 @@ class Settings:
             services_config = yaml.safe_load(f)
         for service, section in services_config.items():
             self._service_configs[service] = ServiceConfig(
-                service=service,
+                name=service,
+                label=section['label'],
                 form_file=os.path.join(self.BASE_DIR, section['form']),
-                command_file=os.path.join(self.BASE_DIR, section['command'])
+                command_file=os.path.join(self.BASE_DIR, section['command']),
+                classifiers=section.get('classifiers', [])
             )
 
     @property
@@ -128,8 +130,10 @@ command_def_validator = jsonschema.Draft4Validator(command_def_schema)
 
 class ServiceConfig:
 
-    def __init__(self, service, form_file, command_file):
-        self._service = service
+    def __init__(self, name, label, form_file, command_file, classifiers):
+        self.name = name
+        self.label = label
+        self.classifiers = classifiers
 
         with open(form_file, 'r') as f:
             form = yaml.load(f, SafeTranscludingOrderedYamlLoader)
@@ -158,7 +162,7 @@ class ServiceConfig:
 
     @property
     def service(self):
-        return self._service
+        return self.name
 
     @property
     def form(self):
@@ -175,4 +179,4 @@ class ServiceConfig:
         return self.command_def
 
     def __repr__(self):
-        return '<%s ConfigurationProvider>' % self._service
+        return '<%s ConfigurationProvider>' % self.name

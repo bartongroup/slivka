@@ -51,10 +51,12 @@ def get_services():
         'statuscode': 200,
         'services': [
             {
-                'name': service,
-                'URI': flask.url_for('get_service_form', service=service)
+                'name': service.name,
+                'label': service.label,
+                'URI': flask.url_for('get_service_form', service=service.name),
+                'classifiers': service.classifiers
             }
-            for service in slivka.settings.services
+            for service in slivka.settings.service_configurations.values()
         ]
     })
 
