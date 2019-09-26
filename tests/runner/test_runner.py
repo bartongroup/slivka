@@ -212,9 +212,24 @@ def test_file_input():
         },
         'outputs': {}
     })
-    assert runner.get_args({'input': 'nyfile'}) == ['input.in']
+    assert runner.get_args({'input': 'myfile'}) == ['input.in']
     assert runner.get_args({'input': None}) == []
     assert runner.get_args({}) == []
+
+
+def test_env_var_in_parameter():
+    runner = RunnerStub({
+        "baseCommand": [],
+        "inputs": {
+            "text": {'arg': '-${MYVAR} $(value)'}
+        },
+        "arguments": [],
+        "outputs": {},
+        "env": {
+            "MYVAR": "foobar"
+        }
+    })
+    assert runner.get_args({'text': 'xxx'}) == ['-foobar', 'xxx']
 
 
 def test_env_var_injection():
@@ -231,3 +246,4 @@ def test_env_var_injection():
     })
     assert runner.get_args({'text': '$MYVAR'}) == ['$MYVAR']
     assert runner.get_args({'text': '${MYVAR}'}) == ['${MYVAR}']
+
