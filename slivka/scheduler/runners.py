@@ -168,7 +168,7 @@ class Runner:
         :return: iterable of json-serializable job ids
         :raise SubmissionError: submission to the queue failed
         """
-        return (self.submit(cmd, cwd) for cmd, cwd in commands)
+        return [self.submit(cmd, cwd) for cmd, cwd in commands]
 
     @classmethod
     def check_status(cls, job_id, cwd) -> JobStatus:
@@ -176,7 +176,7 @@ class Runner:
 
     @classmethod
     def batch_check_status(cls, jobs: Iterable[JobMetadata]) -> Iterable[JobStatus]:
-        return (cls.check_status(job.job_id, job.work_dir) for job in jobs)
+        return [cls.check_status(job.job_id, job.work_dir) for job in jobs]
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.name)
