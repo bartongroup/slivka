@@ -1,38 +1,6 @@
-import os
 from collections import OrderedDict
 
-from .stubs import RunnerStub
-
-os.environ['SLIVKA_HOME'] = '/tmp/slivkahome'
-
-
-class TestEnvVar:
-    @classmethod
-    def setup_class(cls):
-        cls.runner = RunnerStub({
-            "baseCommand": [],
-            "inputs": {},
-            "arguments": [],
-            "outputs": {},
-            "env": {
-                "EXAMPLE": "hello world",
-                "BIN_PATH": "${SLIVKA_HOME}/bin"
-            }
-        })
-
-    def test_env_vars_present(self):
-        expected_vars = {'PATH', 'SLIVKA_HOME', 'EXAMPLE', 'BIN_PATH'}
-        assert expected_vars.issubset(self.runner.env)
-
-    def test_predefined_slivka_home(self):
-        assert self.runner.env['SLIVKA_HOME'] == '/tmp/slivkahome'
-
-    def test_env_var_value(self):
-        assert self.runner.env['EXAMPLE'] == 'hello world'
-
-    def test_env_var_interpolation(self):
-        path = '%(SLIVKA_HOME)s/bin' % self.runner.env
-        assert self.runner.env['BIN_PATH'] == path
+from tests.runner.stubs import RunnerStub
 
 
 def test_arguments_passed():
@@ -44,20 +12,6 @@ def test_arguments_passed():
         'outputs': {}
     })
     assert runner.get_args({}) == args
-
-
-def test_flag_option():
-    runner = RunnerStub({
-        'baseCommand': [],
-        'inputs': {
-            'myflag': {'arg': '--flag', 'type': 'flag'}
-        },
-        'outputs': {}
-    })
-    assert runner.get_args({}) == []
-    assert runner.get_args({'myflag': False}) == []
-    assert runner.get_args({'myflag': None}) == []
-    assert runner.get_args({'myflag': True}) == ['--flag']
 
 
 def test_number_option():
@@ -118,6 +72,20 @@ def test_quoted_option():
 
     assert runner.get_args({'myoption': 'my \'fun \' value'}) == ['--option my \'fun \' value']
     assert runner.get_args({'otheropt': 'my \'fun \' value'}) == ['--option my \'fun \' value']
+
+
+def test_flag_option():
+    runner = RunnerStub({
+        'baseCommand': [],
+        'inputs': {
+            'myflag': {'arg': '--flag', 'type': 'flag'}
+        },
+        'outputs': {}
+    })
+    assert runner.get_args({}) == []
+    assert runner.get_args({'myflag': False}) == []
+    assert runner.get_args({'myflag': None}) == []
+    assert runner.get_args({'myflag': True}) == ['--flag']
 
 
 def test_default_substitution():
@@ -203,35 +171,3 @@ def test_file_input():
     assert runner.get_args({'input': 'myfile'}) == ['input.in']
     assert runner.get_args({'input': None}) == []
     assert runner.get_args({}) == []
-
-
-def test_env_var_in_parameter():
-    runner = RunnerStub({
-        "baseCommand": [],
-        "inputs": {
-            "text": {'arg': '-${MYVAR} $(value)'}
-        },
-        "arguments": [],
-        "outputs": {},
-        "env": {
-            "MYVAR": "foobar"
-        }
-    })
-    assert runner.get_args({'text': 'xxx'}) == ['-foobar', 'xxx']
-
-
-def test_env_var_injection():
-    runner = RunnerStub({
-        "baseCommand": [],
-        "inputs": {
-            "text": {'arg': '$(value)'}
-        },
-        "arguments": [],
-        "outputs": {},
-        "env": {
-            "MYVAR": "foobar"
-        }
-    })
-    assert runner.get_args({'text': '$MYVAR'}) == ['$MYVAR']
-    assert runner.get_args({'text': '${MYVAR}'}) == ['${MYVAR}']
-
