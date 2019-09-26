@@ -4,6 +4,7 @@ import types
 from pymongo import MongoClient
 
 import slivka
+from slivka.utils import lazy_property
 
 
 class _DBModule(types.ModuleType):
@@ -12,18 +13,9 @@ class _DBModule(types.ModuleType):
         self.__path__ = __path__
         self.__file__ = __file__
 
-    def __getattr__(self, item):
-        if item is 'mongo':
-            val = MongoClient(slivka.settings.MONGODB_ADDR)
-        else:
-            try:
-                val = globals()[item]
-            except KeyError:
-                raise AttributeError(
-                    "module '%s' has no attribute '%s'" % (__name__, item)
-                )
-        self.__dict__[item] = val
-        return val
+    @lazy_property
+    def mongo(self):
+        return MongoClient(slivka.settings.MONGODB_ADDR)
 
 
 mongo = ...  # type: MongoClient

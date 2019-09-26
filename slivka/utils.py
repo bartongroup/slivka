@@ -27,6 +27,21 @@ class Singleton(type):
         return cls()
 
 
+# lazy property decorator
+
+# noinspection PyPep8Naming
+class lazy_property:
+    def __init__(self, initializer):
+        self._init = initializer
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        val = self._init(instance)
+        instance.__dict__[self._init.__name__] = val
+        return val
+
+
 # ## Yaml loaders using OrderedDict ##
 
 class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
