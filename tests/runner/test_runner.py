@@ -1,21 +1,9 @@
 import os
-import tempfile
 from collections import OrderedDict
 
-from slivka.scheduler import Runner
+from .stubs import RunnerStub
 
 os.environ['SLIVKA_HOME'] = '/tmp/slivkahome'
-
-
-class RunnerStub(Runner):
-    JOBS_DIR = tempfile.TemporaryDirectory()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.submit_stack = []
-
-    def submit(self, cmd, cwd):
-        self.submit_stack.append((cmd, cwd))
 
 
 class TestEnvVar:
