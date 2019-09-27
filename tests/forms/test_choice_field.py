@@ -109,3 +109,12 @@ def test_invalid_value_with_default():
     field = ChoiceField('name', choices=CHOICES, default='bar')
     with pytest.raises(ValidationError):
         field.validate('QUX')
+
+
+# command line parameter conversion
+
+def test_to_cmd_parameter():
+    field = ChoiceField('name', choices=CHOICES)
+    assert field.to_cmd_parameter('foo') == 'FOO'
+    assert field.to_cmd_parameter('BAZ') == 'BAZ'
+    assert field.to_cmd_parameter('missing') == 'missing'
