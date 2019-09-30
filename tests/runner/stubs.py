@@ -1,6 +1,5 @@
 import tempfile
 
-from slivka import JobStatus
 from slivka.scheduler import Runner
 
 
@@ -10,15 +9,6 @@ class RunnerStub(Runner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.submit_stack = []
-
-    def submit(self, cmd, cwd):
-        self.submit_stack.append((cmd, cwd))
-        return ''
-
-    @classmethod
-    def check_status(cls, job_id, cwd) -> JobStatus:
-        return JobStatus.UNDEFINED
 
 
 def runner_factory(base_command=[], inputs={}, arguments={}, outputs={}, env={}, cls=RunnerStub) -> Runner:

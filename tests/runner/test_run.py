@@ -1,3 +1,4 @@
+import contextlib
 import filecmp
 import os
 import tempfile
@@ -7,6 +8,7 @@ from itertools import zip_longest
 import pytest
 import unittest.mock as mock
 
+from slivka import JobStatus
 from .stubs import runner_factory, RunnerStub
 
 
@@ -69,6 +71,27 @@ def test_job_working_directory():
     assert os.path.isdir(job_cwd)
 
 
+def test_working_directory_cleanup():
+    runner = runner_factory()
+    MyError = type('MyError', (Exception,), {})
+    runner.submit = mock.Mock(side_effect=MyError)
+    with contextlib.suppress(MyError):
+        runner.run({})
+    (cmd, cwd), kwargs = runner.submit.call_args
+    assert not os.path.exists(cwd)
+
+
+def test_batch_working_directory_cleanup():
+    runner = runner_factory()
+    MyError = type('MyError', (Exception,), {})
+    runner.submit = mock.Mock(side_effect=MyError)
+    with contextlib.suppress(MyError):
+        runner.batch_run([{}, {}, {}, {}])
+    for args, kwargs in runner.submit.call_args_list:
+        cmd, cwd = args
+        assert not os.path.exists(cwd)
+
+
 # file linking tests
 
 def test_link_created():
@@ -79,11 +102,25 @@ def test_link_created():
     infile.write(b'hello world\n')
     infile.flush()
     runner.submit = mock.Mock(return_value='')
-    runner.run({'input': infile.name})
-    (cmd, cwd), _ = runner.submit.call_args
-    path = os.path.join(cwd, 'input.txt')
+    job_id, job_cwd = runner.run({'input': infile.name})
+    path = os.path.join(job_cwd, 'input.txt')
     assert filecmp.cmp(infile.name, path), \
         'Files %s and %s are not identical' % (infile.name, path)
+
+
+def test_batch_run_file_linking():
+    runner = runner_factory(inputs={
+        'input': {'arg': '$(value)', 'type': 'file', 'symlink': 'input.txt'}
+    })
+    infile = tempfile.NamedTemporaryFile()
+    infile.write(b'hello world\n')
+    infile.flush()
+    runner.submit = mock.Mock(return_value='')
+    results = runner.batch_run([{'input': infile.name}] * 5)
+    for job_id, job_cwd in results:
+        path = os.path.join(job_cwd, 'input.txt')
+        assert filecmp.cmp(infile.name, path), \
+            'Files %s and %s are not identical' % (infile.name, path)
 
 
 # batch run tests
@@ -108,3 +145,15 @@ def test_batch_run_with_parameters():
     for param, (args, kwargs) in zip_longest(params, runner.submit.call_args_list):
         cmd, cwd = args
         assert cmd == ['mycommand', param]
+
+
+# batch status check tests
+
+def test_batch_check_status():
+    LocalRunnerStub = type('Runner', (RunnerStub,), {})
+    runner = runner_factory(cls=LocalRunnerStub)
+    LocalRunnerStub.check_status = mock.Mock(
+        side_effect=(JobStatus.COMPLETED, JobStatus.DELETED, JobStatus.QUEUED)
+    )
+    stats = runner.batch_check_status([mock.Mock()] * 3)
+    assert stats == [JobStatus.COMPLETED, JobStatus.DELETED, JobStatus.QUEUED]
