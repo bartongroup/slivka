@@ -243,7 +243,7 @@ class SlivkaQueueRunner(Runner):
     @classmethod
     def check_status(cls, identifier, cwd):
         response = cls.client.get_job_status(identifier)
-        return response.status
+        return JobStatus(response.status)
 
 
 class GridEngineRunner(Runner):
