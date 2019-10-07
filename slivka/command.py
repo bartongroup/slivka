@@ -100,7 +100,7 @@ def init_project(base_dir):
 
 @click.group()
 def manager():
-    pass
+    os.environ['SLIVKA_HOME'] = slivka.settings.BASE_DIR
 
 
 @click.command('local-queue')
