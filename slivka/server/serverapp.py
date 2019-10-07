@@ -139,6 +139,7 @@ def file_upload():
         'statuscode': 201,
         'uuid': file_doc.uuid,
         'title': file.filename,
+        'label': 'uploaded',
         'mimetype': file.mimetype,
         'URI': flask.url_for('get_file_metadata', uid=file_doc.uuid),
         'contentURI': flask.url_for('uploads', location=filename)
