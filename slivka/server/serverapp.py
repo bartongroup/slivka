@@ -164,6 +164,7 @@ def get_file_metadata(uid):
             'statuscode': 200,
             'uuid': file['uuid'],
             'title': file['title'],
+            'label': 'uploaded',
             'mimetype': file['media_type'],
             'URI': flask.url_for('get_file_metadata', uid=uid),
             'contentURI': flask.url_for('uploads', location=file['basename'])
@@ -176,17 +177,17 @@ def get_file_metadata(uid):
         if job is None:
             raise abort(404)
         conf = slivka.settings.get_service_configuration(job.service)
-        output = next(
-            out for out in conf.execution_config['outputs'].values()
-            if fnmatch(filename, out['path'])
+        label, file_meta = next(
+            (key, val) for (key, val) in conf.execution_config['outputs'].items()
+            if fnmatch(filename, val['path'])
         )
-        job_location = os.path.basename(job.work_dir)
-        file_location = '%s/%s' % (job_location, filename)
+        file_location = '%s/%s' % (os.path.basename(job.work_dir), filename)
         return JsonResponse({
             'statuscode': 200,
             'uuid': uid,
             'title': filename,
-            'mimetype': output.get('media-type'),
+            'label': label,
+            'mimetype': file_meta.get('media-type'),
             'URI': flask.url_for('get_file_metadata', uid=uid),
             'contentURI': flask.url_for('outputs', location=file_location)
         })
@@ -239,7 +240,7 @@ def cancel_task(_):
     raise NotImplementedError
 
 
-OutputFile = namedtuple('OutputFile', 'uuid, title, location, media_type')
+OutputFile = namedtuple('OutputFile', 'uuid, title, label, location, media_type')
 
 
 @app.route('/tasks/<uuid>/files', methods=['GET'])
@@ -266,11 +267,12 @@ def get_job_files(uuid):
         OutputFile(
             uuid='%s/%s' % (job.uuid, path.name),
             title=path.name,
+            label=key,
             location=path.relative_to(slivka.settings.TASKS_DIR).as_posix(),
-            media_type=out.get('media-type')
+            media_type=val.get('media-type')
         )
-        for out in service_conf.execution_config['outputs'].values()
-        for path in work_dir.glob(out['path'])
+        for key, val in service_conf.execution_config['outputs'].items()
+        for path in work_dir.glob(val['path'])
     ]
 
     return JsonResponse({
@@ -279,6 +281,7 @@ def get_job_files(uuid):
             {
                 'uuid': file.uuid,
                 'title': file.title,
+                'label': file.label,
                 'mimetype': file.media_type,
                 'URI': flask.url_for('get_file_metadata', uid=file.uuid),
                 'contentURI': flask.url_for('outputs', location=file.location)
