@@ -88,6 +88,8 @@ class Runner:
         args = []
         for name, inp in self.inputs.items():
             value = values.get(name, inp.get('value'))
+            # noinspection PyTypeChecker
+            tpl = _envvar_regex.sub(replace, inp['arg'])
             if value is None or value is False:
                 continue
             param_type = inp.get('type', 'string')
@@ -97,12 +99,22 @@ class Runner:
                 value = str(value)
             elif param_type == 'file':
                 value = inp.get('symlink', value)
-            # noinspection PyTypeChecker
-            tpl = _envvar_regex.sub(replace, inp['arg'])
-            args.extend([
+            elif param_type == 'array':
+                join = inp.get('join')
+                if join is not None:
+                    value = str.join(join, value)
+                else:
+                    # fixme: special treatment of array looks like an ugly hack
+                    for val in value:
+                        args.extend(
+                            arg.replace('$(value)', val)
+                            for arg in shlex.split(tpl)
+                        )
+                    continue
+            args.extend(
                 arg.replace('$(value)', value)
                 for arg in shlex.split(tpl)
-            ])
+            )
         args.extend(self.arguments)
         return args
 
@@ -141,9 +153,10 @@ class Runner:
                         mklink(src, os.path.join(cwd, input_conf['symlink']))
             cmd = self.base_command + self.get_args(inputs)
             cmds.append(cmd)
-        for i, cmd, cwd in zip(itertools.count(1), cmds, cwds):
-            log.info('%s batch submitting command %s %s (%d/%d)',
-                     self.__class__.__name__, cmd, cwd, i, len(cmds))
+        if log.isEnabledFor(logging.INFO):
+            for i, cmd, cwd in zip(itertools.count(1), cmds, cwds):
+                log.info('%s batch submitting command %s %s (%d/%d)',
+                         self.__class__.__name__, cmd, cwd, i, len(cmds))
         try:
             job_ids = self.batch_submit(zip(cmds, cwds))
             return map(RunInfo._make, zip(job_ids, cwds))

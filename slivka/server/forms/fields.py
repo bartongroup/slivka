@@ -6,7 +6,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import partial
 
-from werkzeug.datastructures import FileStorage
+from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
@@ -36,17 +36,30 @@ class BaseField:
                  label='',
                  description='',
                  default=None,
-                 required=True):
+                 required=True,
+                 multiple=False):
         self.name = name
         self.label = label
         self.description = description
         self.default = default
         self.required = required
+        self.multiple = multiple
         self.validators = []
         self._widget = None
 
-    def value_from_request_data(self, data, files):
-        return data.get(self.name)
+    def value_from_request_data(self, data: MultiDict, files: MultiDict):
+        """
+        Retrieve raw value from the request data.
+        The same value will be further passed to `validate` method
+
+        :param data: request POST data
+        :param files: request multipart-POST files
+        :return:
+        """
+        if self.multiple:
+            return data.getlist(self.name)
+        else:
+            return data.get(self.name)
 
     def to_python(self, value):
         raise NotImplementedError
@@ -60,10 +73,23 @@ class BaseField:
                 validator(value)
 
     def validate(self, value):
-        value = self.to_python(value)
-        if value is None and self.default is not None:
-            return self.default
-        self.run_validation(value)
+        if self.multiple:
+            if value is None:
+                value = []
+            assert isinstance(value, list)
+            value = [self.to_python(val) for val in value]
+            if not value:
+                if self.default is not None:
+                    return [self.default]
+                else:
+                    self.run_validation(None)
+            for val in value:
+                self.run_validation(val)
+        else:
+            value = self.to_python(value)
+            if value is None and self.default is not None:
+                return self.default
+            self.run_validation(value)
         return value
 
     def _validate_default(self):
@@ -72,6 +98,12 @@ class BaseField:
                 self.run_validation(self.default)
             except ValidationError as e:
                 raise RuntimeError("Invalid default value") from e
+
+    def serialize_value(self, value):
+        if self.multiple:
+            return [self.to_cmd_parameter(val) for val in value]
+        else:
+            return self.to_cmd_parameter(value)
 
     def to_cmd_parameter(self, value):
         return str(value) if value is not None else None
@@ -254,12 +286,6 @@ class BooleanField(BaseField):
             value = False
         return True if value else None
 
-    def validate(self, value):
-        return True if super().validate(value) else None
-
-    def to_cmd_parameter(self, value):
-        return 'true' if value else None
-
     def __json__(self):
         j = super().__json__()
         j['type'] = 'boolean'
@@ -295,11 +321,7 @@ class ChoiceField(BaseField):
         return value
 
     def to_cmd_parameter(self, value):
-        param = self.choices.get(value, value)
-        if param is None:
-            return value
-        else:
-            return param
+        return self.choices.get(value, value)
 
     def __json__(self):
         j = super().__json__()
@@ -327,8 +349,11 @@ class FileField(BaseField):
                 _media_type_validator, media_type
             ))
 
-    def value_from_request_data(self, data, files):
-        return files.get(self.name) or data.get(self.name)
+    def value_from_request_data(self, data: MultiDict, files: MultiDict):
+        if self.multiple:
+            return files.getlist(self.name) or data.getlist(self.name)
+        else:
+            return files.get(self.name) or data.get(self.name)
 
     @property
     def widget(self):

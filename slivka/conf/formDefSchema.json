@@ -39,6 +39,9 @@
             },
             "required": {
               "type": "boolean"
+            },
+            "multiple": {
+              "type": "boolean"
             }
           },
           "anyOf": [

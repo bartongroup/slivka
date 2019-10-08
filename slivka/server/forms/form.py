@@ -101,7 +101,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                         path=path,
                         media_type=value.get_detected_media_type()
                     ))
-            inputs[name] = field.to_cmd_parameter(value)
+            inputs[name] = field.serialize_value(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
         for file in uploaded_files:
@@ -142,7 +142,8 @@ class FormLoader(metaclass=Singleton):
             'label': field_meta['label'],
             'description': field_meta.get('description'),
             'default': value_meta.get('default'),
-            'required': value_meta.get('required', True)
+            'required': value_meta.get('required', True),
+            'multiple': value_meta.get('multiple', False)
         }
         if field_type == 'int':
             return IntegerField(

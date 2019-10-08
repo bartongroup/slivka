@@ -118,13 +118,27 @@ def test_validate_empty_with_default():
     assert field.validate(()) == 3
 
 
-def validate_valid_value_with_default():
+def test_validate_valid_value_with_default():
     field = IntegerField('name', default=4, max=8)
     assert field.validate(1) == 1
     assert field.validate(0) == 0
 
 
-def validate_invalid_value_with_default():
+def test_validate_invalid_value_with_default():
     field = IntegerField('name', default=4, max=8)
     with pytest.raises(ValidationError):
         field.validate(10)
+
+
+# multiple values validation
+
+def test_multiple_valid_values():
+    field = IntegerField('name', multiple=True)
+    assert field.validate([1, 2, 4, 8]) == [1, 2, 4, 8]
+    assert field.validate(['1', 4, '6']) == [1, 4, 6]
+
+
+def test_multiple_invalid_value():
+    field = IntegerField('name', multiple=True)
+    with pytest.raises(ValidationError):
+        field.validate([4, 5, 'a'])

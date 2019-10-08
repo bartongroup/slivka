@@ -86,11 +86,15 @@
             "file",
             "flag",
             "string",
-            "number"
+            "number",
+            "array"
           ]
         },
         "value": {},
         "symlink": {
+          "type": "string"
+        },
+        "join": {
           "type": "string"
         }
       },

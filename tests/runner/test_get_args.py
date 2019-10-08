@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from tests.runner.stubs import RunnerStub
+from tests.runner.stubs import RunnerStub, runner_factory
 
 
 def test_arguments_passed():
@@ -171,3 +171,26 @@ def test_file_input():
     assert runner.get_args({'input': 'myfile'}) == ['input.in']
     assert runner.get_args({'input': None}) == []
     assert runner.get_args({}) == []
+
+
+def test_repeated_array_input():
+    runner = runner_factory(inputs={
+        'array': {
+            'arg': '-m=$(value)',
+            'type': 'array'
+        }
+    })
+    assert (runner.get_args({'array': ['a', 'b', 'c', 'd']}) ==
+            ['-m=a', '-m=b', '-m=c', '-m=d'])
+    assert runner.get_args({'array': []}) == []
+
+
+def test_joined_array_input():
+    runner = runner_factory(inputs={
+        'array': {
+            'arg': '-m=$(value)',
+            'type': 'array',
+            'join': ','
+        }
+    })
+    assert runner.get_args({'array': ['a', 'b', 'c']}) == ['-m=a,b,c']
