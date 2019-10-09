@@ -103,18 +103,18 @@ class Runner:
                 join = inp.get('join')
                 if join is not None:
                     value = str.join(join, value)
-                else:
-                    # fixme: special treatment of array looks like an ugly hack
-                    for val in value:
-                        args.extend(
-                            arg.replace('$(value)', val)
-                            for arg in shlex.split(tpl)
-                        )
-                    continue
-            args.extend(
-                arg.replace('$(value)', value)
-                for arg in shlex.split(tpl)
-            )
+
+            if isinstance(value, list):
+                args.extend(
+                    arg.replace('$(value)', val)
+                    for val in value
+                    for arg in shlex.split(tpl)
+                )
+            else:
+                args.extend(
+                    arg.replace('$(value)', value)
+                    for arg in shlex.split(tpl)
+                )
         args.extend(self.arguments)
         return args
 
