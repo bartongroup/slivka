@@ -140,7 +140,7 @@ class ServiceConfig:
         try:
             form_def_validator.validate(form)
         except jsonschema.exceptions.ValidationError:
-            logging.error(
+            logging.exception(
                 'Error validating form definition file %s', form_file
             )
             sys.exit(1)

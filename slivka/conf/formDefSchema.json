@@ -44,7 +44,7 @@
               "type": "boolean"
             }
           },
-          "anyOf": [
+          "oneOf": [
             {
               "$ref": "#/definitions/integerField"
             },
@@ -92,7 +92,8 @@
         "default": {
           "type": "integer"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     },
@@ -120,7 +121,8 @@
         "default": {
           "type": "number"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     },
@@ -143,7 +145,8 @@
         "default": {
           "type": "string"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     },
@@ -159,7 +162,8 @@
         "default": {
           "type": "boolean"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     },
@@ -179,7 +183,8 @@
         "default": {
           "type": "string"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     },
@@ -204,7 +209,8 @@
           "type": "string",
           "pattern": "^\\d+\\s*(|K|M|G|T)B$"
         },
-        "required": {}
+        "required": {},
+        "multiple": {}
       },
       "additionalProperties": false
     }
