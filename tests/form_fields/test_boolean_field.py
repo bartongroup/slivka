@@ -66,6 +66,5 @@ def test_validate_empty_with_default():
 
 
 def test_to_cmd_parameter(default_field):
-    assert default_field.to_cmd_parameter(False) is None
     assert default_field.to_cmd_parameter(True)
     assert default_field.to_cmd_parameter(None) is None
