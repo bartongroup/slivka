@@ -111,6 +111,11 @@ def test_invalid_value_with_default():
         field.validate('QUX')
 
 
+def test_multiple_valid_values():
+    field = ChoiceField('name', choices=CHOICES, multiple=True)
+    assert field.validate(['foo', 'BAR']) == ['foo', 'BAR']
+
+
 # command line parameter conversion
 
 def test_to_cmd_parameter():
@@ -118,3 +123,8 @@ def test_to_cmd_parameter():
     assert field.to_cmd_parameter('foo') == 'FOO'
     assert field.to_cmd_parameter('BAZ') == 'BAZ'
     assert field.to_cmd_parameter('missing') == 'missing'
+
+
+def test_serialize_multiple():
+    field = ChoiceField('name', choices=CHOICES, multiple=True)
+    assert field.serialize_value(['foo', 'BAR', 'baz']) == ['FOO', 'BAR', 'BAZ']
