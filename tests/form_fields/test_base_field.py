@@ -82,7 +82,7 @@ def test_validate_with_default_value():
 
 
 def test_int_to_cmd_parameter(example_field: BaseField):
-    assert example_field.to_cmd_parameter(1) == '1'
+    assert example_field.to_cmd_parameter(1) == 1
 
 
 def test_str_to_cmd_parameter(example_field: BaseField):

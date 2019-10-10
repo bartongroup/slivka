@@ -106,7 +106,7 @@ class BaseField:
             return self.to_cmd_parameter(value)
 
     def to_cmd_parameter(self, value):
-        return str(value) if value is not None else None
+        return value
 
     def __json__(self):
         return {
