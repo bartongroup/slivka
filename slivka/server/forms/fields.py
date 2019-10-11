@@ -114,6 +114,7 @@ class BaseField:
             'label': self.label,
             'description': self.description or "",
             'required': self.required,
+            'multiple': self.multiple,
             'default': self.default
         }
 
