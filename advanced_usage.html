@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Advanced Usage &#8212; Slivka 0.5.b3 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Installation" href="getting_started.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="getting_started.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.5.b3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="advanced-usage">
+<h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="limiters">
+<h2>Limiters<a class="headerlink" href="#limiters" title="Permalink to this headline">¶</a></h2>
+<p>The job of limiter is to select one of the runners based on the input data.
+It can filter-out long jobs and redirect them to the dedicated
+queuing system while running small jobs locally.
+The value of the parameter should contain the path to the Python
+<a class="reference internal" href="#creating-limiter-class"><span class="std std-ref">limiter class</span></a> which analyses the input data and
+chooses the appropriate runner for that job. The path must point to the class located
+in the module importable for the current python interpreter.
+The format of the path follows <em>package[.subpackages].classname</em> pattern.
+The directory containing Python script file must be a valid python package
+meaning that the directory and all its parent directories must contain a
+<em>__init__.py</em> file and should be listed in the PYTHONPATH environment variable
+if not available from the current working directory.</p>
+<div class="section" id="creating-limiter-class">
+<span id="id1"></span><h3>Creating limiter class<a class="headerlink" href="#creating-limiter-class" title="Permalink to this headline">¶</a></h3>
+<p>In your project you may create one or more Python modules
+containing limiter classes. Each class should contain methods for
+each runner defined in the configuration file allowing to
+pick one configuration based on the values
+provided by the user.</p>
+<p>The limiter class must extend <code class="docutils literal notranslate"><span class="pre">slivka.scheduler.Limiter</span></code> and,
+for each configuration named <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, it needs to define a method with signature</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">limit_</span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</pre></div>
+</div>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">values</span></code> passed to the function contains the dictionary of unprocessed input values.
+The method must return <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> depending on whether this
+runner can be used with this particular set of input values.
+The configurations are tested in the order of method definitions and
+the first one whose limit method returns <code class="docutils literal notranslate"><span class="pre">True</span></code> will be used.</p>
+<p>Additionally, you can define <code class="docutils literal notranslate"><span class="pre">setup(self,</span> <span class="pre">values:</span> <span class="pre">Dict)</span></code> method which will be
+run before all tests. It can be used to perform long operations and prepare and
+store parameters as object properties for further use in limit methods.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">slivka.scheduler</span> <span class="kn">import</span> <span class="n">Limiter</span>
+
+<span class="k">class</span> <span class="nc">MyLimits</span><span class="p">(</span><span class="n">Limiter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup is run before all tests. It can perform lengthy</span>
+<span class="sd">        file operations or data parsing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_file</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">]</span>
+        <span class="n">statinfo</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">=</span> <span class="n">statinfo</span><span class="o">.</span><span class="n">st_size</span>
+
+    <span class="k">def</span> <span class="nf">limit_fast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The &quot;fast&quot; configuration test method.</span>
+<span class="sd">        It accepts the input only if format is json and file is less than</span>
+<span class="sd">        100 bytes long or xml and less than 20 bytes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;json&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yaml&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">limit_long</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The &quot;long&quot; configuration test method. Tried if &quot;fast&quot; test fails.</span>
+<span class="sd">        It accepts any input file less than 1000 bytes,</span>
+<span class="sd">        otherwise, the job will be rejected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+</pre></div>
+</div>
+<p>First, the <code class="docutils literal notranslate"><span class="pre">setup</span></code> method retrieves input file path from input data , checks its size
+in bytes and stores the value in the <code class="docutils literal notranslate"><span class="pre">input_file_size</span></code> property.
+Next, the criteria for the first configuration, less than 100B
+json file or less than 20B yaml file, are tested.
+If they are not met, the program continues to the second configuration
+which is executed if the file size does not exceed 1000B.
+Otherwise, the scheduler will refuse to start the job altogether.</p>
+</div>
+</div>
+<div class="section" id="custom-runners">
+<h2>Custom Runners<a class="headerlink" href="#custom-runners" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes there is a need for a custom submission method e.g. when using a different queuing system
+which is not natively supported by Slivka. Custom runner may be as simple as a script executing
+a new subprocess or may involve data exchange between multiple machines.</p>
+<div class="section" id="basic-functionality">
+<h3>Basic functionality<a class="headerlink" href="#basic-functionality" title="Permalink to this headline">¶</a></h3>
+<p>A minimal runner is limited to two operations:</p>
+<ul class="simple">
+<li><p>start new jobs</p></li>
+<li><p>check job status</p></li>
+</ul>
+<p>Every class implementing abstract runner must define two methods responsible for those two operations.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">submit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">submit</span></code> method is invoked once to start/submit the job to the queuing engine.
+The <code class="docutils literal notranslate"><span class="pre">cmd</span></code> parameter is the list of command line arguments similar to those
+passed to POSIX <a class="reference external" href="https://linux.die.net/man/3/execv">execv function</a>. The <code class="docutils literal notranslate"><span class="pre">cwd</span></code> parameter is an absolute path to the designated
+directory where the command should be executed. The directory is already created when
+the method is called. Additionally, you may access a read-only dictionary of environment variables
+stored in <code class="docutils literal notranslate"><span class="pre">self.env</span></code> object property. New jobs should use these variables rather than
+global variables accessible form <code class="docutils literal notranslate"><span class="pre">os.environ</span></code>.
+The method should return a job identifier which will be further used to monitor the job status.
+The only restriction imposed on the job identifier is it must be json-serializable
+i.e. it may only consist of (possibly nested) dictionaries, lists, strings, booleans, numbers and nulls.
+The job id should contain all the data needed to check the job status.
+If this method raises an exception, the job status is set to <code class="docutils literal notranslate"><span class="pre">JobStatus.ERROR</span></code> automatically.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">check_status</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JobStatus</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">check_status</span></code> class method is invoked periodically for each running job to monitor the changes
+of their status. The <code class="docutils literal notranslate"><span class="pre">job_id</span></code> parameter is the json-object previously returned by <code class="docutils literal notranslate"><span class="pre">submit</span></code>
+and <code class="docutils literal notranslate"><span class="pre">cwd</span></code> is the path to the current working directory of that job.
+The method should return <code class="docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code> corresponding to the current status of the job.
+Once the value corresponding to the finished job is returned, the status of that job will not be checked anymore.
+If this method raises an exception, the job status is set to <code class="docutils literal notranslate"><span class="pre">JobStatus.ERROR</span></code> automatically.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Advanced Usage</a><ul>
+<li><a class="reference internal" href="#limiters">Limiters</a><ul>
+<li><a class="reference internal" href="#creating-limiter-class">Creating limiter class</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#custom-runners">Custom Runners</a><ul>
+<li><a class="reference internal" href="#basic-functionality">Basic functionality</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="getting_started.html"
+                        title="previous chapter">Installation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/advanced_usage.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="getting_started.html" title="Installation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.5.b3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Mateusz Maciej Warowny.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.2.
+    </div>
+  </body>
+</html>

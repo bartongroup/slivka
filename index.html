@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Welcome to Slivka’s documentation! &#8212; Slivka 0.3.a5 documentation</title>
+    <title>Welcome to Slivka’s documentation! &#8212; Slivka 0.5.b3 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -27,7 +27,7 @@
         <li class="right" >
           <a href="getting_started.html" title="Installation"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">Slivka 0.3.a5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">Slivka 0.5.b3 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -39,9 +39,8 @@
   <div class="section" id="welcome-to-slivka-s-documentation">
 <h1>Welcome to Slivka’s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>Slivka is a server application for Python, intended for easy and flexible
-configuration of REST API for various web services. The server is based on
-<a class="reference external" href="https://github.com/pallets/flask">Flask</a> microframework and <a class="reference external" href="https://github.com/zzzeek/sqlalchemy">SQLAlchemy</a>. The scheduler uses native Python
-queuing mechanism and <a class="reference external" href="https://www.sqlite.org/">sqlite</a> database.</p>
+configuration of REST API for various web services. The server is based on the
+<a class="reference external" href="https://github.com/pallets/flask">Flask</a> microframework. The scheduler makes use of the <a class="reference external" href="https://www.mongodb.com/">mongoDB</a> as a storage and request broker.</p>
 <div class="section" id="table-of-contents">
 <h2>Table of contents<a class="headerlink" href="#table-of-contents" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
@@ -58,11 +57,15 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#settings-file">Settings file</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#services-configuration">Services configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#form-description">Form Description</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#run-configuration">Run configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#creating-limiter">Creating Limiter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#command-configuration">Command configuration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html#launching-the-project">Launching the Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#limiters">Limiters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#custom-runners">Custom Runners</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -126,7 +129,7 @@ queuing mechanism and <a class="reference external" href="https://www.sqlite.org
         <li class="right" >
           <a href="getting_started.html" title="Installation"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">Slivka 0.3.a5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">Slivka 0.5.b3 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
