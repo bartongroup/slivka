@@ -8,13 +8,11 @@ Welcome to Slivka's documentation!
 ==================================
 
 Slivka is a server application for Python, intended for easy and flexible
-configuration of REST API for various web services. The server is based on
-Flask_ microframework and SQLAlchemy_. The scheduler uses native Python
-queuing mechanism and sqlite_ database.
+configuration of REST API for various web services. The server is based on the
+Flask_ microframework. The scheduler makes use of the mongoDB_ as a storage and request broker.
 
 .. _Flask: https://github.com/pallets/flask
-.. _SQLAlchemy: https://github.com/zzzeek/sqlalchemy
-.. _sqlite: https://www.sqlite.org/
+.. _mongoDB: https://www.mongodb.com/
 
 -----------------
 Table of contents
@@ -28,6 +26,7 @@ Table of contents
    :maxdepth: 2
 
    getting_started
+   advanced_usage
 
 
 ------------------

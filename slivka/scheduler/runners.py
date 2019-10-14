@@ -89,6 +89,7 @@ class Runner:
         for name, inp in self.inputs.items():
             value = values.get(name, inp.get('value'))
             # noinspection PyTypeChecker
+            # fixme: no need to regex sub every time, move to __init__
             tpl = _envvar_regex.sub(replace, inp['arg'])
             if value is None or value is False:
                 continue
