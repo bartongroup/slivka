@@ -6,6 +6,7 @@ same name as the function, which is passed as a first parameter to the script
 call. Additionally, some of the functions process additional arguments
 usually specified just after the command name.
 """
+import multiprocessing
 import os
 import shutil
 import stat
@@ -132,11 +133,12 @@ def start_scheduler():
 
 @click.command('server')
 @click.option('--server-type', '-t', default='devel',
-              type=click.Choice(['gunicorn', 'devel']))
+              type=click.Choice(['gunicorn', 'uwsgi', 'devel']))
 def start_server(server_type):
     """Start HTTP server."""
     host = slivka.settings.SERVER_HOST
     port = int(slivka.settings.SERVER_PORT)
+    num_workers = min(2 * multiprocessing.cpu_count() + 1, 12)
     os.chdir(slivka.settings.BASE_DIR)
     if server_type == 'devel':
         os.execlp('flask', 'flask', 'run',
@@ -145,9 +147,16 @@ def start_server(server_type):
     elif server_type == 'gunicorn':
         os.execlp('gunicorn', 'gunicorn',
                   '--bind=%s:%d' % (host, port),
-                  '--workers=4',
+                  '--workers=%d' % num_workers,
                   '--name=slivka-http',
                   'wsgi:app')
+    elif server_type == 'uwsgi':
+        os.execlp('uwsgi', 'uwsgi',
+                  '--http-socket', '%s:%d' % (host, port),
+                  '--wsgi-file', 'wsgi.py',
+                  '--master',
+                  '--processes', str(num_workers),
+                  '--procname', 'slivka-http')
 
 
 @click.command()

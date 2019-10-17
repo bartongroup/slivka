@@ -21,7 +21,6 @@ setup(
         "click>=7.0",
         "Flask>=1.0",
         "frozendict>=1.2",
-        "gunicorn>=19.9",
         "jsonschema>=2.5.1",
         "MarkupSafe>=1.0",
         "pymongo>=3.7",
@@ -31,6 +30,8 @@ setup(
         "Werkzeug>=0.15",
     ],
     extras_require={
+        'gunicorn': ["gunicorn>=19.9"],
+        'uwsgi': ['uWSGI>=2.0'],
         'bioinformatics': ['biopython>=1.72']
     },
     include_package_data=True,
