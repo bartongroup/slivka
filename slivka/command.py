@@ -137,11 +137,12 @@ def start_server(server_type):
     """Start HTTP server."""
     host = slivka.settings.SERVER_HOST
     port = int(slivka.settings.SERVER_PORT)
+    os.chdir(slivka.settings.BASE_DIR)
     if server_type == 'devel':
-        from slivka.server.serverapp import app
-        app.run(host=host, port=port, debug=True)
+        os.execlp('flask', 'flask', 'run',
+                  '--host', str(host),
+                  '--port', str(port))
     elif server_type == 'gunicorn':
-        os.chdir(slivka.settings.BASE_DIR)
         os.execlp('gunicorn', 'gunicorn',
                   '--bind=%s:%d' % (host, port),
                   '--workers=4',
