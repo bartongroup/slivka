@@ -8,14 +8,20 @@ except ImportError:
 import slivka
 
 
+_app = None
+
+
 def create_app():
-    app = flask.Flask('slivka')
-    app.config.update(
+    global _app
+    if _app is not None:
+        raise RuntimeError("Flask application already exists")
+    _app = flask.Flask('slivka')
+    _app.config.update(
         UPLOADS_DIR=slivka.settings.UPLOADS_DIR
     )
-    from . import serverapp
-    app.register_blueprint(serverapp.bp)
-    return app
+    from . import api_routes
+    _app.register_blueprint(api_routes.bp)
+    return _app
 
 
 # noinspection PyPep8Naming

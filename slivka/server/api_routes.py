@@ -1,15 +1,3 @@
-"""Provides wsgi application and routes for each possible request
-
-This module initializes a global instance of Flask application and sets it's
-configuration based on the provided config file.
-It also contains and binds all url routes to functions taking a request and
-producing a json response.
-
-Flask application ``app`` contained in this module can be used as a
-standalone HTTP debugging server or can be passed to the dedicated wsgi
-server e.g. Apache with mod_wsgi, uWSGI or Gunicorn.
-"""
-
 import os.path
 import pathlib
 from collections import namedtuple
@@ -23,10 +11,9 @@ from flask import request, abort, url_for, current_app as app
 import slivka
 from slivka import JobStatus
 from slivka.db import mongo, documents
-from .file_validators import validate_file_content
 from . import JsonResponse
+from .file_validators import validate_file_content
 from .forms import FormLoader
-
 
 bp = flask.Blueprint('api', __name__, url_prefix='/api')
 
