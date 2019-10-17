@@ -18,12 +18,13 @@ from tempfile import mkstemp
 
 import flask
 import pkg_resources
-from flask import json, request, abort, url_for, current_app as app
+from flask import request, abort, url_for, current_app as app
 
 import slivka
 from slivka import JobStatus
 from slivka.db import mongo, documents
 from .file_validators import validate_file_content
+from . import JsonResponse
 from .forms import FormLoader
 
 
@@ -327,27 +328,6 @@ def echo():
 
 def error_response(status, message):
     return JsonResponse({'statuscode': status, 'error': message}, status)
-
-
-# noinspection PyPep8Naming
-def JsonResponse(content, status=200, **kwargs):
-    """Create JSON response form a dictionary.
-
-    This is a wrapper function around a ``flask.Response`` object which
-    automatically serializes ``content`` as a JSON object and sets response
-    mimetype to *application/json*.
-
-    :param content: dictionary with response content
-    :param status: HTTP response status code
-    :param kwargs: additional arguments passed to the Response object
-    :return: JSON response object
-    """
-    return flask.Response(
-        response=json.dumps(content, indent=2),
-        status=status,
-        mimetype='application/json',
-        **kwargs
-    )
 
 
 bp.register_error_handler(
