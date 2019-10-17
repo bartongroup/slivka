@@ -1,6 +1,7 @@
 import os
 
 import slivka.conf.logging
+import slivka.server
 
 SETTINGS_FILE = 'settings.yml'
 
@@ -11,6 +12,4 @@ settings_path = os.path.join(
 os.environ.setdefault('SLIVKA_SETTINGS', settings_path)
 slivka.conf.logging.configure_logging()
 
-from slivka.server.serverapp import app
-
-application = app
+application = app = slivka.server.create_app()
