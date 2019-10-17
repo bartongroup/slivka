@@ -290,13 +290,14 @@ def get_job_files(uuid):
     }, status=200)
 
 
-@bp.route('/api/')
+@bp.route('/')
+@bp.route('/reference')
 def api_index():
     path = pkg_resources.resource_filename('slivka', 'data/swagger-ui-dist/')
     return flask.send_from_directory(path, 'index.html')
 
 
-@bp.route('/api/openapi.yaml')
+@bp.route('/swagger/openapi.yaml')
 def serve_openapi_yaml():
     stream = pkg_resources.resource_stream(
         'slivka', 'data/openapi-docs/openapi.yaml'
@@ -304,7 +305,7 @@ def serve_openapi_yaml():
     return flask.send_file(stream, 'application/yaml', as_attachment=False)
 
 
-@bp.route('/api/<path:filename>')
+@bp.route('/swagger/<path:filename>')
 def serve_api_static(filename=None):
     path = pkg_resources.resource_filename('slivka', 'data/swagger-ui-dist/')
     return flask.send_from_directory(path, filename)
