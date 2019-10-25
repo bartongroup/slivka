@@ -52,7 +52,6 @@ class MongoDocument(bson.SON):
 
     @classmethod
     def update_one(cls, database, filter, values):
-        super().update(values)
         database[cls.__collection__].update_one(
             filter, {'$set': values}
         )
