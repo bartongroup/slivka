@@ -2,8 +2,8 @@ import pytest
 
 from werkzeug.datastructures import MultiDict
 
-from server.forms.form import BaseForm
-from server.forms.fields import *
+from slivka.server.forms.form import BaseForm
+from slivka.server.forms.fields import *
 
 
 class DummyForm(BaseForm):
