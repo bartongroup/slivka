@@ -20,7 +20,9 @@ def create_app():
         UPLOADS_DIR=slivka.settings.UPLOADS_DIR
     )
     from . import api_routes
+    from . import global_routes
     _app.register_blueprint(api_routes.bp)
+    _app.register_blueprint(global_routes.bp)
     return _app
 
 

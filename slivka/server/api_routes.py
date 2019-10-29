@@ -127,7 +127,7 @@ def file_upload():
         'label': 'uploaded',
         'mimetype': file.mimetype,
         'URI': url_for('.get_file_metadata', uid=file_doc.uuid),
-        'contentURI': url_for('.uploads', location=filename)
+        'contentURI': url_for('root.uploads', location=filename)
     }, status=201)
 
 
@@ -153,7 +153,7 @@ def get_file_metadata(uid):
             'label': 'uploaded',
             'mimetype': file['media_type'],
             'URI': url_for('.get_file_metadata', uid=uid),
-            'contentURI': url_for('.uploads', location=file['basename'])
+            'contentURI': url_for('root.uploads', location=file['basename'])
         })
     elif len(tokens) == 2:
         uuid, filename = tokens
@@ -175,30 +175,10 @@ def get_file_metadata(uid):
             'label': label,
             'mimetype': file_meta.get('media-type'),
             'URI': url_for('.get_file_metadata', uid=uid),
-            'contentURI': url_for('.outputs', location=file_location)
+            'contentURI': url_for('root.outputs', location=file_location)
         })
     else:
         raise abort(404)
-
-
-@bp.route(slivka.settings.UPLOADS_URL_PATH + '/<path:location>',
-          endpoint='uploads',
-          methods=['GET'])
-def serve_uploads_file(location):
-    return flask.send_from_directory(
-        directory=slivka.settings.UPLOADS_DIR,
-        filename=location
-    )
-
-
-@bp.route(slivka.settings.JOBS_URL_PATH + '/<path:location>',
-          endpoint='outputs',
-          methods=['GET'])
-def serve_tasks_file(location):
-    return flask.send_from_directory(
-        directory=slivka.settings.TASKS_DIR,
-        filename=location
-    )
 
 
 @bp.route('/tasks/<uuid>', methods=['GET'])
@@ -270,7 +250,7 @@ def get_job_files(uuid):
                 'label': file.label,
                 'mimetype': file.media_type,
                 'URI': url_for('.get_file_metadata', uid=file.uuid),
-                'contentURI': url_for('.outputs', location=file.location)
+                'contentURI': url_for('root.outputs', location=file.location)
             }
             for file in output_files
         ]
