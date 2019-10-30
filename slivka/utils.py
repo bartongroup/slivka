@@ -36,7 +36,10 @@ class lazy_property:
         if instance is None:
             return self
         val = self._init(instance)
-        instance.__dict__[self._init.__name__] = val
+        name = self._init.__name__
+        if name.startswith('__') and not name.endswith('__'):
+            name = '_' + owner.__name__ + name
+        instance.__dict__[name] = val
         return val
 
 
