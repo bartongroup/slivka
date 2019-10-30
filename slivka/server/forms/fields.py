@@ -314,6 +314,7 @@ class ChoiceField(BaseField):
         if self._widget is None:
             self._widget = SelectWidget(self.name, options=self.choices)
             self._widget['required'] = self.required
+            self._widget['multiple'] = self.multiple
         return self._widget
 
     def to_python(self, value):
