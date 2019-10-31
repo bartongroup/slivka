@@ -82,6 +82,7 @@ class Settings:
                 label=section['label'],
                 form_file=os.path.join(self.BASE_DIR, section['form']),
                 command_file=os.path.join(self.BASE_DIR, section['command']),
+                presets_file=os.path.join(self.BASE_DIR, section['presets']) if 'presets' in section else None,
                 classifiers=section.get('classifiers', [])
             )
 
@@ -127,10 +128,18 @@ command_def_schema = json.loads(
 jsonschema.Draft4Validator.check_schema(command_def_schema)
 command_def_validator = jsonschema.Draft4Validator(command_def_schema)
 
+presets_schema = json.loads(
+    pkg_resources.resource_string(
+        "slivka.conf", "presetsSchema.json"
+    ).decode()
+)
+jsonschema.Draft4Validator.check_schema(presets_schema)
+presets_validator = jsonschema.Draft4Validator(presets_schema)
+
 
 class ServiceConfig:
 
-    def __init__(self, name, label, form_file, command_file, classifiers):
+    def __init__(self, name, label, form_file, command_file, presets_file=None, classifiers=()):
         self.name = name
         self.label = label
         self.classifiers = classifiers
@@ -139,13 +148,12 @@ class ServiceConfig:
             form = yaml.load(f, SafeTranscludingOrderedYamlLoader)
         try:
             form_def_validator.validate(form)
+            self._form = form
         except jsonschema.exceptions.ValidationError:
             logging.exception(
                 'Error validating form definition file %s', form_file
             )
             sys.exit(1)
-        else:
-            self._form = form
 
         with open(command_file, 'r') as f:
             config = yaml.load(f, SafeTranscludingOrderedYamlLoader)
@@ -157,8 +165,21 @@ class ServiceConfig:
                 'Error validating configuration file %s', command_file
             )
             sys.exit(1)
+
+        if presets_file:
+            with open(presets_file) as f:
+                presets_conf = yaml.load(f, SafeTranscludingOrderedYamlLoader)
+            try:
+                presets_validator.validate(presets_conf)
+                presets = presets_conf['presets']
+            except jsonschema.exceptions.ValidationError:
+                logging.exception(
+                    'Error validating presets file %s', presets_file
+                )
+                sys.exit(1)
         else:
-            self._execution_config = config
+            presets = []
+        self.presets = {preset['id']: preset for preset in presets}
 
     @property
     def service(self):

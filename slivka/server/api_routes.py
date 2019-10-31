@@ -102,6 +102,16 @@ def post_service_form(service):
         }, status=420)
 
 
+@bp.route('/services/<service>/presets', methods=['GET'])
+def all_presets(service):
+    pass
+
+
+@bp.route('/services/<service>/presets/<preset>', methods=['GET'])
+def get_preset(service, preset):
+    pass
+
+
 @bp.route('/files', methods=['POST'])
 def file_upload():
     """Upload the file to the server. ``POST /files``
