@@ -79,11 +79,16 @@ def post_service_form(service):
     form = form_cls(request.form, request.files)
     if form.is_valid():
         request_doc = form.save(mongo.slivkadb)
-        return JsonResponse({
-            'statuscode': 202,
-            'uuid': request_doc.uuid,
-            'URI': url_for('.get_job_status', uuid=request_doc.uuid)
-        }, status=202)
+        resource_location = url_for('.get_job_status', uuid=request_doc.uuid)
+        return JsonResponse(
+            {
+                'statuscode': 202,
+                'uuid': request_doc.uuid,
+                'URI': resource_location
+            },
+            status=202,
+            headers={'Location': resource_location}
+        )
     else:
         return JsonResponse({
             'statuscode': 420,
@@ -120,15 +125,20 @@ def file_upload():
         path=path
     )
     file_doc.insert(mongo.slivkadb)
-    return JsonResponse({
-        'statuscode': 201,
-        'uuid': file_doc.uuid,
-        'title': file.filename,
-        'label': 'uploaded',
-        'mimetype': file.mimetype,
-        'URI': url_for('.get_file_metadata', uid=file_doc.uuid),
-        'contentURI': url_for('root.uploads', location=filename)
-    }, status=201)
+    resource_location = url_for('.get_file_metadata', uid=file_doc.uuid)
+    return JsonResponse(
+        {
+            'statuscode': 201,
+            'uuid': file_doc.uuid,
+            'title': file.filename,
+            'label': 'uploaded',
+            'mimetype': file.mimetype,
+            'URI': resource_location,
+            'contentURI': url_for('root.uploads', location=filename)
+        },
+        headers={'Location': resource_location},
+        status=201
+    )
 
 
 @bp.route('/files/<path:uid>', methods=['GET'])
