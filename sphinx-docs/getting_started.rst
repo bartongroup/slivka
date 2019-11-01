@@ -228,7 +228,7 @@ and paths to their respective configuration files along with their metadata.
 A separate service can be a different executable or a different set of options
 for the same executable.
 Each service name is a key of the JSON object and each value should have
-``label``, ``form``, ``command`` and ``classifiers`` parameters.
+``label``, ``form``, ``command``, ``presets`` and ``classifiers`` parameters.
 
 .. code-block:: yaml
 
@@ -249,6 +249,10 @@ Each service name is a key of the JSON object and each value should have
 :``command``:
   The path to the command configuration file whose structure is described in the
   `Command Configuration`_ section.
+
+:``presets``:
+  Optional parameter pointing to the file containing input parameter presets
+  described in the section `Presets`_.
 
 :``classifiers``:
   A list of categories or tags that this service falls into. There is no strict rule
@@ -628,6 +632,26 @@ Example:
         - 64bit-pri.q
         - -l
         - ram=3400M
+
+-------
+Presets
+-------
+
+It is possible to pre-define commonly used sets of parameters to give the users an idea
+of useful input parameter combinations. The configuration file should have a single
+``presets`` property containing the list of preset object defined below.
+
+============ ================ =================================================================
+ Field name   Type             Description
+============ ================ =================================================================
+id           string           **Required.** Unique identifier of this preset.
+name         string           **Required.** Short name of the preset.
+description  string           Additional details of the configuration.
+values       map[string, any] **Required.** Mapping of form fields to the pre-configured values.
+============ ================ =================================================================
+
+The presets serve as a hint for the users only and the use of the pre-defined values
+is not enforced.
 
 =====================
 Launching the Project
