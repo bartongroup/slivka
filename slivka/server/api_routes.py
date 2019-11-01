@@ -104,12 +104,26 @@ def post_service_form(service):
 
 @bp.route('/services/<service>/presets', methods=['GET'])
 def all_presets(service):
-    pass
+    try:
+        conf = slivka.settings.get_service_configuration(service)
+    except KeyError:
+        raise abort(404)
+    return JsonResponse({
+        'statuscode': 200,
+        'presets': list(conf.presets.values())
+    })
 
 
 @bp.route('/services/<service>/presets/<preset>', methods=['GET'])
 def get_preset(service, preset):
-    pass
+    try:
+        conf = slivka.settings.get_service_configuration(service)
+        return JsonResponse({
+            'statuscode': 200,
+            'preset': conf.presets[preset]
+        })
+    except KeyError:
+        raise abort(404)
 
 
 @bp.route('/files', methods=['POST'])
