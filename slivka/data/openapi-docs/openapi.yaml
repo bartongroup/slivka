@@ -165,6 +165,92 @@ paths:
                         errorCode: max
                         message: Value must be less than 20
 
+  /services/{service}/presets:
+    get:
+      summary: Returns the list of available presets for this service.
+      tags: [services]
+      parameters:
+        - name: service
+          in: path
+          required: true
+          description: Service name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of presets available for this service.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                  presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        values:
+                          type: object
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /services/{service}/presets/{preset}:
+    get:
+      summary: Retrieve the preset
+      tags: [services]
+      parameters:
+        - name: service
+          in: path
+          required: true
+          description: Service name
+          schema:
+            type: string
+        - name: preset
+          in: path
+          required: true
+          description: Preset id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Preset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                  preset:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      description:
+                        type: string
+                      values:
+                        type: object
+        '404':
+          description: Service or preset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/NotFoundError'
+
   /files:
     post:
       summary: Upload the file to the server
