@@ -292,6 +292,7 @@ class GridEngineRunner(Runner):
         b'qw': JobStatus.QUEUED,
         b'T': JobStatus.QUEUED,
         b'd': JobStatus.DELETED,
+        b'dr': JobStatus.DELETED,
         b'E': JobStatus.ERROR,
         b'Eqw': JobStatus.ERROR
     })
