@@ -346,7 +346,6 @@ class GridEngineRunner(Runner):
         :return: list of identifiers
         """
         commands = iter(commands)
-        old_loop = asyncio.get_event_loop()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         ids = []
@@ -355,8 +354,8 @@ class GridEngineRunner(Runner):
                 coros = [self.async_submit(cmd, cwd) for cmd, cwd in slice]
                 ids.extend(loop.run_until_complete(asyncio.gather(*coros)))
         finally:
+            asyncio.set_event_loop(None)
             loop.close()
-            asyncio.set_event_loop(old_loop)
         return ids
 
     @classmethod
