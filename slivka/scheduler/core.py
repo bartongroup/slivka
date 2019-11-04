@@ -80,7 +80,7 @@ class Scheduler:
                     )
                 if self.logger.isEnabledFor(logging.INFO):
                     for request in requests:
-                        self.logger.info('Request %s rejected', request)
+                        self.logger.info('Request %s rejected', request.uuid)
                 continue
             if self.logger.isEnabledFor(logging.INFO):
                 for request in requests:
