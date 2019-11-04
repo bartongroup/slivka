@@ -3,19 +3,19 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - click=7.0
-  - flask=1.0
-  - frozendict=1.2
-  - gunicorn=19.9
-  - jsonschema=2.6
-  - markupsafe=1.0
-  - pip=18.0
-  - python=3.5
-  - pymongo=3.7
-  - pytest=3.2
-  - pyyaml=3.13
-  - pyzmq=17.1
-  - requests=2.13
-  - setuptools=40.4
-  - simplejson=3.16
-  - werkzeug=0.15
+  - click>=7.0
+  - flask>=1.0
+  - frozendict>=1.2
+  - gunicorn>=19.9
+  - jsonschema>=2.6
+  - markupsafe>=1.0
+  - pip>=18.0
+  - python=3.7
+  - pymongo>=3.7
+  - pytest>=3.2
+  - pyyaml>=3.13
+  - pyzmq>=17.1
+  - requests>=2.13
+  - setuptools>=40.4
+  - simplejson>=3.16
+  - werkzeug>=0.15
