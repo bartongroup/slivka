@@ -112,7 +112,7 @@ class LocalQueue:
             return {
                 'ok': True,
                 'id': content['id'],
-                'status': JobStatus.UNDEFINED,
+                'status': JobStatus.UNKNOWN,
                 'returncode': None
             }
         else:

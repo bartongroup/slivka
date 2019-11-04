@@ -282,8 +282,8 @@ class GridEngineRunner(Runner):
     class StatusLetterDict(dict):
         def __missing__(self, key):
             logging.error('Status letter %s is undefined', key)
-            self[key] = JobStatus.UNDEFINED
-            return JobStatus.UNDEFINED
+            self[key] = JobStatus.UNKNOWN
+            return JobStatus.UNKNOWN
 
     _status_letters = StatusLetterDict({
         b'r': JobStatus.RUNNING,

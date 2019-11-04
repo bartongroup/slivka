@@ -92,7 +92,7 @@ class JobStatus(enum.IntEnum):
     DELETED = 8
     FAILED = 9
     ERROR = 10
-    UNDEFINED = 11
+    UNKNOWN = 11
 
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
