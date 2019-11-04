@@ -1,7 +1,8 @@
-import time
 import logging
 from collections import deque, defaultdict, OrderedDict, namedtuple
 from importlib import import_module
+
+import time
 from itertools import islice
 from typing import Dict, Type, Optional, List
 
@@ -72,6 +73,15 @@ class Scheduler:
             runner = self.runner_selector.select_runner(request.service, request.inputs)
             runner_requests[runner].append(request)
         for runner, requests in runner_requests.items():
+            if runner is None:
+                for request in requests:
+                    request.update_self(
+                        slivka.db.mongo.slivkadb, status=JobStatus.REJECTED
+                    )
+                if self.logger.isEnabledFor(logging.INFO):
+                    for request in requests:
+                        self.logger.info('Request %s rejected', request)
+                continue
             if self.logger.isEnabledFor(logging.INFO):
                 for request in requests:
                     self.logger.info(
@@ -145,6 +155,7 @@ class RunnerSelector:
     def __init__(self):
         self.runners = {}  # type: Dict[RunnerID, Runner]
         self.limiters = {}  # type: Dict[str, Limiter]
+        self._null_runner = None
 
     def add_runners(self, service, cmd_def):
         classpath = cmd_def.get('limiter', get_classpath(DefaultLimiter))
@@ -166,7 +177,7 @@ class RunnerSelector:
     def select_runner(self, service, inputs) -> Optional[Runner]:
         runner_name = self.limiters[service](inputs)
         if runner_name is None:
-            return None
+            return self._null_runner
         else:
             return self.runners[service, runner_name]
 
