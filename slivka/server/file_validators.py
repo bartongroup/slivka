@@ -98,8 +98,8 @@ _validators = None
 
 
 def validate_file_content(file, media_type):
+    global _validators
     if _validators is None:
-        global _validators
         _validators = ValidatorDict()
         _validators.init_from_settings()
     return _validators[media_type](file)

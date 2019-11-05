@@ -353,7 +353,7 @@ class FileField(BaseField):
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
         if self.multiple:
-            return files.getlist(self.name) or data.getlist(self.name)
+            return files.getlist(self.name) + data.getlist(self.name)
         else:
             return files.get(self.name) or data.get(self.name)
 
