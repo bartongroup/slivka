@@ -87,12 +87,14 @@ class Runner:
         replace = partial(_replace_from_env, self.env)
         args = []
         for name, inp in self.inputs.items():
-            value = values.get(name, inp.get('value'))
+            value = values.get(name)
+            if value is None:
+                value = inp.get('value')
+            if value is None or value is False:
+                continue
             # noinspection PyTypeChecker
             # fixme: no need to regex sub every time, move to __init__
             tpl = _envvar_regex.sub(replace, inp['arg'])
-            if value is None or value is False:
-                continue
             param_type = inp.get('type', 'string')
             if param_type == 'flag':
                 value = 'true' if value else ''
