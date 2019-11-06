@@ -11,8 +11,6 @@ except ImportError:
     import json
 
 
-# ## Singleton metaclass ##
-
 class Singleton(type):
     __instances = {}
 
@@ -55,15 +53,14 @@ class BackoffCounter:
 
     def failure(self):
         self._tries = min(self.max_tries, self._tries + 1)
-        self._counter = reversed(range(1 << self._tries))
+        self.current = 1 << self._tries
+        self._counter = reversed(range(self.current))
 
     def reset(self):
         self._counter = self._zero_gen
         self._tries = 0
         self.current = 0
 
-
-# lazy property decorator
 
 # noinspection PyPep8Naming
 class lazy_property:
@@ -80,8 +77,6 @@ class lazy_property:
         instance.__dict__[name] = val
         return val
 
-
-# ## Yaml loaders using OrderedDict ##
 
 class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
     def __init__(self, stream):

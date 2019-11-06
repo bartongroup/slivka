@@ -1,14 +1,15 @@
 import logging
-from collections import deque, defaultdict, OrderedDict, namedtuple
+from collections import defaultdict, OrderedDict, namedtuple
+from functools import partial
 from importlib import import_module
 
 import time
-from itertools import islice
-from typing import Dict, Type, Optional, List
+from typing import Dict, Type, Optional, List, Mapping, Any
 
 import slivka.db
 from slivka import JobStatus
 from slivka.db.documents import JobRequest, JobMetadata
+from slivka.utils import BackoffCounter
 from .runners import *
 
 __all__ = ['Scheduler', 'Limiter', 'DefaultLimiter']
@@ -21,10 +22,11 @@ def get_classpath(cls):
 class Scheduler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.requests = deque()
         self._is_running = False
         self.runner_selector = RunnerSelector()
         self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
+        self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
+        self._accepted_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
         self.reload()
 
     def load_service(self, service, cmd_def):
@@ -38,7 +40,7 @@ class Scheduler:
         self._is_running = False
 
     def reload(self):
-        """Reloads running jobs from the database."""
+        """Reloads running jobs from the database and change accepted back to pending."""
         running_jobs = JobMetadata.find(
             slivka.db.mongo.slivkadb,
             {'$or': [
@@ -50,6 +52,10 @@ class Scheduler:
             mod, cls = job['runner_class'].rsplit('.', 1)
             runner_cls = getattr(import_module(mod), cls)
             self.running_jobs[runner_cls].append(job)
+        JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+            filter={'status': JobStatus.ACCEPTED},
+            update={'$set': {'status': JobStatus.PENDING}}
+        )
 
     def run_forever(self):
         if self.is_running:
@@ -58,73 +64,101 @@ class Scheduler:
         self.logger.info('scheduler started')
         try:
             while self.is_running:
-                self.run_new_requests()
+                self.fetch_pending_requests(self._accepted_requests)
+                self.run_requests(self._accepted_requests)
                 self.update_running_jobs()
-                time.sleep(0.5)
+                time.sleep(1)
         except KeyboardInterrupt:
             self.stop()
 
-    def run_new_requests(self, limit=None):
-        new_requests = JobRequest.find(
+    def fetch_pending_requests(self, accepted: Mapping[Runner, List[JobRequest]]):
+        """Fetches pending requests from the database and populated provided dict
+
+        :param accepted: Dictionary to be populated with accepted requests
+        :return: None
+        """
+        requests = JobRequest.find(
             slivka.db.mongo.slivkadb, status=JobStatus.PENDING
         )
-        runner_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
-        for request in islice(new_requests, limit):
+        accepted_id = []
+        rejected_id = []
+        for request in requests:
             runner = self.runner_selector.select_runner(request.service, request.inputs)
-            runner_requests[runner].append(request)
-
-        for request in runner_requests[None]:
-            # process all rejected requests
-            request.update_self(
-                slivka.db.mongo.slivkadb, status=JobStatus.REJECTED
-            )
-            self.logger.info('Request %s REJECTED', request.uuid)
-        # delete None runner as it's not a valid runner
-        del runner_requests[None]
-
-        for runner, requests in runner_requests.items():
-            if self.logger.isEnabledFor(logging.INFO):
-                for request in requests:
-                    self.logger.info('Starting job %s using %s',
-                                     request.uuid, runner.__class__.__name__)
-            try:
-                runs = runner.batch_run([r.inputs for r in requests])
-            except Exception:
-                for request in requests:
-                    request.update_self(
-                        slivka.db.mongo.slivkadb, status=JobStatus.ERROR
-                    )
-                self.logger.exception(
-                    "Submitting jobs using %s failed.", runner.__class__.__name__,
-                    exc_info=True
-                )
+            if runner is not None:
+                accepted_id.append(request['_id'])
+                accepted[runner].append(request)
             else:
-                for run, request in zip(runs, requests):
-                    request.update_self(
-                        slivka.db.mongo.slivkadb, status=JobStatus.QUEUED
+                rejected_id.append(request['_id'])
+        collection = JobRequest.get_collection(slivka.db.mongo.slivkadb)
+        collection.update_many(
+            {'_id': {'$in': accepted_id}},
+            {'$set': {'status': JobStatus.ACCEPTED}}
+        )
+        collection.update_many(
+            {'_id': {'$in': rejected_id}},
+            {'$set': {'status': JobStatus.REJECTED}}
+        )
+
+    def run_requests(self,
+                     accepted_requests: Mapping[Runner, List[JobRequest]],
+                     limit: int = None):
+        for runner, requests in accepted_requests.items():
+            counter = self._backoff_counters[runner]
+            if not requests or next(counter) > 0:
+                continue
+            try:
+                jobs = runner.batch_run([r['inputs'] for r in requests])
+            except:
+                counter.failure()
+                if counter.give_up:
+                    JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+                        {'_id': {'$in': [r['_id'] for r in requests]}},
+                        {'$set': {'status': JobStatus.ERROR}}
                     )
-                    job = JobMetadata(
+                    requests.clear()
+                    self.logger.exception(
+                        "Submitting jobs using %s failed. Giving up.",
+                        runner, exc_info=True
+                    )
+                else:
+                    self.logger.exception(
+                        "Submitting jobs using %s failed. Retrying in %d iterations.",
+                        runner, counter.current, exc_info=True
+                    )
+            else:
+                for job, request in zip(jobs, requests):
+                    j = JobMetadata(
                         uuid=request['uuid'],
                         service=request['service'],
-                        work_dir=run.cwd,
+                        work_dir=job.cwd,
                         runner_class=get_classpath(runner.__class__),
-                        job_id=run.id,
+                        job_id=job.id,
                         status=JobStatus.QUEUED
                     )
-                    job.insert(slivka.db.mongo.slivkadb)
-                    self.running_jobs[runner.__class__].append(job)
+                    j.insert(slivka.db.mongo.slivkadb)
+                    self.running_jobs[runner.__class__].append(j)
+                JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+                    {'_id': {'$in': [r['_id'] for r in requests]}},
+                    {'$set': {'status': JobStatus.QUEUED}}
+                )
+                requests.clear()
 
     def update_running_jobs(self):
         for runner_cls, jobs in self.running_jobs.items():
-            if len(jobs) == 0:
+            counter = self._backoff_counters[runner_cls]
+            if len(jobs) == 0 or next(counter) > 0:
                 continue
             try:
                 states = runner_cls.batch_check_status(jobs)
             except Exception:
-                for job in jobs:
-                    job.update_self(
-                        slivka.db.mongo.slivkadb, status=JobStatus.ERROR
+                if counter.give_up:
+                    JobMetadata.get_collection(slivka.db.mongo.slivkadb).update_many(
+                        {'_id': {'$in': [j['_id'] for j in jobs]}},
+                        {'$set': {'status': JobStatus.ERROR}}
                     )
+                    for job in jobs:
+                        job['status'] = JobStatus.ERROR
+                counter.failure()
                 self.logger.exception(
                     "Checking job status using %s failed.", runner_cls.__name__,
                     exc_info=True
