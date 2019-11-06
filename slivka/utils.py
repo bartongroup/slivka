@@ -82,16 +82,16 @@ SafeTranscludingOrderedYamlLoader.add_constructor(
 
 
 class JobStatus(enum.IntEnum):
-    PENDING = 1
-    REJECTED = 2
-    ACCEPTED = 3
-    QUEUED = 4
-    RUNNING = 5
-    COMPLETED = 6
-    INTERRUPTED = 7
-    DELETED = 8
-    FAILED = 9
-    ERROR = 10
+    PENDING = 1  # Request submitted to the database but not processed yet
+    REJECTED = 2  # Request rejected due to input parameter limitations
+    ACCEPTED = 3  # Job was accepted but has not been sent to the queuing system yet
+    QUEUED = 4  # Job successfully submitted to the queuing system
+    RUNNING = 5  # Job is being executed
+    COMPLETED = 6  # Job finished successfully with 0 status code
+    INTERRUPTED = 7  # Job has been interrupted during execution
+    DELETED = 8  # Job has been deleted from the queuing system
+    FAILED = 9  # Job finished with non-0 status code
+    ERROR = 10  # Internal error
     UNKNOWN = 11
 
     def is_finished(self):
