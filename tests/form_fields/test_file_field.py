@@ -90,4 +90,4 @@ def test_posted_file():
 def test_to_cmd_parameter(mock_uploaded_file):
     field = FileField('name')
     wrapper = field.to_python(mock_uploaded_file['uuid'])
-    assert wrapper.path == mock_uploaded_file['path']
+    assert field.to_cmd_parameter(wrapper) == mock_uploaded_file['path']
