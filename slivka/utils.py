@@ -1,4 +1,5 @@
 import enum
+import itertools
 import os
 from collections import OrderedDict
 
@@ -23,6 +24,43 @@ class Singleton(type):
     @property
     def instance(cls):
         return cls()
+
+
+class BackoffCounter:
+    _zero_gen = itertools.repeat(0)
+
+    def __init__(self, max_tries=64):
+        self._counter = self._zero_gen
+        self._tries = 0
+        self.max_tries = max_tries
+        self.current = 0
+
+    def __next__(self):
+        try:
+            self.current = next(self._counter)
+        except StopIteration:
+            self.reset()
+            self.current = next(self._counter)
+        return self.current
+
+    def __iter__(self):
+        return self
+
+    @property
+    def give_up(self):
+        return self._tries >= self.max_tries
+
+    def next(self):
+        return self.__next__()
+
+    def failure(self):
+        self._tries = min(self.max_tries, self._tries + 1)
+        self._counter = reversed(range(1 << self._tries))
+
+    def reset(self):
+        self._counter = self._zero_gen
+        self._tries = 0
+        self.current = 0
 
 
 # lazy property decorator
