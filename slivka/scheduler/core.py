@@ -72,22 +72,21 @@ class Scheduler:
         for request in islice(new_requests, limit):
             runner = self.runner_selector.select_runner(request.service, request.inputs)
             runner_requests[runner].append(request)
+
+        for request in runner_requests[None]:
+            # process all rejected requests
+            request.update_self(
+                slivka.db.mongo.slivkadb, status=JobStatus.REJECTED
+            )
+            self.logger.info('Request %s REJECTED', request.uuid)
+        # delete None runner as it's not a valid runner
+        del runner_requests[None]
+
         for runner, requests in runner_requests.items():
-            if runner is None:
-                for request in requests:
-                    request.update_self(
-                        slivka.db.mongo.slivkadb, status=JobStatus.REJECTED
-                    )
-                if self.logger.isEnabledFor(logging.INFO):
-                    for request in requests:
-                        self.logger.info('Request %s rejected', request.uuid)
-                continue
             if self.logger.isEnabledFor(logging.INFO):
                 for request in requests:
-                    self.logger.info(
-                        'starting job %s with %s',
-                        request.uuid, runner.__class__.__name__
-                    )
+                    self.logger.info('Starting job %s using %s',
+                                     request.uuid, runner.__class__.__name__)
             try:
                 runs = runner.batch_run([r.inputs for r in requests])
             except Exception:
@@ -96,7 +95,7 @@ class Scheduler:
                         slivka.db.mongo.slivkadb, status=JobStatus.ERROR
                     )
                 self.logger.exception(
-                    "Submitting jobs to %s failed.", runner.__class__.__name__,
+                    "Submitting jobs using %s failed.", runner.__class__.__name__,
                     exc_info=True
                 )
             else:
@@ -127,14 +126,14 @@ class Scheduler:
                         slivka.db.mongo.slivkadb, status=JobStatus.ERROR
                     )
                 self.logger.exception(
-                    "Checking job status with %s failed.", runner_cls.__name__,
+                    "Checking job status using %s failed.", runner_cls.__name__,
                     exc_info=True
                 )
             else:
                 for job, new_state in zip(jobs, states):
                     if job['status'] != new_state:
                         self.logger.info(
-                            "job %s status changed to %s", job.uuid, new_state.name
+                            "Job %s status changed to %s", job.uuid, new_state.name
                         )
                         job.update_self(slivka.db.mongo.slivkadb, status=new_state)
                         JobRequest.update_one(
