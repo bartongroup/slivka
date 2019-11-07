@@ -94,6 +94,7 @@ class LocalQueue:
         socket.bind(self.address)
         self.logger.info('REP socket bound to %s', self.address)
         while True:
+            self.logger.debug("awaiting message")
             message = await socket.recv_json()
             if message['method'] == 'GET':
                 response = self.do_GET(message)
@@ -108,20 +109,12 @@ class LocalQueue:
 
     def do_GET(self, content):
         status = self.stats.get(content['id'])
-        if status is None:
-            return {
-                'ok': True,
-                'id': content['id'],
-                'status': JobStatus.UNKNOWN,
-                'returncode': None
-            }
-        else:
-            return {
-                'ok': True,
-                'id': content['id'],
-                'status': status.status,
-                'returncode': status.return_code
-            }
+        return {
+            'ok': True,
+            'id': content['id'],
+            'status': status.status if status is not None else JobStatus.UNKNOWN,
+            'returncode': status.return_code if status is not None else None
+        }
 
     def do_POST(self, content):
         cmd = ShellCommandWrapper(
