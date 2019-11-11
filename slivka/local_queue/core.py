@@ -94,7 +94,6 @@ class LocalQueue:
         socket.bind(self.address)
         self.logger.info('REP socket bound to %s', self.address)
         while True:
-            self.logger.debug("awaiting message")
             message = await socket.recv_json()
             if message['method'] == 'GET':
                 response = self.do_GET(message)
