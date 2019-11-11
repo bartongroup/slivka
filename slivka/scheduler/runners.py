@@ -8,7 +8,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
-from collections import namedtuple
+from collections import namedtuple, ChainMap
 from datetime import datetime
 from functools import partial
 from itertools import islice
@@ -57,7 +57,7 @@ class Runner:
         self.name = name or next(self._name_generator)
         self.inputs = command_def['inputs']
         self.outputs = command_def['outputs']
-        env = {
+        self.env = env = {
             'PATH': os.getenv('PATH'),
             'SLIVKA_HOME': os.getenv('SLIVKA_HOME', os.getcwd())
         }
@@ -66,8 +66,7 @@ class Runner:
         for key, val in env.items():
             # noinspection PyTypeChecker
             env[key] = _envvar_regex.sub(replace, val)
-        self.env = env
-        replace = partial(_replace_from_env, env)
+        replace = partial(_replace_from_env, ChainMap(env, os.environ))
         base_command = command_def['baseCommand']  # type: List[str]
         if isinstance(base_command, str):
             base_command = shlex.split(base_command)

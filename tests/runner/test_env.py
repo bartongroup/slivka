@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from .stubs import RunnerStub, runner_factory
+from .stubs import runner_factory
 
 os.environ['SLIVKA_HOME'] = '/tmp/slivkahome'
 
@@ -45,3 +45,21 @@ def test_env_var_in_parameter(runner):
 def test_env_var_injection(runner):
     assert runner.get_args({'param': '$EXAMPLE'}) == ['-foobar', '$EXAMPLE']
     assert runner.get_args({'param': '${EXAMPLE}'}) == ['-foobar', '${EXAMPLE}']
+
+
+@pytest.fixture('function')
+def set_global_env():
+    os.environ['MYENV'] = 'example'
+    yield
+    del os.environ['MYENV']
+
+
+@pytest.mark.usefixtures('set_global_env')
+def test_global_env_in_base():
+    runner = runner_factory(['/bin/${MYENV}'])
+    assert runner.base_command == ['/bin/example']
+
+
+def test_defined_env_in_base():
+    runner = runner_factory(['${MYVAR}/bin'], env={'MYVAR': '/home'})
+    assert runner.base_command == ['/home/bin']
