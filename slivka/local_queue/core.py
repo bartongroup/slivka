@@ -1,4 +1,6 @@
 import asyncio
+from typing import Dict
+
 import itertools
 import logging
 import os
@@ -49,7 +51,7 @@ class LocalQueue:
         self.server = None
         self.queue = asyncio.Queue()
         self.workers = []
-        self.stats = {}
+        self.stats = {}  # type: Dict[int, ProcessStatus]
 
     async def _worker(self, queue):
         self.logger.info("worker spawned")
@@ -57,21 +59,30 @@ class LocalQueue:
             self.logger.debug('waiting for the command')
             command = await queue.get()  # type: ShellCommandWrapper
             self.logger.info('executing %r', command)
-            stdout = open(os.path.join(command.cwd, 'stdout'), 'wb')
-            stderr = open(os.path.join(command.cwd, 'stderr'), 'wb')
-            proc = await asyncio.create_subprocess_shell(
-                command.cmd,
-                stdout=stdout,
-                stderr=stderr,
-                cwd=command.cwd,
-                env=command.env
-            )
-            self.stats[command.id].status = JobStatus.RUNNING
+            try:
+                stdout = open(os.path.join(command.cwd, 'stdout'), 'wb')
+                stderr = open(os.path.join(command.cwd, 'stderr'), 'wb')
+                proc = await asyncio.create_subprocess_shell(
+                    command.cmd,
+                    stdout=stdout,
+                    stderr=stderr,
+                    cwd=command.cwd,
+                    env=command.env
+                )
+            except OSError:
+                self.logger.exception(
+                    "System error occurred when starting the job %r", command)
+                self.stats[command.id].status = JobStatus.ERROR
+                continue
+            else:
+                self.stats[command.id].status = JobStatus.RUNNING
             try:
                 return_code = await proc.wait()
                 self.stats[command.id].return_code = return_code
                 self.stats[command.id].status = (
-                    JobStatus.COMPLETED if return_code == 0 else JobStatus.FAILED
+                    JobStatus.COMPLETED if return_code == 0 else
+                    JobStatus.FAILED if return_code > 0 else
+                    JobStatus.INTERRUPTED
                 )
                 self.logger.info('%r completed with status %d', command, return_code)
             except asyncio.CancelledError:
@@ -154,7 +165,7 @@ class LocalQueue:
             raise RuntimeError("Server is already running.")
         self.server = loop.create_task(self.serve_forever())
         try:
-            loop.run_forever()
+            loop.run_until_complete(asyncio.gather(*self.workers, self.server))
         except KeyboardInterrupt:
             pass
         finally:
