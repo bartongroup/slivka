@@ -62,11 +62,18 @@ _built_in_validators = {
 }
 
 if Bio is not None:
+    bio_formats = {
+        'fasta': biopython_validator_factory('fasta'),
+        'clustal': biopython_validator_factory('clustal'),
+        'genbank': biopython_validator_factory('genbank'),
+        'embl': biopython_validator_factory('embl'),
+        'pfam': biopython_validator_factory('stockholm')
+    }
     _built_in_validators.update({
-        'application/fasta': biopython_validator_factory('fasta'),
-        'application/clustal': biopython_validator_factory('clustal'),
-        'application/genbank': biopython_validator_factory('genbank'),
-        'application/embl': biopython_validator_factory('embl')
+        "application/%s" % n: v for n, v in bio_formats.items()
+    })
+    _built_in_validators.update({
+        "application/x-%s" % n: v for n, v in bio_formats.items()
     })
 
 
