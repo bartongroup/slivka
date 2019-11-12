@@ -19,13 +19,16 @@ class LocalQueueClient:
         self.socket.connect(self.address)
 
     def submit_job(self, cmd, cwd, env):
-        self.socket.send_json({
-            'method': 'POST', 'cmd': cmd, 'cwd': cwd, 'env': env
-        })
         try:
+            self.socket.send_json(
+                {'method': 'POST', 'cmd': cmd, 'cwd': cwd, 'env': env},
+                flags=zmq.NOBLOCK
+            )
             response = self.socket.recv_json()
-        except zmq.error.Again as e:
-            raise ConnectionError("Could not connect to %s." % self.address) from None
+        except zmq.error.Again:
+            raise ConnectionError(
+                "Queue server at %s is not responding." % self.address
+            ) from None
         if response.pop('ok'):
             return self.JobStatusResponse(**response)
         else:
