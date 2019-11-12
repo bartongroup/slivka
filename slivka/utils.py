@@ -89,7 +89,8 @@ class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
 
 
 def _include_constructor(loader: SafeTranscludingOrderedYamlLoader, node: yaml.Node):
-    val = loader.construct_scalar(node).split('#', 1)
+    val = loader.construct_scalar(node)
+    val = val.replace('#', '::', 1).split('::', 1)
     fn, path = val if len(val) == 2 else (val[0], '/')
     fn = os.path.join(loader.root_path, fn)
     with open(fn) as f:
