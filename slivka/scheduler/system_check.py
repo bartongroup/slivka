@@ -18,13 +18,23 @@ for service, conf in slivka.settings.service_configurations.items():
     selector.add_runners(service, conf.command_def)
 
 
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+REGULAR = "\033[0m"
+
+
+def colored(text, color):
+    return color + text + REGULAR
+
+
 def test_all(directory, cleanup_work_dir=True):
     global print
     success = 0
     for file in os.scandir(directory):
         if not file.is_file(): continue
         test_name, _ = os.path.splitext(file.name)
-        print('Running', test_name)
+        print('Running test for', test_name)
         old_print = print
         print = partial(print, file=sys.stderr)
         try:
@@ -32,10 +42,11 @@ def test_all(directory, cleanup_work_dir=True):
             success |= ret
         except Exception:
             traceback.print_exc()
-            old_print('%s: ERROR' % test_name)
+            old_print('%s:' % test_name, colored("ERROR", RED))
             success |= 128
         else:
-            old_print('%s:' % test_name, 'OK' if ret == 0 else 'FAIL')
+            state = colored('OK', GREEN) if ret == 0 else colored('FAIL', YELLOW)
+            old_print('%s:' % test_name, state)
         finally:
             print = old_print
     return 0
@@ -111,7 +122,7 @@ def check_output(test_dir, work_dir, outputs):
     for output in outputs:
         out_path = os.path.join(work_dir, output['filename'])
         if not os.path.isfile(out_path):
-            yield (os.path.relpath(out_path, test_dir), FileNotFoundError)
+            yield (os.path.relpath(out_path, test_dir), FileNotFoundError())
             continue
         cmp_path = output.get('matches')
         if cmp_path is None:
