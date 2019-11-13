@@ -70,6 +70,8 @@ def run_test(file_path, cleanup_work_dir=True):
             print("Output file %s not found." % outfile)
         elif isinstance(error, ContentsNotMatchingError):
             print("Content of %s does not match %s" % (outfile, error.path))
+        else:
+            print(outfile, error)
         output_error = True
     if cleanup_work_dir:
         shutil.rmtree(job.cwd)
