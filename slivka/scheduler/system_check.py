@@ -53,14 +53,17 @@ def run_test(file_path, cleanup_work_dir=True):
         job = start_job(runner, data['inputs'], test_dir)
     except Exception as e:
         print("Job submission failed with error", repr(e))
+        traceback.print_exc()
         return 2
     try:
         wait_for_completion(runner, job, data.get('timeout'))
     except TimeoutError:
         print("Job timed out.")
-        return 3
+        return 4
     except Exception as e:
         print("Exception raised when retrieving job status", repr(e))
+        traceback.print_exc()
+        return 8
     output_error = False
     for outfile, error in check_output(test_dir, job.cwd, data['outputs']):
         if isinstance(error, FileNotFoundError):
@@ -70,7 +73,7 @@ def run_test(file_path, cleanup_work_dir=True):
         output_error = True
     if cleanup_work_dir:
         shutil.rmtree(job.cwd)
-    return 4 if output_error else 0
+    return 16 if output_error else 0
 
 
 def start_job(runner: Runner, inputs: dict, test_dir: str):

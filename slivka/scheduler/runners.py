@@ -311,7 +311,7 @@ class GridEngineRunner(Runner):
             stderr=subprocess.STDOUT,
             cwd=cwd,
             env=self.env,
-            universal_newlines=True
+            universal_newlines=False
         )
         proc.check_returncode()
         match = self._job_submitted_regex.match(proc.stdout)
@@ -361,7 +361,8 @@ class GridEngineRunner(Runner):
 
     @classmethod
     def check_status(cls, job_id, cwd):
-        return next(cls.batch_check_status(dict(job_id=job_id, work_dir=cwd)))
+        job = dict(job_id=job_id, work_dir=cwd)
+        return next(cls.batch_check_status([job]))
 
     @classmethod
     def batch_check_status(cls, jobs):
