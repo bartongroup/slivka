@@ -107,6 +107,8 @@ class Scheduler:
             if not requests or next(counter) > 0:
                 continue
             try:
+                self.logger.info("Submitting batch %s",
+                                 ', '.join(r['uuid'] for r in requests))
                 jobs = runner.batch_run([r['inputs'] for r in requests])
             except:
                 counter.failure()

@@ -130,8 +130,8 @@ class Runner:
                 if src is not None:
                     mklink(src, os.path.join(cwd, input_conf['symlink']))
         cmd = self.base_command + self.get_args(inputs)
-        log.info('%s submitting single command %s %s',
-                 self.__class__.__name__, cmd, cwd)
+        log.info('%s submitting command: %s, wd: %s',
+                 self.__class__.__name__, ' '.join(map(repr, cmd)), cwd)
         try:
             return RunInfo(cwd=cwd, id=self.submit(cmd, cwd))
         except Exception:
@@ -157,8 +157,9 @@ class Runner:
             cmds.append(cmd)
         if log.isEnabledFor(logging.INFO):
             for i, cmd, cwd in zip(itertools.count(1), cmds, cwds):
-                log.info('%s batch submitting command %s %s (%d/%d)',
-                         self.__class__.__name__, cmd, cwd, i, len(cmds))
+                log.info('%s submitting command: %s, wd: %s (%d/%d)',
+                         self.__class__.__name__, ' '.join(map(repr, cmd)),
+                         cwd, i, len(cmds))
         try:
             job_ids = self.batch_submit(zip(cmds, cwds))
             return map(RunInfo._make, zip(job_ids, cwds))
