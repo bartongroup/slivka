@@ -27,20 +27,10 @@ import slivka.utils
 def setup(name):
     """Setup a new project in the current working directory.
 
-    This function initializes a new project in the current working directory
-    and populates it with necessary directory tree and configuration files.
-    Project name should be specified as a command argument and corresponds to
-    the name of the new project folder.
+    This function initializes a new project in the specified directory
+    and project and example files in it.
     Using ``"."`` (dot) as a folder name will set up the project in the current
     directory.
-
-    All templates are fetched form ``slivka/data/template`` populated
-    with data specific to the project and copied to the project directory.
-
-    Calling this function is a default behaviour when the slivka module is
-    executed.
-
-    :param name: name of the project folder
     """
     project_dir = os.path.abspath(os.path.join(os.getcwd(), name))
     if os.path.isdir(project_dir):
@@ -166,18 +156,17 @@ def shell():
     code.interact()
 
 
-@click.command('check')
-def check():
-    try:
-        slivka.settings.BASE_DIR
-    except Exception:
-        raise
-    else:
-        click.echo("OK")
+@click.command('check-runners')
+@click.option('--keep-work-dir', is_flag=1)
+def check_runners(keep_work_dir):
+    """Perform a check of all configured runners."""
+    import slivka.scheduler.system_check
+    directory = os.path.join(slivka.settings.BASE_DIR, 'tests')
+    exit(slivka.scheduler.system_check.test_all(directory, not keep_work_dir))
 
 
 manager.add_command(start_workers)
 manager.add_command(start_scheduler)
 manager.add_command(start_server)
 manager.add_command(shell)
-manager.add_command(check)
+manager.add_command(check_runners)

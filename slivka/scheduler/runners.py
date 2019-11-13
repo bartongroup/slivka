@@ -51,12 +51,11 @@ class Runner:
     _name_generator = ('runner-%d' % i for i in itertools.count(1))
     JOBS_DIR = None
 
-    def __init__(self, command_def, name=None):
-        if self.JOBS_DIR is None:
-            Runner.JOBS_DIR = slivka.settings.JOBS_DIR
+    def __init__(self, command_def, name=None, jobs_dir=None):
+        self.jobs_dir = jobs_dir or self.JOBS_DIR or slivka.settings.JOBS_DIR
         self.name = name or next(self._name_generator)
         self.inputs = command_def['inputs']
-        self.outputs = command_def['outputs']
+        self.outputs = command_def['outputs']  # TODO: redundant field
         self.env = env = {
             'PATH': os.getenv('PATH'),
             'SLIVKA_HOME': os.getenv('SLIVKA_HOME', os.getcwd())
@@ -120,9 +119,9 @@ class Runner:
         args.extend(self.arguments)
         return args
 
-    def run(self, inputs) -> RunInfo:
-        cwd = tempfile.mkdtemp(
-            prefix=datetime.now().strftime("%y%m%d"), dir=self.JOBS_DIR
+    def run(self, inputs, cwd=None) -> RunInfo:
+        cwd = cwd or tempfile.mkdtemp(
+            prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
         )
         for name, input_conf in self.inputs.items():
             if input_conf.get('type') == 'file' and 'symlink' in input_conf:
@@ -142,7 +141,7 @@ class Runner:
     def batch_run(self, inputs_list) -> Iterator[RunInfo]:
         cwds = [
             tempfile.mkdtemp(
-                prefix=datetime.now().strftime("%y%m%d"), dir=self.JOBS_DIR
+                prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
             )
             for _ in inputs_list
         ]
@@ -191,7 +190,7 @@ class Runner:
         raise NotImplementedError
 
     @classmethod
-    def batch_check_status(cls, jobs: Iterable[JobMetadata]) -> Iterable[JobStatus]:
+    def batch_check_status(cls, jobs: Iterable[JobMetadata]) -> Iterator[JobStatus]:
         return [cls.check_status(job.job_id, job.work_dir) for job in jobs]
 
     def __repr__(self):
@@ -362,7 +361,7 @@ class GridEngineRunner(Runner):
 
     @classmethod
     def check_status(cls, job_id, cwd):
-        raise NotImplementedError
+        return next(cls.batch_check_status(dict(job_id=job_id, work_dir=cwd)))
 
     @classmethod
     def batch_check_status(cls, jobs):
@@ -372,11 +371,11 @@ class GridEngineRunner(Runner):
         for job_id, status in matches:
             states[job_id] = cls._status_letters[status]
         for job in jobs:
-            state = states.get(job.job_id)
+            state = states.get(job['job_id'])
             if state is not None:
                 yield state
             else:
-                fn = os.path.join(job.work_dir, 'finished')
+                fn = os.path.join(job['work_dir'], 'finished')
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
