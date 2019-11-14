@@ -158,11 +158,11 @@ def shell():
 
 @click.command('test-services')
 @click.option('--keep-work-dirs', is_flag=1)
-def check_runners(keep_work_dir):
+def check_runners(keep_work_dirs):
     """Perform a check of all configured runners."""
     import slivka.scheduler.system_check
     directory = os.path.join(slivka.settings.BASE_DIR, 'tests')
-    exit(slivka.scheduler.system_check.test_all(directory, not keep_work_dir))
+    exit(slivka.scheduler.system_check.test_all(directory, not keep_work_dirs))
 
 
 manager.add_command(start_workers)
