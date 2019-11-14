@@ -42,7 +42,7 @@ class Scheduler:
     def reload(self):
         """Reloads running jobs from the database and change accepted back to pending."""
         running_jobs = JobMetadata.find(
-            slivka.db.mongo.slivkadb,
+            slivka.db.database,
             {'$or': [
                 {'status': JobStatus.QUEUED},
                 {'status': JobStatus.RUNNING}
@@ -52,7 +52,7 @@ class Scheduler:
             mod, cls = job['runner_class'].rsplit('.', 1)
             runner_cls = getattr(import_module(mod), cls)
             self.running_jobs[runner_cls].append(job)
-        JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+        JobRequest.get_collection(slivka.db.database).update_many(
             filter={'status': JobStatus.ACCEPTED},
             update={'$set': {'status': JobStatus.PENDING}}
         )
@@ -78,7 +78,7 @@ class Scheduler:
         :return: None
         """
         requests = JobRequest.find(
-            slivka.db.mongo.slivkadb, status=JobStatus.PENDING
+            slivka.db.database, status=JobStatus.PENDING
         )
         accepted_id = []
         rejected_id = []
@@ -89,7 +89,7 @@ class Scheduler:
                 accepted[runner].append(request)
             else:
                 rejected_id.append(request['_id'])
-        collection = JobRequest.get_collection(slivka.db.mongo.slivkadb)
+        collection = JobRequest.get_collection(slivka.db.database)
         collection.update_many(
             {'_id': {'$in': accepted_id}},
             {'$set': {'status': JobStatus.ACCEPTED}}
@@ -113,7 +113,7 @@ class Scheduler:
             except:
                 counter.failure()
                 if counter.give_up:
-                    JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+                    JobRequest.get_collection(slivka.db.database).update_many(
                         {'_id': {'$in': [r['_id'] for r in requests]}},
                         {'$set': {'status': JobStatus.ERROR}}
                     )
@@ -137,9 +137,9 @@ class Scheduler:
                         job_id=job.id,
                         status=JobStatus.QUEUED
                     )
-                    j.insert(slivka.db.mongo.slivkadb)
+                    j.insert(slivka.db.database)
                     self.running_jobs[runner.__class__].append(j)
-                JobRequest.get_collection(slivka.db.mongo.slivkadb).update_many(
+                JobRequest.get_collection(slivka.db.database).update_many(
                     {'_id': {'$in': [r['_id'] for r in requests]}},
                     {'$set': {'status': JobStatus.QUEUED}}
                 )
@@ -154,7 +154,7 @@ class Scheduler:
                 states = runner_cls.batch_check_status(jobs)
             except Exception:
                 if counter.give_up:
-                    JobMetadata.get_collection(slivka.db.mongo.slivkadb).update_many(
+                    JobMetadata.get_collection(slivka.db.database).update_many(
                         {'_id': {'$in': [j['_id'] for j in jobs]}},
                         {'$set': {'status': JobStatus.ERROR}}
                     )
@@ -171,9 +171,9 @@ class Scheduler:
                         self.logger.info(
                             "Job %s status changed to %s", job.uuid, new_state.name
                         )
-                        job.update_self(slivka.db.mongo.slivkadb, status=new_state)
+                        job.update_self(slivka.db.database, status=new_state)
                         JobRequest.update_one(
-                            slivka.db.mongo.slivkadb,
+                            slivka.db.database,
                             {'uuid': job['uuid']},
                             {'status': new_state}
                         )

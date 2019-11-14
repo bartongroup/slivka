@@ -13,18 +13,20 @@ from slivka.db.documents import UploadedFile
 @pytest.fixture('module')
 def mock_mongo():
     slivka.db.mongo = mongomock.MongoClient()
-    yield slivka.db.mongo
+    slivka.db.database = slivka.db.mongo.slivkadb
+    yield slivka.db.database
+    del slivka.db.database
     del slivka.db.mongo
 
 
 @pytest.fixture('module')
-def mock_uploaded_file(mock_mongo: mongomock.MongoClient):
+def mock_uploaded_file(mock_mongo: mongomock.Database):
     file = UploadedFile(
         title='example-file',
         media_type='text/plain',
         path=os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
     )
-    file.insert(mock_mongo['slivkadb'])
+    file.insert(mock_mongo)
     return file
 
 

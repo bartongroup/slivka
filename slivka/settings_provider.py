@@ -3,6 +3,7 @@ import logging.config
 import os.path
 import sys
 import warnings
+from collections.abc import Mapping
 
 import jsonschema
 import pkg_resources
@@ -47,8 +48,8 @@ class LazySettingsProxy:
 
 class Settings:
 
-    def __init__(self, json_data):
-        for name, value in json_data.items():
+    def __init__(self, conf):
+        for name, value in conf.items():
             if name.isupper():
                 setattr(self, name, value)
         self._service_configs = {}
@@ -57,13 +58,18 @@ class Settings:
         required_options = ['BASE_DIR', 'UPLOADS_DIR', 'JOBS_DIR', 'SERVICES',
                             'UPLOADS_URL_PATH', 'JOBS_URL_PATH',
                             'ACCEPTED_MEDIA_TYPES',
-                            'SERVER_HOST', 'SERVER_PORT', 'SLIVKA_QUEUE_ADDR',
-                            'MONGODB_ADDR']
+                            'SERVER_HOST', 'SERVER_PORT', 'SLIVKA_QUEUE_ADDR']
         for option in required_options:
             if not hasattr(self, option):
                 raise ImproperlyConfigured(
-                    '%s is missing from settings' % option
+                    '%s parameter is not set' % option
                 )
+
+        self.MONGODB = conf.get('MONGODB') or conf.get('MONGODB_ADDR')
+        if self.MONGODB is None:
+            raise ImproperlyConfigured('MONGODB parameter is not set')
+        if not isinstance(self.MONGODB, (str, Mapping)):
+            raise ImproperlyConfigured('MONGODB parameter is improperly configured')
 
         # join paths with BASE_DIR
         self.BASE_DIR = os.path.abspath(self.BASE_DIR)

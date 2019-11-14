@@ -425,7 +425,7 @@ class FileWrapper:
 
     @classmethod
     def _load_from_uploaded_file(cls, uuid):
-        uploaded = UploadedFile.find_one(slivka.db.mongo.slivkadb, uuid=uuid)
+        uploaded = UploadedFile.find_one(slivka.db.database, uuid=uuid)
         if uploaded is None:
             return None
         file = cls()
@@ -439,7 +439,7 @@ class FileWrapper:
 
     @classmethod
     def _load_from_output_file(cls, uuid, filename):
-        job = JobMetadata.find_one(slivka.db.mongo.slivkadb, uuid=uuid)
+        job = JobMetadata.find_one(slivka.db.database, uuid=uuid)
         conf = slivka.settings.get_service_configuration(job.service)
         output = next(
             out for out in conf.execution_config['results']

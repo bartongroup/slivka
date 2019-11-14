@@ -10,7 +10,7 @@ from flask import request, abort, url_for, current_app as app
 
 import slivka
 from slivka import JobStatus
-from slivka.db import mongo, documents
+from slivka.db import database, documents
 from . import JsonResponse
 from .file_validators import validate_file_content
 from .forms import FormLoader
@@ -79,7 +79,7 @@ def post_service_form(service):
     form_cls = FormLoader.instance[service]
     form = form_cls(request.form, request.files)
     if form.is_valid():
-        request_doc = form.save(mongo.slivkadb)
+        request_doc = form.save(database)
         resource_location = url_for('.get_job_status', uuid=request_doc.uuid)
         return JsonResponse(
             {
@@ -149,7 +149,7 @@ def file_upload():
         media_type=file.mimetype,
         path=path
     )
-    file_doc.insert(mongo.slivkadb)
+    file_doc.insert(database)
     resource_location = url_for('.get_file_metadata', uid=file_doc.uuid)
     return JsonResponse(
         {
@@ -176,9 +176,7 @@ def get_file_metadata(uid):
     tokens = uid.split('/', 1)
     if len(tokens) == 1:
         uuid, = tokens
-        file = documents.UploadedFile.find_one(
-            mongo.slivkadb, uuid=uuid
-        )
+        file = documents.UploadedFile.find_one(database, uuid=uuid)
         if file is None:
             raise abort(404)
         return JsonResponse({
@@ -192,9 +190,7 @@ def get_file_metadata(uid):
         })
     elif len(tokens) == 2:
         uuid, filename = tokens
-        job = documents.JobMetadata.find_one(
-            mongo.slivkadb, uuid=uuid
-        )
+        job = documents.JobMetadata.find_one(database, uuid=uuid)
         if job is None:
             raise abort(404)
         conf = slivka.settings.get_service_configuration(job.service)
@@ -223,9 +219,7 @@ def get_job_status(uuid):
     :param uuid: task identifier
     :return: JSON response with current job completion status
     """
-    job_request = documents.JobRequest.find_one(
-        mongo.slivkadb, uuid=uuid
-    )
+    job_request = documents.JobRequest.find_one(database, uuid=uuid)
     if job_request is None:
         raise abort(404)
     return JsonResponse({
@@ -251,9 +245,7 @@ def get_job_files(uuid):
     :param uuid: task identifier
     :return: JSON response with list of files produced by the task.
     """
-    job = documents.JobMetadata.find_one(
-        mongo.slivkadb, uuid=uuid
-    )
+    job = documents.JobMetadata.find_one(database, uuid=uuid)
     if job is None:
         raise abort(404)
     if job.status == JobStatus.PENDING:
