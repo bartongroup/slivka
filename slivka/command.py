@@ -156,8 +156,8 @@ def shell():
     code.interact()
 
 
-@click.command('check-runners')
-@click.option('--keep-work-dir', is_flag=1)
+@click.command('test-services')
+@click.option('--keep-work-dirs', is_flag=1)
 def check_runners(keep_work_dir):
     """Perform a check of all configured runners."""
     import slivka.scheduler.system_check
