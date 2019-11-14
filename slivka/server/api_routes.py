@@ -15,14 +15,15 @@ from . import JsonResponse
 from .file_validators import validate_file_content
 from .forms import FormLoader
 
-bp = flask.Blueprint('api', __name__, url_prefix='/api')
+bp = flask.Blueprint('api', __name__, url_prefix='/api/v1')
 
 
 @bp.route('/version', methods=['GET'])
 def get_version():
     return JsonResponse({
         'statuscode': 200,
-        'version': slivka.__version__
+        'slivka': slivka.__version__,
+        'api': '1.0'
     })
 
 

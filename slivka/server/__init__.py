@@ -21,6 +21,7 @@ def create_app():
     )
     from . import api_routes
     from . import global_routes
+    _app.register_blueprint(api_routes.bp, url_prefix='/api')
     _app.register_blueprint(api_routes.bp)
     _app.register_blueprint(global_routes.bp)
     return _app
