@@ -244,7 +244,8 @@ class SlivkaQueueRunner(Runner):
         super().__init__(command_def, name)
         if self.client is None:
             SlivkaQueueRunner.client = LocalQueueClient(
-                slivka.settings.SLIVKA_QUEUE_ADDR
+                slivka.settings.SLIVKA_QUEUE_ADDR,
+                'ipc' if '/' in slivka.settings.SLIVKA_QUEUE_ADDR else 'tcp',
             )
 
     def submit(self, cmd, cwd):
