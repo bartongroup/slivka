@@ -53,6 +53,7 @@ class Settings:
             if name.isupper():
                 setattr(self, name, value)
         self._service_configs = {}
+        self.URL_PREFIX = conf.get('URL_PREFIX')
 
         # check if all required fields are present
         required_options = ['BASE_DIR', 'UPLOADS_DIR', 'JOBS_DIR', 'SERVICES',
