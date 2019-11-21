@@ -193,6 +193,15 @@ class Runner:
     def batch_check_status(cls, jobs: Iterable[JobMetadata]) -> Iterator[JobStatus]:
         return [cls.check_status(job.job_id, job.work_dir) for job in jobs]
 
+    @classmethod
+    def cancel(cls, job_id, cwd):
+        raise NotImplementedError
+
+    @classmethod
+    def batch_cancel(cls, jobs: Iterable[JobMetadata]):
+        for job in jobs:
+            cls.cancel(job['job_id'], job['work_dir'])
+
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.name)
 
@@ -236,9 +245,14 @@ class ShellRunner(Runner):
         if return_code < 0:
             return JobStatus.INTERRUPTED
 
+    @classmethod
+    def cancel(cls, pid, cwd):
+        with contextlib.suppress(OSError, KeyError):
+            cls.procs[pid].terminate()
+
 
 class SlivkaQueueRunner(Runner):
-    client = None
+    client = None  # type: LocalQueueClient
 
     def __init__(self, command_def, name=None):
         super().__init__(command_def, name)
@@ -260,6 +274,10 @@ class SlivkaQueueRunner(Runner):
     def check_status(cls, identifier, cwd):
         response = cls.client.get_job_status(identifier)
         return JobStatus(response.status)
+
+    @classmethod
+    def cancel(cls, job_id, cwd):
+        pass
 
 
 class GridEngineRunner(Runner):
@@ -384,3 +402,11 @@ class GridEngineRunner(Runner):
                     yield JobStatus.FAILED if return_code else JobStatus.COMPLETED
                 except FileNotFoundError:
                     yield JobStatus.INTERRUPTED
+
+    @classmethod
+    def cancel(cls, job_id, cwd):
+        subprocess.run([b'qdel', job_id])
+
+    @classmethod
+    def batch_cancel(cls, jobs: Iterable[JobMetadata]):
+        subprocess.run([b'qdel', *(job['job-id'] for job in jobs)])
