@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from typing import Dict
 
 import itertools
@@ -41,9 +42,12 @@ class ProcessStatus:
 class LocalQueue:
     zmq_ctx = aiozmq.Context()
 
-    def __init__(self, address, protocol='tcp', workers=1, secret=None):
+    def __init__(self, address, workers=1, secret=None):
         self.logger = logging.getLogger(__name__)
-        self.address = protocol + '://' + address
+        if address.startswith('unix://'):
+            self.address = str.replace(address, 'unix', 'ipc', 1)
+        else:
+            self.address = 'tcp://' + address
         self.num_workers = workers
         self.secret = secret
         if not secret:
@@ -52,6 +56,7 @@ class LocalQueue:
         self.queue = asyncio.Queue()
         self.workers = []
         self.stats = {}  # type: Dict[int, ProcessStatus]
+        self._main_coro = None
 
     async def _worker(self, queue):
         self.logger.info("worker spawned")
@@ -142,10 +147,21 @@ class LocalQueue:
             'returncode': None
         }
 
-    def close(self):
+    def stop(self):
+        self.logger.info("Stopping.")
         for worker in self.workers:
             worker.cancel()
         self.server.cancel()
+
+    def close(self, loop=None):
+        self.logger.info("Closing.")
+        loop = loop or asyncio.get_event_loop()
+        with contextlib.suppress(asyncio.CancelledError):
+            loop.run_until_complete(self._main_coro)
+        self.workers.clear()
+        self.server = None
+        self._main_coro = None
+        self.logger.info('Closed.')
 
     async def wait_closed(self):
         await asyncio.gather(
@@ -154,26 +170,19 @@ class LocalQueue:
         )
 
     def run(self, loop=None):
+        if self._main_coro is not None:
+            raise RuntimeError("Scheduler is already running.")
         loop = loop or asyncio.get_event_loop()
-        if self.workers:
-            raise RuntimeError("Workers are already running")
         self.workers = [
             loop.create_task(self._worker(self.queue))
             for _ in range(self.num_workers)
         ]
-        if self.server is not None:
-            raise RuntimeError("Server is already running.")
         self.server = loop.create_task(self.serve_forever())
+        self._main_coro = asyncio.gather(*self.workers, self.server)
         try:
-            loop.run_until_complete(asyncio.gather(*self.workers, self.server))
+            loop.run_until_complete(self._main_coro)
         except KeyboardInterrupt:
+            self.stop()
+        except asyncio.CancelledError:
             pass
-        finally:
-            try:
-                self.close()
-                loop.run_until_complete(self.wait_closed())
-                loop.run_until_complete(loop.shutdown_asyncgens())
-                self.workers.clear()
-                self.server = None
-            finally:
-                loop.close()
+        self.logger.info('Stopped.')

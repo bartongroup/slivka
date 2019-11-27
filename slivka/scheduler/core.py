@@ -37,6 +37,7 @@ class Scheduler:
         return self._is_running
 
     def stop(self):
+        self.logger.info("Stopping.")
         self._is_running = False
 
     def reload(self):
@@ -61,7 +62,7 @@ class Scheduler:
         if self.is_running:
             raise RuntimeError("Scheduler is already running.")
         self._is_running = True
-        self.logger.info('scheduler started')
+        self.logger.info('Scheduler started')
         try:
             while self.is_running:
                 self.fetch_pending_requests(self._accepted_requests)
@@ -70,6 +71,7 @@ class Scheduler:
                 time.sleep(1)
         except KeyboardInterrupt:
             self.stop()
+        self.logger.info('Stopped')
 
     def fetch_pending_requests(self, accepted: Mapping[Runner, List[JobRequest]]):
         """Fetches pending requests from the database and populated provided dict

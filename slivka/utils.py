@@ -131,3 +131,20 @@ class JobStatus(enum.IntEnum):
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
                             JobStatus.QUEUED, JobStatus.RUNNING)
+
+
+def daemonize():
+    if os.fork() != 0:
+        os._exit(0)
+    os.setsid()
+    if os.fork() != 0:
+        os._exit(0)
+    os.umask(0o027)
+    os.chdir('/')
+
+    os.closerange(0, 3)
+    null_fd = os.open(os.devnull, os.O_RDWR)
+    if null_fd != 0:
+        os.dup2(null_fd, 0)
+    os.dup2(null_fd, 1)
+    os.dup2(null_fd, 2)

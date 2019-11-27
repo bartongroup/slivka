@@ -6,11 +6,14 @@ same name as the function, which is passed as a first parameter to the script
 call. Additionally, some of the functions process additional arguments
 usually specified just after the command name.
 """
+import atexit
 import multiprocessing
 import os
 import shutil
+import signal
 import stat
 from base64 import b64encode
+from importlib import import_module
 from logging.handlers import RotatingFileHandler
 from string import Template
 
@@ -95,25 +98,68 @@ def manager():
 
 
 @click.command('local-queue')
-def start_workers():
+@click.option('--address', '-a')
+@click.option('--workers', '-w', default=2)
+@click.option('--daemon/--no-daemon', '-d')
+@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+def start_workers(address, workers, daemon, pid_file):
     """Start task queue workers."""
+    if daemon:
+        slivka.utils.daemonize()
+    import asyncio
+    import contextlib
+    from slivka.local_queue import LocalQueue
+    slivka.conf.logging.configure_logging()
     os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
-    os.execlp('python', 'python', '-m', 'slivka.local_queue',
-              slivka.settings.SLIVKA_QUEUE_ADDR)
+
+    loop = asyncio.get_event_loop()
+    queue = LocalQueue(
+        address=address or slivka.settings.SLIVKA_QUEUE_ADDR,
+        workers=workers
+    )
+
+    if pid_file:
+        with open(pid_file, 'w') as f:
+            f.write("%d\n" % os.getpid())
+        atexit.register(os.remove, pid_file)
+
+    def terminate(signum): queue.stop()
+    loop.add_signal_handler(signal.SIGTERM, terminate, signal.SIGTERM)
+    loop.add_signal_handler(signal.SIGINT, terminate, signal.SIGINT)
+
+    with contextlib.closing(queue):
+        queue.run(loop)
+    loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
 
 
 @click.command('scheduler')
-def start_scheduler():
+@click.option('--daemon/--no-daemon', '-d')
+@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+def start_scheduler(daemon, pid_file):
     """Start job scheduler."""
+    if daemon:
+        slivka.utils.daemonize()
     from slivka.scheduler import Scheduler
     slivka.conf.logging.configure_logging()
     handler = RotatingFileHandler(
         os.path.join(slivka.settings.BASE_DIR, 'logs', 'slivka.log'),
         maxBytes=100e6
     )
+    atexit.register(handler.close)
     listener = slivka.conf.logging.ZMQQueueListener(
         'ipc:///tmp/slivka.logging.sock', (handler,)
     )
+
+    if pid_file:
+        with open(pid_file, 'w') as f:
+            f.write("%d\n" % os.getpid())
+        atexit.register(os.remove, pid_file)
+
+    def terminate(signum, stack_frame): scheduler.stop()
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
+
     with listener:
         scheduler = Scheduler()
         for service, conf in slivka.settings.service_configurations.items():
@@ -122,31 +168,47 @@ def start_scheduler():
 
 
 @click.command('server')
-@click.option('--server-type', '-t', default='devel',
+@click.option('--type', '-t', 'server_type', default='devel',
               type=click.Choice(['gunicorn', 'uwsgi', 'devel']))
-def start_server(server_type):
+@click.option('--daemon/--no-daemon', '-d')
+@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+@click.option('--workers', '-w', default=None, type=click.INT)
+def start_server(server_type, daemon, pid_file, workers):
     """Start HTTP server."""
     host = slivka.settings.SERVER_HOST
     port = int(slivka.settings.SERVER_PORT)
-    num_workers = min(2 * multiprocessing.cpu_count() + 1, 12)
+    workers = workers or min(2 * multiprocessing.cpu_count() + 1, 12)
     os.chdir(slivka.settings.BASE_DIR)
     if server_type == 'devel':
-        os.execlp('flask', 'flask', 'run',
-                  '--host', str(host),
-                  '--port', str(port))
+        if daemon:
+            raise click.BadOptionUsage('daemon', "Cannot daemonize development server.")
+        if pid_file:
+            raise click.BadOptionUsage('pid-file', 'Cannot use pid file with development server type.')
+        from werkzeug.serving import run_simple
+        run_simple(host, port, import_module('wsgi').application)
     elif server_type == 'gunicorn':
-        os.execlp('gunicorn', 'gunicorn',
-                  '--bind=%s:%d' % (host, port),
-                  '--workers=%d' % num_workers,
-                  '--name=slivka-http',
-                  'wsgi:app')
+        args = ['gunicorn',
+                '--bind=%s:%d' % (host, port),
+                '--workers=%d' % workers,
+                '--name=slivka-http']
+        if daemon:
+            args.append('--daemon')
+        if pid_file:
+            args.extend(['--pid', pid_file])
+        args.append('wsgi:app')
+        os.execvp(args[0], args)
     elif server_type == 'uwsgi':
-        os.execlp('uwsgi', 'uwsgi',
-                  '--http-socket', '%s:%d' % (host, port),
-                  '--wsgi-file', 'wsgi.py',
-                  '--master',
-                  '--processes', str(num_workers),
-                  '--procname', 'slivka-http')
+        args = ['uwsgi',
+                '--http-socket', '%s:%d' % (host, port),
+                '--wsgi-file', 'wsgi.py',
+                '--master',
+                '--processes', str(workers),
+                '--procname', 'slivka-http']
+        if daemon:
+            args.append('--daemonize')
+        if pid_file:
+            args.extend(['--pidfile', pid_file])
+        os.execvp(args[0], args)
 
 
 @click.command()
