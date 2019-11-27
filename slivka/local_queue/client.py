@@ -10,8 +10,11 @@ atexit.register(zmq_ctx.destroy, 0)
 class LocalQueueClient:
     JobStatusResponse = namedtuple("JobStatus", 'id, status, returncode')
 
-    def __init__(self, address, protocol='tcp', secret=None):
-        self.address = protocol + '://' + address
+    def __init__(self, address, secret=None):
+        if address.startswith('unix://'):
+            self.address = str.replace(address, 'unix', 'ipc', 1)
+        else:
+            self.address = 'tcp://' + address
         self.secret = secret
         self.socket = zmq_ctx.socket(zmq.REQ)
         self.socket.setsockopt(zmq.RCVTIMEO, 100)
