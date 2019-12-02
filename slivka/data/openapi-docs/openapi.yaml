@@ -433,7 +433,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /tasks/{uuid}:
+  /api/tasks/{uuid}:
     get:
       summary: Check the status of the running task
       tags: [tasks]
