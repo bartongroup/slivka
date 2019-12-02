@@ -4,8 +4,10 @@ info:
   version: "1.0"
 
 servers:
+- url: https://compbio.dundee.ac.uk/slivka
+  description: Compbio Public Server
 - url: http://gjb-www-1.cluster.lifesci.dundee.ac.uk:3203
-  description: Compbio Development Server
+  description: Compbio Internal Server
 
 tags:
 - name: services
@@ -16,13 +18,36 @@ tags:
   description: Task status and results.
 
 paths:
-  /services:
+  /api/version:
+    get:
+      summary: Returns version information of the Slivka instance and the API
+      responses:
+        '200':
+          description: Service version information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuscode:
+                    type: integer
+                    example: 200
+                  slivka:
+                    description: Slivka system version.
+                    type: string
+                    example: "0.5a1"
+                  api:
+                    description: API specification version.
+                    type: string
+                    example: "1.0"
+
+  /api/services:
     get:
       summary: Returns a list of available services.
       tags: [services]
       responses:
         '200':
-          description: A JSON array of service names
+          description: A list of available services
           content:
             application/json:
               schema:
@@ -37,14 +62,25 @@ paths:
                       type: object
                       properties:
                         name:
+                          description: Short service identificator.
                           type: string
                           example: Clustalo
+                        label:
+                          description: Human-readable name of the service.
+                          type: string
+                          example: Clustal Omega - 1.2.4
                         URI:
+                          description: Location of the service.
                           type: string
                           format: uri
-                          example: /services/Clustalo
+                          example: /api/services/clustalo
+                        classifiers:
+                          description: Data tags annotating the service.
+                          type: array
+                          items:
+                            type: string
 
-  /services/{service}:
+  /api/services/{service}:
     get:
       summary: Returns the service information and possible submission parameters.
       tags: [services]
@@ -122,7 +158,7 @@ paths:
                   URI:
                     type: string
                     format: uri
-                    example: /task/147a8f7a9da54fca93987b971b89286d
+                    example: /api/task/147a8f7a9da54fca93987b971b89286d
 
         '404':
           description: Specified service does not exist
@@ -165,7 +201,7 @@ paths:
                         errorCode: max
                         message: Value must be less than 20
 
-  /services/{service}/presets:
+  /api/services/{service}/presets:
     get:
       summary: Returns the list of available presets for this service.
       tags: [services]
@@ -206,7 +242,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /services/{service}/presets/{preset}:
+  /api/services/{service}/presets/{preset}:
     get:
       summary: Retrieve the preset
       tags: [services]
@@ -251,7 +287,7 @@ paths:
               schema:
                 $ref: '#components/schemas/NotFoundError'
 
-  /files:
+  /api/files:
     post:
       summary: Upload the file to the server
       tags: [files]
@@ -307,7 +343,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/InsufficientStorageError'
 
-  /file/{uuid}:
+  /api/files/{uuid}:
     get:
       summary: Retrieve file metadata
       tags: [files]
@@ -444,7 +480,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
-  /tasks/{uuid}/files:
+  /api/tasks/{uuid}/files:
     get:
       summary: Returns a list of output file identifiers
       tags: [tasks]
