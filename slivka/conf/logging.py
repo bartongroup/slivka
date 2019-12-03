@@ -44,6 +44,7 @@ class ZMQQueueListener(logging.handlers.QueueListener):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
+        self.cleanup()
 
     def add_handler(self, handler):
         self.handlers.append(handler)
@@ -67,48 +68,57 @@ class ZMQQueueListener(logging.handlers.QueueListener):
     def stop(self):
         super().stop()
         self.queue.close(0)
-        self.cleanup()
 
     def cleanup(self):
         if self._address.startswith('ipc://'):
             os.unlink(self._address[6:])
 
 
-_DEFAULT_LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'full': {
-            'format': "%(asctime)s %(levelname)-10s %(name)s %(message)s",
-            'datefmt': "%d/%m/%y %H:%M:%S"
+def get_logging_sock():
+    from hashlib import md5
+    from base64 import b64encode
+    suffix = b64encode(md5(os.environ['SLIVKA_HOME'].encode()).digest()[:6], b'-_').decode()
+    tmp = os.environ.get('TEMP') or os.environ.get('TMP') or '/tmp'
+    path = 'ipc://%s/slivka-logging_%s.sock' % (tmp, suffix)
+    return path
+
+
+def _get_default_logging_config():
+    return {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'full': {
+                'format': "%(asctime)s %(levelname)-10s %(name)s %(message)s",
+                'datefmt': "%d/%m/%y %H:%M:%S"
+            },
+            'minimal': {
+                'format': '%(levelname)s %(message)s'
+            }
         },
-        'minimal': {
-            'format': '%(levelname)s %(message)s'
-        }
-    },
-    'handlers': {
-        'slivka.logging_queue': {
-            'class': 'slivka.conf.logging.ZMQQueueHandler',
-            'formatter': 'full',
-            'level': 'DEBUG',
-            'address': 'ipc:///tmp/slivka.logging.sock'
+        'handlers': {
+            'slivka.logging_queue': {
+                'class': 'slivka.conf.logging.ZMQQueueHandler',
+                'formatter': 'full',
+                'level': 'DEBUG',
+                'address': get_logging_sock()
+            },
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'minimal',
+                'level': 'DEBUG'
+            }
         },
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'minimal',
-            'level': 'DEBUG'
-        }
-    },
-    'loggers': {
-        'slivka': {
-            'level': 'DEBUG',
-            'propagate': False,
-            'handlers': ['slivka.logging_queue', 'console']
+        'loggers': {
+            'slivka': {
+                'level': 'DEBUG',
+                'propagate': False,
+                'handlers': ['slivka.logging_queue', 'console']
+            }
         }
     }
-}
 
 
 def configure_logging(config=None):
-    config = config or _DEFAULT_LOGGING
+    config = config or _get_default_logging_config()
     logging.config.dictConfig(config)

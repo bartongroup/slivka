@@ -76,7 +76,8 @@ class Settings:
         self.BASE_DIR = os.path.abspath(self.BASE_DIR)
         self.UPLOADS_DIR = norm_join_path(self.BASE_DIR, self.UPLOADS_DIR)
         self.JOBS_DIR = norm_join_path(self.BASE_DIR, self.JOBS_DIR)
-        for path in [self.UPLOADS_DIR, self.JOBS_DIR]:
+        self.LOG_DIR = norm_join_path(self.BASE_DIR, getattr(self, 'LOG_DIR', './log'))
+        for path in [self.UPLOADS_DIR, self.JOBS_DIR, self.LOG_DIR]:
             os.makedirs(path, exist_ok=True)
         self.SERVICES = norm_join_path(self.BASE_DIR, self.SERVICES)
 

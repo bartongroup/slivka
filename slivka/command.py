@@ -143,12 +143,12 @@ def start_scheduler(daemon, pid_file):
     from slivka.scheduler import Scheduler
     slivka.conf.logging.configure_logging()
     handler = RotatingFileHandler(
-        os.path.join(slivka.settings.BASE_DIR, 'logs', 'slivka.log'),
+        os.path.join(slivka.settings.LOG_DIR, 'slivka.log'),
         maxBytes=100e6
     )
     atexit.register(handler.close)
     listener = slivka.conf.logging.ZMQQueueListener(
-        'ipc:///tmp/slivka.logging.sock', (handler,)
+        slivka.conf.logging.get_logging_sock(), (handler,)
     )
 
     if pid_file:
