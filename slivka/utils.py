@@ -24,6 +24,23 @@ class Singleton(type):
         return cls()
 
 
+class LimitedSizeDict(OrderedDict):
+    def __init__(self, max_size, mapping=None):
+        super().__init__(mapping or {})
+        self.max_size = max_size
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if len(self) > self.max_size:
+            del self[next(self.__iter__())]
+
+    def update(self, mapping=None, **kwargs):
+        super().update(mapping or {}, **kwargs)
+        if len(self) > self.max_size:
+            for key in list(itertools.islice(self, len(self) - self.max_size)):
+                del self[key]
+
+
 class BackoffCounter:
     _zero_gen = itertools.repeat(0)
 

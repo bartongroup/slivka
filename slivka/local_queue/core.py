@@ -11,7 +11,7 @@ import zmq
 import zmq.asyncio as aiozmq
 
 from slivka import JobStatus
-
+from slivka.utils import LimitedSizeDict
 
 try:
     get_running_loop = asyncio.get_running_loop
@@ -55,7 +55,7 @@ class LocalQueue:
         self.server = None
         self.queue = asyncio.Queue()
         self.workers = []
-        self.stats = {}  # type: Dict[int, ProcessStatus]
+        self.stats = LimitedSizeDict(1000000)  # type: Dict[int, ProcessStatus]
         self._main_coro = None
 
     async def _worker(self, queue):
@@ -115,6 +115,8 @@ class LocalQueue:
                 response = self.do_GET(message)
             elif message['method'] == 'POST':
                 response = self.do_POST(message)
+            elif message['method'] == 'DELETE':
+                response = self.do_DELETE(message)
             else:
                 response = {
                     'ok': False,
@@ -145,6 +147,14 @@ class LocalQueue:
             'id': cmd.id,
             'status': JobStatus.QUEUED,
             'returncode': None
+        }
+
+    def do_DELETE(self, content):
+        job_id = content['id']
+        if job_id in self.stats:
+            del self.stats[job_id]
+        return {
+            'ok': True
         }
 
     def stop(self):

@@ -38,12 +38,18 @@ class LocalQueueClient:
             raise RequestError(response['error'])
 
     def get_job_status(self, id):
-        self.socket.send_json({
-            'method': 'GET', 'id': id
-        })
+        self.socket.send_json({'method': 'GET', 'id': id})
         response = self.socket.recv_json()
         if response.pop('ok'):
             return self.JobStatusResponse(**response)
+        else:
+            raise RequestError(response['error'])
+
+    def release_job(self, id):
+        self.socket.send({'method': 'DELETE', 'id': id})
+        response = self.socket.recv_json()
+        if response.pop('ok'):
+            return True
         else:
             raise RequestError(response['error'])
 
