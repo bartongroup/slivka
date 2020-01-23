@@ -342,10 +342,6 @@ class FileField(BaseField):
         super().__init__(name, **kwargs)
         self.extensions = extensions
         self.media_type = media_type
-        if self.extensions:
-            self.validators.append(partial(
-                _file_extension_validator, self.extensions
-            ))
         if media_type is not None:
             self.validators.append(partial(
                 _media_type_validator, media_type
@@ -550,13 +546,6 @@ def _media_type_validator(media_type, file):
     if not file.verify_type(media_type):
         raise ValidationError(
             "This media type is not accepted", 'media_type'
-        )
-
-
-def _file_extension_validator(extensions, file):
-    if not os.path.splitext(file.title)[1].lstrip('.') in extensions:
-        raise ValidationError(
-            "This file extension is not accepted", 'extension'
         )
 
 
