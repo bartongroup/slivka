@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - attrs>=19
   - click>=7.0
   - flask>=1.0
   - frozendict>=1.2

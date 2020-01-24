@@ -436,9 +436,9 @@ class FileWrapper:
     @classmethod
     def _load_from_output_file(cls, uuid, filename):
         job = JobMetadata.find_one(slivka.db.database, uuid=uuid)
-        conf = slivka.settings.get_service_configuration(job.service)
+        conf = slivka.settings.services[job.service]
         output = next(
-            out for out in conf.execution_config['results']
+            out for out in conf.command['results']
             if fnmatch(filename, out['path'])
         )
         file = cls()

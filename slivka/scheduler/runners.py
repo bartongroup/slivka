@@ -52,7 +52,7 @@ class Runner:
     JOBS_DIR = None
 
     def __init__(self, command_def, name=None, jobs_dir=None):
-        self.jobs_dir = jobs_dir or self.JOBS_DIR or slivka.settings.JOBS_DIR
+        self.jobs_dir = jobs_dir or self.JOBS_DIR or slivka.settings.jobs_dir
         self.name = name or next(self._name_generator)
         self.inputs = command_def['inputs']
         self.outputs = command_def['outputs']  # TODO: redundant field
@@ -258,7 +258,7 @@ class SlivkaQueueRunner(Runner):
         super().__init__(command_def, name)
         if self.client is None:
             SlivkaQueueRunner.client = LocalQueueClient(
-                slivka.settings.SLIVKA_QUEUE_ADDR
+                slivka.settings.slivka_queue_address
             )
 
     def submit(self, cmd, cwd):

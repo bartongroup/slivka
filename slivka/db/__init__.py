@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 
 import pymongo.database
 
-import slivka
+import slivka.conf
 from slivka.utils import lazy_property
 
 
@@ -28,19 +28,16 @@ class _DBModule(types.ModuleType):
         super().__init__(__name__)
         self.__path__ = __path__
         self.__file__ = __file__
-        self._dbname = None
 
     @lazy_property
     def mongo(self):
-        if isinstance(slivka.settings.MONGODB, str):
-            host, self._dbname = slivka.settings.MONGODB.rsplit('/', 1)
-        else:
-            host, self._dbname = _build_mongodb_uri(**slivka.settings.MONGODB)
+        host, _ = slivka.conf.settings.mongodb
         return pymongo.MongoClient(host)
 
     @lazy_property
     def database(self):
-        return self.mongo[self._dbname]
+        _, dbname = slivka.conf.settings.mongodb
+        return self.mongo[dbname]
 
 
 mongo = ...  # type: pymongo.MongoClient

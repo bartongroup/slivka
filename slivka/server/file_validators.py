@@ -79,7 +79,7 @@ if Bio is not None:
 
 class ValidatorDict(dict):
     def init_from_settings(self):
-        for media_type in slivka.settings.ACCEPTED_MEDIA_TYPES:
+        for media_type in slivka.settings.accepted_media_types:
             self.add(media_type)
 
     def __missing__(self, key):

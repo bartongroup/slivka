@@ -23,6 +23,7 @@ import pkg_resources
 import slivka
 import slivka.conf.logging
 import slivka.utils
+from slivka.conf import settings
 
 
 @click.command()
@@ -94,7 +95,7 @@ def init_project(base_dir):
 
 @click.group()
 def manager():
-    os.environ['SLIVKA_HOME'] = slivka.settings.BASE_DIR
+    os.environ['SLIVKA_HOME'] = settings.base_dir
 
 
 @click.command('local-queue')
@@ -110,11 +111,11 @@ def start_workers(address, workers, daemon, pid_file):
     import contextlib
     from slivka.local_queue import LocalQueue
     slivka.conf.logging.configure_logging()
-    os.environ.setdefault('SLIVKA_SECRET', slivka.settings.SECRET_KEY)
+    os.environ.setdefault('SLIVKA_SECRET', settings.secret_key)
 
     loop = asyncio.get_event_loop()
     queue = LocalQueue(
-        address=address or slivka.settings.SLIVKA_QUEUE_ADDR,
+        address=address or settings.slivka_queue_address,
         workers=workers
     )
 
@@ -143,7 +144,7 @@ def start_scheduler(daemon, pid_file):
     from slivka.scheduler import Scheduler
     slivka.conf.logging.configure_logging()
     handler = RotatingFileHandler(
-        os.path.join(slivka.settings.LOG_DIR, 'slivka.log'),
+        os.path.join(settings.logs_dir, 'slivka.log'),
         maxBytes=100e6
     )
     atexit.register(handler.close)
@@ -162,8 +163,8 @@ def start_scheduler(daemon, pid_file):
 
     with listener:
         scheduler = Scheduler()
-        for service, conf in slivka.settings.service_configurations.items():
-            scheduler.load_service(service, conf.command_def)
+        for service in settings.services.values():
+            scheduler.load_service(service.name, service.command)
         scheduler.run_forever()
 
 
@@ -175,10 +176,10 @@ def start_scheduler(daemon, pid_file):
 @click.option('--workers', '-w', default=None, type=click.INT)
 def start_server(server_type, daemon, pid_file, workers):
     """Start HTTP server."""
-    host = slivka.settings.SERVER_HOST
-    port = int(slivka.settings.SERVER_PORT)
+    host = settings.server_host
+    port = settings.server_port
     workers = workers or min(2 * multiprocessing.cpu_count() + 1, 12)
-    os.chdir(slivka.settings.BASE_DIR)
+    os.chdir(settings.base_dir)
     if server_type == 'devel':
         if daemon:
             raise click.BadOptionUsage('daemon', "Cannot daemonize development server.")
@@ -223,7 +224,7 @@ def shell():
 def check_runners(keep_work_dirs):
     """Perform a check of all configured runners."""
     import slivka.scheduler.system_check
-    directory = os.path.join(slivka.settings.BASE_DIR, 'tests')
+    directory = os.path.join(settings.base_dir, 'tests')
     exit(slivka.scheduler.system_check.test_all(directory, not keep_work_dirs))
 
 
