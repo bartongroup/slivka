@@ -56,6 +56,9 @@ class MongoDocument(bson.SON):
             filter, {'$set': values}
         )
 
+    def __eq__(self, other: 'MongoDocument'):
+        return self['_id'] == other['_id']
+
     def __hash__(self):
         return hash(self['_id'])
 

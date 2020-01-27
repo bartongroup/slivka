@@ -1,10 +1,9 @@
 import logging
+import time
 from collections import defaultdict, OrderedDict, namedtuple
 from functools import partial
 from importlib import import_module
-
-import time
-from typing import Dict, Type, Optional, List, Mapping, Any
+from typing import Dict, Type, Optional, List, Mapping, Any, DefaultDict
 
 import slivka.db
 from slivka import JobStatus
@@ -26,7 +25,7 @@ class Scheduler:
         self.runner_selector = RunnerSelector()
         self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
         self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
-        self._accepted_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
+        self._accepted_requests = defaultdict(list)  # type: DefaultDict[Runner, List[JobRequest]]
         self.reload()
 
     def load_service(self, service, cmd_def):
@@ -73,7 +72,7 @@ class Scheduler:
             self.stop()
         self.logger.info('Stopped')
 
-    def fetch_pending_requests(self, accepted: Mapping[Runner, List[JobRequest]]):
+    def fetch_pending_requests(self, accepted: DefaultDict[Runner, List[JobRequest]]):
         """Fetches pending requests from the database and populated provided dict
 
         :param accepted: Dictionary to be populated with accepted requests
