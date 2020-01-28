@@ -118,3 +118,15 @@ def test_insert_jobs_tracking_data(mock_mongo, insert_jobs, runner_mock):
     assert job['runner_class'] == '%s.%s' % (runner_mock.__class__.__module__, runner_mock.__class__.__name__)
     assert job['job_id'] == 0
     assert job['status'] == JobStatus.QUEUED
+
+
+@pytest.mark.usefixture('mock_mongo')
+def test_add_running_jobs(insert_jobs, runner_mock):
+    request = JobRequest('dummy', {'param': 0})
+    insert_jobs([request])
+    scheduler = Scheduler()
+    print(scheduler.running_jobs)
+    scheduler.run_requests({runner_mock: [request]})
+    running = scheduler.running_jobs[runner_mock.__class__]
+    assert len(running) == 1
+    assert running[0]['uuid'] == request['uuid']
