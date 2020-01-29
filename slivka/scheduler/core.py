@@ -155,10 +155,12 @@ class Scheduler:
                 states = runner_cls.batch_check_status(jobs)
             except Exception:
                 if counter.give_up:
-                    JobMetadata.get_collection(slivka.db.database).update_many(
-                        {'_id': {'$in': [j['_id'] for j in jobs]}},
-                        {'$set': {'status': JobStatus.ERROR}}
-                    )
+                    for cls in (JobMetadata, JobRequest):
+                        collection = cls.get_collection(slivka.db.database)
+                        collection.update_many(
+                            {'uuid': {'$in': [j['uuid'] for j in jobs]}},
+                            {'$set': {'status': JobStatus.ERROR}}
+                        )
                     for job in jobs:
                         job['status'] = JobStatus.ERROR
                 counter.failure()

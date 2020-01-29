@@ -22,6 +22,7 @@ def insert_jobs():
     def insert(jobs):
         all_jobs.extend(jobs)
         collection.insert_many(jobs)
+        return jobs
 
     yield insert
     collection.delete_many({'_id': {'$in': [job['_id'] for job in all_jobs]}})
