@@ -382,7 +382,7 @@ class FileField(BaseField):
         j = super().__json__()
         j['type'] = 'file'
         if self.media_type is not None: j['mimetype'] = self.media_type
-        if self.media_type is not None: j['extensions'] = self.extensions
+        if self.extensions: j['extensions'] = self.extensions
         return j
 
     def to_cmd_parameter(self, value: 'FileWrapper'):
