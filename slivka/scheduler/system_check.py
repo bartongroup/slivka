@@ -14,8 +14,8 @@ from slivka.scheduler.core import RunnerSelector
 from slivka.scheduler.runners import Runner, RunInfo
 
 selector = RunnerSelector()
-for service, conf in slivka.settings.service_configurations.items():
-    selector.add_runners(service, conf.command_def)
+for service in slivka.settings.services.values():
+    selector.add_runners(service.name, service.command)
 
 
 RED = "\033[91m"

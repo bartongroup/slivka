@@ -93,7 +93,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                 # make sure that the type was detected by full_clean
                 assert value.get_detected_media_type()
                 if value.uuid is None:
-                    (fd, path) = mkstemp(dir=slivka.settings.UPLOADS_DIR)
+                    (fd, path) = mkstemp(dir=slivka.settings.uploads_dir)
                     with open(fd, 'wb') as fp:
                         value.save_as(fp, path=path)
                     uploaded_files.append(UploadedFile(
@@ -112,8 +112,8 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
 class FormLoader(metaclass=Singleton):
     def __init__(self):
         self._forms = {
-            service: self._build_form_class(service, conf.form)
-            for service, conf in slivka.settings.service_configurations.items()
+            service.name: self._build_form_class(service.name, service.form)
+            for service in slivka.settings.services.values()
         }
 
     def get_form_class(self, service):

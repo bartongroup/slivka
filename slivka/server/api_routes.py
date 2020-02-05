@@ -42,7 +42,7 @@ def get_services():
                 'URI': url_for('.get_service_form', service=service.name),
                 'classifiers': service.classifiers
             }
-            for service in slivka.settings.service_configurations.values()
+            for service in slivka.settings.services.values()
         ]
     })
 
@@ -106,7 +106,7 @@ def post_service_form(service):
 @bp.route('/services/<service>/presets', methods=['GET'])
 def all_presets(service):
     try:
-        conf = slivka.settings.get_service_configuration(service)
+        conf = slivka.settings.services[service]
     except KeyError:
         raise abort(404)
     return JsonResponse({
@@ -118,7 +118,7 @@ def all_presets(service):
 @bp.route('/services/<service>/presets/<preset>', methods=['GET'])
 def get_preset(service, preset):
     try:
-        conf = slivka.settings.get_service_configuration(service)
+        conf = slivka.settings.services[service]
         return JsonResponse({
             'statuscode': 200,
             'preset': conf.presets[preset]
@@ -193,9 +193,9 @@ def get_file_metadata(uid):
         job = documents.JobMetadata.find_one(database, uuid=uuid)
         if job is None:
             raise abort(404)
-        conf = slivka.settings.get_service_configuration(job.service)
+        conf = slivka.settings.services[job.service]
         label, file_meta = next(
-            (key, val) for (key, val) in conf.execution_config['outputs'].items()
+            (key, val) for (key, val) in conf.command['outputs'].items()
             if fnmatch(filename, val['path'])
         )
         file_location = '%s/%s' % (os.path.basename(job.work_dir), filename)
@@ -254,17 +254,17 @@ def get_job_files(uuid):
             'files': []
         }, status=200)
 
-    service_conf = slivka.settings.get_service_configuration(job.service)
+    service = slivka.settings.services[job.service]
     work_dir = pathlib.Path(job.work_dir)
     output_files = [
         OutputFile(
             uuid='%s/%s' % (job.uuid, path.name),
             title=path.name,
             label=key,
-            location=path.relative_to(slivka.settings.TASKS_DIR).as_posix(),
+            location=path.relative_to(slivka.settings.jobs_dir).as_posix(),
             media_type=val.get('media-type')
         )
-        for key, val in service_conf.execution_config['outputs'].items()
+        for key, val in service.command['outputs'].items()
         for path in work_dir.glob(val['path'])
     ]
 

@@ -29,14 +29,14 @@ def create_app(prefix=None):
         raise RuntimeError("Flask application already exists")
     _app = flask.Flask('slivka')
     _app.config.update(
-        UPLOADS_DIR=slivka.settings.UPLOADS_DIR
+        UPLOADS_DIR=slivka.settings.uploads_dir
     )
     from . import api_routes
     from . import global_routes
     _app.register_blueprint(api_routes.bp, url_prefix='/api')
     _app.register_blueprint(api_routes.bp)
     _app.register_blueprint(global_routes.bp)
-    prefix = prefix or slivka.settings.URL_PREFIX
+    prefix = prefix or slivka.settings.url_prefix
     if prefix is not None:
         _app.wsgi_app = PrefixMiddleware(_app.wsgi_app, prefix)
     return _app
