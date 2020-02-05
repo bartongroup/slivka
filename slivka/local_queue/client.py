@@ -8,7 +8,7 @@ atexit.register(zmq_ctx.destroy, 0)
 
 
 class LocalQueueClient:
-    JobStatusResponse = namedtuple("JobStatus", 'id, status, returncode')
+    JobStatusResponse = namedtuple("JobStatus", 'id, state, returncode')
 
     def __init__(self, address, secret=None):
         if address.startswith('unix://'):
@@ -45,8 +45,16 @@ class LocalQueueClient:
         else:
             raise RequestError(response['error'])
 
+    def cancel_job(self, id):
+        self.socket.send_json({'method': 'CANCEL', 'id': id})
+        response = self.socket.recv_json()
+        if response.pop('ok'):
+            return True
+        else:
+            raise RequestError(response['error'])
+
     def release_job(self, id):
-        self.socket.send({'method': 'DELETE', 'id': id})
+        self.socket.send_json({'method': 'DELETE', 'id': id})
         response = self.socket.recv_json()
         if response.pop('ok'):
             return True

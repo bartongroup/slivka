@@ -272,11 +272,11 @@ class SlivkaQueueRunner(Runner):
     @classmethod
     def check_status(cls, identifier, cwd):
         response = cls.client.get_job_status(identifier)
-        return JobStatus(response.status)
+        return JobStatus(response.state)
 
     @classmethod
     def cancel(cls, job_id, cwd):
-        pass
+        cls.client.cancel_job(job_id)
 
 
 class GridEngineRunner(Runner):
@@ -408,4 +408,4 @@ class GridEngineRunner(Runner):
 
     @classmethod
     def batch_cancel(cls, jobs: Iterable[JobMetadata]):
-        subprocess.run([b'qdel', *(job['job-id'] for job in jobs)])
+        subprocess.run([b'qdel', *(job['job_id'] for job in jobs)])

@@ -1,2 +1,2 @@
 from .client import LocalQueueClient, RequestError
-from .core import ProcessStatus, LocalQueue
+from .core import LocalQueue

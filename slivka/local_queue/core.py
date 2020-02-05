@@ -1,5 +1,5 @@
 import asyncio
-import contextlib
+from functools import partial
 from typing import Dict
 
 import itertools
@@ -7,6 +7,7 @@ import logging
 import os
 import time
 
+import attr
 import zmq
 import zmq.asyncio as aiozmq
 
@@ -19,24 +20,30 @@ except AttributeError:
     get_running_loop = asyncio.get_event_loop
 
 
-class ShellCommandWrapper:
-    counter = itertools.count(1)
-
-    def __init__(self, cmd, cwd, env=None):
-        self.id = int(time.time()) << 32 | next(self.counter) & 0xffffffff
-        self.cmd = cmd
-        self.cwd = cwd
-        self.env = env or {}
-        self.env.setdefault('PATH', os.getenv('PATH'))
-
-    def __repr__(self):
-        return "Command(id=%s, cmd=%s, cwd=%s)" % (self.id, self.cmd, self.cwd)
+_id_counter = itertools.count(0)
 
 
-class ProcessStatus:
-    def __init__(self):
-        self.status = JobStatus.QUEUED
-        self.return_code = None
+def _job_id_factory():
+    return int(time.time()) << 32 | (next(_id_counter) & 0xffffffff)
+
+
+def _job_env_converter(env):
+    env.setdefault("PATH", os.getenv("PATH"))
+    return env
+
+
+@attr.s(slots=True)
+class Job:
+    id = attr.ib(factory=_job_id_factory, init=False)
+    cmd = attr.ib(type=str)
+    cwd = attr.ib(type=str)
+    env = attr.ib(default={}, type=dict, converter=_job_env_converter, repr=False)
+    state = attr.ib(default=JobStatus.QUEUED)
+    return_code = attr.ib(default=255, type=int, init=False)
+    worker = attr.ib(default=None, type=asyncio.Task, init=False, repr=False)
+
+
+_null_job = Job('', '', state=JobStatus.UNKNOWN)
 
 
 class LocalQueue:
@@ -52,57 +59,78 @@ class LocalQueue:
         self.secret = secret
         if not secret:
             self.logger.warning('No secret used.')
-        self.server = None
         self.queue = asyncio.Queue()
-        self.workers = []
-        self.stats = LimitedSizeDict(1000000)  # type: Dict[int, ProcessStatus]
+        self.workers = set()
+        self.jobs = LimitedSizeDict(1000000)  # type: Dict[int, Job]
         self._main_coro = None
 
-    async def _worker(self, queue):
-        self.logger.info("worker spawned")
-        while True:
-            self.logger.debug('waiting for the command')
-            command = await queue.get()  # type: ShellCommandWrapper
-            self.logger.info('executing %r', command)
+    async def _worker(self, job):
+        self.logger.info('executing %r', job)
+        job.state = JobStatus.RUNNING
+        try:
+            stdout = open(os.path.join(job.cwd, 'stdout'), 'wb')
+            stderr = open(os.path.join(job.cwd, 'stderr'), 'wb')
+            proc = await asyncio.create_subprocess_shell(
+                job.cmd,
+                stdout=stdout,
+                stderr=stderr,
+                cwd=job.cwd,
+                env=job.env
+            )
+        except OSError:
+            self.logger.exception(
+                "System error occurred when starting the job %r", job)
+            job.state = JobStatus.ERROR
+            raise
+        except asyncio.CancelledError:
+            job.state = JobStatus.INTERRUPTED
+            return
+        try:
+            return_code = await proc.wait()
+            job.return_code = return_code
+            job.state = (
+                JobStatus.COMPLETED if return_code == 0 else
+                JobStatus.FAILED if return_code > 0 else
+                JobStatus.INTERRUPTED
+            )
+            self.logger.info('%r completed with status %d', job, return_code)
+        except asyncio.CancelledError:
+            self.logger.info('terminating a running process')
+            proc.terminate()
+            job.return_code = await proc.wait()
+            job.state = JobStatus.INTERRUPTED
+        finally:
             try:
-                stdout = open(os.path.join(command.cwd, 'stdout'), 'wb')
-                stderr = open(os.path.join(command.cwd, 'stderr'), 'wb')
-                proc = await asyncio.create_subprocess_shell(
-                    command.cmd,
-                    stdout=stdout,
-                    stderr=stderr,
-                    cwd=command.cwd,
-                    env=command.env
-                )
+                proc.kill()
             except OSError:
-                self.logger.exception(
-                    "System error occurred when starting the job %r", command)
-                self.stats[command.id].status = JobStatus.ERROR
-                continue
-            else:
-                self.stats[command.id].status = JobStatus.RUNNING
-            try:
-                return_code = await proc.wait()
-                self.stats[command.id].return_code = return_code
-                self.stats[command.id].status = (
-                    JobStatus.COMPLETED if return_code == 0 else
-                    JobStatus.FAILED if return_code > 0 else
-                    JobStatus.INTERRUPTED
+                pass
+            stdout.close()
+            stderr.close()
+
+    async def _consumer(self, loop):
+        lock = asyncio.BoundedSemaphore(self.num_workers)
+
+        def worker_cleanup(job: Job, fut: asyncio.Future):
+            lock.release()
+            job.worker = None
+            self.workers.remove(fut)
+            if fut.exception() is not None:
+                self.logger.error(
+                    "An exception occurred when running a job %r",
+                    fut.exception()
                 )
-                self.logger.info('%r completed with status %d', command, return_code)
-            except asyncio.CancelledError:
-                self.logger.info('terminating a running process')
-                proc.terminate()
-                self.stats[command.id].return_code = await proc.wait()
-                self.stats[command.id].status = JobStatus.INTERRUPTED
-                break
-            finally:
-                try:
-                    proc.kill()
-                except OSError:
-                    pass
-                stdout.close()
-                stderr.close()
+
+        while True:
+            await lock.acquire()
+            job = await self.queue.get()
+            if job.state != JobStatus.QUEUED:
+                lock.release()
+                continue
+            assert job.id in self.jobs
+            worker = loop.create_task(self._worker(job))  # type: asyncio.Task
+            self.workers.add(worker)
+            job.worker = worker
+            worker.add_done_callback(partial(worker_cleanup, job))
 
     async def serve_forever(self):
         self.logger.info('starting server')
@@ -111,48 +139,70 @@ class LocalQueue:
         self.logger.info('REP socket bound to %s', self.address)
         while True:
             message = await socket.recv_json()
-            if message['method'] == 'GET':
-                response = self.do_GET(message)
-            elif message['method'] == 'POST':
-                response = self.do_POST(message)
-            elif message['method'] == 'DELETE':
-                response = self.do_DELETE(message)
-            else:
+            try:
+                if message['method'] == 'GET':
+                    response = self.do_GET(message)
+                elif message['method'] == 'POST':
+                    response = self.do_POST(message)
+                elif message['method'] == 'CANCEL':
+                    response = self.do_CANCEL(message)
+                elif message['method'] == 'DELETE':
+                    response = self.do_DELETE(message)
+                else:
+                    response = {
+                        'ok': False,
+                        'error': 'invalid-method'
+                    }
+            except Exception:
+                self.logger.exception("Error during message processing")
                 response = {
                     'ok': False,
-                    'error': 'invalid-method'
+                    'error': 'invalid-message'
                 }
             socket.send_json(response)
 
-    def do_GET(self, content):
-        status = self.stats.get(content['id'])
+    def do_GET(self, msg):
+        job = self.jobs.get(msg['id'], _null_job)
         return {
             'ok': True,
-            'id': content['id'],
-            'status': status.status if status is not None else JobStatus.UNKNOWN,
-            'returncode': status.return_code if status is not None else None
+            'id': job.id,
+            'state': job.state,
+            'returncode': job.return_code
         }
 
-    def do_POST(self, content):
-        cmd = ShellCommandWrapper(
-            cmd=content['cmd'],
-            cwd=content['cwd'],
-            env=content.get('env')
+    def do_POST(self, msg):
+        job = Job(
+            cmd=msg['cmd'],
+            cwd=msg['cwd'],
+            env=msg.get('env', {})
         )
-        get_running_loop().call_soon(self.queue.put_nowait, cmd)
-        self.stats[cmd.id] = ProcessStatus()
-        self.logger.info('queued %r for execution', cmd)
+        self.jobs[job.id] = job
+        get_running_loop().call_soon(self.queue.put_nowait, job)
+        self.logger.info('queued %r for execution', job)
         return {
             'ok': True,
-            'id': cmd.id,
-            'status': JobStatus.QUEUED,
+            'id': job.id,
+            'state': job.state,
             'returncode': None
         }
 
-    def do_DELETE(self, content):
-        job_id = content['id']
-        if job_id in self.stats:
-            del self.stats[job_id]
+    def do_CANCEL(self, msg):
+        job = self.jobs.get(msg['id'], _null_job)
+        if job.state == JobStatus.QUEUED:
+            job.state = JobStatus.INTERRUPTED
+        if job.worker is not None:
+            job.worker.cancel()
+        return {
+            'ok': True
+        }
+
+    def do_DELETE(self, msg):
+        try:
+            job = self.jobs[msg['id']]
+            job.state = JobStatus.DELETED
+            del self.jobs[job.id]
+        except KeyError:
+            pass
         return {
             'ok': True
         }
@@ -161,21 +211,19 @@ class LocalQueue:
         self.logger.info("Stopping.")
         for worker in self.workers:
             worker.cancel()
-        self.server.cancel()
+        self._main_coro.cancel()
 
     def close(self, loop=None):
         self.logger.info("Closing.")
         loop = loop or asyncio.get_event_loop()
-        with contextlib.suppress(asyncio.CancelledError):
-            loop.run_until_complete(self._main_coro)
+        loop.run_until_complete(self.wait_closed())
         self.workers.clear()
-        self.server = None
         self._main_coro = None
         self.logger.info('Closed.')
 
     async def wait_closed(self):
         await asyncio.gather(
-            self.server, *self.workers,
+            self._main_coro, *self.workers,
             return_exceptions=True
         )
 
@@ -183,12 +231,9 @@ class LocalQueue:
         if self._main_coro is not None:
             raise RuntimeError("Scheduler is already running.")
         loop = loop or asyncio.get_event_loop()
-        self.workers = [
-            loop.create_task(self._worker(self.queue))
-            for _ in range(self.num_workers)
-        ]
-        self.server = loop.create_task(self.serve_forever())
-        self._main_coro = asyncio.gather(*self.workers, self.server)
+        server = loop.create_task(self.serve_forever())
+        consumer = loop.create_task(self._consumer(loop))
+        self._main_coro = asyncio.gather(server, consumer)
         try:
             loop.run_until_complete(self._main_coro)
         except KeyboardInterrupt:

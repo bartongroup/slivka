@@ -18,6 +18,7 @@ setup(
     version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
+        "attrs>=19",
         "click>=7.0",
         "Flask>=1.0",
         "frozendict>=1.2",
