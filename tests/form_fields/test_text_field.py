@@ -8,18 +8,10 @@ def default_field():
     return TextField('name')
 
 
-# to_python tests
+# valid value validation
 
-def test_str_to_python(default_field):
-    assert default_field.to_python('foo') == 'foo'
-
-
-def test_empty_to_python(default_field):
-    assert default_field.to_python('') is None
-
-
-def test_none_to_python(default_field):
-    assert default_field.to_python(None) is None
+def test_valid_string(default_field):
+    assert default_field.validate('foo') == 'foo'
 
 
 # empty value validation
@@ -33,6 +25,17 @@ def test_validate_none_required():
     field = TextField('name', required=True)
     with pytest.raises(ValidationError):
         field.validate(None)
+
+
+def test_validate_empty_required():
+    field = TextField('name', required=True)
+    with pytest.raises(ValidationError):
+        field.validate('')
+
+
+def test_validate_empty_not_required():
+    field = TextField('name', required=False)
+    assert field.validate('') is None
 
 
 def test_validate_none_not_required():

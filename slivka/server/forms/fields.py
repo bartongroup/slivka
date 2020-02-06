@@ -1,11 +1,11 @@
-import itertools
 import os
-import pathlib
-import shutil
 from collections import OrderedDict
 from fnmatch import fnmatch
-from functools import partial
 
+import itertools
+import pathlib
+import shutil
+from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
@@ -44,7 +44,6 @@ class BaseField:
         self.default = default
         self.required = required
         self.multiple = multiple
-        self.validators = []
         self._widget = None
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
@@ -61,36 +60,29 @@ class BaseField:
         else:
             return data.get(self.name)
 
-    def to_python(self, value):
-        raise NotImplementedError
-
     def run_validation(self, value):
-        if value is None:
-            if self.required:
-                raise ValidationError("Field is required", 'required')
+        """ Run validation and return converted value. """
+        if value in EMPTY_VALUES:
+            return None
         else:
-            for validator in self.validators:
-                validator(value)
+            return value
 
     def validate(self, value):
-        if self.multiple:
+        if not self.multiple:
+            value = self.run_validation(value)
             if value is None:
-                value = []
-            assert isinstance(value, list)
-            value = [self.to_python(val) for val in value]
+                if self.default is not None:
+                    return self.default
+                elif self.required:
+                    raise ValidationError("Field is required", 'required')
+            return value
+        else:
             if not value:
                 if self.default is not None:
                     return [self.default]
-                else:
-                    self.run_validation(None)
-            for val in value:
-                self.run_validation(val)
-        else:
-            value = self.to_python(value)
-            if value is None and self.default is not None:
-                return self.default
-            self.run_validation(value)
-        return value
+                elif self.required:
+                    raise ValidationError("Field is required", 'required')
+            return [self.run_validation(v) for v in value]
 
     def _validate_default(self):
         if self.default is not None:
@@ -135,12 +127,13 @@ class IntegerField(BaseField):
                  max=None,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min = min
         self.max = max
         if max is not None:
-            self.validators.append(partial(_max_value_validator, max))
+            self.__validators.append(partial(_max_value_validator, max))
         if min is not None:
-            self.validators.append(partial(_min_value_validator, min))
+            self.__validators.append(partial(_min_value_validator, min))
         self._validate_default()
 
     @property
@@ -154,13 +147,16 @@ class IntegerField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
         try:
             value = int(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid integer value", 'invalid')
+        for validator in self.__validators:
+            validator(value)
         return value
 
     def __json__(self):
@@ -181,6 +177,7 @@ class DecimalField(BaseField):
                  max_exclusive=False,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min = min
         self.max = max
         self.min_exclusive = min_exclusive
@@ -188,11 +185,11 @@ class DecimalField(BaseField):
         if max is not None:
             validator = (_exclusive_max_value_validator
                          if max_exclusive else _max_value_validator)
-            self.validators.append(partial(validator, max))
+            self.__validators.append(partial(validator, max))
         if min is not None:
             validator = (_exclusive_min_value_validator
                          if min_exclusive else _min_value_validator)
-            self.validators.append(partial(validator, min))
+            self.__validators.append(partial(validator, min))
         self._validate_default()
 
     @property
@@ -206,13 +203,16 @@ class DecimalField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
         try:
             value = float(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid decimal number", 'invalid')
+        for validator in self.__validators:
+            validator(value)
         return value
 
     def __json__(self):
@@ -232,14 +232,15 @@ class TextField(BaseField):
                  max_length=None,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min_length = min_length
         self.max_length = max_length
         if min_length is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _min_length_validator, min_length
             ))
         if max_length is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _max_length_validator, max_length
             ))
         self._validate_default()
@@ -252,10 +253,14 @@ class TextField(BaseField):
             self._widget['required'] = self.required
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
-        return str(value)
+        value = str(value)
+        for validator in self.__validators:
+            validator(value)
+        return value
 
     def __json__(self):
         j = super().__json__()
@@ -280,10 +285,9 @@ class BooleanField(BaseField):
             self._widget['required'] = self.required
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
-            value = False
-        elif isinstance(value, str) and value.lower() in self.FALSE_STR:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if isinstance(value, str) and value.lower() in self.FALSE_STR:
             value = False
         return True if value else None
 
@@ -302,8 +306,9 @@ class ChoiceField(BaseField):
                  choices=(),
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.choices = OrderedDict(choices)
-        self.validators.append(partial(
+        self.__validators.append(partial(
             _choice_validator,
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
@@ -317,9 +322,15 @@ class ChoiceField(BaseField):
             self._widget['multiple'] = self.multiple
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
+        if value not in self.choices.keys() and value not in self.choices.values():
+            raise ValidationError(
+                "Value \"%s\" is not one of the available choices." % value,
+                'invalid'
+            )
         return value
 
     def to_cmd_parameter(self, value):
@@ -341,11 +352,12 @@ class FileField(BaseField):
                  **kwargs):
         assert kwargs.get('default') is None
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.extensions = extensions
         self.media_type = media_type
         self.media_type_parameters = media_type_parameters or {}
         if media_type is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _media_type_validator, media_type
             ))
 
@@ -365,8 +377,9 @@ class FileField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
         elif isinstance(value, FileStorage):
             return FileWrapper.from_file(value)
@@ -378,7 +391,7 @@ class FileField(BaseField):
                 )
             return file
         else:
-            raise TypeError
+            raise TypeError("Invalid type %s" % type(value))
 
     def __json__(self):
         j = super().__json__()

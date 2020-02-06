@@ -56,14 +56,9 @@ def test_multiple_fields_mixed():
     assert set(field.value_from_request_data(data, files)) == {'c0ffee', 'f00ba4', sentinel.file}
 
 
-def test_empty_value():
-    field = FileField('test')
-    assert field.to_python('') is None
-
-
 def test_uploaded_file(mock_uploaded_file):
     field = FileField('test')
-    file = field.to_python(mock_uploaded_file['uuid'])
+    file = field.validate(mock_uploaded_file['uuid'])
     with contextlib.closing(file.stream) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
@@ -72,7 +67,7 @@ def test_uploaded_file(mock_uploaded_file):
 def test_missing_uploaded_file():
     field = FileField('test')
     with pytest.raises(ValidationError):
-        field.to_python('missing_uuid')
+        field.validate('missing_uuid')
 
 
 @pytest.mark.usefixtures('mock_mongo')
@@ -84,12 +79,12 @@ def test_posted_file():
         filename='lipsum.txt',
         name='test'
     )
-    wrapper = field.to_python(file)
+    wrapper = field.validate(file)
     with contextlib.closing(wrapper.stream) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
 
 def test_to_cmd_parameter(mock_uploaded_file):
     field = FileField('name')
-    wrapper = field.to_python(mock_uploaded_file['uuid'])
+    wrapper = field.validate(mock_uploaded_file['uuid'])
     assert field.to_cmd_parameter(wrapper) == mock_uploaded_file['path']

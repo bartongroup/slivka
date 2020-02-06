@@ -15,33 +15,6 @@ def default_field():
     return ChoiceField('name', choices=CHOICES)
 
 
-# to_python tests
-
-def test_number_to_python(default_field):
-    assert default_field.to_python(18) == 18
-    assert default_field.to_python(-54) == -54
-    assert default_field.to_python(3.1415) == 3.1415
-
-
-def test_str_to_python(default_field):
-    assert default_field.to_python('foobar') == 'foobar'
-    assert default_field.to_python('hello world') == 'hello world'
-
-
-def test_bool_to_python(default_field):
-    assert default_field.to_python(False) == False
-    assert default_field.to_python(True) == True
-
-
-def test_none_to_python(default_field):
-    assert default_field.to_python(None) is None
-
-
-def test_empty_to_python(default_field):
-    for val in ('', (), {}, set(), []):
-        assert default_field.to_python(val) is None
-
-
 # default value
 def test_invalid_default():
     with pytest.raises(Exception):
