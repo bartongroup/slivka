@@ -199,6 +199,16 @@
         "media-type": {
           "type": "string"
         },
+        "media-type-parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {"type": "number"},
+              {"type": "string"},
+              {"type": "boolean"}
+            ]
+          }
+        },
         "extensions": {
           "type": "array",
           "items": {

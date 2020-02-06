@@ -178,7 +178,8 @@ class FormLoader(metaclass=Singleton):
             return FileField(
                 **common_kwargs,
                 extensions=value_meta.get('extensions', ()),
-                media_type=value_meta.get('media-type')
+                media_type=value_meta.get('media-type'),
+                media_type_parameters=value_meta.get('media-type-parameters')
             )
         else:
             raise RuntimeError('Invalid field type "%r"' % field_type)

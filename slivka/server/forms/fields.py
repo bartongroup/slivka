@@ -336,12 +336,14 @@ class FileField(BaseField):
     def __init__(self,
                  name,
                  media_type=None,
+                 media_type_parameters=(),
                  extensions=(),
                  **kwargs):
         assert kwargs.get('default') is None
         super().__init__(name, **kwargs)
         self.extensions = extensions
         self.media_type = media_type
+        self.media_type_parameters = media_type_parameters or {}
         if media_type is not None:
             self.validators.append(partial(
                 _media_type_validator, media_type
@@ -381,7 +383,10 @@ class FileField(BaseField):
     def __json__(self):
         j = super().__json__()
         j['type'] = 'file'
-        if self.media_type is not None: j['mimetype'] = self.media_type
+        if self.media_type is not None:
+            j['mimetype'] = self.media_type
+            j['mediaType'] = self.media_type
+            j['mediaTypeParameters'] = self.media_type_parameters
         if self.extensions: j['extensions'] = self.extensions
         return j
 
