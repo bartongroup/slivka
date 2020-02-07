@@ -1,17 +1,16 @@
-import os
+from tempfile import mkstemp
+
+import typing
 from collections import OrderedDict
-from fnmatch import fnmatch
 
 import itertools
-import pathlib
-import shutil
 from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
-from slivka.db.documents import UploadedFile, JobMetadata
 from slivka.server.file_validators import validate_file_content
+from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
 __all__ = [
@@ -23,8 +22,7 @@ __all__ = [
     'FlagField',
     'ChoiceField',
     'FileField',
-    'ValidationError',
-    'FileWrapper'
+    'ValidationError'
 ]
 
 EMPTY_VALUES = ({}, set(), [], (), None, '')
@@ -377,21 +375,23 @@ class FileField(BaseField):
             self._widget = widget
         return self._widget
 
-    def run_validation(self, value):
+    def run_validation(self, value) -> typing.Optional['FileProxy']:
         value = super().run_validation(value)
         if value is None:
             return None
         elif isinstance(value, FileStorage):
-            return FileWrapper.from_file(value)
+            file = FileProxy(file=value)
         elif isinstance(value, str):
-            file = FileWrapper.from_uuid(value)
+            file = _get_file_from_uuid(value, slivka.db.database)
             if file is None:
                 raise ValidationError(
                     "A file with given uuid not found", 'not_found'
                 )
-            return file
         else:
             raise TypeError("Invalid type %s" % type(value))
+        for validator in self.__validators:
+            validator(file)
+        return file
 
     def __json__(self):
         j = super().__json__()
@@ -403,111 +403,13 @@ class FileField(BaseField):
         if self.extensions: j['extensions'] = self.extensions
         return j
 
-    def to_cmd_parameter(self, value: 'FileWrapper'):
-        if value is not None:
-            assert value.path
-            return value.path
-        else:
-            return None
-
-
-class FileWrapper:
-    def __init__(self):
-        self.uuid = None
-        self.title = ''
-        self.path = None
-        self.media_type = ''
-        self._verified_types = set()
-        self._fp = None
-
-    @classmethod
-    def from_file(cls, file_storage: FileStorage):
-        file = cls()
-        file.title = file_storage.filename
-        file.media_type = file_storage.mimetype
-        file._fp = file_storage
-        return file
-
-    @classmethod
-    def from_uuid(cls, uuid):
-        tokens = uuid.split('/', 1)
-        if len(tokens) == 1:
-            return cls._load_from_uploaded_file(uuid)
-        elif len(tokens) == 2:
-            uuid, filename = tokens
-            return cls._load_from_output_file(uuid, filename)
-
-    @classmethod
-    def _load_from_uploaded_file(cls, uuid):
-        uploaded = UploadedFile.find_one(slivka.db.database, uuid=uuid)
-        if uploaded is None:
-            return None
-        file = cls()
-        file.uuid = uploaded.uuid
-        file.title = uploaded.title
-        file.path = uploaded.path
-        if uploaded.media_type:
-            file.media_type = uploaded.media_type
-            file._verified_types.add(uploaded.media_type)
-        return file
-
-    @classmethod
-    def _load_from_output_file(cls, uuid, filename):
-        job = JobMetadata.find_one(slivka.db.database, uuid=uuid)
-        conf = slivka.settings.services[job.service]
-        output = next(
-            out for out in conf.command['results']
-            if fnmatch(filename, out['path'])
-        )
-        file = cls()
-        file.uuid = '%s/%s' % (uuid, filename)
-        file.title = filename
-        file.path = os.path.join(job.work_dir, filename)
-        file.media_type = output.get('mimetype', '')
-        if file.media_type:
-            file._verified_types.add(file.media_type)
-        return file
-
-    @property
-    def stream(self):
-        if self._fp is None:
-            self._fp = open(self.path, 'rb')
-        return self._fp
-
-    def save_as(self, dst, path=None):
-        self.stream.seek(0)
-        if isinstance(dst, (str, pathlib.PurePath)):
-            path = dst
-            with open(dst, 'wb') as dst:
-                shutil.copyfileobj(self.stream, dst)
-        else:
-            shutil.copyfileobj(self.stream, dst)
-        if self.path is None:
-            self.path = path
-
-    def verify_type(self, media_type=None):
-        if media_type is None:
-            media_type = self.media_type
-        if media_type in self._verified_types:
-            return True
-        self.stream.seek(0)
-        if validate_file_content(self.stream, media_type):
-            self._verified_types.add(media_type)
-            return True
-        else:
-            return False
-
-    def get_detected_media_type(self, *types):
-        types = itertools.chain(
-            self._verified_types, types, [self.media_type]
-        )
-        return next(filter(self.verify_type, types), None)
-
-    def __str__(self):
-        return self.title
-
-    def __repr__(self):
-        return 'File(%s)' % self.title
+    def to_cmd_parameter(self, value: 'FileProxy'):
+        if not value: return None
+        if value.path is None:
+            (fd, path) = mkstemp(dir=slivka.settings.uploads_dir)
+            with open(fd, 'wb') as fp:
+                value.save_as(path=path, fp=fp)
+        return value.path
 
 
 def _max_value_validator(limit, value):
@@ -560,8 +462,9 @@ def _choice_validator(choices, value):
         )
 
 
-def _media_type_validator(media_type, file):
-    if not file.verify_type(media_type):
+def _media_type_validator(media_type, file: FileProxy):
+    file.reopen()
+    if not validate_file_content(file, media_type):
         raise ValidationError(
             "This media type is not accepted", 'media_type'
         )

@@ -59,7 +59,7 @@ def test_multiple_fields_mixed():
 def test_uploaded_file(mock_uploaded_file):
     field = FileField('test')
     file = field.validate(mock_uploaded_file['uuid'])
-    with contextlib.closing(file.stream) as stream:
+    with contextlib.closing(file) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
 
@@ -74,13 +74,13 @@ def test_missing_uploaded_file():
 def test_posted_file():
     field = FileField('test')
     path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
-    file = FileStorage(
+    fs = FileStorage(
         stream=open(path, 'rb'),
         filename='lipsum.txt',
         name='test'
     )
-    wrapper = field.validate(file)
-    with contextlib.closing(wrapper.stream) as stream:
+    file = field.validate(fs)
+    with contextlib.closing(file) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
 
