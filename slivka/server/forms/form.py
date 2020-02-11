@@ -7,7 +7,7 @@ from werkzeug.datastructures import MultiDict
 
 import slivka
 from slivka.db.documents import UploadedFile, JobRequest
-from slivka.utils import Singleton
+from slivka.utils import Singleton, lazy_property
 from .fields import *
 
 
@@ -28,6 +28,7 @@ class DeclarativeFormMetaclass(type):
 
 class BaseForm(metaclass=DeclarativeFormMetaclass):
     service = ''
+    save_location = lazy_property(lambda self: slivka.settings.uploads_dir)
 
     def __init__(self, data=None, files=None):
         self.is_bound = not (data is None and files is None)
@@ -93,7 +94,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
                 # make sure that the type was detected by full_clean
                 assert value.get_detected_media_type()
                 if value.uuid is None:
-                    (fd, path) = mkstemp(dir=slivka.settings.uploads_dir)
+                    (fd, path) = mkstemp(dir=self.save_location)
                     with open(fd, 'wb') as fp:
                         value.save_as(fp, path=path)
                     uploaded_files.append(UploadedFile(
