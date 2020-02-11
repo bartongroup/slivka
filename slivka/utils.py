@@ -12,6 +12,11 @@ except ImportError:
 
 
 class Singleton(type):
+    """
+    A metaclass that prevents instantiation of the object more than once.
+    The object is created and cached the first time the constructor is called.
+    Subsequent constructor calls return the same object making it a singleton.
+    """
     __instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -25,6 +30,11 @@ class Singleton(type):
 
 
 class LimitedSizeDict(OrderedDict):
+    """
+    A dictionary containing a limited number of entries.
+    If more entries then specified by ``max_size`` are added,
+    the oldest ones are removed.
+    """
     def __init__(self, max_size, mapping=None):
         super().__init__(mapping or {})
         self.max_size = max_size
@@ -42,9 +52,19 @@ class LimitedSizeDict(OrderedDict):
 
 
 class BackoffCounter:
+    """
+    A counter that exponentially increases the waiting duration every failure.
+    The counter's next value indicates the skipped attempts before the
+    operation should be re-tried. If the operation fails, ``failure`` method
+    should be called to called to increment the counter, otherwise the
+    counter will reset the next iteration as if the operation succeeded.
+    """
     _zero_gen = itertools.repeat(0)
 
     def __init__(self, max_tries=64):
+        """
+        :param max_tries: Number of attempts before giving up.
+        """
         self._counter = self._zero_gen
         self._tries = 0
         self.max_tries = max_tries
@@ -63,17 +83,27 @@ class BackoffCounter:
 
     @property
     def give_up(self):
+        """ Indicates whether the max attempts has been reached. """
         return self._tries >= self.max_tries
 
     def next(self):
+        """
+        Returns the remaining delay
+
+        The operation should be retried when this function returns 0.
+        Calling it after successful attempt (not followed by a
+        ``failure`` call) resets the counter.
+        """
         return self.__next__()
 
     def failure(self):
+        """ Should be called when the operation fails. """
         self._tries = min(self.max_tries, self._tries + 1)
         self.current = 1 << self._tries
         self._counter = reversed(range(self.current))
 
     def reset(self):
+        """ Resets the counter. """
         self._counter = self._zero_gen
         self._tries = 0
         self.current = 0
@@ -81,6 +111,7 @@ class BackoffCounter:
 
 # noinspection PyPep8Naming
 class lazy_property:
+    """ A data descriptor delaying field initialization and caching the value. """
     def __init__(self, initializer):
         self._init = initializer
 
@@ -151,6 +182,7 @@ class JobStatus(enum.IntEnum):
 
 
 def daemonize():
+    """ Daemonizes the current process. """
     if os.fork() != 0:
         os._exit(0)
     os.setsid()
