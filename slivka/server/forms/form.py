@@ -1,6 +1,7 @@
 import collections
 from collections import OrderedDict
 from tempfile import mkstemp
+from typing import Type
 
 from frozendict import frozendict
 from werkzeug.datastructures import MultiDict
@@ -12,6 +13,11 @@ from .fields import *
 
 
 class DeclarativeFormMetaclass(type):
+    """
+    A metaclass allowing the form fields to be defined as class attributes.
+    All attributes which are instances of ``BaseField`` are moved to the
+    ``fields`` property - a mapping from field names to field objects.
+    """
     @classmethod
     def __prepare__(mcs, name, bases):
         return OrderedDict()
@@ -27,10 +33,30 @@ class DeclarativeFormMetaclass(type):
 
 
 class BaseForm(metaclass=DeclarativeFormMetaclass):
+    """
+    The base class for all forms. It uses ``DeclarativeFormMetaclass``
+    as its metaclass so all deriving forms will have fields automatically
+    populated from class' attributes.
+    The class also adds essential form functionality such as data storage,
+    validation and saving.
+    All forms deriving from this class are the containers of fields
+    and user input data.
+    """
     service = ''
     save_location = lazy_property(lambda self: slivka.settings.uploads_dir)
 
     def __init__(self, data=None, files=None):
+        """
+        Constructs the form with the data coming from the web request.
+        If the data or files are provided, the "bound" form will be created
+        which can be used to validate and save the request.
+        Otherwise, the unbound form can be used to retrieve field information.
+
+        :param data: request parameters
+        :type data: MultiDict
+        :param files: multipart request files
+        :type data: MultiDict
+        """
         self.is_bound = not (data is None and files is None)
         self.data = MultiDict() if data is None else data
         self.files = MultiDict() if files is None else files
@@ -39,18 +65,22 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
 
     @property
     def errors(self) -> collections.Mapping:
+        """ Performs the validation if not done yet and returns errors. """
         if self._errors is None:
             self.full_clean()
         return self._errors
 
     @property
     def cleaned_data(self) -> collections.Mapping:
+        """ Returns the cleaned form data after validation. """
         return self._cleaned_data
 
     def is_valid(self):
+        """ Check whether the data is valid. """
         return self.is_bound and not self.errors
 
     def full_clean(self):
+        """ Performs full validation of the input data. """
         errors = {}
         if not self.is_bound:
             return
@@ -82,7 +112,14 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     def __getitem__(self, item):
         return self.fields[item]
 
-    def save(self, database):
+    def save(self, database) -> JobRequest:
+        """
+        If the form is valid, saves a new request to the database containing
+        the cleaned input data.
+
+        :param database: mongo database instance
+        :return: created request
+        """
         if not self.is_valid():
             raise RuntimeError(self.errors, 'invalid_form')
         inputs = {}
@@ -111,19 +148,34 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
 
 
 class FormLoader(metaclass=Singleton):
+    """
+    A helper factory dynamically creating the forms from the configuration.
+    Only a single instance of the class is created (subsequent constructor
+    calls return the same object) providing a single point where all
+    forms can be accessed from.
+    """
     def __init__(self):
         self._forms = {
             service.name: self._build_form_class(service.name, service.form)
             for service in slivka.settings.services.values()
         }
 
-    def get_form_class(self, service):
+    def get_form_class(self, service) -> Type[BaseForm]:
+        """
+        Returns a form class by service name.
+
+        :param service: service name
+        :return: form class
+        :raise KeyError: no form exists for the given service
+        """
         return self[service]
 
     def __getitem__(self, item):
+        """ Retrieve form class by service name. """
         return self._forms[item]
 
-    def _build_form_class(self, service, json_data):
+    def _build_form_class(self, service, json_data) -> Type[BaseForm]:
+        """ Dynamically builds a form class from configuration. """
         attrs = OrderedDict((name, self._build_field(name, data))
                             for name, data in json_data.items())
         attrs['service'] = service
@@ -135,7 +187,8 @@ class FormLoader(metaclass=Singleton):
         return cls
 
     @staticmethod
-    def _build_field(name, field_meta):
+    def _build_field(name, field_meta) -> BaseField:
+        """ Constructs a field from the configuration """
         value_meta = field_meta['value']
         field_type = value_meta['type']
         common_kwargs = {
