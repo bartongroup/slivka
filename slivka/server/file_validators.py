@@ -78,7 +78,7 @@ if Bio is not None:
 
 
 class ValidatorDict(dict):
-    def init_from_settings(self):
+    def read_settings(self):
         for media_type in slivka.settings.accepted_media_types:
             self.add(media_type)
 
@@ -108,5 +108,5 @@ def validate_file_content(file, media_type):
     global _validators
     if _validators is None:
         _validators = ValidatorDict()
-        _validators.init_from_settings()
+        _validators.read_settings()
     return _validators[media_type](file)
