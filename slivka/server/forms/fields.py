@@ -10,6 +10,7 @@ from werkzeug.datastructures import FileStorage, MultiDict
 import slivka
 import slivka.db
 from slivka.server.file_validators import validate_file_content
+from slivka.utils import lazy_property
 from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
@@ -359,6 +360,8 @@ class FileField(BaseField):
                 _media_type_validator, media_type
             ))
 
+    save_location = lazy_property(lambda self: slivka.settings.uploads_dir)
+
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
         if self.multiple:
             return files.getlist(self.name) + data.getlist(self.name)
@@ -387,6 +390,8 @@ class FileField(BaseField):
                 raise ValidationError(
                     "A file with given uuid not found", 'not_found'
                 )
+        elif isinstance(value, FileProxy):
+            file = value
         else:
             raise TypeError("Invalid type %s" % type(value))
         for validator in self.__validators:
@@ -406,7 +411,7 @@ class FileField(BaseField):
     def to_cmd_parameter(self, value: 'FileProxy'):
         if not value: return None
         if value.path is None:
-            (fd, path) = mkstemp(dir=slivka.settings.uploads_dir)
+            (fd, path) = mkstemp(dir=self.save_location)
             with open(fd, 'wb') as fp:
                 value.save_as(path=path, fp=fp)
         return value.path

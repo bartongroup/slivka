@@ -61,7 +61,7 @@ def test_file_saving(temp_dir, database: mongomock.Database):
     form = MyForm(MultiDict([
         ('file', FileStorage(stream=io.BytesIO(b'hello\n'), content_type='text/plain'))
     ]))
-    form.save_location = temp_dir
+    form.fields['file'].save_location = temp_dir
     with mock.patch('slivka.server.forms.fields.validate_file_content', return_value=True):
         request = form.save(database)
     with open(request['inputs']['file'], 'rb') as f:
