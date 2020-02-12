@@ -111,7 +111,7 @@ def _services_factory(self: 'Settings'):
 
 @attr.s
 class Settings:
-    base_dir = attr.ib(type=str)
+    base_dir = attr.ib(type=str, converter=os.path.abspath)
     uploads_dir = attr.ib(type=str, validator=_path_normalizer)
     jobs_dir = attr.ib(type=str, validator=_path_normalizer)
     logs_dir = attr.ib(type=str, validator=_path_normalizer)
