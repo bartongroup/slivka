@@ -1,13 +1,12 @@
 import collections
 from collections import OrderedDict
-from tempfile import mkstemp
 from typing import Type
 
 from frozendict import frozendict
 from werkzeug.datastructures import MultiDict
 
 import slivka
-from slivka.db.documents import UploadedFile, JobRequest
+from slivka.db.documents import JobRequest
 from slivka.utils import Singleton, cached_property
 from .fields import *
 
@@ -128,36 +127,33 @@ class FormLoader(metaclass=Singleton):
     forms can be accessed from.
     """
     def __init__(self):
-        self._forms = {
-            service.name: self._build_form_class(service.name, service.form)
-            for service in slivka.settings.services.values()
-        }
+        self._forms = {}
 
-    def get_form_class(self, service) -> Type[BaseForm]:
-        """
-        Returns a form class by service name.
+    def read_settings(self):
+        """Load forms from global settings."""
+        for service in slivka.settings.services.values():
+            self.read_dict(service.name, service.form)
 
-        :param service: service name
-        :return: form class
-        :raise KeyError: no form exists for the given service
+    def read_dict(self, name: str,  dictionary: dict) -> Type:
+        """Load form definition from dictionary.
+
+        :param name: service name
+        :param dictionary: form configuration dictionary
+        :return: loaded form class
         """
-        return self[service]
+        attrs = OrderedDict(
+            (name, self._build_field(key, val))
+            for key, val in dictionary.items()
+        )
+        attrs['service'] = name
+        self._forms[name] = cls = DeclarativeFormMetaclass(
+            name.capitalize() + 'Form', (BaseForm,), attrs
+        )
+        return cls
 
     def __getitem__(self, item):
         """ Retrieve form class by service name. """
         return self._forms[item]
-
-    def _build_form_class(self, service, json_data) -> Type[BaseForm]:
-        """ Dynamically builds a form class from configuration. """
-        attrs = OrderedDict((name, self._build_field(name, data))
-                            for name, data in json_data.items())
-        attrs['service'] = service
-        cls = DeclarativeFormMetaclass(
-            service.capitalize() + 'Form',
-            (BaseForm,),
-            attrs
-        )
-        return cls
 
     @staticmethod
     def _build_field(name, field_meta) -> BaseField:

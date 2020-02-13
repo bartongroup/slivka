@@ -12,4 +12,5 @@ settings_path = os.path.join(
 os.environ.setdefault('SLIVKA_SETTINGS', settings_path)
 slivka.conf.logging.configure_logging()
 
+slivka.server.init()
 application = app = slivka.server.create_app()

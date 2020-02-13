@@ -1,6 +1,8 @@
 import flask
 from werkzeug.wsgi import peek_path_info, pop_path_info
 
+from slivka.server.forms import FormLoader
+
 try:
     import simplejson as json
 except ImportError:
@@ -21,6 +23,11 @@ class PrefixMiddleware:
         if peek_path_info(environ) == self.prefix:
             pop_path_info(environ)
         return self.app(environ, start_response)
+
+
+def init():
+    """Initializes server configuration from settings."""
+    FormLoader().read_settings()
 
 
 def create_app(prefix=None):
