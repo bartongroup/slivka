@@ -9,7 +9,7 @@ import pkg_resources
 import yaml
 from jsonschema import Draft4Validator
 
-from slivka.utils import SafeTranscludingOrderedYamlLoader, lazy_property
+from slivka.utils import SafeTranscludingOrderedYamlLoader, cached_property
 
 
 class ImproperlyConfigured(Exception):
@@ -43,7 +43,7 @@ class SettingsProxy:
     def __init__(self):
         self.loader = SettingsVer1Loader
 
-    @lazy_property
+    @cached_property
     def settings(self) -> "Settings":
         settings_file = self.settings_file or os.environ.get("SLIVKA_SETTINGS")
         if not settings_file:

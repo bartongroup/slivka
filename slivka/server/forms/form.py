@@ -8,7 +8,7 @@ from werkzeug.datastructures import MultiDict
 
 import slivka
 from slivka.db.documents import UploadedFile, JobRequest
-from slivka.utils import Singleton, lazy_property
+from slivka.utils import Singleton, cached_property
 from .fields import *
 
 
@@ -43,7 +43,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     and user input data.
     """
     service = ''
-    save_location = lazy_property(lambda self: slivka.settings.uploads_dir)
+    save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 
     def __init__(self, data=None, files=None):
         """

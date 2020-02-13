@@ -110,7 +110,7 @@ class BackoffCounter:
 
 
 # noinspection PyPep8Naming
-class lazy_property:
+class cached_property:
     """ A data descriptor delaying field initialization and caching the value. """
     def __init__(self, initializer):
         self._init = initializer

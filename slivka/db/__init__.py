@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 import pymongo.database
 
 import slivka.conf
-from slivka.utils import lazy_property
+from slivka.utils import cached_property
 
 
 def _build_mongodb_uri(*, host=None, socket=None, username=None,
@@ -29,12 +29,12 @@ class _DBModule(types.ModuleType):
         self.__path__ = __path__
         self.__file__ = __file__
 
-    @lazy_property
+    @cached_property
     def mongo(self):
         host, _ = slivka.conf.settings.mongodb
         return pymongo.MongoClient(host)
 
-    @lazy_property
+    @cached_property
     def database(self):
         _, dbname = slivka.conf.settings.mongodb
         return self.mongo[dbname]
