@@ -5,38 +5,39 @@ from slivka.server.forms.fields import BooleanField, ValidationError
 
 @pytest.fixture('module')
 def default_field():
-    return BooleanField('name')
+    return BooleanField('name', required=False)
 
 
-# to_python tests
+# run_validation tests
 
-def test_bool_to_python(default_field):
-    assert default_field.to_python(True) is True
-    assert default_field.to_python(False) is None
-
-
-def test_int_to_python(default_field):
-    assert default_field.to_python(1) is True
-    assert default_field.to_python(0) is None
+def test_bool_conversion(default_field):
+    assert default_field.run_validation(True) is True
+    assert default_field.run_validation(False) is None
 
 
-def test_text_to_python(default_field):
+def test_int_conversion(default_field):
+    assert default_field.run_validation(1) is True
+    assert default_field.run_validation(0) is None
+
+
+def test_text_conversion(default_field):
     for text in ('false', 'FALSE', 'False', 'off', '0', 'no', 'NULL', 'NONE', ''):
-        assert default_field.to_python(text) is None
+        assert default_field.run_validation(text) is None
     for text in ('true', 'TRUE', 'T', 'on', 'yes', 'Y'):
-        assert default_field.to_python(text) is True
-    assert default_field.to_python('foobar') is True
+        assert default_field.run_validation(text) is True
+    assert default_field.run_validation('foobar') is True
 
 
-def test_none_to_python(default_field):
-    assert default_field.to_python(None) is None
+def test_none_conversion(default_field):
+    assert default_field.run_validation(None) is None
 
 
 # empty value validation
 
-def test_validate_none(default_field):
+def test_validate_none():
+    field = BooleanField('name')
     with pytest.raises(ValidationError):
-        default_field.validate(None)
+        field.validate(None)
 
 
 def test_validate_none_required():

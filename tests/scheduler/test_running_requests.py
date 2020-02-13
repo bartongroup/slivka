@@ -125,7 +125,6 @@ def test_add_running_jobs(insert_jobs, runner_mock):
     request = JobRequest('dummy', {'param': 0})
     insert_jobs([request])
     scheduler = Scheduler()
-    print(scheduler.running_jobs)
     scheduler.run_requests({runner_mock: [request]})
     running = scheduler.running_jobs[runner_mock.__class__]
     assert len(running) == 1

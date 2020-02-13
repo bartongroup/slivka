@@ -8,47 +8,49 @@ def default_field():
     return IntegerField('name')
 
 
-# to_python tests
+# value conversion tests
 
-def test_int_to_python(default_field):
-    assert default_field.to_python(10) == 10
-    assert default_field.to_python(-8) == -8
+def test_int_conversion(default_field):
+    assert default_field.validate(10) == 10
+    assert default_field.validate(-8) == -8
 
 
-def test_float_to_python(default_field):
+def test_float_conversion(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python(2.43)
+        default_field.validate(2.43)
 
 
-def test_number_str_to_python(default_field):
-    assert default_field.to_python('15') == 15
-    assert default_field.to_python('-3') == -3
+def test_number_str_conversion(default_field):
+    assert default_field.validate('15') == 15
+    assert default_field.validate('-3') == -3
 
 
-def test_decimal_str_to_python(default_field):
+def test_decimal_str_conversion(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python('0.65')
+        default_field.validate('0.65')
 
 
-def test_other_str_to_python(default_field):
+def test_other_str_conversion(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python('xyz')
+        default_field.validate('xyz')
 
 
-def test_none_to_python(default_field):
-    assert default_field.to_python(None) is None
-    assert default_field.to_python('') is None
+def test_none_to_conversion():
+    field = IntegerField('name', required=False)
+    assert field.validate(None) is None
+    assert field.validate('') is None
 
 
-def test_bool_to_python(default_field):
+def test_bool_conversion(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python(True)
+        default_field.validate(True)
     with pytest.raises(ValidationError):
-        default_field.to_python(False)
+        default_field.validate(False)
 
 
-def test_zero_to_python(default_field):
-    assert default_field.to_python(0) is 0
+def test_zero_conversion(default_field):
+    # checks if 0 is not accidentally converted to None or False
+    assert default_field.validate(0) is 0
 
 
 # min/max validation

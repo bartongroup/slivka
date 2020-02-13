@@ -5,16 +5,10 @@ from slivka.server.forms.fields import BaseField, ValidationError
 
 
 class BaseFieldStub(BaseField):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        def validator(val):
-            if val == 'FAIL':
-                raise ValidationError("MESSAGE", 'code')
-
-        self.validators.append(validator)
-
-    def to_python(self, value):
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value == 'FAIL':
+            raise ValidationError("MESSAGE", 'code')
         return value
 
 
@@ -55,7 +49,6 @@ def test_get_missing_value_from_data(example_field):
 def test_validate_valid_value():
     field = BaseFieldStub('name')
     assert field.validate('value') == 'value'
-    assert field.validate('') == ''
 
 
 def test_validate_invalid_value():
@@ -73,6 +66,7 @@ def test_validate_missing_required_value():
 def test_validate_missing_not_required_value():
     field = BaseFieldStub('name', required=False)
     assert field.validate(None) is None
+    assert field.validate('') is None
 
 
 def test_validate_with_default_value():

@@ -1,17 +1,17 @@
-import itertools
-import os
-import pathlib
-import shutil
-from collections import OrderedDict
-from fnmatch import fnmatch
-from functools import partial
+from tempfile import mkstemp
 
+import typing
+from collections import OrderedDict
+
+import itertools
+from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
-from slivka.db.documents import UploadedFile, JobMetadata
 from slivka.server.file_validators import validate_file_content
+from slivka.utils import cached_property
+from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
 __all__ = [
@@ -23,8 +23,7 @@ __all__ = [
     'FlagField',
     'ChoiceField',
     'FileField',
-    'ValidationError',
-    'FileWrapper'
+    'ValidationError'
 ]
 
 EMPTY_VALUES = ({}, set(), [], (), None, '')
@@ -44,7 +43,6 @@ class BaseField:
         self.default = default
         self.required = required
         self.multiple = multiple
-        self.validators = []
         self._widget = None
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
@@ -61,36 +59,29 @@ class BaseField:
         else:
             return data.get(self.name)
 
-    def to_python(self, value):
-        raise NotImplementedError
-
     def run_validation(self, value):
-        if value is None:
-            if self.required:
-                raise ValidationError("Field is required", 'required')
+        """ Run validation and return converted value. """
+        if value in EMPTY_VALUES:
+            return None
         else:
-            for validator in self.validators:
-                validator(value)
+            return value
 
     def validate(self, value):
-        if self.multiple:
+        if not self.multiple:
+            value = self.run_validation(value)
             if value is None:
-                value = []
-            assert isinstance(value, list)
-            value = [self.to_python(val) for val in value]
+                if self.default is not None:
+                    return self.default
+                elif self.required:
+                    raise ValidationError("Field is required", 'required')
+            return value
+        else:
             if not value:
                 if self.default is not None:
                     return [self.default]
-                else:
-                    self.run_validation(None)
-            for val in value:
-                self.run_validation(val)
-        else:
-            value = self.to_python(value)
-            if value is None and self.default is not None:
-                return self.default
-            self.run_validation(value)
-        return value
+                elif self.required:
+                    raise ValidationError("Field is required", 'required')
+            return [self.run_validation(v) for v in value]
 
     def _validate_default(self):
         if self.default is not None:
@@ -135,12 +126,13 @@ class IntegerField(BaseField):
                  max=None,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min = min
         self.max = max
         if max is not None:
-            self.validators.append(partial(_max_value_validator, max))
+            self.__validators.append(partial(_max_value_validator, max))
         if min is not None:
-            self.validators.append(partial(_min_value_validator, min))
+            self.__validators.append(partial(_min_value_validator, min))
         self._validate_default()
 
     @property
@@ -154,13 +146,16 @@ class IntegerField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
         try:
             value = int(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid integer value", 'invalid')
+        for validator in self.__validators:
+            validator(value)
         return value
 
     def __json__(self):
@@ -181,6 +176,7 @@ class DecimalField(BaseField):
                  max_exclusive=False,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min = min
         self.max = max
         self.min_exclusive = min_exclusive
@@ -188,11 +184,11 @@ class DecimalField(BaseField):
         if max is not None:
             validator = (_exclusive_max_value_validator
                          if max_exclusive else _max_value_validator)
-            self.validators.append(partial(validator, max))
+            self.__validators.append(partial(validator, max))
         if min is not None:
             validator = (_exclusive_min_value_validator
                          if min_exclusive else _min_value_validator)
-            self.validators.append(partial(validator, min))
+            self.__validators.append(partial(validator, min))
         self._validate_default()
 
     @property
@@ -206,13 +202,16 @@ class DecimalField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
         try:
             value = float(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid decimal number", 'invalid')
+        for validator in self.__validators:
+            validator(value)
         return value
 
     def __json__(self):
@@ -232,14 +231,15 @@ class TextField(BaseField):
                  max_length=None,
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.min_length = min_length
         self.max_length = max_length
         if min_length is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _min_length_validator, min_length
             ))
         if max_length is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _max_length_validator, max_length
             ))
         self._validate_default()
@@ -252,10 +252,14 @@ class TextField(BaseField):
             self._widget['required'] = self.required
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
-        return str(value)
+        value = str(value)
+        for validator in self.__validators:
+            validator(value)
+        return value
 
     def __json__(self):
         j = super().__json__()
@@ -280,10 +284,9 @@ class BooleanField(BaseField):
             self._widget['required'] = self.required
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
-            value = False
-        elif isinstance(value, str) and value.lower() in self.FALSE_STR:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if isinstance(value, str) and value.lower() in self.FALSE_STR:
             value = False
         return True if value else None
 
@@ -302,8 +305,9 @@ class ChoiceField(BaseField):
                  choices=(),
                  **kwargs):
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.choices = OrderedDict(choices)
-        self.validators.append(partial(
+        self.__validators.append(partial(
             _choice_validator,
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
@@ -317,9 +321,15 @@ class ChoiceField(BaseField):
             self._widget['multiple'] = self.multiple
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value):
+        value = super().run_validation(value)
+        if value is None:
             return None
+        if value not in self.choices.keys() and value not in self.choices.values():
+            raise ValidationError(
+                "Value \"%s\" is not one of the available choices." % value,
+                'invalid'
+            )
         return value
 
     def to_cmd_parameter(self, value):
@@ -341,13 +351,16 @@ class FileField(BaseField):
                  **kwargs):
         assert kwargs.get('default') is None
         super().__init__(name, **kwargs)
+        self.__validators = []
         self.extensions = extensions
         self.media_type = media_type
         self.media_type_parameters = media_type_parameters or {}
         if media_type is not None:
-            self.validators.append(partial(
+            self.__validators.append(partial(
                 _media_type_validator, media_type
             ))
+
+    save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
         if self.multiple:
@@ -365,20 +378,25 @@ class FileField(BaseField):
             self._widget = widget
         return self._widget
 
-    def to_python(self, value):
-        if value in EMPTY_VALUES:
+    def run_validation(self, value) -> typing.Optional['FileProxy']:
+        value = super().run_validation(value)
+        if value is None:
             return None
         elif isinstance(value, FileStorage):
-            return FileWrapper.from_file(value)
+            file = FileProxy(file=value)
         elif isinstance(value, str):
-            file = FileWrapper.from_uuid(value)
+            file = _get_file_from_uuid(value, slivka.db.database)
             if file is None:
                 raise ValidationError(
                     "A file with given uuid not found", 'not_found'
                 )
-            return file
+        elif isinstance(value, FileProxy):
+            file = value
         else:
-            raise TypeError
+            raise TypeError("Invalid type %s" % type(value))
+        for validator in self.__validators:
+            validator(file)
+        return file
 
     def __json__(self):
         j = super().__json__()
@@ -390,111 +408,13 @@ class FileField(BaseField):
         if self.extensions: j['extensions'] = self.extensions
         return j
 
-    def to_cmd_parameter(self, value: 'FileWrapper'):
-        if value is not None:
-            assert value.path
-            return value.path
-        else:
-            return None
-
-
-class FileWrapper:
-    def __init__(self):
-        self.uuid = None
-        self.title = ''
-        self.path = None
-        self.media_type = ''
-        self._verified_types = set()
-        self._fp = None
-
-    @classmethod
-    def from_file(cls, file_storage: FileStorage):
-        file = cls()
-        file.title = file_storage.filename
-        file.media_type = file_storage.mimetype
-        file._fp = file_storage
-        return file
-
-    @classmethod
-    def from_uuid(cls, uuid):
-        tokens = uuid.split('/', 1)
-        if len(tokens) == 1:
-            return cls._load_from_uploaded_file(uuid)
-        elif len(tokens) == 2:
-            uuid, filename = tokens
-            return cls._load_from_output_file(uuid, filename)
-
-    @classmethod
-    def _load_from_uploaded_file(cls, uuid):
-        uploaded = UploadedFile.find_one(slivka.db.database, uuid=uuid)
-        if uploaded is None:
-            return None
-        file = cls()
-        file.uuid = uploaded.uuid
-        file.title = uploaded.title
-        file.path = uploaded.path
-        if uploaded.media_type:
-            file.media_type = uploaded.media_type
-            file._verified_types.add(uploaded.media_type)
-        return file
-
-    @classmethod
-    def _load_from_output_file(cls, uuid, filename):
-        job = JobMetadata.find_one(slivka.db.database, uuid=uuid)
-        conf = slivka.settings.services[job.service]
-        output = next(
-            out for out in conf.command['results']
-            if fnmatch(filename, out['path'])
-        )
-        file = cls()
-        file.uuid = '%s/%s' % (uuid, filename)
-        file.title = filename
-        file.path = os.path.join(job.work_dir, filename)
-        file.media_type = output.get('mimetype', '')
-        if file.media_type:
-            file._verified_types.add(file.media_type)
-        return file
-
-    @property
-    def stream(self):
-        if self._fp is None:
-            self._fp = open(self.path, 'rb')
-        return self._fp
-
-    def save_as(self, dst, path=None):
-        self.stream.seek(0)
-        if isinstance(dst, (str, pathlib.PurePath)):
-            path = dst
-            with open(dst, 'wb') as dst:
-                shutil.copyfileobj(self.stream, dst)
-        else:
-            shutil.copyfileobj(self.stream, dst)
-        if self.path is None:
-            self.path = path
-
-    def verify_type(self, media_type=None):
-        if media_type is None:
-            media_type = self.media_type
-        if media_type in self._verified_types:
-            return True
-        self.stream.seek(0)
-        if validate_file_content(self.stream, media_type):
-            self._verified_types.add(media_type)
-            return True
-        else:
-            return False
-
-    def get_detected_media_type(self, *types):
-        types = itertools.chain(
-            self._verified_types, types, [self.media_type]
-        )
-        return next(filter(self.verify_type, types), None)
-
-    def __str__(self):
-        return self.title
-
-    def __repr__(self):
-        return 'File(%s)' % self.title
+    def to_cmd_parameter(self, value: 'FileProxy'):
+        if not value: return None
+        if value.path is None:
+            (fd, path) = mkstemp(dir=self.save_location)
+            with open(fd, 'wb') as fp:
+                value.save_as(path=path, fp=fp)
+        return value.path
 
 
 def _max_value_validator(limit, value):
@@ -547,8 +467,9 @@ def _choice_validator(choices, value):
         )
 
 
-def _media_type_validator(media_type, file):
-    if not file.verify_type(media_type):
+def _media_type_validator(media_type, file: FileProxy):
+    file.reopen()
+    if not validate_file_content(file, media_type):
         raise ValidationError(
             "This media type is not accepted", 'media_type'
         )

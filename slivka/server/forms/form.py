@@ -90,17 +90,6 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
             try:
                 value = field.validate(value)
                 cleaned_data[name] = value
-                if value is not None and isinstance(field, FileField):
-                    assert isinstance(value, FileWrapper)
-                    # If no validator has checked for the type we need
-                    # to check here whether it's allowed on the server.
-                    media_type = value.get_detected_media_type()
-                    if not media_type:
-                        raise ValidationError(
-                            'File content does not match %s '
-                            'or this media type is not allowed' % value.media_type,
-                            'invalid'
-                        )
             except ValidationError as err:
                 errors[field.name] = err
         self._errors = frozendict(errors)
@@ -123,27 +112,11 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         if not self.is_valid():
             raise RuntimeError(self.errors, 'invalid_form')
         inputs = {}
-        uploaded_files = []
         for name, field in self.fields.items():
             value = self.cleaned_data[name]
-            if value is not None and isinstance(field, FileField):
-                assert isinstance(value, FileWrapper)
-                # make sure that the type was detected by full_clean
-                assert value.get_detected_media_type()
-                if value.uuid is None:
-                    (fd, path) = mkstemp(dir=self.save_location)
-                    with open(fd, 'wb') as fp:
-                        value.save_as(fp, path=path)
-                    uploaded_files.append(UploadedFile(
-                        title=value.title,
-                        path=path,
-                        media_type=value.get_detected_media_type()
-                    ))
             inputs[name] = field.serialize_value(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
-        for file in uploaded_files:
-            file.insert(database)
         return request
 
 

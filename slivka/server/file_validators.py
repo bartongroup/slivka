@@ -101,12 +101,12 @@ class ValidatorDict(dict):
         self[media_type] = validator
 
 
-_validators = None
+validators = None
 
 
 def validate_file_content(file, media_type):
-    global _validators
-    if _validators is None:
-        _validators = ValidatorDict()
-        _validators.read_settings()
-    return _validators[media_type](file)
+    global validators
+    if validators is None:
+        validators = ValidatorDict()
+        validators.read_settings()
+    return validators[media_type](file)

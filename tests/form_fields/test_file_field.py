@@ -8,6 +8,7 @@ from werkzeug.datastructures import MultiDict, FileStorage
 from slivka.server.forms.fields import FileField, ValidationError
 import slivka.db
 from slivka.db.documents import UploadedFile
+from slivka.server.forms.file_proxy import FileProxy
 
 
 @pytest.fixture('module')
@@ -56,15 +57,10 @@ def test_multiple_fields_mixed():
     assert set(field.value_from_request_data(data, files)) == {'c0ffee', 'f00ba4', sentinel.file}
 
 
-def test_empty_value():
-    field = FileField('test')
-    assert field.to_python('') is None
-
-
 def test_uploaded_file(mock_uploaded_file):
     field = FileField('test')
-    file = field.to_python(mock_uploaded_file['uuid'])
-    with contextlib.closing(file.stream) as stream:
+    file = field.validate(mock_uploaded_file['uuid'])
+    with contextlib.closing(file) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
 
@@ -72,24 +68,66 @@ def test_uploaded_file(mock_uploaded_file):
 def test_missing_uploaded_file():
     field = FileField('test')
     with pytest.raises(ValidationError):
-        field.to_python('missing_uuid')
+        field.validate('missing_uuid')
 
 
 @pytest.mark.usefixtures('mock_mongo')
 def test_posted_file():
     field = FileField('test')
     path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
-    file = FileStorage(
+    fs = FileStorage(
         stream=open(path, 'rb'),
         filename='lipsum.txt',
         name='test'
     )
-    wrapper = field.to_python(file)
-    with contextlib.closing(wrapper.stream) as stream:
+    file = field.validate(fs)
+    with contextlib.closing(file) as stream:
         assert stream.readline() == b'Lorem ipsum dolor sit amet\n'
 
 
 def test_to_cmd_parameter(mock_uploaded_file):
     field = FileField('name')
-    wrapper = field.to_python(mock_uploaded_file['uuid'])
+    wrapper = field.validate(mock_uploaded_file['uuid'])
     assert field.to_cmd_parameter(wrapper) == mock_uploaded_file['path']
+
+
+@pytest.fixture("function")
+def file_validator():
+    import slivka.server.file_validators as validators_mod
+    validator = validators_mod.validators = validators_mod.ValidatorDict()
+    yield validator
+    validators_mod.validators = None
+
+
+def test_text_validation(file_validator):
+    file_validator.add('text/plain')
+    field = FileField('name', media_type='text/plain')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
+    file = FileProxy(path=path)
+    assert field.validate(file)
+
+
+def test_text_validation_fail(file_validator):
+    file_validator.add('text/plain')
+    field = FileField('name', media_type='text/plain')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'example.bin')
+    file = FileProxy(path=path)
+    with pytest.raises(ValidationError):
+        field.validate(file)
+
+
+def test_json_validation(file_validator):
+    file_validator.add('application/json')
+    field = FileField('name', media_type="application/json")
+    path = os.path.join(os.path.dirname(__file__), 'data', 'example.json')
+    file = FileProxy(path=path)
+    assert field.validate(file)
+
+
+def test_json_validation_fail(file_validator):
+    file_validator.add('application/json')
+    field = FileField('name', media_type='application/json')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
+    file = FileProxy(path=path)
+    with pytest.raises(ValidationError):
+        field.validate(file)

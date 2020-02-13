@@ -8,38 +8,39 @@ def default_field():
     return DecimalField('name')
 
 
-# to_python tests
+# value conversion tests
 
 def test_int_to_python(default_field):
-    assert default_field.to_python(10) == 10.0
-    assert default_field.to_python(-4) == -4.0
-    assert default_field.to_python(0) == 0
+    assert default_field.validate(10) == 10.0
+    assert default_field.validate(-4) == -4.0
+    assert default_field.validate(0) == 0
 
 
 def test_float_to_python(default_field):
-    assert default_field.to_python(4.5) == 4.5
+    assert default_field.validate(4.5) == 4.5
 
 
 def test_number_str_to_python(default_field):
-    assert default_field.to_python('10') == 10.0
-    assert default_field.to_python('0.01') == 0.01
+    assert default_field.validate('10') == 10.0
+    assert default_field.validate('0.01') == 0.01
 
 
 def test_other_str_to_python(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python('xyzzy')
+        default_field.validate('xyzzy')
 
 
-def test_none_to_python(default_field):
-    assert default_field.to_python(None) is None
-    assert default_field.to_python('') is None
+def test_none_to_python():
+    field = DecimalField('name', required=False)
+    assert field.validate(None) is None
+    assert field.validate('') is None
 
 
 def test_bool_to_python(default_field):
     with pytest.raises(ValidationError):
-        default_field.to_python(False)
+        default_field.validate(False)
     with pytest.raises(ValidationError):
-        default_field.to_python(True)
+        default_field.validate(True)
 
 
 # min/max validation
