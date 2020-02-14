@@ -93,7 +93,7 @@ def test_to_cmd_parameter(mock_uploaded_file):
 
 @pytest.fixture("function")
 def file_validator():
-    import slivka.server.file_validators as validators_mod
+    import slivka.server.forms.file_validators as validators_mod
     validator = validators_mod.validators = validators_mod.ValidatorDict()
     yield validator
     validators_mod.validators = None

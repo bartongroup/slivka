@@ -1,15 +1,14 @@
+from collections import OrderedDict
 from tempfile import mkstemp
 
-import typing
-from collections import OrderedDict
-
 import itertools
+import typing
 from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
-from slivka.server.file_validators import validate_file_content
+from slivka.server.forms.file_validators import validate_file_content
 from slivka.utils import cached_property
 from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *

@@ -1,10 +1,10 @@
 import os.path
-import pathlib
 from collections import namedtuple
 from fnmatch import fnmatch
 from tempfile import mkstemp
 
 import flask
+import pathlib
 import pkg_resources
 from flask import request, abort, url_for, current_app as app
 
@@ -12,7 +12,6 @@ import slivka
 from slivka import JobStatus
 from slivka.db import database, documents
 from . import JsonResponse
-from .file_validators import validate_file_content
 from .forms import FormLoader
 
 bp = flask.Blueprint('api', __name__, url_prefix='/api/v1')
@@ -137,8 +136,6 @@ def file_upload():
         file = request.files['file']
     except KeyError:
         raise abort(400)
-    if not validate_file_content(file, file.mimetype):
-        raise abort(415)
     file.seek(0)
     (fd, path) = mkstemp('', '', dir=app.config['UPLOADS_DIR'], text=False)
     filename = os.path.basename(path)
