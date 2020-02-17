@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "label": {"type": "string"},
+    "description": {"type": "string"},
+    "value": {
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["float", "decimal"]},
+        "required": {"type": "boolean"},
+        "multiple": {"type": "boolean"},
+        "min": {"type": "number"},
+        "max": {"type": "number"},
+        "min-exclusive": {"type": "boolean"},
+        "max-exclusive": {"type": "boolean"},
+        "default": {"type": "number"}
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["label", "value"],
+  "additionalProperties": false
+}

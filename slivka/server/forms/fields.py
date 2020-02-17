@@ -1,7 +1,9 @@
+import json
 from collections import OrderedDict
 from tempfile import mkstemp
 
 import itertools
+import pkg_resources
 import typing
 from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -9,7 +11,7 @@ from werkzeug.datastructures import FileStorage, MultiDict
 import slivka
 import slivka.db
 from slivka.server.forms.file_validators import validate_file_content
-from slivka.utils import cached_property
+from slivka.utils import cached_property, class_property
 from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
@@ -28,6 +30,14 @@ __all__ = [
 EMPTY_VALUES = ({}, set(), [], (), None, '')
 
 
+def _get_schema(filename):
+    return json.loads(
+        pkg_resources.resource_string(
+            "slivka.conf", filename
+        ).decode()
+    )
+
+
 class BaseField:
     def __init__(self,
                  name,
@@ -43,6 +53,8 @@ class BaseField:
         self.required = required
         self.multiple = multiple
         self._widget = None
+
+    schema = class_property(lambda cls: {})
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
         """
@@ -100,6 +112,7 @@ class BaseField:
 
     def __json__(self):
         return {
+            'type': 'undefined',
             'name': self.name,
             'label': self.label,
             'description': self.description or "",
@@ -133,6 +146,8 @@ class IntegerField(BaseField):
         if min is not None:
             self.__validators.append(partial(_min_value_validator, min))
         self._validate_default()
+
+    schema = class_property(lambda cls: _get_schema('int-field-schema.json'))
 
     @property
     def widget(self):
@@ -190,6 +205,8 @@ class DecimalField(BaseField):
             self.__validators.append(partial(validator, min))
         self._validate_default()
 
+    schema = class_property(lambda cls: _get_schema('decimal-field-schema.json'))
+
     @property
     def widget(self):
         if self._widget is None:
@@ -243,6 +260,8 @@ class TextField(BaseField):
             ))
         self._validate_default()
 
+    schema = class_property(lambda cls: _get_schema('text-field-schema.json'))
+
     @property
     def widget(self):
         if self._widget is None:
@@ -274,6 +293,8 @@ class BooleanField(BaseField):
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
         self._validate_default()
+
+    schema = class_property(lambda cls: _get_schema('boolean-field-schema.json'))
 
     @property
     def widget(self):
@@ -311,6 +332,8 @@ class ChoiceField(BaseField):
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
         self._validate_default()
+
+    schema = class_property(lambda cls: _get_schema('choice-field-schema.json'))
 
     @property
     def widget(self):
@@ -358,6 +381,8 @@ class FileField(BaseField):
             self.__validators.append(partial(
                 _media_type_validator, media_type
             ))
+
+    schema = class_property(lambda cls: _get_schema('file-field-schema.json'))
 
     save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 

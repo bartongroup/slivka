@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "label": {"type": "string"},
+    "description": {"type": "string"},
+    "value": {
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["text"]},
+        "required": {"type": "boolean"},
+        "multiple": {"type": "boolean"},
+        "min-length": {"type": "integer", "minimum": 0},
+        "max-length": {"type": "integer", "minimum": 0},
+        "default": {"type": "string"}
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["label", "value"],
+  "additionalProperties": false
+}
