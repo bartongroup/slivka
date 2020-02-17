@@ -142,7 +142,7 @@ class FormLoader(metaclass=Singleton):
         :return: loaded form class
         """
         attrs = OrderedDict(
-            (name, self._build_field(key, val))
+            (key, self._build_field(key, val))
             for key, val in dictionary.items()
         )
         attrs['service'] = name
@@ -156,37 +156,37 @@ class FormLoader(metaclass=Singleton):
         return self._forms[item]
 
     @staticmethod
-    def _build_field(name, field_meta) -> BaseField:
+    def _build_field(name, field_dict) -> BaseField:
         """ Constructs a field from the configuration """
-        value_meta = field_meta['value']
-        field_type = value_meta['type']
+        value_dict = field_dict['value']
+        field_type = value_dict['type']
         common_kwargs = {
             'name': name,
-            'label': field_meta['label'],
-            'description': field_meta.get('description'),
-            'default': value_meta.get('default'),
-            'required': value_meta.get('required', True),
-            'multiple': value_meta.get('multiple', False)
+            'label': field_dict['label'],
+            'description': field_dict.get('description'),
+            'default': value_dict.get('default'),
+            'required': value_dict.get('required', True),
+            'multiple': value_dict.get('multiple', False)
         }
         if field_type == 'int':
             return IntegerField(
                 **common_kwargs,
-                min=value_meta.get('min'),
-                max=value_meta.get('max')
+                min=value_dict.get('min'),
+                max=value_dict.get('max')
             )
         elif field_type == 'float' or field_type == 'decimal':
             return DecimalField(
                 **common_kwargs,
-                min=value_meta.get('min'),
-                max=value_meta.get('max'),
-                min_exclusive=value_meta.get('min-exclusive', False),
-                max_exclusive=value_meta.get('max-exclusive', False)
+                min=value_dict.get('min'),
+                max=value_dict.get('max'),
+                min_exclusive=value_dict.get('min-exclusive', False),
+                max_exclusive=value_dict.get('max-exclusive', False)
             )
         elif field_type == 'text':
             return TextField(
                 **common_kwargs,
-                min_length=value_meta.get('min-length'),
-                max_length=value_meta.get('max-length')
+                min_length=value_dict.get('min-length'),
+                max_length=value_dict.get('max-length')
             )
         elif field_type == 'boolean' or field_type == 'flag':
             return FlagField(
@@ -195,14 +195,14 @@ class FormLoader(metaclass=Singleton):
         elif field_type == 'choice':
             return ChoiceField(
                 **common_kwargs,
-                choices=value_meta.get('choices')
+                choices=value_dict.get('choices')
             )
         elif field_type == 'file':
             return FileField(
                 **common_kwargs,
-                extensions=value_meta.get('extensions', ()),
-                media_type=value_meta.get('media-type'),
-                media_type_parameters=value_meta.get('media-type-parameters')
+                extensions=value_dict.get('extensions', ()),
+                media_type=value_dict.get('media-type'),
+                media_type_parameters=value_dict.get('media-type-parameters')
             )
         else:
             raise RuntimeError('Invalid field type "%r"' % field_type)
