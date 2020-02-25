@@ -1,5 +1,7 @@
 import json
 import os.path
+from importlib import import_module
+
 from collections.abc import Mapping
 from urllib.parse import quote_plus
 
@@ -148,13 +150,41 @@ def _json_schema_validator(schema_file):
     return validator
 
 
+def _form_validator(_obj, _attr, val):
+    basic_schema = json.loads(
+        pkg_resources.resource_string("slivka.conf", "any-field-schema.json").decode()
+    )
+    from slivka.server.forms import fields
+    classes = {
+        "int": fields.IntegerField,
+        "float": fields.DecimalField,
+        "decimal": fields.DecimalField,
+        "text": fields.TextField,
+        "boolean": fields.BooleanField,
+        "flag": fields.FlagField,
+        "choice": fields.ChoiceField,
+        "file": fields.FileField,
+    }
+    for field in val.values():
+        jsonschema.validate(field, basic_schema, Draft4Validator)
+        field_type = field['value']['type']
+        cls = classes.get(field_type)
+        if cls is None:
+            try:
+                mod, attrib = field_type.rsplit('.', 1)
+                cls = getattr(import_module(mod), attrib)
+            except (ValueError, AttributeError):
+                raise ImproperlyConfigured("Invalid field type %s" % field_type)
+        jsonschema.validate(field, cls.schema)
+
+
 @attr.s
 class ServiceInfo:
     name = attr.ib(type=str)
     label = attr.ib(type=str)
     form = attr.ib(
         converter=_yaml_settings_loader,
-        validator=_json_schema_validator("formDefSchema.json")
+        validator=_form_validator
     )
     command = attr.ib(
         converter=_yaml_settings_loader,

@@ -1,8 +1,9 @@
 import collections
 from collections import OrderedDict
-from typing import Type
+from importlib import import_module
 
 from frozendict import frozendict
+from typing import Type
 from werkzeug.datastructures import MultiDict
 
 import slivka
@@ -205,4 +206,14 @@ class FormLoader(metaclass=Singleton):
                 media_type_parameters=value_dict.get('media-type-parameters')
             )
         else:
-            raise RuntimeError('Invalid field type "%r"' % field_type)
+            # if ``field_type`` is not a recognised type, try importing the
+            # custom field using the type as a classpath.
+            kwargs = common_kwargs
+            kwargs.update(value_dict)
+            kwargs.pop("type")
+            try:
+                mod, attr = field_type.rsplit('.', 1)
+                cls = getattr(import_module(mod), attr)
+                return cls(**kwargs)
+            except (ValueError, AttributeError):
+                raise ValueError('Invalid field type "%r"' % field_type)

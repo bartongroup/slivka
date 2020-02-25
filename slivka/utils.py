@@ -126,6 +126,18 @@ class cached_property:
         return val
 
 
+# noinspection PyPep8Naming
+class class_property:
+    """A data descriptor allowing properties on class instances."""
+    def __init__(self, getter):
+        if not isinstance(getter, (classmethod, staticmethod)):
+            getter = classmethod(getter)
+        self._getter = getter
+
+    def __get__(self, instance, owner):
+        return self._getter.__get__(instance, owner)()
+
+
 class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
     def __init__(self, stream):
         try:
