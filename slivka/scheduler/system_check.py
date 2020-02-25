@@ -11,7 +11,7 @@ import yaml
 
 import slivka
 from slivka.scheduler.core import RunnerSelector
-from slivka.scheduler.runners import Runner, RunInfo
+from slivka.scheduler import Runner, RunInfo
 
 selector = RunnerSelector()
 for service in slivka.settings.services.values():
