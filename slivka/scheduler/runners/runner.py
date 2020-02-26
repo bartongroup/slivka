@@ -98,9 +98,12 @@ class Runner:
         return args
 
     def run(self, inputs, cwd=None) -> RunInfo:
-        cwd = cwd or tempfile.mkdtemp(
-            prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
-        )
+        rm_cwd = False
+        if cwd is None:
+            cwd = tempfile.mkdtemp(
+                prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
+            )
+            rm_cwd = True
         for name, input_conf in self.inputs.items():
             if input_conf.get('type') == 'file' and 'symlink' in input_conf:
                 src = inputs.get(name)
@@ -112,8 +115,9 @@ class Runner:
         try:
             return RunInfo(cwd=cwd, id=self.submit(cmd, cwd))
         except Exception:
-            with contextlib.suppress(OSError):
-                shutil.rmtree(cwd)
+            if rm_cwd:
+                with contextlib.suppress(OSError):
+                    shutil.rmtree(cwd)
             raise
 
     def batch_run(self, inputs_list) -> Iterator[RunInfo]:

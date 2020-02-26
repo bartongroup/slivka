@@ -1,8 +1,9 @@
 import logging
-import time
 from collections import defaultdict, OrderedDict, namedtuple
-from functools import partial
 from importlib import import_module
+
+import time
+from functools import partial
 from typing import Dict, Type, Optional, List, Mapping, Any, DefaultDict
 
 import slivka.db
@@ -10,12 +11,23 @@ from slivka import JobStatus
 from slivka.db.documents import JobRequest, JobMetadata
 from slivka.utils import BackoffCounter
 from .runners import *
+from .service_test import TestJob
 
-__all__ = ['Scheduler', 'Limiter', 'DefaultLimiter']
+__all__ = ['Scheduler', 'Limiter', 'DefaultLimiter', 'RunnerSelector']
 
 
 def get_classpath(cls):
     return cls.__module__ + '.' + cls.__name__
+
+
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+REGULAR = "\033[0m"
+
+
+def colored(text, color):
+    return color + text + REGULAR
 
 
 class Scheduler:
@@ -26,7 +38,6 @@ class Scheduler:
         self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
         self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
         self._accepted_requests = defaultdict(list)  # type: DefaultDict[Runner, List[JobRequest]]
-        self.reload()
 
     def load_service(self, service, cmd_def):
         self.runner_selector.add_runners(service, cmd_def)
@@ -38,6 +49,19 @@ class Scheduler:
     def stop(self):
         self.logger.info("Stopping.")
         self._is_running = False
+
+    def test_services(self):
+        report = self.runner_selector.test_services()
+        for runner_id, status in report.items():
+            state, reason = status
+            if state == 'OK':
+                print(runner_id, colored("[OK]", GREEN))
+            elif state == 'FAILED':
+                print(runner_id, colored("[FAILED]", YELLOW), reason)
+            elif state == 'ERROR':
+                print(runner_id, colored("[ERROR]", RED), reason)
+            else:
+                print(runner_id, state, reason)
 
     def reload(self):
         """Reloads running jobs from the database and change accepted back to pending."""
@@ -61,6 +85,8 @@ class Scheduler:
         if self.is_running:
             raise RuntimeError("Scheduler is already running.")
         self._is_running = True
+        self.test_services()
+        self.reload()
         self.logger.info('Scheduler started')
         try:
             while self.is_running:
@@ -193,12 +219,16 @@ class RunnerSelector:
     def __init__(self):
         self.runners = {}  # type: Dict[RunnerID, Runner]
         self.limiters = {}  # type: Dict[str, Limiter]
+        self._tests = {}
         self._null_runner = None
 
     def add_runners(self, service, cmd_def):
         classpath = cmd_def.get('limiter', get_classpath(DefaultLimiter))
         mod, attr = classpath.rsplit('.', 1)
         self.limiters[service] = getattr(import_module(mod), attr)()
+        test_dict = cmd_def.get('test')
+        if test_dict is not None:
+            self._tests[service] = TestJob(test_dict['inputs'])
 
         for name, conf in cmd_def['runners'].items():
             if '.' in conf['class']:
@@ -218,6 +248,24 @@ class RunnerSelector:
             return self._null_runner
         else:
             return self.runners[service, runner_name]
+
+    def test_services(self):
+        report = {}
+        for service_id, runner in self.runners.items():
+            test = self._tests.get(service_id.service)
+            if test is None:
+                report[service_id] = ('NO TEST', None)
+                continue
+            try:
+                state = test(runner, dir=slivka.settings.jobs_dir)
+            except Exception as e:
+                report[service_id] = ('ERROR', e)
+            else:
+                if state == JobStatus.COMPLETED:
+                    report[service_id] = ('OK', None)
+                else:
+                    report[service_id] = ('FAILED', state.name)
+        return report
 
 
 class LimiterMeta(type):

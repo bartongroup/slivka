@@ -65,6 +65,15 @@
     },
     "limiter": {
       "type": "string"
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      }
     }
   },
   "additionalProperties": false,
