@@ -1,13 +1,13 @@
-import asyncio
+import atexit
 import logging
 import os
 import shlex
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 import pkg_resources
 import re
 import subprocess
-from itertools import islice
 from typing import Iterable, Tuple, List
 
 from slivka import JobStatus
@@ -24,8 +24,6 @@ _job_status_regex = re.compile(
     re.MULTILINE
 )
 _runner_sh_tpl = pkg_resources.resource_string(__name__, "runner.sh.tpl").decode()
-
-QSUB_LIMIT = 100
 
 
 class _StatusLetterDict(dict):
@@ -46,6 +44,10 @@ _status_letters = _StatusLetterDict({
     b'E': JobStatus.ERROR,
     b'Eqw': JobStatus.ERROR
 })
+
+
+_executor = ThreadPoolExecutor()
+atexit.register(_executor.shutdown)
 
 
 class GridEngineRunner(Runner):
@@ -77,47 +79,13 @@ class GridEngineRunner(Runner):
         match = _job_submitted_regex.match(proc.stdout)
         return match.group(1)
 
-    async def async_submit(self, cmd, cwd):
-        fd, path = tempfile.mkstemp(prefix='run_', suffix='.sh', dir=cwd)
-        cmd = str.join(' ', map(shlex.quote, cmd))
-        with open(fd, 'w') as f:
-            f.write(_runner_sh_tpl.format(cmd=cmd))
-        args = ('-V', '-cwd', '-o', 'stdout', '-e', 'stderr', *self.qsub_args, path)
-        proc = await asyncio.create_subprocess_exec(
-            'qsub', *args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=cwd,
-            env=self.env
-        )
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            log.error(
-                "qsub exited with status code %d, stdout: '%s', stderr: '%s'",
-                proc.returncode, stdout, stderr
-            )
-            raise subprocess.CalledProcessError(proc.returncode, ('qsub', *args))
-        log.debug('qsub completed')
-        match = _job_submitted_regex.match(stdout)
-        return match.group(1)
-
     def batch_submit(self, commands: Iterable[Tuple[List, str]]):
         """
         :param commands: iterable of args list and cwd path pairs
         :return: list of identifiers
         """
-        commands = iter(commands)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        ids = []
-        try:
-            for slice in iter(lambda: list(islice(commands, QSUB_LIMIT)), []):
-                coros = [self.async_submit(cmd, cwd) for cmd, cwd in slice]
-                ids.extend(loop.run_until_complete(asyncio.gather(*coros)))
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
-        return ids
+        def submit_wrapper(args): self.submit(*args)
+        return _executor.map(submit_wrapper, commands)
 
     @classmethod
     def check_status(cls, job_id, cwd):
