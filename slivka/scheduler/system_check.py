@@ -10,10 +10,10 @@ from functools import partial
 import yaml
 
 import slivka
-from slivka.scheduler.core import RunnerSelector
+from slivka.scheduler.core import RunnerManager
 from slivka.scheduler import Runner, RunInfo
 
-selector = RunnerSelector()
+selector = RunnerManager()
 for service in slivka.settings.services.values():
     selector.add_runners(service.name, service.command)
 

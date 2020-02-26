@@ -13,7 +13,7 @@ from slivka.utils import BackoffCounter
 from .runners import *
 from .service_test import TestJob
 
-__all__ = ['Scheduler', 'Limiter', 'DefaultLimiter', 'RunnerSelector']
+__all__ = ['Scheduler', 'Limiter', 'DefaultLimiter', 'RunnerManager']
 
 
 def get_classpath(cls):
@@ -34,7 +34,7 @@ class Scheduler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self._is_running = False
-        self.runner_selector = RunnerSelector()
+        self.runner_selector = RunnerManager()
         self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
         self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
         self._accepted_requests = defaultdict(list)  # type: DefaultDict[Runner, List[JobRequest]]
@@ -215,7 +215,7 @@ class Scheduler:
 RunnerID = namedtuple('RunnerID', 'service, name')
 
 
-class RunnerSelector:
+class RunnerManager:
     def __init__(self):
         self.runners = {}  # type: Dict[RunnerID, Runner]
         self.limiters = {}  # type: Dict[str, Limiter]

@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 import yaml
 
-from slivka.scheduler.core import RunnerSelector, DefaultLimiter
+from slivka.scheduler.core import RunnerManager, DefaultLimiter
 from tests.runner_selector import RunnerStub
 
 
@@ -29,7 +29,7 @@ def mock_runner():
 
 
 def test_runner_construction(no_limiter_conf):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', no_limiter_conf)
     runner = selector.runners['test', 'default']
     assert isinstance(runner, RunnerStub)
@@ -37,35 +37,35 @@ def test_runner_construction(no_limiter_conf):
 
 
 def test_internal_runner_construction(no_limiter_conf, mock_runner):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', no_limiter_conf)
     runner = selector.runners['test', 'foo_conf']
     assert runner is mock_runner()
 
 
 def test_default_limiter_present(no_limiter_conf):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', no_limiter_conf)
     assert 'test' in selector.limiters
     assert isinstance(selector.limiters['test'], DefaultLimiter)
 
 
 def test_default_runner_selection(no_limiter_conf):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', no_limiter_conf)
     runner = selector.select_runner('test', {})
     assert isinstance(runner, RunnerStub)
 
 
 def test_runner_selection(limited_conf):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', limited_conf)
     runner = selector.select_runner('test', {'use_foo': True})
     assert runner.name == 'test-foo'
 
 
 def test_no_runner_selected(limited_conf):
-    selector = RunnerSelector()
+    selector = RunnerManager()
     selector.add_runners('test', limited_conf)
     runner = selector.select_runner('test', {'use_nothing': True})
     assert runner is None
