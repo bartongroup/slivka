@@ -8,7 +8,7 @@ from typing import Dict, Type, Optional, List, Mapping, Any, DefaultDict
 
 import slivka.db
 from slivka import JobStatus
-from slivka.db.documents import JobRequest, JobMetadata
+from slivka.db.documents import JobRequest, JobMetadata, ServiceState, ServiceStatus
 from slivka.utils import BackoffCounter
 from .runners import *
 from .service_test import TestJob
@@ -50,19 +50,6 @@ class Scheduler:
         self.logger.info("Stopping.")
         self._is_running = False
 
-    def test_services(self):
-        report = self.runner_selector.test_services()
-        for runner_id, status in report.items():
-            state, reason = status
-            if state == 'OK':
-                print(runner_id, colored("[OK]", GREEN))
-            elif state == 'FAILED':
-                print(runner_id, colored("[FAILED]", YELLOW), reason)
-            elif state == 'ERROR':
-                print(runner_id, colored("[ERROR]", RED), reason)
-            else:
-                print(runner_id, state, reason)
-
     def reload(self):
         """Reloads running jobs from the database and change accepted back to pending."""
         running_jobs = JobMetadata.find(
@@ -97,6 +84,31 @@ class Scheduler:
         except KeyboardInterrupt:
             self.stop()
         self.logger.info('Stopped')
+
+    def test_services(self):
+        report = self.runner_selector.test_services()
+        to_insert = []
+        for runner_id, status in report.items():
+            state, reason = status
+            service_status = ServiceStatus(
+                service=runner_id.service,
+                runner=runner_id.name,
+                state=ServiceState.UNKNOWN
+            )
+            if state == 'OK':
+                print(runner_id, colored("[OK]", GREEN))
+                service_status.state = ServiceState.OK
+            elif state == 'FAILED':
+                print(runner_id, colored("[FAILED]", YELLOW), reason)
+                service_status.state = ServiceState.BROKEN
+            elif state == 'ERROR':
+                print(runner_id, colored("[ERROR]", RED), reason)
+                service_status.state = ServiceState.BROKEN
+            else:
+                print(runner_id, state, reason)
+            to_insert.append(service_status)
+        collection = ServiceStatus.get_collection(slivka.db.database)
+        collection.insert_many(to_insert, ordered=False)
 
     def fetch_pending_requests(self, accepted: DefaultDict[Runner, List[JobRequest]]):
         """Fetches pending requests from the database and populated provided dict

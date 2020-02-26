@@ -281,6 +281,23 @@ def get_job_files(uuid):
     }, status=200)
 
 
+@bp.route('/servicestatus/<service>')
+def service_status_check(service):
+    collection = documents.ServiceStatus.get_collection(database)
+    results = collection.aggregate([
+        {'$match': {'service': service}},
+        {'$sort': {'timestamp': 1}},
+        {'$group': {
+            '_id': '$runner',
+            'state': {'$last': '$state'},
+            # 'last_update': {'$last': '$timestamp'}
+        }}
+    ])
+    return JsonResponse({
+        'statuses': list(results)
+    })
+
+
 @bp.route('/')
 @bp.route('/reference')
 def api_index():

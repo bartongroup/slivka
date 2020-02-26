@@ -1,5 +1,8 @@
+import enum
 import os
 from base64 import b64encode
+from datetime import datetime, timedelta
+from uuid import uuid4
 
 import bson
 import pathlib
@@ -134,3 +137,42 @@ class UploadedFile(MongoDocument):
 
     def get_path(self):
         return pathlib.Path(self['path'])
+
+
+class ServiceState(enum.IntEnum):
+    OK = 0
+    UNAVAILABLE = 1
+    BROKEN = 2
+    UNKNOWN = 4
+
+
+class ServiceStatus(MongoDocument):
+    __collection__ = 'servicestatuses'
+
+    def __init__(self,
+                 service,
+                 runner,
+                 state,
+                 timestamp=None,
+                 **kwargs):
+        super().__init__(
+            timestamp=timestamp or datetime.utcnow(),
+            service=service,
+            runner=runner,
+            state=state,
+            **kwargs
+        )
+
+    timestamp = property(lambda self: self['timestamp'])
+    service = property(lambda self: self['service'])
+    runner = property(lambda self: self['service'])
+
+    def _get_state(self): return ServiceState(self['state'])
+    def _set_state(self, state): self['state'] = state
+    state = property(fget=_get_state, fset=_set_state)
+
+    def is_stale(self):
+        return datetime.utcnow() > self.timestamp + timedelta(hours=4)
+
+    def reset_timestamp(self):
+        self['timestamp'] = datetime.utcnow()
