@@ -1,8 +1,10 @@
 import enum
-import itertools
 import os
+import warnings
 from collections import OrderedDict
 
+import functools
+import itertools
 import yaml.resolver
 
 try:
@@ -136,6 +138,19 @@ class class_property:
 
     def __get__(self, instance, owner):
         return self._getter.__get__(instance, owner)()
+
+
+def deprecated(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(
+            "Function %s is deprecated" % func.__name__,
+            DeprecationWarning, stacklevel=2
+        )
+        warnings.simplefilter('default', DeprecationWarning)
+        return func(*args, **kwargs)
+    return wrapper
 
 
 class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):

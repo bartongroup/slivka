@@ -1,13 +1,14 @@
 import os
-import pathlib
 from base64 import b64encode
+
+import bson
+import pathlib
+import pymongo
 from datetime import datetime
 from uuid import uuid4
 
-import bson
-import pymongo
-
 from slivka import JobStatus
+from slivka.utils import deprecated
 
 
 def b64_uuid4():
@@ -35,11 +36,11 @@ class MongoDocument(bson.SON):
         cursor = database[cls.__collection__].find(query)
         return (cls(**kwargs) for kwargs in cursor)
 
-    # don't do that
+    @deprecated
     def insert(self, database):
         database[self.__collection__].insert_one(self)
 
-    # this is even worse
+    @deprecated
     def update_self(self, database, values=(), **kwargs):
         super().update(values, **kwargs)
         database[self.__collection__].update_one(
@@ -48,6 +49,7 @@ class MongoDocument(bson.SON):
         )
 
     @classmethod
+    @deprecated
     def update_one(cls, database, filter, values):
         database[cls.__collection__].update_one(
             filter, {'$set': values}
