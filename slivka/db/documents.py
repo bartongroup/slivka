@@ -15,7 +15,7 @@ def b64_uuid4():
     return b64encode(uuid4().bytes, altchars=b'_-').rstrip(b'=').decode()
 
 
-class MongoDocument(bson.SON):
+class MongoDocument(dict):
     __collection__ = None
 
     def _get_id(self): return self['_id']
