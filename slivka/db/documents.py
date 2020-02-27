@@ -24,6 +24,7 @@ class MongoDocument(bson.SON):
     @classmethod
     def get_collection(cls, database) -> pymongo.collection.Collection:
         return database[cls.__collection__]
+    collection = get_collection
 
     @classmethod
     def find_one(cls, database, **kwargs):
