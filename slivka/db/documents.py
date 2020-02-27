@@ -17,17 +17,12 @@ def b64_uuid4():
 class MongoDocument(bson.SON):
     __collection__ = None
 
+    def _get_id(self): return self['_id']
+    id = property(fget=_get_id)
+
     @classmethod
     def get_collection(cls, database) -> pymongo.collection.Collection:
         return database[cls.__collection__]
-
-    def __getattr__(self, item):
-        return self[item]
-
-    def __setattr__(self, key, value):
-        if key == '_id':
-            raise KeyError('_id cannot be changed')
-        super().__setattr__(key, value)
 
     @classmethod
     def find_one(cls, database, **kwargs):
@@ -40,13 +35,15 @@ class MongoDocument(bson.SON):
         cursor = database[cls.__collection__].find(query)
         return (cls(**kwargs) for kwargs in cursor)
 
+    # don't do that
     def insert(self, database):
         database[self.__collection__].insert_one(self)
 
+    # this is even worse
     def update_self(self, database, values=(), **kwargs):
         super().update(values, **kwargs)
         database[self.__collection__].update_one(
-            {'_id': self._id},
+            {'_id': self._get_id()},
             {'$set': dict(values, **kwargs)}
         )
 
@@ -55,9 +52,6 @@ class MongoDocument(bson.SON):
         database[cls.__collection__].update_one(
             filter, {'$set': values}
         )
-
-    def __eq__(self, other: 'MongoDocument'):
-        return self['_id'] == other['_id']
 
     def __hash__(self):
         return hash(self['_id'])
@@ -82,9 +76,15 @@ class JobRequest(MongoDocument):
             **kwargs
         )
 
-    @property
-    def status(self) -> JobStatus:
-        return JobStatus(self['status'])
+    service = property(lambda self: self['service'])
+    inputs = property(lambda self: self['inputs'])
+    uuid = property(lambda self: self['uuid'])
+    timestamp = property(lambda self: self['timestamp'])
+
+    def _get_state(self): return JobStatus(self['status'])
+    def _set_state(self, val): self['status'] = val
+    state = property(_get_state, _set_state)
+    status = property(_get_state, _set_state)
 
 
 class JobMetadata(MongoDocument):
@@ -108,9 +108,17 @@ class JobMetadata(MongoDocument):
             **kwargs
         )
 
-    @property
-    def status(self) -> JobStatus:
-        return JobStatus(self['status'])
+    uuid = property(lambda self: self['uuid'])
+    service = property(lambda self: self['service'])
+    work_dir = property(lambda self: self['work_dir'])
+    cwd = work_dir
+    runner_class = property(lambda self: self['runner_class'])
+    job_id = property(lambda self: self['job_id'])
+
+    def _get_state(self): return JobStatus(self['status'])
+    def _set_state(self, val): self['status'] = val
+    state = property(_get_state, _set_state)
+    status = property(_get_state, _set_state)
 
 
 class UploadedFile(MongoDocument):
