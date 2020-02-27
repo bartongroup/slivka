@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections import defaultdict, OrderedDict, namedtuple
 from importlib import import_module
 
@@ -38,6 +39,7 @@ class Scheduler:
         self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
         self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
         self._accepted_requests = defaultdict(list)  # type: DefaultDict[Runner, List[JobRequest]]
+        self._testing_thread = IntervalThread(interval=3600, target=self.test_services)
 
     def load_service(self, service, cmd_def):
         self.runner_selector.add_runners(service, cmd_def)
@@ -48,6 +50,7 @@ class Scheduler:
 
     def stop(self):
         self.logger.info("Stopping.")
+        self._testing_thread.cancel()
         self._is_running = False
 
     def reload(self):
@@ -73,6 +76,7 @@ class Scheduler:
             raise RuntimeError("Scheduler is already running.")
         self._is_running = True
         self.test_services()
+        self._testing_thread.start()
         self.reload()
         self.logger.info('Scheduler started')
         try:
@@ -222,6 +226,30 @@ class Scheduler:
                 job for job in jobs
                 if not JobStatus(job['status']).is_finished()
             )
+
+
+class IntervalThread(threading.Thread):
+    def __init__(self, interval, target,
+                 name=None, args=None, kwargs=None):
+        threading.Thread.__init__(self, name=name)
+        self._target = target
+        self._args = args or ()
+        self._kwargs = kwargs or {}
+        self.interval = interval
+        self._finished = threading.Event()
+
+    def cancel(self):
+        """Stop the interval thread."""
+        self._finished.set()
+
+    def run(self) -> None:
+        args, kwargs = self._args, self._kwargs
+        try:
+            while not self._finished.wait(self.interval):
+                self._target(*args, **kwargs)
+        finally:
+            self._finished.set()
+            del self._target, self._args, self._kwargs
 
 
 RunnerID = namedtuple('RunnerID', 'service, name')
