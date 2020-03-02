@@ -23,15 +23,17 @@ _envvar_regex = re.compile(
 )
 
 RunInfo = namedtuple('RunInfo', 'id, cwd')
+RunnerID = namedtuple('RunnerID', 'service_name, runner_name')
 
 
 class Runner:
-    _name_generator = ('runner-%d' % i for i in itertools.count(1))
+    _next_id = (RunnerID('unknown', 'runner-%d' % i)
+                for i in itertools.count(1)).__next__
     JOBS_DIR = None
 
-    def __init__(self, command_def, name=None, jobs_dir=None):
+    def __init__(self, command_def, id=None, jobs_dir=None):
         self.jobs_dir = jobs_dir or self.JOBS_DIR or slivka.settings.jobs_dir
-        self.name = name or next(self._name_generator)
+        self.id = id or self._next_id()
         self.inputs = command_def['inputs']
         self.outputs = command_def['outputs']  # TODO: redundant field
         self.env = env = {
@@ -58,6 +60,12 @@ class Runner:
             _envvar_regex.sub(replace, arg)
             for arg in arguments
         ]
+
+    def get_name(self): return self.id.runner_name
+    name = property(get_name)
+
+    def get_service_name(self): return self.id.service_name
+    service_name = property(get_service_name)
 
     def get_args(self, values) -> List[str]:
         replace = partial(_replace_from_env, self.env)
