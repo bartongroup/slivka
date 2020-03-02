@@ -1,10 +1,18 @@
 import pymongo.database
+from pymongo import ReplaceOne
+from typing import List
 
 from .documents import MongoDocument
 
 
 def insert_one(database: pymongo.database.Database, item: MongoDocument):
     database[item.__collection__].insert_one(item)
+
+
+def insert_many(database: pymongo.database.Database, items: List[MongoDocument]):
+    if not items:
+        return
+    database[items[0].__collection__].insert_many(items)
 
 
 def push_one(database: pymongo.database.Database, item: MongoDocument):
@@ -21,3 +29,8 @@ def pull_one(database: pymongo.database.Database, item: MongoDocument):
         raise TypeError("Document not found in the collection")
     del data['_id']
     item.update(data)
+
+
+def push_many(database: pymongo.database.Database, items: List[MongoDocument]):
+    operations = [ReplaceOne({'_id': it.id}, it) for it in items]
+    database[items[0].__collection__].bulk_write(operations, ordered=False)
