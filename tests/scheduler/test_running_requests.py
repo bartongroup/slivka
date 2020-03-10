@@ -1,131 +1,220 @@
-from collections import defaultdict
-from functools import partial
+from unittest import mock
 
+from slivka.db.documents import JobRequest
+from slivka.scheduler import Scheduler, Limiter
+from slivka.scheduler.core import REJECTED, ERROR
+from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import BackoffCounter
-
-try:
-    import mock
-except ImportError:
-    import unittest.mock as mock
-
-import pytest
-
-from slivka import JobStatus
-from slivka.db.documents import JobRequest, JobMetadata
-from slivka.scheduler import RunInfo, Runner, Scheduler
 # noinspection PyUnresolvedReferences
-from . import mock_mongo, insert_jobs
+from . import mock_mongo
 
 
-@pytest.fixture
-def runner_mock():
+def MockRunner(service, name):
     runner = mock.MagicMock(spec=Runner)
-    runner.run.return_value = RunInfo(id=0, cwd='/tmp')
-
-    def batch_run(inputs):
-        yield from (RunInfo(id=0, cwd='/tmp') for _ in inputs)
-
-    runner.batch_run.side_effect = batch_run
+    runner.id = RunnerID(service_name=service, runner_name=name)
     return runner
 
 
-@pytest.mark.usefixtures('mock_mongo')
-def test_batch_run_called(insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
-    insert_jobs(jobs)
-    requests = {runner_mock: jobs}
+class LimiterStub(Limiter):
+    def limit_runner1(self, inputs): return inputs.get('runner') == 1
+    def limit_runner2(self, inputs): return inputs.get('runner') == 2
+
+
+def test_grouping():
     scheduler = Scheduler()
-    scheduler.run_requests(requests)
-    runner_mock.batch_run.assert_called_once_with([{'param': 0}, {'param': 1}])
+    runner1 = MockRunner('stub', 'runner1')
+    runner2 = MockRunner('stub', 'runner2')
+    scheduler.add_runner(runner1)
+    scheduler.add_runner(runner2)
+    scheduler.limiters['stub'] = LimiterStub()
+
+    requests = [
+        JobRequest(service='stub', inputs={'runner': 1}),
+        JobRequest(service='stub', inputs={'runner': 2}),
+        JobRequest(service='stub', inputs={'runner': 1}),
+        JobRequest(service='stub', inputs={'runner': 0})
+    ]
+    grouped = scheduler.group_requests(requests)
+    assert grouped[runner1] == [requests[0], requests[2]]
+    assert grouped[runner2] == [requests[1]]
+    assert grouped[REJECTED] == [requests[3]]
+    assert grouped[ERROR] == []
 
 
-def test_request_state_queued_set(mock_mongo, insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0})]
-    insert_jobs(jobs)
+def test_successful_running():
     scheduler = Scheduler()
-    scheduler.run_requests({runner_mock: jobs.copy()})
-    it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
-    assert it.status == JobStatus.QUEUED
+    runner = MockRunner('stub', 'runner')
+    requests = [
+        JobRequest(service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+    ]
+    runner.batch_run.return_value = range(len(requests))
+    started, deferred, failed = scheduler.run_requests(runner, requests)
+    assert [request for request, job in started] == requests
 
 
-def test_failed_request_state(mock_mongo, insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0})]
-    insert_jobs(jobs)
+def test_returned_jobs():
     scheduler = Scheduler()
-    runner_mock.batch_run.side_effect = RuntimeError
-    scheduler.run_requests({runner_mock: jobs.copy()})
-    it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
-    assert it.status == JobStatus.PENDING
+    runner = MockRunner('stub', 'runner')
+    requests = [
+        JobRequest(service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+    ]
+    runner.batch_run.return_value = range(len(requests))
+    started, deferred, failed = scheduler.run_requests(runner, requests)
+    assert [job for request, job in started] == list(range(len(requests)))
 
 
-def test_giveup_request_state(mock_mongo, insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0})]
-    insert_jobs(jobs)
+def test_batch_run_called():
     scheduler = Scheduler()
-    patch = mock.patch.object(
-        scheduler, '_backoff_counters',
-        defaultdict(partial(BackoffCounter, max_tries=0))
+    runner = MockRunner('stub', 'runner')
+    requests = [
+        JobRequest(service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+    ]
+    runner.batch_run.return_value = range(len(requests))
+    scheduler.run_requests(runner, requests)
+    runner.batch_run.assert_called_once_with(
+        [mock.sentinel.inputs, mock.sentinel.inputs]
     )
-    runner_mock.batch_run.side_effect = RuntimeError
-    with patch:
-        scheduler.run_requests({runner_mock: jobs.copy()})
-    it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
-    assert it.status == JobStatus.ERROR
 
 
-@pytest.mark.usefixtures('mock_mongo')
-def test_remove_processed_requests(insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
-    insert_jobs(jobs)
+def test_deferred_running():
     scheduler = Scheduler()
-    scheduler.run_requests({runner_mock: jobs})
-    assert len(jobs) == 0
+    runner = MockRunner('stub', 'runner')
+    requests = [
+        JobRequest(service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+    ]
+    runner.batch_run.side_effect = RuntimeError("failed successfully")
+    started, deferred, failed = scheduler.run_requests(runner, requests)
+    assert deferred == requests
 
 
-@pytest.mark.usefixtures('mock_mongo')
-def test_keep_unprocessed_requests(insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
-    insert_jobs(jobs)
+def test_failed_running():
     scheduler = Scheduler()
-    runner_mock.batch_run.side_effect = RuntimeError
-    scheduler.run_requests({runner_mock: jobs})
-    assert len(jobs) == 2
+    runner = MockRunner('stub', 'runner')
+    requests = [
+        JobRequest(service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+    ]
+    runner.batch_run.side_effect = RuntimeError("failed successfully")
+    with mock.patch.dict(scheduler._backoff_counters,
+                         {runner: BackoffCounter(0)}):
+        started, deferred, failed = scheduler.run_requests(runner, requests)
+    assert failed == requests
 
 
-@pytest.mark.usefixtures('mock_mongo')
-def test_remove_erroneous_requests(insert_jobs, runner_mock):
-    jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
-    insert_jobs(jobs)
-    scheduler = Scheduler()
-    patch = mock.patch.object(
-        scheduler, '_backoff_counters',
-        defaultdict(partial(BackoffCounter, max_tries=0))
-    )
-    runner_mock.batch_run.side_effect = RuntimeError
-    with patch:
-        scheduler.run_requests({runner_mock: jobs})
-    assert len(jobs) == 0
 
-
-def test_insert_jobs_tracking_data(mock_mongo, insert_jobs, runner_mock):
-    request = JobRequest('dummy', {'param': 0})
-    insert_jobs([request])
-    scheduler = Scheduler()
-    scheduler.run_requests(({runner_mock: [request]}))
-    job = JobMetadata.find_one(mock_mongo, uuid=request['uuid'])
-    assert job['service'] == 'dummy'
-    assert job['work_dir'] == '/tmp'
-    assert job['runner_class'] == '%s.%s' % (runner_mock.__class__.__module__, runner_mock.__class__.__name__)
-    assert job['job_id'] == 0
-    assert job['status'] == JobStatus.QUEUED
-
-
-@pytest.mark.usefixture('mock_mongo')
-def test_add_running_jobs(insert_jobs, runner_mock):
-    request = JobRequest('dummy', {'param': 0})
-    insert_jobs([request])
-    scheduler = Scheduler()
-    scheduler.run_requests({runner_mock: [request]})
-    running = scheduler.running_jobs[runner_mock.__class__]
-    assert len(running) == 1
-    assert running[0]['uuid'] == request['uuid']
+# @pytest.fixture
+# def runner_mock():
+#     runner = mock.MagicMock(spec=Runner)
+#     runner.run.return_value = RunInfo(id=0, cwd='/tmp')
+#
+#     def batch_run(inputs):
+#         yield from (RunInfo(id=0, cwd='/tmp') for _ in inputs)
+#
+#     runner.batch_run.side_effect = batch_run
+#     return runner
+#
+#
+# @pytest.mark.usefixtures('mock_mongo')
+# def test_batch_run_called(insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
+#     insert_jobs(jobs)
+#     requests = {runner_mock: jobs}
+#     scheduler = Scheduler()
+#     scheduler.run_requests(requests)
+#     runner_mock.batch_run.assert_called_once_with([{'param': 0}, {'param': 1}])
+#
+#
+# def test_request_state_queued_set(mock_mongo, insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     scheduler.run_requests({runner_mock: jobs.copy()})
+#     it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
+#     assert it.status == JobStatus.QUEUED
+#
+#
+# def test_failed_request_state(mock_mongo, insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     runner_mock.batch_run.side_effect = RuntimeError
+#     scheduler.run_requests({runner_mock: jobs.copy()})
+#     it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
+#     assert it.status == JobStatus.PENDING
+#
+#
+# def test_giveup_request_state(mock_mongo, insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     patch = mock.patch.object(
+#         scheduler, '_backoff_counters',
+#         defaultdict(partial(BackoffCounter, max_tries=0))
+#     )
+#     runner_mock.batch_run.side_effect = RuntimeError
+#     with patch:
+#         scheduler.run_requests({runner_mock: jobs.copy()})
+#     it = JobRequest.find_one(mock_mongo, _id=jobs[0]['_id'])
+#     assert it.status == JobStatus.ERROR
+#
+#
+# @pytest.mark.usefixtures('mock_mongo')
+# def test_remove_processed_requests(insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     scheduler.run_requests({runner_mock: jobs})
+#     assert len(jobs) == 0
+#
+#
+# @pytest.mark.usefixtures('mock_mongo')
+# def test_keep_unprocessed_requests(insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     runner_mock.batch_run.side_effect = RuntimeError
+#     scheduler.run_requests({runner_mock: jobs})
+#     assert len(jobs) == 2
+#
+#
+# @pytest.mark.usefixtures('mock_mongo')
+# def test_remove_erroneous_requests(insert_jobs, runner_mock):
+#     jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
+#     insert_jobs(jobs)
+#     scheduler = Scheduler()
+#     patch = mock.patch.object(
+#         scheduler, '_backoff_counters',
+#         defaultdict(partial(BackoffCounter, max_tries=0))
+#     )
+#     runner_mock.batch_run.side_effect = RuntimeError
+#     with patch:
+#         scheduler.run_requests({runner_mock: jobs})
+#     assert len(jobs) == 0
+#
+#
+# def test_insert_jobs_tracking_data(mock_mongo, insert_jobs, runner_mock):
+#     request = JobRequest('dummy', {'param': 0})
+#     insert_jobs([request])
+#     scheduler = Scheduler()
+#     scheduler.run_requests(({runner_mock: [request]}))
+#     job = JobMetadata.find_one(mock_mongo, uuid=request['uuid'])
+#     assert job['service'] == 'dummy'
+#     assert job['work_dir'] == '/tmp'
+#     assert job['runner_class'] == '%s.%s' % (runner_mock.__class__.__module__, runner_mock.__class__.__name__)
+#     assert job['job_id'] == 0
+#     assert job['status'] == JobStatus.QUEUED
+#
+#
+# @pytest.mark.usefixture('mock_mongo')
+# def test_add_running_jobs(insert_jobs, runner_mock):
+#     request = JobRequest('dummy', {'param': 0})
+#     insert_jobs([request])
+#     scheduler = Scheduler()
+#     scheduler.run_requests({runner_mock: [request]})
+#     running = scheduler.running_jobs[runner_mock.__class__]
+#     assert len(running) == 1
+#     assert running[0]['uuid'] == request['uuid']
