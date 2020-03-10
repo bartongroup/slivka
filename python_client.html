@@ -1,0 +1,960 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Client applications &#8212; Slivka 0.5.b3 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Advanced Usage" href="advanced_usage.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="advanced_usage.html" title="Advanced Usage"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.5.b3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="client-applications">
+<h1>Client applications<a class="headerlink" href="#client-applications" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="rest-api">
+<h2>REST API<a class="headerlink" href="#rest-api" title="Permalink to this headline">¶</a></h2>
+<p>Slivka provides REST API which allows you to develop applications that interact with
+the servers. The interactive view of available API endpoints is available at <code class="docutils literal notranslate"><span class="pre">api/</span></code>
+endpoint of every Slivka server.</p>
+</div>
+<div class="section" id="python">
+<h2>Python<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h2>
+<p>If you are using Python, there is an official Slivka client library that abstracts
+communication with the server. The most recent version of the library can be installed
+from our github repository:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">warownia1</span><span class="o">/</span><span class="n">slivka</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">client</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+<div class="section" id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="creating-client">
+<h4>Creating client<a class="headerlink" href="#creating-client" title="Permalink to this headline">¶</a></h4>
+<p>Once the library is installed, you can import <a class="reference internal" href="#slivka_client.SlivkaClient" title="slivka_client.SlivkaClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">SlivkaClient</span></code></a> form <code class="xref py py-mod docutils literal notranslate"><span class="pre">slivka_client</span></code>
+module and create client instance using a single <em>url</em> argument or provide
+<em>scheme</em>, <em>auth</em>, <em>host</em>, <em>port</em> and <em>path</em> as individual keyword arguments.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Remember to add trailing slash at the end of the path.
+<code class="docutils literal notranslate"><span class="pre">example.org/slivka</span></code> means <code class="docutils literal notranslate"><span class="pre">slivka</span></code> resource under <code class="docutils literal notranslate"><span class="pre">/</span></code> path,
+while <code class="docutils literal notranslate"><span class="pre">example.org/slivka/</span></code> indicates resources under <code class="docutils literal notranslate"><span class="pre">/slivka/</span></code> path.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">slivka_client</span> <span class="kn">import</span> <span class="n">SlivkaClient</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">SlivkaClient</span><span class="p">(</span><span class="s1">&#39;http://example.org/slivka/&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># or SlivkaClient(schema=&#39;http&#39;, host=&#39;example.org&#39;, path=&#39;slivka/&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">client</span><span class="o">.</span><span class="n">url</span>
+<span class="go">Url(scheme=&#39;http&#39;, auth=None, host=&#39;example.org&#39;,</span>
+<span class="go">    port=None, path=&#39;/slivka/&#39;, query=None, fragment=None)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#slivka_client.SlivkaClient" title="slivka_client.SlivkaClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.SlivkaClient</span></code></a> is the starting point to services discovery,
+file upload and retrieval and job monitoring.</p>
+</div>
+<div class="section" id="services-listing-and-job-submission">
+<h4>Services listing and job submission<a class="headerlink" href="#services-listing-and-job-submission" title="Permalink to this headline">¶</a></h4>
+<p>The list of services can be accessed through <code class="xref py py-attr docutils literal notranslate"><span class="pre">services</span></code> property.
+The server will be contacted to provide the list of services on the first property access.
+Subsequent attempts will return the cached list immediately. Use <code class="xref py py-meth docutils literal notranslate"><span class="pre">refresh_services()</span></code>
+method whenever you want to reload the list of services from the server.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span><span class="o">.</span><span class="n">services</span>
+<span class="go">[SlivkaService(example_one), SlivkaService(example_two)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">service</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">service</span><span class="o">.</span><span class="n">name</span>
+<span class="go">&#39;example_one&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">service</span><span class="o">.</span><span class="n">form</span>
+<span class="go">Form(example_one)</span>
+</pre></div>
+</div>
+<p>Service object represents a single service on the server side and its <a class="reference internal" href="#slivka_client.Service.form" title="slivka_client.Service.form"><code class="xref py py-attr docutils literal notranslate"><span class="pre">form</span></code></a>
+property creates a new submission form needed to run jobs.
+A new empty form is created every time the property is accessed.
+Alternatively, if you prefer more explicit approach, you can call <a class="reference internal" href="#slivka_client.Service.new_form" title="slivka_client.Service.new_form"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Service.new_form()</span></code></a>
+method which returns a new form.</p>
+<p>Forms are dict-like iterable objects providing a view of the service input parameters,
+serving as a containers for the input data and handling job submissions.
+Iterating over the form yields field description objects with properties
+according to the their type. The properties common for all field types are:</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p>type of the field (see <a class="reference internal" href="#slivka_client.FieldType" title="slivka_client.FieldType"><code class="xref py py-class docutils literal notranslate"><span class="pre">FieldType</span></code></a>)</p>
+</dd>
+<dt class="field-even">name</dt>
+<dd class="field-even"><p>field name/identifier</p>
+</dd>
+<dt class="field-odd">label</dt>
+<dd class="field-odd"><p>short human-readable label</p>
+</dd>
+<dt class="field-even">description</dt>
+<dd class="field-even"><p>longer, more detailed description</p>
+</dd>
+<dt class="field-odd">required</dt>
+<dd class="field-odd"><p>whether the field is required or not</p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p>default value or <code class="docutils literal notranslate"><span class="pre">None</span></code> if not provided</p>
+</dd>
+<dt class="field-odd">multiple</dt>
+<dd class="field-odd"><p>whether multiple values are accepted</p>
+</dd>
+</dl>
+<p>The available properties of each form field are described in the API Reference
+section <a class="reference internal" href="#form-fields">Form Fields</a>.</p>
+<p>The list of fields can be accessed through <code class="xref py py-attr docutils literal notranslate"><span class="pre">fields</span></code> property or by iterating
+over the form object directly. Additionally, individual fields can be obtained
+using <code class="docutils literal notranslate"><span class="pre">form[key]</span></code> syntax where <em>key</em> is the field name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">form</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">form</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">form</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">type</span><span class="p">))</span>
+<span class="go">input-file: FieldType.FILE</span>
+<span class="go">num-steps: FieldType.INTEGER</span>
+<span class="go">variation: FieldType.DECIMAL</span>
+<span class="go">verbose: FieldType.BOOLEAN</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;num-steps&#39;</span><span class="p">]</span>
+<span class="go">IntegerField(name=&#39;num-steps&#39;, label=&#39;Number of simulation steps&#39;,</span>
+<span class="go">             description=&#39;&#39;, required=True, default=1000, min=0, max=10000)</span>
+</pre></div>
+</div>
+<p>In order to provide the input values for the form, you can set the value of
+the field using item assignment <code class="docutils literal notranslate"><span class="pre">form[key]</span> <span class="pre">=</span> <span class="pre">value</span></code> syntax or using
+<code class="xref py py-obj docutils literal notranslate"><span class="pre">set(key,</span> <span class="pre">value)</span></code> method, where <em>key</em> is the field name and <em>value</em>
+is the value to be set. This method replaces the old value with the new one.
+The <em>value</em> can be either a type corresponding to
+the field type or a collection of such values if multiple values are allowed.
+In most cases the following types are expected for each field:</p>
+<dl class="field-list simple">
+<dt class="field-odd">IntegerField</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">DecimalField</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+<dt class="field-odd">TextField</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">BooleanField</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-odd">ChoiceField</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">FileField</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code> (file uuid) or <a class="reference internal" href="#slivka_client.File" title="slivka_client.File"><code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code></a> or <code class="xref py py-class docutils literal notranslate"><span class="pre">io.IOBase</span></code></p>
+</dd>
+</dl>
+<p>However, these values might differ depending on the service requirements
+and custom server-side validation. For more information refer to the service
+documentation on the particular server you want to access.</p>
+<p>If the field accepts multiple values, you can either set it to the list of values using
+the method above or you can use <code class="xref py py-obj docutils literal notranslate"><span class="pre">Form.append(key,</span> <span class="pre">value)</span></code> to
+append a single value or <code class="xref py py-obj docutils literal notranslate"><span class="pre">Form.extend(key,</span> <span class="pre">iterable)</span></code> to append all values
+from the <em>iterable</em> to the end of the values list. Keep in mind that
+<a class="reference internal" href="#slivka_client.Form.append" title="slivka_client.Form.append"><code class="xref py py-meth docutils literal notranslate"><span class="pre">append()</span></code></a> and <a class="reference internal" href="#slivka_client.Form.extend" title="slivka_client.Form.extend"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extend()</span></code></a> methods use the respective methods of the
+underlying lists in the <em>values</em> dictionary. If the value was previously set to something
+that doesn’t implement <code class="xref py py-class docutils literal notranslate"><span class="pre">MutableSequence</span></code> those methods will raise
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
+<p>The inserted values can be removed using item deletion <code class="docutils literal notranslate"><span class="pre">del</span> <span class="pre">form[key]</span></code>
+or <code class="xref py py-obj docutils literal notranslate"><span class="pre">delete(key)</span></code> method.
+Additionally, using <code class="xref py py-obj docutils literal notranslate"><span class="pre">clear()</span></code> will delete all values.</p>
+<p>Internally, the values are stored in the <code class="xref py py-class docutils literal notranslate"><span class="pre">defaultdict</span></code>
+having an empty list as a default factory.
+That dictionary may be accessed and manipulated directly (it’s not recommended though)
+through the <code class="xref py py-attr docutils literal notranslate"><span class="pre">values</span></code> attribute of the <code class="xref py py-class docutils literal notranslate"><span class="pre">Form</span></code> object.</p>
+<p>Once the form is populated, a new job request can be submitted to the server using
+<a class="reference internal" href="#slivka_client.Form.submit" title="slivka_client.Form.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a> method that returns job uuid or raises an exception if the submission
+was not successful.
+Additionally, you can supply one-off input values passing a mapping
+as an argument or providing the values as keyword arguments. Those will
+be added on top of the existing field values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;input-file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/path/to/input.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;num-steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">form</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="s1">&#39;variation&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">job_id</span> <span class="o">=</span> <span class="n">form</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">job_id</span>
+<span class="go">&#39;1WsqR3H2RwOxTps1XI22xQ&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="retrieving-job-state-and-result">
+<h4>Retrieving job state and result<a class="headerlink" href="#retrieving-job-state-and-result" title="Permalink to this headline">¶</a></h4>
+<p>Once the job is successfully submitted its state can be checked using
+<a class="reference internal" href="#slivka_client.SlivkaClient.get_job_state" title="slivka_client.SlivkaClient.get_job_state"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SlivkaClient.get_job_state()</span></code></a> which takes job uuid returned by
+<a class="reference internal" href="#slivka_client.Form.submit" title="slivka_client.Form.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Form.submit()</span></code></a> and returns the <a class="reference internal" href="#slivka_client.JobState" title="slivka_client.JobState"><code class="xref py py-class docutils literal notranslate"><span class="pre">JobState</span></code></a>.</p>
+<p>You can also fetch the list of results even if the job is still running
+using <a class="reference internal" href="#slivka_client.SlivkaClient.get_job_results" title="slivka_client.SlivkaClient.get_job_results"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SlivkaClient.get_job_results()</span></code></a> and passing it job uuid.
+Keep in mind that the results may be incomplete when the job is in
+unfinished state.
+The method returns the list of file handlers that can be used to inspect
+files’ metadata and stream their content.</p>
+</div>
+<div class="section" id="using-file-objects">
+<h4>Using File objects<a class="headerlink" href="#using-file-objects" title="Permalink to this headline">¶</a></h4>
+<p>Instead of working with files directly, Slivka assigns a uuid to each file and
+uses it instead. This approach helps to avoid sending the same data
+over the internet multiple times and allows using the output of one service
+as an input to the other without the need to download and re-upload the file.</p>
+<p>On the client side, files that are present on the server are
+represented as <code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code> instances. You obtain them when uploading
+the file to the server or retrieving job results.
+Those object are subclasses of string and are equal to file’s uuid.
+They also provide additional properties with file meta-data such as
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">title</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">label</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">media_type</span></code> and
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">url</span></code>.</p>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code> objects, however, does not store file content. If you
+want to download the content either to the file, or to the memory you
+can use <code class="xref py py-meth docutils literal notranslate"><span class="pre">dump()</span></code> method and pass it either path to the output file
+or an open writable stream. It’s highly recommended to use binary streams,
+but in many cases text streams should work as well.</p>
+<p>Example of uploading and downloading the file from the server:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">file</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">upload_file</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/path/to/file.txt&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file</span>
+<span class="go">File(uploaded, [b2uEAxmrS6mZzLIqkkbfXQ])</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># save to the file at the specified location</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="s1">&#39;/path/to/output.txt&#39;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># open the file for writing and write to it</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/path/to/output_file.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+<span class="gp">... </span>   <span class="n">file</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">io</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># create in-memory buffer and write to it</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">content</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If you want to use the same input file multiple times, it’s a good idea
+to upload it once and re-use the file handler to speed up the submission
+process, save time and bandwidth. The submission form can accept
+<code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code> objects as well as open streams.</p>
+</div>
+</div>
+<div class="section" id="api-reference">
+<h3>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="slivka_client.SlivkaClient">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">SlivkaClient</code><span class="sig-paren">(</span><em class="sig-param">url</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.SlivkaClient" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">SlivkaClient</code><span class="sig-paren">(</span><em class="sig-param">*</em>, <em class="sig-param">scheme</em>, <em class="sig-param">auth</em>, <em class="sig-param">host</em>, <em class="sig-param">port</em>, <em class="sig-param">path</em><span class="sig-paren">)</span></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.SlivkaClient.url">
+<code class="sig-name descname">url</code><a class="headerlink" href="#slivka_client.SlivkaClient.url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the URL the client will connect to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>urllib3.util.url.Url</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.SlivkaClient.services">
+<code class="sig-name descname">services</code><a class="headerlink" href="#slivka_client.SlivkaClient.services" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of services.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list[<a class="reference internal" href="#slivka_client.Service" title="slivka_client.Service">slivka_client.Service</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.SlivkaClient.refresh_services">
+<code class="sig-name descname">refresh_services</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.SlivkaClient.refresh_services" title="Permalink to this definition">¶</a></dt>
+<dd><p>Force reloading the services list from the server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.SlivkaClient.upload_file">
+<code class="sig-name descname">upload_file</code><span class="sig-paren">(</span><em class="sig-param">file: Union[str, io.BufferedIOBase], title: str = ''</em><span class="sig-paren">)</span> &#x2192; slivka_client.file.File<a class="headerlink" href="#slivka_client.SlivkaClient.upload_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Upload the file to the server and obtain its handler.</p>
+<p><em>file</em> can be either a stream open for reading or a path.
+If path is provided, the file will be opened in binary mode.
+Optionally, the file title can be specified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>handler to the file on the server.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#slivka_client.File" title="slivka_client.File">slivka_client.File</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.SlivkaClient.get_file">
+<code class="sig-name descname">get_file</code><span class="sig-paren">(</span><em class="sig-param">id: str</em><span class="sig-paren">)</span> &#x2192; slivka_client.file.File<a class="headerlink" href="#slivka_client.SlivkaClient.get_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the file handler using file id.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.SlivkaClient.get_job_state">
+<code class="sig-name descname">get_job_state</code><span class="sig-paren">(</span><em class="sig-param">uuid: str</em><span class="sig-paren">)</span> &#x2192; slivka_client.state.JobState<a class="headerlink" href="#slivka_client.SlivkaClient.get_job_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the state of the job.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>uuid</strong> – job uuid assigned on submission</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.SlivkaClient.get_job_results">
+<code class="sig-name descname">get_job_results</code><span class="sig-paren">(</span><em class="sig-param">uuid: str</em><span class="sig-paren">)</span> &#x2192; List[slivka_client.file.File]<a class="headerlink" href="#slivka_client.SlivkaClient.get_job_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the output files of the job</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>uuid</strong> – job uuid</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of the output files</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list[<a class="reference internal" href="#slivka_client.File" title="slivka_client.File">slivka_client.File</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.Service">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">Service</code><a class="headerlink" href="#slivka_client.Service" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="slivka_client.Service.classifiers">
+<em class="property">property </em><code class="sig-name descname">classifiers</code><a class="headerlink" href="#slivka_client.Service.classifiers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.form">
+<em class="property">property </em><code class="sig-name descname">form</code><a class="headerlink" href="#slivka_client.Service.form" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.label">
+<em class="property">property </em><code class="sig-name descname">label</code><a class="headerlink" href="#slivka_client.Service.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.name">
+<em class="property">property </em><code class="sig-name descname">name</code><a class="headerlink" href="#slivka_client.Service.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.new_form">
+<code class="sig-name descname">new_form</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; slivka_client.form.Form<a class="headerlink" href="#slivka_client.Service.new_form" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.refresh_form">
+<code class="sig-name descname">refresh_form</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Service.refresh_form" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Service.url">
+<em class="property">property </em><code class="sig-name descname">url</code><a class="headerlink" href="#slivka_client.Service.url" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.Form">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">Form</code><a class="headerlink" href="#slivka_client.Form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Representation of a new job submission request form.</p>
+<dl class="method">
+<dt id="slivka_client.Form.__delitem__">
+<code class="sig-name descname">__delitem__</code><span class="sig-paren">(</span><em class="sig-param">key</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.__delitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clear the field specified by <em>key</em>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.__getitem__">
+<code class="sig-name descname">__getitem__</code><span class="sig-paren">(</span><em class="sig-param">key</em><span class="sig-paren">)</span> &#x2192; slivka_client.form._BaseField<a class="headerlink" href="#slivka_client.Form.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the description of the field named <em>key</em>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.__iter__">
+<code class="sig-name descname">__iter__</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; Iterator[slivka_client.form._BaseField]<a class="headerlink" href="#slivka_client.Form.__iter__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator over all form fields.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.__setitem__">
+<code class="sig-name descname">__setitem__</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.__setitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of the field <em>key</em> to <em>value</em>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.append">
+<code class="sig-name descname">append</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.append" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append <em>value</em> to the list of values of <em>key</em> field.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Erase all values from this form</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; slivka_client.form.Form<a class="headerlink" href="#slivka_client.Form.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create and return an empty copy of that form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.extend">
+<code class="sig-name descname">extend</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">iterable</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.extend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append all values from the <em>iterable</em> to the field values.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.fields">
+<em class="property">property </em><code class="sig-name descname">fields</code><a class="headerlink" href="#slivka_client.Form.fields" title="Permalink to this definition">¶</a></dt>
+<dd><p>View of all fields in this form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.name">
+<em class="property">property </em><code class="sig-name descname">name</code><a class="headerlink" href="#slivka_client.Form.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of the form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param">key</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.Form.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of the field <em>key</em> to <em>value</em>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.submit">
+<code class="sig-name descname">submit</code><span class="sig-paren">(</span><em class="sig-param">_items=()</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#slivka_client.Form.submit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submit the form to the server and start a new job. You can
+provide an optional dictionary of input parameters that will
+be used in this submission only or pass them as keyword arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_items</strong> – dict of submission parameters</p></li>
+<li><p><strong>kwargs</strong> – submission parameters as kwargs</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>job uuid</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.url">
+<em class="property">property </em><code class="sig-name descname">url</code><a class="headerlink" href="#slivka_client.Form.url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Url location of the form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.Form.values">
+<em class="property">property </em><code class="sig-name descname">values</code><a class="headerlink" href="#slivka_client.Form.values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dictionary of entered values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.FieldType">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">FieldType</code><a class="headerlink" href="#slivka_client.FieldType" title="Permalink to this definition">¶</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="attribute">
+<dt id="slivka_client.FieldType.BOOLEAN">
+<code class="sig-name descname">BOOLEAN</code><em class="property"> = 'boolean'</em><a class="headerlink" href="#slivka_client.FieldType.BOOLEAN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.CHOICE">
+<code class="sig-name descname">CHOICE</code><em class="property"> = 'choice'</em><a class="headerlink" href="#slivka_client.FieldType.CHOICE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.DECIMAL">
+<code class="sig-name descname">DECIMAL</code><em class="property"> = 'decimal'</em><a class="headerlink" href="#slivka_client.FieldType.DECIMAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.FILE">
+<code class="sig-name descname">FILE</code><em class="property"> = 'file'</em><a class="headerlink" href="#slivka_client.FieldType.FILE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.FLAG">
+<code class="sig-name descname">FLAG</code><em class="property"> = 'boolean'</em><a class="headerlink" href="#slivka_client.FieldType.FLAG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of <a class="reference internal" href="#slivka_client.FieldType.BOOLEAN" title="slivka_client.FieldType.BOOLEAN"><code class="xref py py-attr docutils literal notranslate"><span class="pre">FieldType.BOOLEAN</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.FLOAT">
+<code class="sig-name descname">FLOAT</code><em class="property"> = 'decimal'</em><a class="headerlink" href="#slivka_client.FieldType.FLOAT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of <a class="reference internal" href="#slivka_client.FieldType.DECIMAL" title="slivka_client.FieldType.DECIMAL"><code class="xref py py-attr docutils literal notranslate"><span class="pre">FieldType.DECIMAL</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.INT">
+<code class="sig-name descname">INT</code><em class="property"> = 'integer'</em><a class="headerlink" href="#slivka_client.FieldType.INT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of <a class="reference internal" href="#slivka_client.FieldType.INTEGER" title="slivka_client.FieldType.INTEGER"><code class="xref py py-attr docutils literal notranslate"><span class="pre">FieldType.INTEGER</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.INTEGER">
+<code class="sig-name descname">INTEGER</code><em class="property"> = 'integer'</em><a class="headerlink" href="#slivka_client.FieldType.INTEGER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.TEXT">
+<code class="sig-name descname">TEXT</code><em class="property"> = 'text'</em><a class="headerlink" href="#slivka_client.FieldType.TEXT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.FieldType.UNDEFINED">
+<code class="sig-name descname">UNDEFINED</code><em class="property"> = 'undefined'</em><a class="headerlink" href="#slivka_client.FieldType.UNDEFINED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.JobState">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">JobState</code><a class="headerlink" href="#slivka_client.JobState" title="Permalink to this definition">¶</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="attribute">
+<dt id="slivka_client.JobState.ACCEPTED">
+<code class="sig-name descname">ACCEPTED</code><em class="property"> = 'accepted'</em><a class="headerlink" href="#slivka_client.JobState.ACCEPTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request was accepted and is scheduled for execution</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.COMPLETED">
+<code class="sig-name descname">COMPLETED</code><em class="property"> = 'completed'</em><a class="headerlink" href="#slivka_client.JobState.COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job has finished its execution successfully</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.DELETED">
+<code class="sig-name descname">DELETED</code><em class="property"> = 'deleted'</em><a class="headerlink" href="#slivka_client.JobState.DELETED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job was deleted from the queuing system</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.ERROR">
+<code class="sig-name descname">ERROR</code><em class="property"> = 'error'</em><a class="headerlink" href="#slivka_client.JobState.ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job failed to run due to internal error</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.FAILED">
+<code class="sig-name descname">FAILED</code><em class="property"> = 'failed'</em><a class="headerlink" href="#slivka_client.JobState.FAILED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job finished with non-zero exit code</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.INTERRUPTED">
+<code class="sig-name descname">INTERRUPTED</code><em class="property"> = 'interrupted'</em><a class="headerlink" href="#slivka_client.JobState.INTERRUPTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job was interrupted during execution</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.PENDING">
+<code class="sig-name descname">PENDING</code><em class="property"> = 'pending'</em><a class="headerlink" href="#slivka_client.JobState.PENDING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request was submitted successfully and awaits further processing</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.QUEUED">
+<code class="sig-name descname">QUEUED</code><em class="property"> = 'queued'</em><a class="headerlink" href="#slivka_client.JobState.QUEUED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job was sent to the queuing system and waits for resources to become available</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.REJECTED">
+<code class="sig-name descname">REJECTED</code><em class="property"> = 'rejected'</em><a class="headerlink" href="#slivka_client.JobState.REJECTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request was rejected due to resource limitations</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.RUNNING">
+<code class="sig-name descname">RUNNING</code><em class="property"> = 'running'</em><a class="headerlink" href="#slivka_client.JobState.RUNNING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job is currently running</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.JobState.UNKNOWN">
+<code class="sig-name descname">UNKNOWN</code><em class="property"> = 'unknown'</em><a class="headerlink" href="#slivka_client.JobState.UNKNOWN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job status can not be determined</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.File">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.</code><code class="sig-name descname">File</code><a class="headerlink" href="#slivka_client.File" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="slivka_client.File.dump">
+<code class="sig-name descname">dump</code><span class="sig-paren">(</span><em class="sig-param">fp</em><span class="sig-paren">)</span><a class="headerlink" href="#slivka_client.File.dump" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.File.label">
+<em class="property">property </em><code class="sig-name descname">label</code><a class="headerlink" href="#slivka_client.File.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.File.media_type">
+<em class="property">property </em><code class="sig-name descname">media_type</code><a class="headerlink" href="#slivka_client.File.media_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.File.title">
+<em class="property">property </em><code class="sig-name descname">title</code><a class="headerlink" href="#slivka_client.File.title" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.File.url">
+<em class="property">property </em><code class="sig-name descname">url</code><a class="headerlink" href="#slivka_client.File.url" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slivka_client.File.uuid">
+<em class="property">property </em><code class="sig-name descname">uuid</code><a class="headerlink" href="#slivka_client.File.uuid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<div class="section" id="form-fields">
+<h4>Form Fields<a class="headerlink" href="#form-fields" title="Permalink to this headline">¶</a></h4>
+<dl class="class">
+<dt id="slivka_client.form._BaseField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">_BaseField</code><a class="headerlink" href="#slivka_client.form._BaseField" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base for other fields.
+This class is never instantiated directly but provides common
+attributes for deriving types.</p>
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.default">
+<code class="sig-name descname">default</code><a class="headerlink" href="#slivka_client.form._BaseField.default" title="Permalink to this definition">¶</a></dt>
+<dd><p>default value</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.description">
+<code class="sig-name descname">description</code><a class="headerlink" href="#slivka_client.form._BaseField.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>longer description</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.label">
+<code class="sig-name descname">label</code><a class="headerlink" href="#slivka_client.form._BaseField.label" title="Permalink to this definition">¶</a></dt>
+<dd><p>short human-readable label</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.multiple">
+<code class="sig-name descname">multiple</code><a class="headerlink" href="#slivka_client.form._BaseField.multiple" title="Permalink to this definition">¶</a></dt>
+<dd><p>whether multiple values are allowed</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.name">
+<code class="sig-name descname">name</code><a class="headerlink" href="#slivka_client.form._BaseField.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>field name/identifier</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.required">
+<code class="sig-name descname">required</code><a class="headerlink" href="#slivka_client.form._BaseField.required" title="Permalink to this definition">¶</a></dt>
+<dd><p>whether the field is required</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form._BaseField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form._BaseField.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>field type</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.UndefinedField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">UndefinedField</code><a class="headerlink" href="#slivka_client.form.UndefinedField" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for all custom or unrecognised fields.</p>
+<dl class="attribute">
+<dt id="slivka_client.form.UndefinedField.attributes">
+<code class="sig-name descname">attributes</code><a class="headerlink" href="#slivka_client.form.UndefinedField.attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>dictionary of field parameters as provided by the server</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.UndefinedField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.UndefinedField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.UNDEFINED</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.IntegerField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">IntegerField</code><a class="headerlink" href="#slivka_client.form.IntegerField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.IntegerField.max">
+<code class="sig-name descname">max</code><a class="headerlink" href="#slivka_client.form.IntegerField.max" title="Permalink to this definition">¶</a></dt>
+<dd><p>maximum value constraint</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.IntegerField.min">
+<code class="sig-name descname">min</code><a class="headerlink" href="#slivka_client.form.IntegerField.min" title="Permalink to this definition">¶</a></dt>
+<dd><p>minimum value constraint</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.IntegerField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.IntegerField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.INTEGER</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.DecimalField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">DecimalField</code><a class="headerlink" href="#slivka_client.form.DecimalField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.DecimalField.max">
+<code class="sig-name descname">max</code><a class="headerlink" href="#slivka_client.form.DecimalField.max" title="Permalink to this definition">¶</a></dt>
+<dd><p>maximum value constraint</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.DecimalField.max_exclusive">
+<code class="sig-name descname">max_exclusive</code><a class="headerlink" href="#slivka_client.form.DecimalField.max_exclusive" title="Permalink to this definition">¶</a></dt>
+<dd><p>whether the maximum value is excluded</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.DecimalField.min">
+<code class="sig-name descname">min</code><a class="headerlink" href="#slivka_client.form.DecimalField.min" title="Permalink to this definition">¶</a></dt>
+<dd><p>minimum value constraint</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.DecimalField.min_exclusive">
+<code class="sig-name descname">min_exclusive</code><a class="headerlink" href="#slivka_client.form.DecimalField.min_exclusive" title="Permalink to this definition">¶</a></dt>
+<dd><p>whether the minimum value is excluded</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.DecimalField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.DecimalField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.DECIMAL</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.TextField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">TextField</code><a class="headerlink" href="#slivka_client.form.TextField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.TextField.max_length">
+<code class="sig-name descname">max_length</code><a class="headerlink" href="#slivka_client.form.TextField.max_length" title="Permalink to this definition">¶</a></dt>
+<dd><p>maximum length of the text</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.TextField.min_length">
+<code class="sig-name descname">min_length</code><a class="headerlink" href="#slivka_client.form.TextField.min_length" title="Permalink to this definition">¶</a></dt>
+<dd><p>minimum length of the text</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.TextField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.TextField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.TEXT</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.BooleanField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">BooleanField</code><a class="headerlink" href="#slivka_client.form.BooleanField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.BooleanField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.BooleanField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.BOOLEAN</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.ChoiceField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">ChoiceField</code><a class="headerlink" href="#slivka_client.form.ChoiceField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.ChoiceField.choices">
+<code class="sig-name descname">choices</code><a class="headerlink" href="#slivka_client.form.ChoiceField.choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of available choices</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.ChoiceField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.ChoiceField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.CHOICE</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slivka_client.form.FileField">
+<em class="property">class </em><code class="sig-prename descclassname">slivka_client.form.</code><code class="sig-name descname">FileField</code><a class="headerlink" href="#slivka_client.form.FileField" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="slivka_client.form.FileField.media_type">
+<code class="sig-name descname">media_type</code><a class="headerlink" href="#slivka_client.form.FileField.media_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>media type of the file</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.FileField.media_type_parameters">
+<code class="sig-name descname">media_type_parameters</code><a class="headerlink" href="#slivka_client.form.FileField.media_type_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>additional annotations regarding file content</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slivka_client.form.FileField.type">
+<code class="sig-name descname">type</code><a class="headerlink" href="#slivka_client.form.FileField.type" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Value</dt>
+<dd class="field-odd"><p>FieldType.FILE</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Client applications</a><ul>
+<li><a class="reference internal" href="#rest-api">REST API</a></li>
+<li><a class="reference internal" href="#python">Python</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#creating-client">Creating client</a></li>
+<li><a class="reference internal" href="#services-listing-and-job-submission">Services listing and job submission</a></li>
+<li><a class="reference internal" href="#retrieving-job-state-and-result">Retrieving job state and result</a></li>
+<li><a class="reference internal" href="#using-file-objects">Using File objects</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#api-reference">API Reference</a><ul>
+<li><a class="reference internal" href="#form-fields">Form Fields</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="advanced_usage.html"
+                        title="previous chapter">Advanced Usage</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/python_client.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="advanced_usage.html" title="Advanced Usage"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Slivka 0.5.b3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Mateusz Maciej Warowny.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
+    </div>
+  </body>
+</html>
