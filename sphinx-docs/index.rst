@@ -27,6 +27,7 @@ Table of contents
 
    getting_started
    advanced_usage
+   python_client
 
 
 ------------------
