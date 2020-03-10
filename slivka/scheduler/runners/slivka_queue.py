@@ -13,8 +13,8 @@ log = logging.getLogger('slivka.scheduler')
 class SlivkaQueueRunner(Runner):
     client = None  # type: LocalQueueClient
 
-    def __init__(self, command_def, name=None):
-        super().__init__(command_def, name)
+    def __init__(self, command_def, id=None):
+        super().__init__(command_def, id)
         if self.client is None:
             SlivkaQueueRunner.client = LocalQueueClient(
                 slivka.settings.slivka_queue_address

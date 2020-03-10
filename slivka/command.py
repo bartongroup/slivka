@@ -164,7 +164,7 @@ def start_scheduler(daemon, pid_file):
     with listener:
         scheduler = Scheduler()
         for service in settings.services.values():
-            scheduler.load_service(service.name, service.command)
+            scheduler.load_runners(service.name, service.command)
         scheduler.run_forever()
 
 

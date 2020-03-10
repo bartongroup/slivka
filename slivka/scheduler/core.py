@@ -1,223 +1,250 @@
 import logging
-import time
-from collections import defaultdict, OrderedDict, namedtuple
-from functools import partial
+from collections import defaultdict, namedtuple, OrderedDict
 from importlib import import_module
-from typing import Dict, Type, Optional, List, Mapping, Any, DefaultDict
+
+import threading
+from functools import partial
+from pymongo import UpdateMany, UpdateOne
+from typing import Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict
 
 import slivka.db
-from slivka import JobStatus
 from slivka.db.documents import JobRequest, JobMetadata
-from slivka.utils import BackoffCounter
-from .runners import *
+from slivka.db.helpers import insert_many
+from slivka.scheduler.runners.runner import RunnerID, Runner
+from slivka.utils import JobStatus, BackoffCounter
 
-__all__ = ['Scheduler', 'Limiter', 'DefaultLimiter', 'RunnerManager']
+
+def _fetch_pending_requests(database) -> Iterable[JobRequest]:
+    requests = JobRequest.collection(database).find(
+        {'status': JobStatus.PENDING})
+    return (JobRequest(**kwargs) for kwargs in requests)
 
 
 def get_classpath(cls):
     return cls.__module__ + '.' + cls.__name__
 
 
+RunResult = namedtuple('RunResult', 'started, deferred, failed')
+
+# sentinel valued corresponding to the rejected and error requests
+REJECTED = object()
+ERROR = object()
+
+
 class Scheduler:
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self._is_running = False
-        self.runner_selector = RunnerManager()
-        self.running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
-        self._backoff_counters = defaultdict(partial(BackoffCounter, max_tries=10))  # type: Dict[Any, BackoffCounter]
-        self._accepted_requests = defaultdict(list)  # type: DefaultDict[Runner, List[JobRequest]]
-        self.reload()
-
-    def load_service(self, service, cmd_def):
-        self.runner_selector.add_runners(service, cmd_def)
-
-    @property
-    def is_running(self):
-        return self._is_running
-
-    def stop(self):
-        self.logger.info("Stopping.")
-        self._is_running = False
-
-    def reload(self):
-        """Reloads running jobs from the database and change accepted back to pending."""
-        running_jobs = JobMetadata.find(
-            slivka.db.database,
-            {'$or': [
-                {'status': JobStatus.QUEUED},
-                {'status': JobStatus.RUNNING}
-            ]}
-        )
-        for job in running_jobs:
-            mod, cls = job['runner_class'].rsplit('.', 1)
-            runner_cls = getattr(import_module(mod), cls)
-            self.running_jobs[runner_cls].append(job)
-        JobRequest.get_collection(slivka.db.database).update_many(
-            filter={'status': JobStatus.ACCEPTED},
-            update={'$set': {'status': JobStatus.PENDING}}
-        )
-
-    def run_forever(self):
-        if self.is_running:
-            raise RuntimeError("Scheduler is already running.")
-        self._is_running = True
-        self.logger.info('Scheduler started')
-        try:
-            while self.is_running:
-                self.fetch_pending_requests(self._accepted_requests)
-                self.run_requests(self._accepted_requests)
-                self.update_running_jobs()
-                time.sleep(1)
-        except KeyboardInterrupt:
-            self.stop()
-        self.logger.info('Stopped')
-
-    def fetch_pending_requests(self, accepted: DefaultDict[Runner, List[JobRequest]]):
-        """Fetches pending requests from the database and populated provided dict
-
-        :param accepted: Dictionary to be populated with accepted requests
-        :return: None
-        """
-        requests = JobRequest.find(
-            slivka.db.database, status=JobStatus.PENDING
-        )
-        accepted_id = []
-        rejected_id = []
-        for request in requests:
-            runner = self.runner_selector.select_runner(request.service, request.inputs)
-            if runner is not None:
-                accepted_id.append(request['_id'])
-                accepted[runner].append(request)
-            else:
-                rejected_id.append(request['_id'])
-        collection = JobRequest.get_collection(slivka.db.database)
-        collection.update_many(
-            {'_id': {'$in': accepted_id}},
-            {'$set': {'status': JobStatus.ACCEPTED}}
-        )
-        collection.update_many(
-            {'_id': {'$in': rejected_id}},
-            {'$set': {'status': JobStatus.REJECTED}}
-        )
-
-    def run_requests(self,
-                     accepted_requests: Mapping[Runner, List[JobRequest]],
-                     limit: int = None):
-        for runner, requests in accepted_requests.items():
-            counter = self._backoff_counters[runner]
-            if not requests or next(counter) > 0:
-                continue
-            try:
-                self.logger.info("Submitting batch %s",
-                                 ', '.join(r['uuid'] for r in requests))
-                jobs = runner.batch_run([r['inputs'] for r in requests])
-            except:
-                counter.failure()
-                if counter.give_up:
-                    JobRequest.get_collection(slivka.db.database).update_many(
-                        {'_id': {'$in': [r['_id'] for r in requests]}},
-                        {'$set': {'status': JobStatus.ERROR}}
-                    )
-                    requests.clear()
-                    self.logger.exception(
-                        "Submitting jobs using %s failed. Giving up.",
-                        runner, exc_info=True
-                    )
-                else:
-                    self.logger.exception(
-                        "Submitting jobs using %s failed. Retrying in %d iterations.",
-                        runner, counter.current, exc_info=True
-                    )
-            else:
-                for job, request in zip(jobs, requests):
-                    j = JobMetadata(
-                        uuid=request['uuid'],
-                        service=request['service'],
-                        work_dir=job.cwd,
-                        runner_class=get_classpath(runner.__class__),
-                        job_id=job.id,
-                        status=JobStatus.QUEUED
-                    )
-                    j.insert(slivka.db.database)
-                    self.running_jobs[runner.__class__].append(j)
-                JobRequest.get_collection(slivka.db.database).update_many(
-                    {'_id': {'$in': [r['_id'] for r in requests]}},
-                    {'$set': {'status': JobStatus.QUEUED}}
-                )
-                requests.clear()
-
-    def update_running_jobs(self):
-        for runner_cls, jobs in self.running_jobs.items():
-            counter = self._backoff_counters[runner_cls]
-            if len(jobs) == 0 or next(counter) > 0:
-                continue
-            try:
-                states = runner_cls.batch_check_status(jobs)
-            except Exception:
-                if counter.give_up:
-                    for cls in (JobMetadata, JobRequest):
-                        collection = cls.get_collection(slivka.db.database)
-                        collection.update_many(
-                            {'uuid': {'$in': [j['uuid'] for j in jobs]}},
-                            {'$set': {'status': JobStatus.ERROR}}
-                        )
-                    for job in jobs:
-                        job['status'] = JobStatus.ERROR
-                counter.failure()
-                self.logger.exception(
-                    "Checking job status using %s failed.", runner_cls.__name__,
-                    exc_info=True
-                )
-            else:
-                for job, new_state in zip(jobs, states):
-                    if job['status'] != new_state:
-                        self.logger.info(
-                            "Job %s status changed to %s", job.uuid, new_state.name
-                        )
-                        job.update_self(slivka.db.database, status=new_state)
-                        JobRequest.update_one(
-                            slivka.db.database,
-                            {'uuid': job['uuid']},
-                            {'status': new_state}
-                        )
-            jobs[:] = (
-                job for job in jobs
-                if not JobStatus(job['status']).is_finished()
-            )
-
-
-RunnerID = namedtuple('RunnerID', 'service, name')
-
-
-class RunnerManager:
-    def __init__(self):
+        self.log = logging.getLogger(__name__)
+        self._finished = threading.Event()
         self.runners = {}  # type: Dict[RunnerID, Runner]
-        self.limiters = {}  # type: Dict[str, Limiter]
-        self._null_runner = None
+        self.limiters = defaultdict(DefaultLimiter)  # type: Dict[str, Limiter]
+        self._backoff_counters = defaultdict(
+            partial(BackoffCounter, max_tries=10)
+        )  # type: DefaultDict[Any, BackoffCounter]
+        self._accepted_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
+        self._running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
 
-    def add_runners(self, service, cmd_def):
-        classpath = cmd_def.get('limiter', get_classpath(DefaultLimiter))
-        mod, attr = classpath.rsplit('.', 1)
-        self.limiters[service] = getattr(import_module(mod), attr)()
+    def is_running(self): return not self._finished.is_set()
+    is_running = property(is_running)
 
-        for name, conf in cmd_def['runners'].items():
+    def set_failure_limit(self, limit):
+        factory = partial(BackoffCounter, max_tries=limit)
+        self._backoff_counters.default_factory = factory
+        for counter in self._backoff_counters.values():
+            counter.max_tries = limit
+
+    def add_runner(self, runner: Runner):
+        self.runners[runner.id] = runner
+
+    def load_runners(self, service_name, conf_dict):
+        limiter_cp = conf_dict.get('limiter')
+        if limiter_cp is not None:
+            mod, attr = limiter_cp.rsplit('.', 1)
+            self.limiters[service_name] = getattr(import_module(mod), attr)()
+        for name, conf in conf_dict['runners'].items():
             if '.' in conf['class']:
                 mod, attr = conf['class'].rsplit('.', 1)
             else:
                 mod, attr = 'slivka.scheduler.runners', conf['class']
-            cls = getattr(import_module(mod), attr)  # type: Type[Runner]
+            cls = getattr(import_module(mod), attr)
             kwargs = conf.get('parameters', {})
-            runner_id = RunnerID(service, name)
+            runner_id = RunnerID(service_name, name)
             self.runners[runner_id] = cls(
-                cmd_def, name="%s-%s" % runner_id, **kwargs
+                conf_dict, id=RunnerID(service_name, name), **kwargs
             )
 
-    def select_runner(self, service, inputs) -> Optional[Runner]:
-        runner_name = self.limiters[service](inputs)
-        if runner_name is None:
-            return self._null_runner
-        else:
-            return self.runners[service, runner_name]
+    def stop(self):
+        self._finished.set()
+
+    def run_forever(self):
+        if self._finished.is_set():
+            raise RuntimeError
+        try:
+            while not self._finished.wait(1):
+                self.run_cycle()
+        except KeyboardInterrupt:
+            self.stop()
+
+    def run_cycle(self):
+        database = slivka.db.database
+        request_operations = []
+        # fetching new requests
+        new_requests = _fetch_pending_requests(database)
+        grouped = self.group_requests(new_requests)
+        rejected = grouped.pop(REJECTED, ())
+        if rejected:
+            request_operations.append(UpdateMany(
+                {'_id': {'$in': [req.id for req in rejected]}},
+                {'$set': {'status': JobStatus.REJECTED}}
+            ))
+        error = grouped.pop(ERROR, ())
+        if error:
+            request_operations.append(UpdateMany(
+                {'_id': {'$in': [req.id for req in error]}},
+                {'$set': {'status': JobStatus.ERROR}}
+            ))
+        for runner, requests in grouped.items():
+            request_operations.append(UpdateMany(
+                {'_id': {'$in': [req.id for req in requests]}},
+                {'$set': {'status': JobStatus.ACCEPTED}}
+            ))
+            self._accepted_requests[runner].extend(requests)
+        collection = JobRequest.collection(database)
+        if request_operations:
+            collection.bulk_write(request_operations, ordered=False)
+            request_operations.clear()
+
+        # starting accepted requests
+        for runner, requests in self._accepted_requests.items():
+            if not requests:
+                continue
+            new_jobs = []
+            started, deferred, failed = self.run_requests(runner, requests)
+            self._accepted_requests[runner] = list(deferred)
+            for request, job in started:
+                request_operations.append(UpdateOne(
+                    {'_id': request.id},
+                    {'$set': {'status': JobStatus.QUEUED}}
+                ))
+                new_jobs.append(JobMetadata(
+                    uuid=request.uuid,
+                    service=request.service,
+                    work_dir=job.cwd,
+                    runner_class=get_classpath(type(runner)),
+                    job_id=job.id,
+                    status=JobStatus.QUEUED
+                ))
+            self._running_jobs[type(runner)].extend(new_jobs)
+            insert_many(database, new_jobs)
+            request_operations.append(UpdateMany(
+                {'_id': {'$in': [req.id for req in failed]}},
+                {'$set': {'status': JobStatus.ERROR}}
+            ))
+        if request_operations:
+            collection.bulk_write(request_operations, ordered=False)
+            request_operations.clear()
+
+        # monitoring jobs
+        job_operations = []
+        for runner, jobs in self._running_jobs.items():
+            if not jobs:
+                continue
+            update = self.monitor_jobs(runner, jobs)
+            for (job, state) in update:
+                job.state = state
+                job_operations.append(UpdateOne(
+                    {'_id': job.id}, {'$set': {'status': state}}
+                ))
+                request_operations.append(UpdateOne(
+                    {'uuid': job.uuid}, {'$set': {'status': state}}
+                ))
+            jobs[:] = (
+                job for job in jobs if not job.state.is_finished()
+            )
+        if request_operations:
+            (JobRequest.collection(database)
+                       .bulk_write(request_operations, ordered=False))
+        if job_operations:
+            (JobMetadata.collection(database)
+                        .bulk_write(job_operations, ordered=False))
+
+    def group_requests(
+            self, requests: Iterable[JobRequest]
+    ) -> Dict[Union[Runner, object], List[JobRequest]]:
+        """Group requests to their corresponding runners or reject."""
+        grouped = defaultdict(list)
+        for request in requests:
+            limiter = self.limiters[request.service]
+            runner_name = limiter(request.inputs)
+            if runner_name is None:
+                grouped[REJECTED].append(request)
+            else:
+                runner = self.runners[request.service, runner_name]
+                grouped[runner].append(request)
+        return grouped
+
+    def run_requests(self, runner: Runner, requests: List[JobRequest]) -> RunResult:
+        """Run all requests in the list using the runner."""
+        counter = self._backoff_counters[runner]
+        if not requests or next(counter) > 0:
+            return RunResult(started=(), deferred=requests, failed=())
+        try:
+            jobs = runner.batch_run([req.inputs for req in requests])
+            return RunResult(
+                started=zip(requests, jobs), deferred=(), failed=()
+            )
+        except Exception:
+            self.log.exception("Running requests with %s failed.", runner)
+            counter.failure()
+            print('counter', counter.current)
+            if counter.give_up:
+                return RunResult(started=(), deferred=(), failed=requests)
+            else:
+                return RunResult(started=(), deferred=requests, failed=())
+
+    def monitor_jobs(
+            self,
+            runner: Union[Runner, Type[Runner]],
+            jobs: List[JobMetadata]
+    ) -> Iterable[Tuple[JobMetadata, JobStatus]]:
+        """Checks status of jobs and returns modified."""
+        counter = self._backoff_counters[runner]
+        if not jobs or next(counter) > 0:
+            return ()
+        try:
+            states = runner.batch_check_status(jobs)
+            print(states)
+            return ((job, state) for (job, state)
+                    in zip(jobs, states) if job.state != state)
+        except Exception as e:
+            counter.failure()
+            if counter.give_up:
+                return ((job, JobStatus.ERROR) for job in jobs)
+            else:
+                return ()
+
+
+class IntervalThread(threading.Thread):
+    def __init__(self, interval, target,
+                 name=None, args=None, kwargs=None):
+        threading.Thread.__init__(self, name=name)
+        self._target = target
+        self._args = args or ()
+        self._kwargs = kwargs or {}
+        self.interval = interval
+        self._finished = threading.Event()
+
+    def cancel(self):
+        """Stop the interval thread."""
+        self._finished.set()
+
+    def run(self) -> None:
+        args, kwargs = self._args, self._kwargs
+        try:
+            while not self._finished.wait(self.interval):
+                self._target(*args, **kwargs)
+        finally:
+            self._finished.set()
+            del self._target, self._args, self._kwargs
 
 
 class LimiterMeta(type):

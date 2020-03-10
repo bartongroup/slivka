@@ -52,8 +52,8 @@ atexit.register(_executor.shutdown)
 
 class GridEngineRunner(Runner):
 
-    def __init__(self, command_def, name=None, qsub_args=()):
-        super().__init__(command_def, name)
+    def __init__(self, command_def, id=None, qsub_args=()):
+        super().__init__(command_def, id)
         self.qsub_args = qsub_args
         self.env.update(
             (env, os.getenv(env)) for env in os.environ

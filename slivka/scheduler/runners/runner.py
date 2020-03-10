@@ -124,7 +124,7 @@ class Runner:
                 shutil.rmtree(cwd)
             raise
 
-    def batch_run(self, inputs_list) -> Iterator[RunInfo]:
+    def batch_run(self, inputs_list) -> Iterable[RunInfo]:
         cwds = [
             tempfile.mkdtemp(
                 prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir

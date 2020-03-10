@@ -31,6 +31,15 @@ def pull_one(database: pymongo.database.Database, item: MongoDocument):
     item.update(data)
 
 
+def pull_many(database: pymongo.database.Database, items: List[MongoDocument]):
+    items = sorted(items, key=lambda it: it.id)
+    cursor = (database[items[0].__collection__]
+              .find({'_id': {'$in': [it.id for it in items]}})
+              .sort('_id', pymongo.ASCENDING))
+    for item, data in zip(items, cursor):
+        item.update(data)
+
+
 def push_many(database: pymongo.database.Database, items: List[MongoDocument]):
     operations = [ReplaceOne({'_id': it.id}, it) for it in items]
     database[items[0].__collection__].bulk_write(operations, ordered=False)
