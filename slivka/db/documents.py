@@ -127,10 +127,26 @@ class JobMetadata(MongoDocument):
 class UploadedFile(MongoDocument):
     __collection__ = 'files'
 
-    def __init__(self, **kwargs):
-        kwargs.setdefault('uuid', b64_uuid4())
-        kwargs.setdefault('basename', os.path.basename(kwargs['path']))
-        super().__init__(**kwargs)
+    def __init__(self, *,
+                 title=None,
+                 media_type=None,
+                 path,
+                 uuid=None,
+                 **kwargs):
+        super().__init__(
+            uuid=uuid or b64_uuid4(),
+            title=title,
+            media_type=media_type,
+            path=path,
+            **kwargs
+        )
 
-    def get_path(self):
-        return pathlib.Path(self['path'])
+    uuid = property(lambda self: self['uuid'])
+    title = property(lambda self: self['title'])
+    media_type = property(lambda self: self['media_type'])
+
+    def get_path(self): return pathlib.Path(self['path'])
+    path = property(get_path)
+
+    def get_basename(self): return os.path.basename(self['path'])
+    basename = property(get_basename)
