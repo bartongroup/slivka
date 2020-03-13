@@ -4,8 +4,9 @@ from importlib import import_module
 
 import threading
 from functools import partial
-from pymongo import UpdateMany, UpdateOne
-from typing import Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict
+from pymongo import UpdateOne
+from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
+                    Sequence)
 
 import slivka.db
 from slivka.db.documents import JobRequest, JobMetadata
@@ -40,10 +41,10 @@ class Scheduler:
         self._backoff_counters = defaultdict(
             partial(BackoffCounter, max_tries=10)
         )  # type: DefaultDict[Any, BackoffCounter]
-        self._accepted_requests = defaultdict(list)  # type: Dict[Runner, List[JobRequest]]
-        self._running_jobs = defaultdict(list)  # type: Dict[Type[Runner], List[JobMetadata]]
 
-    def is_running(self): return not self._finished.is_set()
+    def is_running(self):
+        return not self._finished.is_set()
+
     is_running = property(is_running)
 
     def set_failure_limit(self, limit):
@@ -87,85 +88,95 @@ class Scheduler:
     def run_cycle(self):
         database = slivka.db.database
         request_operations = []
+
         # fetching new requests
         new_requests = _fetch_pending_requests(database)
         grouped = self.group_requests(new_requests)
         rejected = grouped.pop(REJECTED, ())
         if rejected:
-            request_operations.append(UpdateMany(
+            JobRequest.collection(database).update_many(
                 {'_id': {'$in': [req.id for req in rejected]}},
                 {'$set': {'status': JobStatus.REJECTED}}
-            ))
+            )
         error = grouped.pop(ERROR, ())
         if error:
-            request_operations.append(UpdateMany(
+            JobRequest.collection(database).update_many(
                 {'_id': {'$in': [req.id for req in error]}},
                 {'$set': {'status': JobStatus.ERROR}}
-            ))
+            )
         for runner, requests in grouped.items():
-            request_operations.append(UpdateMany(
+            JobRequest.collection(database).update_many(
                 {'_id': {'$in': [req.id for req in requests]}},
-                {'$set': {'status': JobStatus.ACCEPTED}}
-            ))
-            self._accepted_requests[runner].extend(requests)
-        collection = JobRequest.collection(database)
-        if request_operations:
-            collection.bulk_write(request_operations, ordered=False)
-            request_operations.clear()
+                {'$set': {
+                    'status': JobStatus.ACCEPTED,
+                    'runner': runner.name
+                }}
+            )
 
-        # starting accepted requests
-        for runner, requests in self._accepted_requests.items():
-            if not requests:
-                continue
-            new_jobs = []
+        # Fetch cancel requests and update cancelled job states to
+        # DELETED if they were PENDING or ACCEPTED; or CANCELLING if QUEUED or RUNNING
+
+        # starting ACCEPTED requests
+        cursor = JobRequest.collection(database).aggregate([
+            {'$match': {'status': JobStatus.ACCEPTED}},
+            {'$group': {
+                '_id': {'service_name': '$service',
+                        'runner_name': '$runner'},
+                'requests': {'$push': '$$CURRENT'}
+            }}
+        ])
+        for item in cursor:
+            runner = self.runners[RunnerID(**item['_id'])]
+            requests = [JobRequest(**kw) for kw in item['requests']]
             started, deferred, failed = self.run_requests(runner, requests)
-            self._accepted_requests[runner] = list(deferred)
+            new_jobs = []
+            queued = []
             for request, job in started:
-                request_operations.append(UpdateOne(
-                    {'_id': request.id},
-                    {'$set': {'status': JobStatus.QUEUED}}
-                ))
+                queued.append(request)
                 new_jobs.append(JobMetadata(
                     uuid=request.uuid,
                     service=request.service,
-                    work_dir=job.cwd,
+                    runner=runner.name,
                     runner_class=get_classpath(type(runner)),
                     job_id=job.id,
+                    work_dir=job.cwd,
                     status=JobStatus.QUEUED
                 ))
-            self._running_jobs[type(runner)].extend(new_jobs)
-            insert_many(database, new_jobs)
-            request_operations.append(UpdateMany(
-                {'_id': {'$in': [req.id for req in failed]}},
-                {'$set': {'status': JobStatus.ERROR}}
-            ))
-        if request_operations:
-            collection.bulk_write(request_operations, ordered=False)
-            request_operations.clear()
+            if new_jobs:
+                insert_many(database, new_jobs)
+                JobRequest.collection(database).update_many(
+                    {'_id': {'$in': [req.id for req in queued]}},
+                    {'$set': {'status': JobStatus.QUEUED}}
+                )
+            if failed:
+                JobRequest.collection(database).update_many(
+                    {'_id': {'$in': [req.id for req in failed]}},
+                    {'$set': {'status': JobStatus.ERROR}}
+                )
 
         # monitoring jobs
-        job_operations = []
-        for runner, jobs in self._running_jobs.items():
-            if not jobs:
+        cursor = JobMetadata.collection(database).aggregate([
+            {'$match': {'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}}},
+            {'$group': {
+                '_id': '$runner_class',
+                'jobs': {'$push': '$$CURRENT'}
+            }}
+        ])
+        for item in cursor:
+            mod, attr = item['_id'].rsplit('.', 1)
+            runner = getattr(import_module(mod), attr)
+            jobs = [JobMetadata(**kw) for kw in item['jobs']]
+            updated = self.monitor_jobs(runner, jobs)
+            if not updated:
                 continue
-            update = self.monitor_jobs(runner, jobs)
-            for (job, state) in update:
-                job.state = state
-                job_operations.append(UpdateOne(
-                    {'_id': job.id}, {'$set': {'status': state}}
-                ))
-                request_operations.append(UpdateOne(
-                    {'uuid': job.uuid}, {'$set': {'status': state}}
-                ))
-            jobs[:] = (
-                job for job in jobs if not job.state.is_finished()
-            )
-        if request_operations:
-            (JobRequest.collection(database)
-                       .bulk_write(request_operations, ordered=False))
-        if job_operations:
-            (JobMetadata.collection(database)
-                        .bulk_write(job_operations, ordered=False))
+            JobRequest.collection(database).bulk_write([
+                UpdateOne({'uuid': job.uuid}, {'$set': {'status': state}})
+                for (job, state) in updated
+            ], ordered=False)
+            JobMetadata.collection(database).bulk_write([
+                UpdateOne({'_id': job.id}, {'$set': {'status': state}})
+                for (job, state) in updated
+            ])
 
     def group_requests(
             self, requests: Iterable[JobRequest]
@@ -205,20 +216,19 @@ class Scheduler:
             self,
             runner: Union[Runner, Type[Runner]],
             jobs: List[JobMetadata]
-    ) -> Iterable[Tuple[JobMetadata, JobStatus]]:
+    ) -> Sequence[Tuple[JobMetadata, JobStatus]]:
         """Checks status of jobs and returns modified."""
         counter = self._backoff_counters[runner]
         if not jobs or next(counter) > 0:
             return ()
         try:
             states = runner.batch_check_status(jobs)
-            print(states)
-            return ((job, state) for (job, state)
-                    in zip(jobs, states) if job.state != state)
+            return [(job, state) for (job, state)
+                    in zip(jobs, states) if job.state != state]
         except Exception as e:
             counter.failure()
             if counter.give_up:
-                return ((job, JobStatus.ERROR) for job in jobs)
+                return [(job, JobStatus.ERROR) for job in jobs]
             else:
                 return ()
 

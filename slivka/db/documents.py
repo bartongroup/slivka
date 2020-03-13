@@ -1,10 +1,9 @@
 import os
 from base64 import b64encode
 
-import bson
 import pathlib
 import pymongo
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from slivka import JobStatus
@@ -113,6 +112,7 @@ class JobMetadata(MongoDocument):
 
     uuid = property(lambda self: self['uuid'])
     service = property(lambda self: self['service'])
+    runner = property(lambda self: self['runner'])
     work_dir = property(lambda self: self['work_dir'])
     cwd = work_dir
     runner_class = property(lambda self: self['runner_class'])
