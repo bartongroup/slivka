@@ -86,6 +86,7 @@ class Scheduler:
             self.stop()
 
     def run_cycle(self):
+        log = self.log
         database = slivka.db.database
         request_operations = []
 
@@ -126,28 +127,33 @@ class Scheduler:
             }}
         ])
         for item in cursor:
-            runner = self.runners[RunnerID(**item['_id'])]
             requests = [JobRequest(**kw) for kw in item['requests']]
-            started, deferred, failed = self.run_requests(runner, requests)
-            new_jobs = []
-            queued = []
-            for request, job in started:
-                queued.append(request)
-                new_jobs.append(JobMetadata(
-                    uuid=request.uuid,
-                    service=request.service,
-                    runner=runner.name,
-                    runner_class=get_classpath(type(runner)),
-                    job_id=job.id,
-                    work_dir=job.cwd,
-                    status=JobStatus.QUEUED
-                ))
-            if new_jobs:
-                insert_many(database, new_jobs)
-                JobRequest.collection(database).update_many(
-                    {'_id': {'$in': [req.id for req in queued]}},
-                    {'$set': {'status': JobStatus.QUEUED}}
-                )
+            try:
+                runner = self.runners[RunnerID(**item['_id'])]
+            except KeyError:
+                log.exception("Runner not found")
+                failed = requests
+            else:
+                started, deferred, failed = self.run_requests(runner, requests)
+                new_jobs = []
+                queued = []
+                for request, job in started:
+                    queued.append(request)
+                    new_jobs.append(JobMetadata(
+                        uuid=request.uuid,
+                        service=request.service,
+                        runner=runner.name,
+                        runner_class=get_classpath(type(runner)),
+                        job_id=job.id,
+                        work_dir=job.cwd,
+                        status=JobStatus.QUEUED
+                    ))
+                if new_jobs:
+                    insert_many(database, new_jobs)
+                    JobRequest.collection(database).update_many(
+                        {'_id': {'$in': [req.id for req in queued]}},
+                        {'$set': {'status': JobStatus.QUEUED}}
+                    )
             if failed:
                 JobRequest.collection(database).update_many(
                     {'_id': {'$in': [req.id for req in failed]}},
@@ -163,10 +169,15 @@ class Scheduler:
             }}
         ])
         for item in cursor:
-            mod, attr = item['_id'].rsplit('.', 1)
-            runner = getattr(import_module(mod), attr)
             jobs = [JobMetadata(**kw) for kw in item['jobs']]
-            updated = self.monitor_jobs(runner, jobs)
+            try:
+                mod, attr = item['_id'].rsplit('.', 1)
+                runner = getattr(import_module(mod), attr)
+            except AttributeError:
+                log.exception("Runner class cannot be imported")
+                updated = [(job, JobStatus.ERROR) for job in jobs]
+            else:
+                updated = self.monitor_jobs(runner, jobs)
             if not updated:
                 continue
             JobRequest.collection(database).bulk_write([
@@ -176,7 +187,7 @@ class Scheduler:
             JobMetadata.collection(database).bulk_write([
                 UpdateOne({'_id': job.id}, {'$set': {'status': state}})
                 for (job, state) in updated
-            ])
+            ], ordered=False)
 
     def group_requests(
             self, requests: Iterable[JobRequest]
@@ -206,7 +217,6 @@ class Scheduler:
         except Exception:
             self.log.exception("Running requests with %s failed.", runner)
             counter.failure()
-            print('counter', counter.current)
             if counter.give_up:
                 return RunResult(started=(), deferred=(), failed=requests)
             else:
