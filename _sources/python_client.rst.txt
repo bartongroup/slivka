@@ -26,8 +26,8 @@ Usage
 Creating client
 ---------------
 
-Once the library is installed, you can import :class:`.SlivkaClient` form :mod:`slivka_client`
-module and create client instance using a single *url* argument or provide
+Once the library is installed, you can import :class:`.SlivkaClient` from :mod:`slivka_client`
+module and create its instance using a single *url* argument or provide
 *scheme*, *auth*, *host*, *port* and *path* as individual keyword arguments.
 
 .. warning::
@@ -46,37 +46,63 @@ module and create client instance using a single *url* argument or provide
         port=None, path='/slivka/', query=None, fragment=None)
 
 
-:class:`slivka_client.SlivkaClient` is the starting point to services discovery,
-file upload and retrieval and job monitoring.
+:class:`slivka_client.SlivkaClient` object is used for services discovery,
+file uploading and retrieval and job monitoring.
 
 Services listing and job submission
 -----------------------------------
 
-The list of services can be accessed through :attr:`services` property.
+The list of available services can be accessed through the
+:attr:`~.SlivkaClient.services` property of the :obj:`client` object.
 The server will be contacted to provide the list of services on the first property access.
-Subsequent attempts will return the cached list immediately. Use :meth:`refresh_services`
-method whenever you want to reload the list of services from the server.
+Subsequent attempts will return the cached list immediately.
+Use :meth:`~.SlivkaClient.refresh_services` method whenever you want to reload
+the list of services from the server.
+If you need to fetch one service by its name you can use item access syntax
+``client[key]`` where *key* is the service name.
 
 .. code-block:: python
 
     >>> client.services
-    [SlivkaService(example_one), SlivkaService(example_two)]
-    >>> service = client.services[0]
+    [SlivkaService(clustalo), SlivkaService(mafft)]
+    >>> service = client['clustalo']
     >>> service.name
-    'example_one'
-    >>> service.form
-    Form(example_one)
+    'clustalo'
 
-Service object represents a single service on the server side and its :attr:`~.Service.form`
-property creates a new submission form needed to run jobs.
-A new empty form is created every time the property is accessed.
-Alternatively, if you prefer more explicit approach, you can call :meth:`.Service.new_form`
-method which returns a new form.
+Each :class:`.Service` object represents a single service on the server side.
+They provide access to service information as well as the submission forms
+needed to send new job requests to the server.
 
-Forms are dict-like iterable objects providing a view of the service input parameters,
-serving as a containers for the input data and handling job submissions.
-Iterating over the form yields field description objects with properties
-according to the their type. The properties common for all field types are:
+A :class:`.Form` stores the collection of parameters needed to run a job.
+A new empty form is created every time :attr:`.Service.form` attribute is
+accessed or :meth:`.Service.new_form` method is called.
+Forms are dictionary-like objects providing a view of the service input parameters,
+storing input values and mediating job submission to the server.
+Iterating over the form directly or accessing :attr:`fields` gives
+an iterable of fields each of them storing the information
+about its corresponding input parameter and its constraints.
+Individual field information may be retrieved using item access syntax
+``form[key]`` where *key* is the field name.
+
+Suppose that the ClustalO service takes the following parameters: *input-file*,
+*dealign* and *iterations*.
+Then, iterating over the form would produce the following output
+
+.. code-block:: python
+
+    >>> for field in form:
+    ...     print(field)
+    FileField(name='input-file', label='Input file', description'...',
+              required=True, default=None, multiple=False,
+              media_type='application/fasta', media_type_parameters={})
+    BooleanField(name='dealign', label='Dealign input sequences',
+                 description='...', required=False, default=False,
+                 multiple=False)
+    IntegerField(name='iterations', label='Number of iterations (combined)',
+                 description='...', required=False, default=1, multiple=False,
+                 min=1, max=100)
+
+The properties common for all field objects are:
 
 :type: type of the field (see :class:`~slivka_client.FieldType`)
 :name: field name/identifier
@@ -86,32 +112,16 @@ according to the their type. The properties common for all field types are:
 :default: default value or ``None`` if not provided
 :multiple: whether multiple values are accepted
 
-The available properties of each form field are described in the API Reference
+Additionally, each field may have extra constrains according to its type.
+All form fields and their respective properties are listed in the API Reference
 section `Form Fields`_.
 
-The list of fields can be accessed through :attr:`fields` property or by iterating
-over the form object directly. Additionally, individual fields can be obtained
-using ``form[key]`` syntax where *key* is the field name.
-
-.. code-block::
-
-    >>> form = service.form
-    >>> for field in form:
-    ...     print("%s: %s" % (field.name, field.type))
-    input-file: FieldType.FILE
-    num-steps: FieldType.INTEGER
-    variation: FieldType.DECIMAL
-    verbose: FieldType.BOOLEAN
-    >>> form['num-steps']
-    IntegerField(name='num-steps', label='Number of simulation steps',
-                 description='', required=True, default=1000, min=0, max=10000)
-
 In order to provide the input values for the form, you can set the value of
-the field using item assignment ``form[key] = value`` syntax or using
+the field using item assignment ``form[key] = value`` or calling form's
 :obj:`set(key, value)` method, where *key* is the field name and *value*
 is the value to be set. This method replaces the old value with the new one.
-The *value* can be either a type corresponding to
-the field type or a collection of such values if multiple values are allowed.
+The *value* should be of the type matching the field type or a list of
+such values whenever multiple values are allowed.
 In most cases the following types are expected for each field:
 
 :IntegerField: :class:`int`
@@ -126,36 +136,48 @@ and custom server-side validation. For more information refer to the service
 documentation on the particular server you want to access.
 
 If the field accepts multiple values, you can either set it to the list of values using
-the method above or you can use :obj:`Form.append(key, value)` to
+the method above or you can use :obj:`Form.append(key, value)` method to
 append a single value or :obj:`Form.extend(key, iterable)` to append all values
-from the *iterable* to the end of the values list. Keep in mind that
-:meth:`.append` and :meth:`.extend` methods use the respective methods of the
-underlying lists in the *values* dictionary. If the value was previously set to something
-that doesn't implement :class:`MutableSequence` those methods will raise
-:exc:`AttributeError`.
+from the *iterable* to the end of the values list.
+Files can be provided using special :class:`File` objects described below
+as well as passing open streams.
+
+.. note::
+    The client application will NOT attempt to seek to the beginning of the
+    stream. It's up to the user to prepare the stream in the proper state
+    before submitting the job.
+
+Internally, the values are stored in the :class:`.defaultdict`
+having an empty list as a default factory. That dictionary may be accessed
+and manipulated directly (it's not recommended though)
+through the :attr:`values` attribute of the :class:`.Form` object.
+Keep in mind that methods :meth:`.Form.append` and :meth:`.Form.extend`
+use the respective methods of the underlying lists in the *values* dictionary.
+If the value was previously set to something not implementing
+:class:`MutableSequence` those calls will raise :exc:`AttributeError`.
 
 The inserted values can be removed using item deletion ``del form[key]``
 or :obj:`delete(key)` method.
-Additionally, using :obj:`clear()` will delete all values.
-
-Internally, the values are stored in the :class:`.defaultdict`
-having an empty list as a default factory.
-That dictionary may be accessed and manipulated directly (it's not recommended though)
-through the :attr:`values` attribute of the :class:`Form` object.
+Additionally, :meth:`clear` deletes all the values from the form
+and returns it to its initial state.
 
 Once the form is populated, a new job request can be submitted to the server using
-:meth:`~.Form.submit` method that returns job uuid or raises an exception if the submission
-was not successful.
+:meth:`.Form.submit` method that returns job uuid or raises an exception
+if the submission was not successful.
 Additionally, you can supply one-off input values passing a mapping
-as an argument or providing the values as keyword arguments. Those will
-be added on top of the existing field values.
+as an argument or providing the values as keyword arguments to
+:meth:`~.Form.submit`. Those will be added on top of the existing field values
+and will not persist in the form during consecutive submits.
+
+Example of submitting the job to ClustalO service.
+Two parameters *input-file* and *iterations* are stored in the form
+while *dealign* is set for this single submission only.
 
 .. code-block:: python
 
     >>> form['input-file'] = open('/path/to/input.txt', 'rb')
-    >>> form['num-steps'] = 100
-    >>> form.extend('variation', [0.1, 0.2, 0.3])
-    >>> job_id = form.submit(verbose=True)
+    >>> form['iterations'] = 100
+    >>> job_id = form.submit(dealign=True)
     >>> job_id
     '1WsqR3H2RwOxTps1XI22xQ'
 
@@ -167,31 +189,31 @@ Once the job is successfully submitted its state can be checked using
 :meth:`.SlivkaClient.get_job_state` which takes job uuid returned by
 :meth:`.Form.submit` and returns the :class:`.JobState`.
 
-You can also fetch the list of results even if the job is still running
-using :meth:`.SlivkaClient.get_job_results` and passing it job uuid.
+You can fetch the list of results even if the job is still running
+using :meth:`.SlivkaClient.get_job_results` providing job uuid as an argument.
 Keep in mind that the results may be incomplete when the job is in
 unfinished state.
-The method returns the list of file handlers that can be used to inspect
-files' metadata and stream their content.
+The method returns the list of file handlers (more information in the next
+section) that can be used to inspect files' metadata and stream their content.
 
-Using File objects
-------------------
+Working with File objects
+-------------------------
 Instead of working with files directly, Slivka assigns a uuid to each file and
 uses it instead. This approach helps to avoid sending the same data
 over the internet multiple times and allows using the output of one service
 as an input to the other without the need to download and re-upload the file.
 
-On the client side, files that are present on the server are
+On the client side, files present on the server are
 represented as :class:`File` instances. You obtain them when uploading
 the file to the server or retrieving job results.
 Those object are subclasses of string and are equal to file's uuid.
-They also provide additional properties with file meta-data such as
+They also provide additional meta-data it their properties such as
 :attr:`title`, :attr:`label`, :attr:`media_type` and
 :attr:`url`.
 
 The :class:`File` objects, however, does not store file content. If you
 want to download the content either to the file, or to the memory you
-can use :meth:`dump` method and pass it either path to the output file
+can use :meth:`dump` method and pass it either the path to the output file
 or an open writable stream. It's highly recommended to use binary streams,
 but in many cases text streams should work as well.
 
@@ -219,8 +241,7 @@ Example of uploading and downloading the file from the server:
 
 If you want to use the same input file multiple times, it's a good idea
 to upload it once and re-use the file handler to speed up the submission
-process, save time and bandwidth. The submission form can accept
-:class:`File` objects as well as open streams.
+process, save time and bandwidth.
 
 
 API Reference
@@ -240,8 +261,41 @@ API Reference
     .. automethod:: get_job_results
 
 .. autoclass:: Service()
-    :members:
-    :undoc-members:
+
+    .. py:method:: name() -> str
+        :property:
+
+        Name (identifier) of the service.
+
+    .. py:method:: label() -> str
+        :property:
+
+        Human-friendly label.
+
+    .. py:method:: url() -> str
+        :property:
+
+        Url where the service is available at.
+
+    .. py:method:: classifiers() -> List[str]
+        :property:
+
+        List of tags or classifiers that the service has.
+        They can be set arbitrarily by the server administrator
+        to help identifying the service types.
+
+    .. py:method:: new_form() -> Form
+    .. py:method:: form() -> Form
+        :property:
+
+        Creates and returns new submission form. A new empty
+        form is created every time the the property is accessed
+        or the method is called.
+
+    .. py:method:: refresh_form()
+
+        Forces the form data to be reloaded from the server.
+
 
 .. autoclass:: Form()
     :members:
