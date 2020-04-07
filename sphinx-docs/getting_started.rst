@@ -6,18 +6,21 @@ Installation
 Requirements
 ------------
 
-Installation requires Python 3.5+ (Developed and tested using Python 3.5).
+Installation requires Python 3.5+ (version 3.7 recommended).
 Additional requirements that will be downloaded and installed automatically, include:
 
+- attrs (>=19)
 - click (>=7.0)
 - Flask (>=1.0)
 - frozendict (>=1.2)
-- gunicorn (>=19.9)
+- gunicorn (>=19.9) (optional)
 - jsonschema (>=2.5.1)
 - MarkupSafe (>=1.0)
 - pymongo (>=3.7)
 - PyYAML (>=3.11)
 - pyzmq (>=17.0)
+- simplejson (>=3.16)
+- uwsgi (>=2.0) (optional)
 - Werkzeug (>=0.15)
 
 -------------------------
@@ -25,116 +28,142 @@ Installing Slivka package
 -------------------------
 
 It's recommended to install Slivka inside a virtual environment using virtualenv or conda.
+
 You can install virtualenv by running ``pip install virtualenv`` (on some Linux distributions
-you may need to install a system package via ``apt-get install python-virtualenv``).
+you may need to install a correspinding system package e.g. ``apt-get install python-virtualenv``).
 Run ``virtualenv env``, wait for it to create a new environment in ``env``
 directory and activate using ``source env/bin/activate`` on Unix/OS X or
 ``env\Scripts\activate.bat`` on Windows.
 More information about the virtualenv package can be found in `virtualenv documentation`_.
-For conda users, create a new environment using ``conda create -n slivka python=3.5``
+
+For conda users, create a new environment using ``conda create -n slivka python=3.7``
 and activate with ``conda activate slivka``.
 More details can be found in `conda documentation`_.
 
 .. _`virtualenv documentation`: https://virtualenv.pypa.io/en/stable/
 .. _`conda documentation`: https://conda.io/en/latest/
 
-In order to download and install Slivka choose the suitable zip or tar archive
-form the repository_ and run install inside your virtual environment with
-``pip install Slivka-<version>.(zip|tar)``.
-Alternatively, you can install the most recent version directly from our github
-repository with ``pip install git+git://github.com/warownia1/Slivka``.
+Slivka package can be installed directly from the github repository with pip.
+We recommend using development branch until the first stable version is released.
+``pip install git+git://github.com/warownia1/Slivka@dev``.
 Setuptools and all other requirements will be downloaded if not present, so internet
 connection is required during the installation.
 
-.. _repository: https://github.com/warownia1/Slivka/releases
-
 After the installation, a new executable ``slivka-setup`` will be added to your Python
-scripts directory. It can be used to initialize new Slivka projects. Make sure that it is
-available in your ``PATH``.
+scripts directory. It will be used to create a new empty slivka configuration.
+You can also use existing configurations created by other people.
 
 --------------------
 Creating new project
 --------------------
 
 In order to create a new Slivka project navigate to the folder where you want
-it to be set-up and run the executable created during the installation. ::
+it to be set-up and run the ``slivka-setup`` executable created during
+the installation ::
 
    slivka-setup <name>
 
-Replacing ``<name>`` with the name of the new project directory that will be created.
+replacing ``<name>`` with the name of the directory where configuration files
+will be copied to.
 Use ``.`` if you wish to set-up the project in the current directory.
 If the executable cannot be accessed (e.g. it is not in the PATH), you
 can equivalently run the slivka module with ::
 
    python -m slivka <name>
 
-It will create a new folder named ``<name>`` and initialize project files in it.
-Additionally, an example service and its configuration will be included.
+The installation will create a new directory ``<name>`` if one does not exist
+and copy example configuration files and service into it.
+In the following sections we walk through the process of creating and configuring
+new services.
 
 =================
 Project Structure
 =================
 
-The Slivka projects exist separately from the Slivka package and contain their own set
-of configurations. You can create as many project as you like with one Slivka installations.
-Each project contains three core files:
+First, let us take a look at the overall structure of the newly created project.
+There are four files in the project root directory as well as *conf* and *scripts*
+directories.
 
 :manage.py:
-  The main executable script which configures Slivka and runs its components.
+  Main executable script which loads all configuration files and starts
+  necessary processes.
 :settings.yml:
-  A settings file which defines project-wide parameters.
+  General configuration file containing project-wide parameters.
+  Refer to `settings file`_ section for more information about available
+  parameters.
 :services.yml:
-  A list of available services with paths to their respective configuration files.
+  List of available services and paths to their respective configuration files.
+  Refer to `services list`_ for more details.
 :wsgi.py:
-  Module containing a wsgi application for dedicated wsgi servers.
+  Module containing a wsgi application as specified in `PEP-3333`_
+  used by the dedicated wsgi middleware.
+:conf:
+  Directory containing configuration files for all available services.
+  Refer to `form definition`_ and `command configuration`_ section for more
+  information on creating web forms for command line tools.
 
-The configuration files are unicode text files and can be edited with any text editor.
-It is not advisable, however, to edit the main executable ``manage.py`` and ``wsgi.py``.
+.. _`PEP-3333`: https://www.python.org/dev/peps/pep-3333/
 
-All additional service configurations files should be included in the services.yml file.
-The details of adding service configurations will be explained in the following sections.
+All the configuration files are using `YAML <https://yaml.org/>`_ format
+which can be edited with any text editor.
+If you are not familiar with YAML syntax you can use JSON instead since
+any JSON document is a valid YAML document.
+
+It's not advisable to edit *manage.py* and *wsgi.py* scripts unless
+you are an advanced user and you know what you are doing.
 
 -------------
 Settings file
 -------------
 
-``settings.yml`` is a yaml formatted file defining constants and parameters used
-throughout the application. The parameters are case sensitive and should be written
-using capital letters.
+``settings.yml`` is a yaml file containing parameters used throughout the
+application. All parameters are case sensitive and their names should be
+written in capital letters.
 
-The following list shows all the parameters required by the Slivka application.
+The following parameters are recognised by the application:
 
 :``BASE_DIR``:
-  Indicates the location of the project directory. Absolute paths are preferred.
-  The location must be accessible for the user running the application.
-  It tells Slivka the path to the project files and where all relative paths should start from.
-  It defaults to the directory containing the ``manage.py`` file and it's recommended to leave it this way.
-  On startup, ``SLIVKA_HOME`` environment variable is set to the absolute path of ``BASE_DIR``
+  Location of the project directory.
+  Absolute paths are preferred to relative paths which are resolved with
+  respect to the current working directory the process was started at.
+  All other relative paths which appear in the configuration files start at
+  the ``BASE_DIR`` path.
+  It defaults to the project root directory containing the ``manage.py`` file.
+  Additionally, slivka sets ``SLIVKA_HOME`` environment variable storing the
+  absolute ``BASE_DIR`` path which can be used whenever
+  the path to the project directory is needed.
 
   Examples:
 
   .. code-block:: yaml
 
-    BASE_DIR: /home/slivka/project
-
-    BASE_DIR: C:\Users\slivka\project
+    BASE_DIR: /home/my-username/my-slivka
+    BASE_DIR: C:\Users\my-username\my-slivka
 
 :``UPLOADS_DIR``:
-  Directory where all user uploaded files are stored.
-  It's recommended to serve files directly from this directory.
+  Directory for user uploaded files.
   It can be either an absolute path or a path relative to the ``BASE_DIR``.
 
   Default: ``./media/uploads``
 
+  .. note::
+    If slivka is served behind a reverse proxy, it's recommended to configure
+    the proxy server to send files directly from this directory to reduce
+    the load put on the python application.
+
 :``JOBS_DIR``:
-  A folder where job working directories are created and output files are stored.
-  It's recommended to serve files directly from this directory.
+  Directory where job working directories are created and output files are stored.
   Can be either an absolute path or path relative to the ``BASE_DIR``.
 
   Default: ``./media/jobs``
 
+  .. note::
+    If slivka is served behind a reverse proxy, it's recommended to configure
+    the proxy server to send files directly from this directory to reduce
+    the load put on the python application.
+
 :``LOG_DIR``:
-  Path to directory where log files are to be stored.
+  Log files directory location.
   Can be either an absolute path or a path relative to the ``BASE_DIR``.
 
   Default: ``./logs``
@@ -142,6 +171,7 @@ The following list shows all the parameters required by the Slivka application.
 :``SERVICES``:
   Path to the *services.yml* file containing the list of available services.
   Can be either an absolute path or a path relative to the ``BASE_DIR``.
+  More information about the services list in the `services list`_ section.
 
   Default: ``./services.yml``
 
@@ -180,26 +210,26 @@ The following list shows all the parameters required by the Slivka application.
   If the slivka server is running behind a proxy, it's recommended to accept
   the connections from the proxy server only e.g. 127.0.0.1.
 
-  *This parameter is only applicable when running slivka server through manage.py utility.
-  When using other wsgi application such as uwsgi or Gunicorn refer to their documentation on
-  how to specify the server host*
+  .. note::
+    This parameter is only applicable when running slivka server through manage.py utility.
+    When using other wsgi application directly, refer to their documentation on
+    how to specify the server host
 
-  *This parameter (along with SERVER_PORT) will be removed in the future*
 
 :``SERVER_PORT``:
   Port used for listening to the HTTP requests. Remember that using  port number lower than 1024
   may be not allowed for regular users on your system.
 
-  *This parameter is only applicable when running slivka server through manage.py utility.
-  When using other wsgi application such as uwsgi or Gunicorn refer to their documentation on
-  how to specify the server port*
+  .. note::
+    This parameter is only applicable when running slivka server through manage.py utility.
+    When using other wsgi application directly, refer to their documentation on
+    how to specify the server port
 
-  *This parameter (along with SERVER_PORT) will be removed in the future*
 
 :``SLIVKA_QUEUE_ADDR``:
   Binding socket of the slivka queue. Can be either tcp or ipc socket.
-  **It's highly recommended to use localhost, since accepting connections**
-  **from the outside may be a security issue.**
+  **It's highly recommended to use localhost or named pipes.**
+  **Accepting external connections is a security issue.**
 
   Example:
 
@@ -219,16 +249,40 @@ The following list shows all the parameters required by the Slivka application.
 
 .. _mongodb URI: https://docs.mongodb.com/manual/reference/connection-string/
 
-----------------------
-Services configuration
-----------------------
+-------------
+Services list
+-------------
 
 The services configuration file (*services.yml* by default) lists all available services
 and paths to their respective configuration files along with their metadata.
-A separate service can be a different executable or a different set of options
-for the same executable.
-Each service name is a key of the JSON object and each value should have
-``label``, ``form``, ``command``, ``presets`` and ``classifiers`` parameters.
+The common use case is to create an individual service for each tool
+you want to make available on your server.
+
+Each top level key represents service name that serves as an identifier,
+it must be unique and contain alphanumeric characters only.
+Using lowercase letters only is recommended.
+
+Each section should contain the following parameters:
+
+:``label``:
+  **required** A human readable name of the service.
+
+:``form``:
+  **required** The path to the form definition file described in the
+  `Form Definition`_ section.
+
+:``command``:
+  **required** The path to the command configuration file whose structure is
+   described in the `Command Configuration`_ section.
+
+:``presets``:
+  Path to the file containing parameter presets described in the `Presets`_ section.
+
+:``classifiers``:
+  A list of categories or tags that this service fits into. There is no strict rule
+  of how the classifiers are defined and you are free to tag the services as you wish.
+
+Example:
 
 .. code-block:: yaml
 
@@ -240,47 +294,33 @@ Each service name is a key of the JSON object and each value should have
     - "Topic :: Example"
     - "Operation :: Testing :: Operation testing"
 
-:``label``:
-  A human readable name of the service.
-
-:``form``:
-  The path to the form definition file described in the `Form Description`_ section.
-
-:``command``:
-  The path to the command configuration file whose structure is described in the
-  `Command Configuration`_ section.
-
-:``presets``:
-  Optional parameter pointing to the file containing input parameter presets
-  described in the section `Presets`_.
-
-:``classifiers``:
-  A list of categories or tags that this service falls into. There is no strict rule
-  of how the classifiers are defined and you are free to tag the services as you wish.
-
-----------------
-Form Description
-----------------
+---------------
+Form Definition
+---------------
 
 Form description file specifies the parameters which are exposed to the front end user
 through the web API.
-It defines the name, description and expected value for each parameter.
-The file should contain a single YAML object with keys representing unique field names and
-`Field object`_ values.
+It contains the list of modifiable properties which will be submitted to the new job.
+Each top level key defines a unique field name, only alphanumeric characters,
+hyphen and underscore are allowed and using lowercase letters only is recommended.
+The values for each key define additional information about the field and 
+constrains of accepted values.
+The following section defines allowed parameters for each field.
 
 Field Object
 ============
 
-============= =============================== =================
- Field Name    Type                            Description
-============= =============================== =================
-label         string                          **Required.** A human readable field name.
-description   string                          Detailed information about the field (help text)
-value         `Value Object`_                 **Required.** Value object which provides
-                                              information about the expected value.
-============= =============================== =================
+============= ================== =================
+ Key           Type               Description
+============= ================== =================
+label         string             **Required.** A human readable field name.
+description   string             Detailed information about the field 
+                                 a.k.a. help text
+value         `Value Object`_    **Required.** Details about accepted value
+                                 type and constraints.
+============= ================== =================
 
-Example of the form accepting two fields: input and format is shown below.
+Example of the form accepting two fields: *input* and *format* is shown below.
 
 .. code-block:: yaml
 
@@ -306,24 +346,29 @@ Example of the form accepting two fields: input and format is shown below.
 Value object
 ============
 
-Value objects define the content of each field. They are used for validating the user input.
-The value object properties may differ depending on the field type.
-However ``type``, ``required`` and ``default`` properties are common for every field type.
+Value objects contain the information about the field type and value contraints.
+The parameter specified here are used to validate the user-provided parameters.
+The configurable properties differ depending on the field type.
+Properties: ``type``, ``required`` and ``default`` are available regardless
+of the field type.
 
 ============ ========== ========================
- Field Name   Type       Description
+ Key          Type       Description
 ============ ========== ========================
  type         string     **Required.** Type of the field,
                          must be: int, float, text, boolean, choice or file.
- required     boolean    **Required.** Whether the value is must be provided
- default      any        Default value, type of the parameter must match the type of the field.
+ required     boolean    **Required.** Whether the value for that field must be provided.
+                         Default is *True* if not specified.
+ default      any        Default value used when the user does not specify that parameter.
+                         Its type must match the type of the field.
 ============ ========== ========================
 
 
-Note that supplying the default value automatically makes the field not required since the default
-value is used when the field is empty.
+Note that supplying the default value automatically makes the field not required 
+since the default value is used when the field is left empty.
 
-All other properties are optional and they are specific to different field types.
+All other properties listed below are optional and are specific to
+their respective field types.
 
 Integer Value object
 --------------------
@@ -416,13 +461,14 @@ Choice Value object
 
 ``type: choice``
 
-============ ======================== ==========================
+============ ======================== ==========================================
  Field Name   Type                     Description
-============ ======================== ==========================
- choices      object[string, string]   List of available choices.
-                                       Keys should represent the values presented to the user
-                                       while values the command line parameter the choice is interpreted as.
-============ ======================== ==========================
+============ ======================== ==========================================
+ choices      map[string, string]      Mapping of available choices where keys represent
+                                       the values presented to the user
+                                       and values the command line parameters
+                                       substituted for that choice.
+============ ======================== ==========================================
 
 Example:
 
@@ -463,26 +509,26 @@ Command configuration
 ---------------------
 
 Command configuration tells Slivka how to construct the command line parameters
-for the executable file and how to submit it to the queuing system along with
+for the program and how to submit it to the queuing system along with
 extra arguments and environment variables.
-The file follows YAML format (JSON is also allowed) and needs to have the following
-properties:
 
 =============== ================================ ================================================
- Field name      Type                                 Description
+ Field name      Type                             Description
 =============== ================================ ================================================
-baseCommand     array[string]                    A list of command arguments appearing
-                                                 before any other parameters.
+baseCommand     array[string]                    **Required.** A list of command arguments appearing before any other parameters.
 env             map[string, string]              Additional environment variables which will be
-                                                 set for the job.
-inputs          map[string, `Argument Object`_]  A mapping of field values to the command
-                                                 line parameters. Each property name corresponds
-                                                 to the field name in the form definition file.
-arguments       array[string]                    A list of arguments appended after any other parameters
-outputs         map[string, `Output Object`_]    Collection of output files produced by
+                                                 set for this job.
+inputs          map[string, `Argument Object`_]  **Required.** A mapping of field values to the command
+                                                 line parameters. Each key corresponds
+                                                 to the field name in the form definition file
+                                                 and the value is an argument object described below.
+arguments       array[string]                    A list of arguments added at the end of the command.
+outputs         map[string, `Output Object`_]    **Required.** Collection of output files produced by
                                                  the command line program.
-runners         map[string, `Runner Object`_]
-limiter         string
+runners         map[string, `Runner Object`_]    **Required.** Collection of runner configurations
+                                                 that will be used to send jobs to the queuing systems.
+limiter         string                           Path to the python class which will assign jobs to
+                                                 appropriate runners (see `Advanced Usage <advanced_usage.html#limiters>`_)
 =============== ================================ ================================================
 
 Argument Object
@@ -490,32 +536,38 @@ Argument Object
 Each key (property name) specified in the inputs is mapped to the field with the same name
 defined in the form description file.
 If you want to add a command line parameter which doesn't have a corresponding form field
-it is recommended to prepend the name with an underscore ``_``.
-Note that this parameter value will always be empty and will be skipped
+it is recommended to prepend the name with an underscore ``_`` to distinguish it
+from arguments taken from the input form.
+Note that the value of this parameter will always be empty and will be skipped
 unless a default value is provided.
 
 Each argument object corresponds to a single command line parameter passed
 to the executable. They will be inserted in the order they are listed in the
 configuration file skipping those having empty values.
-Each argument object have one required property ``arg`` which is a template for
-the command line argument. The value will be substituted for ``$(value)`` placeholder.
-You are also allowed to use environment variables using standard bash syntax ``${VARIABLE}``.
-There is a special environment variable ``SLIVKA_HOME`` available which contains the path
-to the slivka project base directory.
-Optionally you may add ``value`` proeprty if you want to specify a default value
-or ``type`` if the type is other than string.
+Each argument object have one required property ``arg`` which is a command
+line argument template. Use ``$(value)`` placeholder to refer to the value supplied by the user.
+You can also use environment variables using unix syntax ``${VARIABLE}``.
+Additionally, there is a special environment variable ``SLIVKA_HOME`` available
+which contains the path to the slivka project base directory.
+
+If the type of the parameter is other than string, you must specify ``type`` parameter
+to ensure proper value conversion.
+Optionally you may add ``value`` property if you need to specify a default value.
+This value will be used if the field was not provided by the form. It's expecially
+useful when defining constant command line arguments.
 
 ============ ====== =============================
  Field Name   Type   Description
 ============ ====== =============================
 arg          string **Required.** Command line parameter template.
-type         string Type of the value, allowed values are string, number, flag, file or array.
+type         string Type of the value. Allowed values are string, number, flag, file or array.
                     Defaults to string if not specified.
-value        any    Value used if no other value is provided.
-symlink      string Destination where the input file will be linked to. Parameter value is then
-                    changed to the symlink path. Available only with ``type: file``
-join         string Character used to join multiple values provided for the command parameter.
-                    The parameter will be repeated for each value if ``join`` is not specified.
+value        any    Value used if no matching value is provided by the form.
+symlink      string Some command line programs require input file to sit in the current working directory.
+                    Use this parameter to set the name of the link that will be created in the
+                    job's current working directory. Available only with ``type: file``
+join         string Character used to join values if multiple values are provided.
+                    If join is not defined, the argument will be repeated for each value.
                     Available only with ``type: array``
 ============ ====== =============================
 
@@ -552,13 +604,14 @@ The constructed command line is going to be ::
 
   json-converter --in-format=xml --out-format=yaml,json input.txt
 
-and */home/slivka/media/input.json* will be linked to */job/working/directory/input.txt*.
+and */job/working/directory/input.txt* will be a sumlink pointing to
+*/home/slivka/media/input.json*.
 
 Output Object
 =============
 
-Output objects describe files or a groups of files created by the command.
-Each output object have the following properties:
+Output objects describe individual files or groups of files created by the
+command line program. Each output object have the following properties:
 
 ============ ====== =======================================================
  Field Name   Type   Description
@@ -569,9 +622,9 @@ media-type   string Media (mime) type of the file.
 ============ ====== =======================================================
 
 The standard output and standard error are redirected to *stdout* and
-*stderr* respectively so these names may be used to indicate
-standard output and error streams respectively.
-The paths are evaluated lazily when the output files are requested and match
+*stderr* respectively so these names may be used to fetch the content of
+the standard output and error streams respectively.
+The paths are evaluated lazily whenever the output files are requested and match
 as many files as possible. Every defined result file is treated as optional
 and its absence on job completion does not raise any error.
 
@@ -583,15 +636,19 @@ Example:
     output:
       path: outputfile.xml
       media-type: application/xml
-    auxillary:
-      path: *_aux.json
+    auxiliary:
+      path: "*_aux.json"
       media-type: application/json
     log:
       path: stdout
       media-type: text/plain
-    error-log
+    error-log:
       path: stderr
       media-type: text/plain
+
+
+.. warning::
+  Patterns starting with special characters must be quoted.
 
 
 Runner Object
@@ -620,9 +677,9 @@ Example:
 .. code-block:: yaml
 
   runners:
-    local:
-      class: SlivkaQueueRunner
     default:
+      class: SlivkaQueueRunner
+    grid_engine:
       class: GridEngineRunner
       parameters:
         qsub_args:
@@ -633,12 +690,16 @@ Example:
         - -l
         - ram=3400M
 
+
+For non-advanced users it's recommended to set the default runner to
+``SlivkaQueueRunner`` which uses no additional parameters.
+
 -------
 Presets
 -------
 
-It is possible to pre-define commonly used sets of parameters to give the users an idea
-of useful input parameter combinations. The configuration file should have a single
+It is possible to pre-define commonly used sets of parameters to provide users
+with useful input parameter combinations. The configuration file should have a single
 ``presets`` property containing the list of preset object defined below.
 
 ============ ================ =================================================================
@@ -690,7 +751,7 @@ Here is an example of starting slivka server with gunicorn ::
 
   gunicorn -b 0.0.0.0:8000 -w 4 -n slivka-http wsgi
 
-If you decide to use the local queue to execute jobs, you can start it with ::
+If you want to use the default local queue to execute jobs, you can start it with ::
 
   python manage.py local-queue
 
