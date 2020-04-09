@@ -1,5 +1,6 @@
 import enum
 import os
+import sys
 import warnings
 from collections import OrderedDict
 
@@ -175,15 +176,16 @@ def _include_constructor(loader: SafeTranscludingOrderedYamlLoader, node: yaml.N
     return obj
 
 
-def _mapping_constructor(loader, node):
-    loader.flatten_mapping(node)
-    return OrderedDict(loader.construct_pairs(node))
+if sys.version_info < (3, 7):
+    # in python 3.7 onwards, regular dictionaries are ordered.
+    def _mapping_constructor(loader, node):
+        loader.flatten_mapping(node)
+        return OrderedDict(loader.construct_pairs(node))
 
-
-SafeTranscludingOrderedYamlLoader.add_constructor(
-    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-    _mapping_constructor
-)
+    SafeTranscludingOrderedYamlLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        _mapping_constructor
+    )
 
 SafeTranscludingOrderedYamlLoader.add_constructor(
     '!include', _include_constructor
