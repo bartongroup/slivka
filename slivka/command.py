@@ -145,7 +145,7 @@ def start_scheduler(daemon, pid_file):
     slivka.conf.logging.configure_logging()
     handler = RotatingFileHandler(
         os.path.join(settings.logs_dir, 'slivka.log'),
-        maxBytes=100e6
+        maxBytes=10**8
     )
     atexit.register(handler.close)
     listener = slivka.conf.logging.ZMQQueueListener(
