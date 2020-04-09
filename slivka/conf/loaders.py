@@ -1,6 +1,8 @@
 import json
 import os.path
+import re
 from collections.abc import Mapping
+from functools import partial
 from importlib import import_module
 from urllib.parse import quote_plus
 
@@ -71,6 +73,52 @@ class SettingsLoaderV10:
             )
             for name, service in data.items()
         }
+
+
+class SettingsLoaderV11:
+    def __call__(self):
+        root = os.getenv('SLIVKA_HOME', os.getcwd())
+        fp = os.path.join(root, 'settings.yaml')
+        if not os.path.isfile(fp):
+            fp = os.path.join(root, 'settings.yml')
+        conf = yaml.safe_load(open(fp))
+        return Settings(
+            base_dir=root,
+            uploads_dir=_prepare_dir(root, conf['UPLOADS_DIR']),
+            jobs_dir=_prepare_dir(root, conf['JOBS_DIR']),
+            logs_dir=_prepare_dir(root, conf['LOG_DIR']),
+            services=dict(self._load_services(root, conf['SERVICES'])),
+            server_host=conf['SERVER_HOST'],
+            server_port=conf['SERVER_PORT'],
+            uploads_url_path=conf['UPLOADS_URL_PATH'],
+            jobs_url_path=conf['JOBS_URL_PATH'],
+            url_prefix=conf.get('URL_PREFIX'),
+            accepted_media_types=conf.get('ACCEPTED_MEDIA_TYPES', []),
+            slivka_queue_address=conf['SLIVKA_QUEUE_ADDR'],
+            mongodb=conf.get('MONGODB') or conf.get('MONGODB_ADDR'),
+            secret_key=conf.get('SECRET_KEY'),
+        )
+
+    @staticmethod
+    def _load_services(root, conf_dir):
+        pattern = re.compile(r'[\w_-]*\.service\.ya?ml')
+        conf_dir = os.path.join(root, conf_dir)
+        for fn in filter(pattern.match, os.listdir(conf_dir)):
+            fp = os.path.join(conf_dir, fn)
+            conf = yaml.load(open(fp), SafeTranscludingOrderedYamlLoader)
+            name = str.split(fn, '.', maxsplit=1)[0]
+            command = conf['command']
+            command.update(runners=conf['runners'])
+            if 'limiter' in conf:
+                command.update(limiter=conf['limiter'])
+            yield name, Service(
+                name=name,
+                label=conf['label'],
+                classifiers=conf['classifiers'],
+                form=conf['form'],
+                command=command,
+                presets=conf.get('presets')
+            )
 
 
 def _prepare_dir(root, path):
