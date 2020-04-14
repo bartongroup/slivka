@@ -28,12 +28,15 @@ class SettingsLoaderV10:
         )
         if settings_path is None:
             raise ImproperlyConfigured(
-                'Settings are not configured. You must set the SLIVKA_SETTINGS '
-                'environment variable or create a settings.yaml file in '
-                'the current working directory.'
+                'Settings file not found. Check if SLIVKA_SETTIGNS environment '
+                'variable is set correctly or the current working directory '
+                'contains settings.yaml file.'
             )
         with open(settings_path) as f:
             conf = yaml.safe_load(f)
+        if conf.get('VERSION', '1.0') != '1.0':
+            raise ImproperlyConfigured(
+                'Configuration version mismatch. Version 1.0 expected.')
         root = os.path.join(os.path.dirname(settings_path), conf['BASE_DIR'])
         return Settings(
             base_dir=conf['BASE_DIR'],
@@ -78,10 +81,20 @@ class SettingsLoaderV10:
 class SettingsLoaderV11:
     def __call__(self):
         root = os.getenv('SLIVKA_HOME', os.getcwd())
-        fp = os.path.join(root, 'settings.yaml')
+        fp = os.path.join(root, 'settings.yml')
         if not os.path.isfile(fp):
-            fp = os.path.join(root, 'settings.yml')
-        conf = yaml.safe_load(open(fp))
+            fp = os.path.join(root, 'settings.yaml')
+        try:
+            conf = yaml.safe_load(open(fp))
+        except FileNotFoundError as exc:
+            raise ImproperlyConfigured(
+                'Settings file not found. Check if SLIVKA_HOME environment '
+                'variable is set correctly and the directory contains '
+                'settings.yaml file.'
+            ) from exc
+        if conf['VERSION'] != '1.1':
+            raise ImproperlyConfigured(
+                'Configuration version mismatch. Version 1.1 expected')
         return Settings(
             base_dir=root,
             uploads_dir=_prepare_dir(root, conf['UPLOADS_DIR']),

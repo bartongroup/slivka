@@ -1,6 +1,4 @@
-import os
-
-import yaml
+import contextlib
 
 from slivka.utils import cached_property
 from . import loaders
@@ -9,25 +7,19 @@ from . import loaders
 class SettingsProxy:
     settings_file = None
 
-    def __init__(self):
-        if 'SLIVKA_SETTINGS' in os.environ:
-            settings_path = os.environ['SLIVKA_SETTINGS']
-        else:
-            home = os.getenv('SLIVKA_HOME', os.getcwd())
-            settings_path = os.path.join(home, 'settings.yaml')
-            if not os.path.isfile(settings_path):
-                settings_path = os.path.join(home, 'settings.yml')
-        version = yaml.safe_load(open(settings_path)).get('VERSION', '1.0')
-        if version == '1.0':
-            self.loader = loaders.SettingsLoaderV10()
-        elif version == '1.1':
-            self.loader = loaders.SettingsLoaderV11()
-        else:
-            raise ValueError("Invalid settings version %s" % version)
-
     @cached_property
     def settings(self) -> loaders.Settings:
-        return self.loader()
+        # Try loading with a primary loader. If that fails, then try
+        # secondary loaders. If they fail as well, re-raise the
+        # exception from the primary loader.
+        try:
+            loader = loaders.SettingsLoaderV11()
+            return loader()
+        except loaders.ImproperlyConfigured as e:
+            with contextlib.suppress(loaders.ImproperlyConfigured):
+                loader = loaders.SettingsLoaderV10()
+                return loader()
+            raise
 
     def __getattr__(self, item):
         val = getattr(self.settings, item)
