@@ -9,9 +9,8 @@ except ImportError:
 
 about = {}
 
-with open(os.path.join(
-        os.path.dirname(__file__), 'slivka', '__about__.py')) as f:
-    exec(f.read(), about)
+_about_file = os.path.join(os.path.dirname(__file__), 'slivka', '__about__.py')
+exec(open(_about_file).read(), about)
 
 setup(
     name="Slivka",
@@ -39,8 +38,7 @@ setup(
 
     entry_points={
         "console_scripts": [
-            "slivka-setup=slivka.command:setup",
-            "slivka-queue=slivka.local_queue:main"
+            "slivka=slivka.cli:main",
         ]
     },
 

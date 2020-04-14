@@ -1,11 +1,9 @@
 """Main execution script for the module.
 
-This module makes slivka project executable. It's sole purpose is to execute
-the setup function which will initialize a new project in the working
-directory where the module was launched.
+This module makes slivka project executable. It's sole purpose is to
+run command line interface when the module is executed.
 """
 
-import slivka.command
+import slivka.cli
 
-if __name__ == "__main__":
-    slivka.command.setup()
+slivka.cli.main()
