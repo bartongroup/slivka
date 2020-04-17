@@ -3,7 +3,7 @@ import multiprocessing
 import os
 import signal
 import sys
-from contextlib import closing
+from contextlib import closing, nullcontext
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
 
@@ -156,10 +156,8 @@ def start_scheduler(daemon, pid_file):
     import slivka
     if daemon:
         slivka.utils.daemonize()
-    if pid_file:
-        with open(pid_file, 'w') as f:
-            f.write("%d\n" % os.getpid())
-        atexit.register(os.remove, pid_file)
+    pid_file_cm = (slivka.utils.PidFile(pid_file)
+                  if pid_file else nullcontext())
 
     import slivka.conf.logging
     import slivka.scheduler
@@ -179,7 +177,7 @@ def start_scheduler(daemon, pid_file):
     listener = slivka.conf.logging.ZMQQueueListener(
         slivka.conf.logging.get_logging_sock(), (handler,)
     )
-    with listener, closing(handler):
+    with pid_file_cm, listener, closing(handler):
         scheduler = slivka.scheduler.Scheduler()
         for service in settings.services.values():
             scheduler.load_runners(service.name, service.command)
@@ -195,10 +193,8 @@ def start_local_queue(address, workers, daemon, pid_file):
     import slivka
     if daemon:
         slivka.utils.daemonize()
-    if pid_file:
-        with open(pid_file, 'w') as f:
-            f.write("%d\n" % os.getpid())
-        atexit.register(os.remove, pid_file)
+    pid_file_cm = (slivka.utils.PidFile(pid_file)
+                   if pid_file else nullcontext())
 
     import asyncio
     import slivka.conf.logging
@@ -214,7 +210,7 @@ def start_local_queue(address, workers, daemon, pid_file):
     )
     loop.add_signal_handler(signal.SIGTERM, queue.stop)
     loop.add_signal_handler(signal.SIGINT, queue.stop)
-    with closing(queue):
+    with pid_file_cm, closing(queue):
         queue.run(loop)
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()

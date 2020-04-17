@@ -1,4 +1,5 @@
 import enum
+import fcntl
 import os
 import sys
 import warnings
@@ -208,6 +209,35 @@ class JobStatus(enum.IntEnum):
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
                             JobStatus.QUEUED, JobStatus.RUNNING)
+
+
+class PidFile:
+    # licensed under the MIT license. by Graham Poulter
+    # http://code.activestate.com/recipes/577911/
+    """Context manager that locks a pid file.  Implemented as class
+    not generator because daemon.py is calling .__exit__() with no parameters
+    instead of the None, None, None specified by PEP-343."""
+    def __init__(self, path):
+        self.path = path
+        self.pidfile = None
+
+    def __enter__(self):
+        pidfile = self.pidfile = open(self.path, 'a+')
+        fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        pidfile.seek(0)
+        pidfile.truncate()
+        pidfile.write(str(os.getpid()))
+        pidfile.flush()
+        pidfile.seek(0)
+        return pidfile
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        try:
+            self.pidfile.close()
+        except OSError as e:
+            if e.errno != 9:
+                raise
+        os.remove(self.path)
 
 
 def daemonize():
