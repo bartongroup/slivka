@@ -2,7 +2,6 @@ import json
 import os.path
 import re
 from collections.abc import Mapping
-from functools import partial
 from importlib import import_module
 from urllib.parse import quote_plus
 
@@ -21,9 +20,10 @@ class ImproperlyConfigured(Exception):
 
 class SettingsLoaderV10:
     def __call__(self):
+        home = os.getenv('SLIVKA_HOME', os.getcwd())
         settings_path = (
             os.getenv('SLIVKA_SETTINGS') or
-            next((fn for fn in os.listdir('.')
+            next((fn for fn in os.listdir(home)
                   if re.match(r'settings\.ya?ml', fn)), None)
         )
         if settings_path is None:
@@ -39,7 +39,7 @@ class SettingsLoaderV10:
                 'Configuration version mismatch. Version 1.0 expected.')
         root = os.path.join(os.path.dirname(settings_path), conf['BASE_DIR'])
         return Settings(
-            base_dir=conf['BASE_DIR'],
+            base_dir=root,
             uploads_dir=_prepare_dir(root, conf['UPLOADS_DIR']),
             jobs_dir=_prepare_dir(root, conf['JOBS_DIR']),
             logs_dir=_prepare_dir(root, conf['LOG_DIR']),
