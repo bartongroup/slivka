@@ -5,6 +5,8 @@ import os
 
 import zmq
 
+import slivka
+
 _context = zmq.Context()
 atexit.register(_context.destroy, 0)
 
@@ -77,7 +79,8 @@ class ZMQQueueListener(logging.handlers.QueueListener):
 def get_logging_sock():
     from hashlib import md5
     from base64 import b64encode
-    suffix = b64encode(md5(os.environ['SLIVKA_HOME'].encode()).digest()[:6], b'-_').decode()
+    home = slivka.settings.base_dir
+    suffix = b64encode(md5(home.encode()).digest()[:6], b'-_').decode()
     tmp = os.environ.get('TEMP') or os.environ.get('TMP') or '/tmp'
     path = 'ipc://%s/slivka-logging_%s.sock' % (tmp, suffix)
     return path
