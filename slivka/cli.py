@@ -1,15 +1,15 @@
-import atexit
 import multiprocessing
 import os
 import signal
 import sys
-from contextlib import closing, nullcontext
+from contextlib import closing
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
 
 import click
 
 from slivka.__about__ import __version__
+from slivka.utils import nullcontext
 
 
 @click.group()

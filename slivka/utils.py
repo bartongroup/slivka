@@ -142,6 +142,20 @@ class class_property:
         return self._getter.__get__(instance, owner)()
 
 
+try:
+    from contextlib import nullcontext
+except ImportError:
+    class nullcontext:
+        def __init__(self, enter_result=None):
+            self.enter_result = enter_result
+
+        def __enter__(self):
+            return self.enter_result
+
+        def __exit__(self, *excinfo):
+            pass
+
+
 def deprecated(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
