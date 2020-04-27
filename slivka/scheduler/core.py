@@ -69,9 +69,10 @@ class Scheduler:
             cls = getattr(import_module(mod), attr)
             kwargs = conf.get('parameters', {})
             runner_id = RunnerID(service_name, name)
-            self.runners[runner_id] = cls(
+            runner = self.runners[runner_id] = cls(
                 conf_dict, id=RunnerID(service_name, name), **kwargs
             )
+            self.log.info('loaded runner for service %s: %r', service_name, runner)
 
     def stop(self):
         self._finished.set()
@@ -79,6 +80,7 @@ class Scheduler:
     def run_forever(self):
         if self._finished.is_set():
             raise RuntimeError
+        self.log.info('scheduler started')
         try:
             while not self._finished.wait(1):
                 self.run_cycle()
