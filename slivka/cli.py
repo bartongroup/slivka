@@ -18,7 +18,7 @@ def main():
     pass
 
 
-@main.group('init')
+@main.command('init')
 @click.argument("path", type=click.Path(writable=True))
 def init(path):
     """Initialize a new project in the directory specified."""
@@ -39,51 +39,31 @@ def init_project(base_dir):
     from base64 import b64encode
     import pkg_resources
 
-    # create directories
-    for dn in ['bin', 'conf', 'scripts']:
-        os.makedirs(os.path.join(base_dir, dn), exist_ok=True)
-
-    # copy core files
-    for fn in ['manage.py', 'services.yml', 'wsgi.py']:
-        with open(os.path.join(base_dir, fn), 'wb') as dst:
-            src = pkg_resources.resource_stream(
-                'slivka.conf', 'project_template/' + fn
+    def copy_project_file(src, dst=None):
+        if dst is None: dst = src
+        dst = os.path.join(base_dir, dst)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, 'wb') as f:
+            stream = pkg_resources.resource_stream(
+                'slivka.conf', 'project_template/' + src
             )
-            shutil.copyfileobj(src, dst)
-    os.chmod(os.path.join(base_dir, 'manage.py'), stat.S_IRWXU)
+            shutil.copyfileobj(stream, f)
+
+    copy_project_file("manage.py")
+    os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
+    copy_project_file("wsgi.py")
+    copy_project_file("services/example.service.yaml")
+    copy_project_file("scripts/example.py")
+    os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
 
     # create settings.yml
     tpl = pkg_resources.resource_string(
-        'slivka.conf', 'project_template/settings.yml.tpl'
+        'slivka.conf', 'project_template/settings.yaml'
     )
-    with open(os.path.join(base_dir, 'settings.yml'), 'w') as dst:
-        dst.write(string.Template(tpl.decode()).substitute(
-            base_dir=base_dir,
+    with open(os.path.join(base_dir, 'settings.yaml'), 'w') as f:
+        f.write(string.Template(tpl.decode()).substitute(
             secret_key=b64encode(os.urandom(24)).decode()
         ))
-
-    # copy conf/*
-    lstdir = pkg_resources.resource_listdir(
-        'slivka.conf', 'project_template/conf'
-    )
-    for fn in lstdir:
-        with open(os.path.join(base_dir, 'conf', fn), 'wb') as dst:
-            src = pkg_resources.resource_stream(
-                'slivka.conf', 'project_template/conf/' + fn
-            )
-            shutil.copyfileobj(src, dst)
-
-    # copy scripts/*
-    lstdir = pkg_resources.resource_listdir(
-        'slivka.conf', 'project_template/scripts'
-    )
-    for fn in lstdir:
-        with open(os.path.join(base_dir, 'scripts', fn), 'wb') as dst:
-            src = pkg_resources.resource_stream(
-                'slivka.conf', 'project_template/scripts/' + fn
-            )
-            shutil.copyfileobj(src, dst)
-    os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
 
 
 @main.group('start')

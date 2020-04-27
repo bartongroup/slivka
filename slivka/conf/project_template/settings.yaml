@@ -1,8 +1,8 @@
-BASE_DIR: $base_dir
+VERSION: "1.1"
 UPLOADS_DIR: ./media/uploads
 JOBS_DIR: ./media/jobs
 LOG_DIR: ./logs
-SERVICES: ./services.yml
+SERVICES: ./services
 
 UPLOADS_URL_PATH: /media/uploads
 JOBS_URL_PATH: /media/jobs
@@ -16,4 +16,4 @@ SERVER_PORT: 8000
 SLIVKA_QUEUE_ADDR: 127.0.0.1:3397
 SECRET_KEY: $secret_key
 
-MONGODB_ADDR: 127.0.0.1:27017
+MONGODB_ADDR: 127.0.0.1:27017/slivka

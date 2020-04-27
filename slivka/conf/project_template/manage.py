@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 
-SETTINGS_FILE = 'settings.yml'
-
+home = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == "__main__":
-    settings_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), SETTINGS_FILE
-    )
-    os.environ.setdefault('SLIVKA_SETTINGS', settings_path)
+    home = os.environ.get('SLIVKA_HOME', home)
+    os.environ.setdefault('SLIVKA_HOME', home)
+    sys.path.append(home)
     try:
-        import slivka.command
+        import slivka.cli
     except ImportError:
         raise ImportError(
-            "Couldn't import slivka. Make sure it's installed correctly "
-            "and available on you PYTHONPATH environment variable. "
+            "Couldn't import slivka. Make sure it's installed corectly "
+            "and available from PYTHONPATH environment variable. "
             "Check if you activated virtual environment."
         )
-    slivka.command.manager()
+    slivka.cli.main()

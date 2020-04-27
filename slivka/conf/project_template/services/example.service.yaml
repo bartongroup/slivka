@@ -1,0 +1,117 @@
+# This is an example service configuration.
+# Services are specified in the <name>.service.yaml files
+# which are automatically detected by slivka when placed
+# in the services directory.
+# More information can be found here http://warownia1.github.io/Slivka/
+
+---
+# label is how the service is presented to the front-end users
+label: Example Service
+# classifiers help users and software categorise services
+# they can be chosen arbitrarily
+classifiers:
+  - 'Example'
+  - 'Service configuration template'
+
+form:
+  # JSON file input example.
+  input-file:
+    label: JSON input file.
+    description: File which will be printed to stdout.
+    value:
+      required: no
+      type: file
+      media-type: application/json
+
+  # Text type input example
+  msg:
+    label: Message
+    description: Message printed to the output file
+    value:
+      required: yes
+      type: text
+      min-length: 3
+      max-length: 15
+
+  # Integer type input example
+  extra-count:
+    label: Number of files
+    description: Specifies the number of auxilary files to generate
+    value:
+      required: yes
+      type: int
+      default: 1
+      min: 0
+      max: 5
+
+  # Decimal type input example
+  sleep:
+    label: Time to wait
+    description: Stop the process for the specified number of seconds
+    value:
+      required: no
+      type: decimal
+      default: 0
+
+  # Flag input example
+  log:
+    label: Enable log
+    value:
+      required: no
+      type: flag
+
+command:
+  # base command that will be executed
+  baseCommand: python ${SLIVKA_HOME}/scripts/example.py
+
+  # mapping of form input values to command line parameters
+  inputs:
+    input-file:
+      arg: --infile $(value)
+      type: file
+      symlink: input.txt
+    msg:
+      arg: -t $(value)
+    extra-count:
+      arg: -x $(value)
+      type: number
+    sleep:
+      arg: -w $(value)
+      type: number
+    log:
+      arg: --log
+      type: flag
+    _verbose:
+      arg: -v
+      type: flag
+      value: true
+
+  # additional arguments added after inputs
+  arguments:
+    - output.txt
+
+  # list of output files created by the program
+  outputs:
+    message:
+      # name of the output file
+      path: output.txt
+      # media type of the file
+      media-type: text/plain
+    content:
+      path: stdout
+      media-type: text/plain
+    log:
+      path: stderr
+      media-type: text/plain
+    extra:
+      # glob patterns are also allowed
+      path: extra-output.*.json
+      media-type: application/json
+
+# list of runners and configurations used to start jobs
+runners:
+  # Runner named "default" is used by default
+  default:
+    # A simple runner using slivka local queue
+    class: SlivkaQueueRunner
+...
