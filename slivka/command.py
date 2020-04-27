@@ -12,6 +12,7 @@ import os
 import shutil
 import signal
 import stat
+import warnings
 from base64 import b64encode
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
@@ -24,6 +25,8 @@ import slivka
 import slivka.conf.logging
 import slivka.utils
 from slivka.conf import settings
+
+warnings.warn("Module command.py is deprecated", DeprecationWarning)
 
 
 @click.command()
