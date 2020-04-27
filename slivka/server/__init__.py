@@ -34,7 +34,7 @@ def create_app(prefix=None):
     global _app
     if _app is not None:
         raise RuntimeError("Flask application already exists")
-    _app = flask.Flask('slivka')
+    _app = flask.Flask('slivka', static_url_path='')
     _app.config.update(
         UPLOADS_DIR=slivka.settings.uploads_dir
     )
