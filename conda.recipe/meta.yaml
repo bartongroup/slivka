@@ -1,0 +1,43 @@
+{% set version="0.6b1" %}
+
+package:
+  name: slivka
+  version: {{ version }}
+
+source:
+  git_url: ../
+  git_rev: dev
+
+build:
+  noarch: python
+  number: 5
+  script: "{{ PYTHON }} -m pip install -vv --no-deps ."
+  entry_points:
+    - slivka=slivka.cli:main
+
+channels:
+  - conda-forge
+  - defaults
+
+requirements:
+  host:
+    - python=3.7
+  run:
+    - attrs>=19
+    - click>=7.0
+    - flask>=1.0
+    - frozendict>=1.2
+    - jsonschema>=2.6
+    - markupsafe>=1.0
+    - pip>=18.0
+    - python=3.7
+    - pymongo>=3.7
+    - pytest>=3.2
+    - pyyaml>=3.13
+    - pyzmq>=17.1
+    - simplejson>=3.16
+    - werkzeug>=0.15
+
+tests:
+  imports:
+    - slivka
