@@ -89,6 +89,15 @@ class JobRequest(MongoDocument):
     status = property(_get_state, _set_state)
 
 
+class CancelRequest(MongoDocument):
+    __collection__ = 'cancelrequest'
+
+    def __init__(self, uuid, **kwargs):
+        super().__init__(uuid=uuid, **kwargs)
+
+    uuid = property(lambda self: self['uuid'])
+
+
 class JobMetadata(MongoDocument):
     __collection__ = 'jobs'
 

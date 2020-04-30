@@ -1,24 +1,30 @@
 import logging
-from collections import defaultdict, namedtuple, OrderedDict
-from importlib import import_module
-
 import threading
+from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
-from pymongo import UpdateOne
+from importlib import import_module
 from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
                     Sequence)
 
+from pymongo import UpdateOne
+
 import slivka.db
-from slivka.db.documents import JobRequest, JobMetadata
+from slivka.db.documents import JobRequest, JobMetadata, CancelRequest
 from slivka.db.helpers import insert_many
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
 
 
 def _fetch_pending_requests(database) -> Iterable[JobRequest]:
-    requests = JobRequest.collection(database).find(
-        {'status': JobStatus.PENDING})
+    requests = (JobRequest
+                .collection(database)
+                .find({'status': JobStatus.PENDING}))
     return (JobRequest(**kwargs) for kwargs in requests)
+
+
+def _fetch_cancel_requests(database) -> List[str]:
+    requests = CancelRequest.collection(database).find()
+    return [kwargs['uuid'] for kwargs in requests]
 
 
 def get_classpath(cls):
@@ -118,6 +124,25 @@ class Scheduler:
 
         # Fetch cancel requests and update cancelled job states to
         # DELETED if they were PENDING or ACCEPTED; or CANCELLING if QUEUED or RUNNING
+        cancel_requests = _fetch_cancel_requests(database)
+        if cancel_requests:
+            JobRequest.collection(database).update_many(
+                {'uuid': {'$in': cancel_requests},
+                 'status': {'$in': [JobStatus.PENDING, JobStatus.ACCEPTED]}},
+                {'$set': {'status': JobStatus.DELETED}}
+            )
+            JobRequest.collection(database).update_many(
+                {'uuid': {'$in': cancel_requests},
+                 'status': {'$in': [JobStatus.QUEUED, JobStatus.RUNNING]}},
+                {'$set': {'status': JobStatus.CANCELLING}}
+            )
+            cancelled_jobs = JobMetadata.find(
+                database, {'uuid': {'$in': cancel_requests}})
+            for job in cancelled_jobs:
+                runner = self.runners[job.service, job.runner]
+                runner.cancel(job.job_id, job.cwd)
+            CancelRequest.collection(database).delete_many(
+                {'uuid': {'$in': cancel_requests}})
 
         # starting ACCEPTED requests
         cursor = JobRequest.collection(database).aggregate([

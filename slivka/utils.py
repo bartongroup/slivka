@@ -219,6 +219,7 @@ class JobStatus(enum.IntEnum):
     FAILED = 9  # Job finished with non-0 status code
     ERROR = 10  # Internal error
     UNKNOWN = 11
+    CANCELLING = 12  # Job is in progress of being cancelled
 
     def is_finished(self):
         return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
