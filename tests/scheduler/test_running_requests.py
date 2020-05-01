@@ -6,18 +6,13 @@ from slivka.scheduler.core import REJECTED, ERROR
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import BackoffCounter
 # noinspection PyUnresolvedReferences
-from . import mock_mongo
+from . import mock_mongo, LimiterStub
 
 
 def MockRunner(service, name):
     runner = mock.MagicMock(spec=Runner)
     runner.id = RunnerID(service_name=service, runner_name=name)
     return runner
-
-
-class LimiterStub(Limiter):
-    def limit_runner1(self, inputs): return inputs.get('runner') == 1
-    def limit_runner2(self, inputs): return inputs.get('runner') == 2
 
 
 def test_grouping():

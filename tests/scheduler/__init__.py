@@ -3,6 +3,7 @@ import pytest
 
 import slivka.db
 from slivka.db.documents import JobRequest
+from slivka.scheduler import Limiter
 
 
 @pytest.fixture('function')
@@ -26,3 +27,8 @@ def insert_jobs(mock_mongo):
 
     yield insert
     collection.delete_many({'_id': {'$in': [job['_id'] for job in all_jobs]}})
+
+
+class LimiterStub(Limiter):
+    def limit_runner1(self, inputs): return inputs.get('runner') == 1
+    def limit_runner2(self, inputs): return inputs.get('runner') == 2

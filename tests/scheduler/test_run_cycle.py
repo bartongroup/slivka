@@ -5,11 +5,11 @@ from typing import Iterator
 
 from slivka.db.documents import JobRequest
 from slivka.db.helpers import insert_many, pull_many
-from slivka.scheduler import Scheduler, Runner, Limiter
+from slivka.scheduler import Scheduler, Runner
 from slivka.scheduler.runners.runner import RunnerID, RunInfo
 from slivka.utils import JobStatus
 # noinspection PyUnresolvedReferences
-from . import mock_mongo, insert_jobs
+from . import mock_mongo, insert_jobs, LimiterStub
 
 
 class MockRunner(Runner):
@@ -27,11 +27,6 @@ class MockRunner(Runner):
     @classmethod
     def check_status(cls, job_id, cwd) -> JobStatus:
         return JobStatus.COMPLETED
-
-
-class LimiterStub(Limiter):
-    def limit_runner1(self, inputs): return inputs.get('runner') == 1
-    def limit_runner2(self, inputs): return inputs.get('runner') == 2
 
 
 def test_completed(mock_mongo):
