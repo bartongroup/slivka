@@ -1,16 +1,17 @@
 import os.path
+import pathlib
 from collections import namedtuple
 from fnmatch import fnmatch
 from tempfile import mkstemp
 
 import flask
-import pathlib
 import pkg_resources
 from flask import request, abort, url_for, current_app as app
 
 import slivka
 from slivka import JobStatus
 from slivka.db import database, documents
+from slivka.db.helpers import insert_one
 from . import JsonResponse
 from .forms import FormLoader
 
@@ -228,8 +229,14 @@ def get_job_status(uuid):
 
 
 @bp.route('/tasks/<uuid>', methods=['DELETE'])
-def cancel_task(_):
-    raise NotImplementedError
+def cancel_task(uuid):
+    job_request = documents.JobRequest.find_one(database, uuid=uuid)
+    if job_request is None:
+        raise abort(404)
+    if not job_request.status.is_finished():
+        insert_one(slivka.db.database,
+                   documents.CancelRequest(job_request.uuid))
+    return JsonResponse({'statuscode': 202}, status=202)
 
 
 OutputFile = namedtuple('OutputFile', 'uuid, title, label, location, media_type')
