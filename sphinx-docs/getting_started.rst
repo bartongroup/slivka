@@ -27,7 +27,8 @@ Additional requirements that will be downloaded and installed automatically, inc
 Installing Slivka package
 -------------------------
 
-It's recommended to install Slivka inside a virtual environment using virtualenv or conda.
+It's recommended to install Slivka inside a virtual environment using
+virtualenv or conda.
 
 You can install virtualenv by running ``pip install virtualenv`` (on some Linux distributions
 you may need to install a correspinding system package e.g. ``apt-get install python-virtualenv``).
@@ -36,20 +37,23 @@ directory and activate using ``source env/bin/activate`` on Unix/OS X or
 ``env\Scripts\activate.bat`` on Windows.
 More information about the virtualenv package can be found in `virtualenv documentation`_.
 
-For conda users, create a new environment using ``conda create -n slivka python=3.7``
-and activate with ``conda activate slivka``.
-More details can be found in `conda documentation`_.
-
-.. _`virtualenv documentation`: https://virtualenv.pypa.io/en/stable/
-.. _`conda documentation`: https://conda.io/en/latest/
-
 Slivka package can be installed directly from the github repository with pip.
 We recommend using development branch until the first stable version is released.
 ``pip install git+git://github.com/warownia1/Slivka@dev``.
 Setuptools and all other requirements will be downloaded if not present, so internet
 connection is required during the installation.
 
-After the installation, a new executable ``slivka-setup`` will be added to your Python
+For conda users, create a new environment using ``conda create -n slivka python=3.7``
+and activate with ``conda activate slivka``.
+Slivka package can be then installed from our anaconda channel using
+``conda install -c mmwarowny -c conda-forge slivka``.
+More details can be found in `conda documentation`_.
+
+.. _`virtualenv documentation`: https://virtualenv.pypa.io/en/stable/
+.. _`conda documentation`: https://conda.io/en/latest/
+
+
+After the installation, a new executable ``slivka`` will be added to your Python
 scripts directory. It will be used to create a new empty slivka configuration.
 You can also use existing configurations created by other people.
 
@@ -57,57 +61,51 @@ You can also use existing configurations created by other people.
 Creating new project
 --------------------
 
-In order to create a new Slivka project navigate to the folder where you want
-it to be set-up and run the ``slivka-setup`` executable created during
-the installation ::
+In order to create a new Slivka project directory execute ::
 
-   slivka-setup <name>
+   slivka init <name>
 
-replacing ``<name>`` with the name of the directory where configuration files
-will be copied to.
+replacing ``<name>`` with the name of the directory where the configuration 
+files will be copied to.
 Use ``.`` if you wish to set-up the project in the current directory.
-If the executable cannot be accessed (e.g. it is not in the PATH), you
-can equivalently run the slivka module with ::
+If the slivka executable cannot be accessed (e.g. it is not added to the 
+PATH), you can alternatively run slivka as a python module with ::
 
-   python -m slivka <name>
+   python -m slivka init <name>
 
-The installation will create a new directory ``<name>`` if one does not exist
-and copy example configuration files and service into it.
-In the following sections we walk through the process of creating and configuring
-new services.
+The newly created directory will contain default settings files and 
+an example service. In the following sections we will walk through the 
+process of creating and configuring new services.
 
 =================
 Project Structure
 =================
 
-First, let us take a look at the overall structure of the newly created project.
-There are four files in the project root directory as well as *conf* and *scripts*
-directories.
+First, let us take a look at the overall file structure of the newly 
+created project. The project root directory contains three files and 
+a *services* directory by default.
 
 :manage.py:
-  Main executable script which loads all configuration files and starts
-  necessary processes.
-:settings.yml:
-  General configuration file containing project-wide parameters.
+  Legacy executable script which loads all configuration files and starts
+  slivka processes. Replaced by *slivka* executable.
+:settings.yaml:
+  Settings file containing project-wide constants.
   Refer to `settings file`_ section for more information about available
   parameters.
-:services.yml:
-  List of available services and paths to their respective configuration files.
-  Refer to `services list`_ for more details.
 :wsgi.py:
-  Module containing a wsgi application as specified in `PEP-3333`_
-  used by the dedicated wsgi middleware.
-:conf:
-  Directory containing configuration files for all available services.
-  Refer to `form definition`_ and `command configuration`_ section for more
-  information on creating web forms for command line tools.
+  Module containing a wsgi-compatible application as specified in 
+  `PEP-3333`_ used by the dedicated wsgi middleware.
+:services:
+  Directory containing configuration files for services.
+  Refer to `service definition`_ section for more
+  information on creating web services.
 
 .. _`PEP-3333`: https://www.python.org/dev/peps/pep-3333/
 
-All the configuration files are using `YAML <https://yaml.org/>`_ format
-which can be edited with any text editor.
-If you are not familiar with YAML syntax you can use JSON instead since
-any JSON document is a valid YAML document.
+All the configuration files are using `YAML <https://yaml.org/>`_ syntax 
+and can be edited with any text editor.
+If you are not familiar with YAML structure you can use JSON instead since
+any JSON document is a valid YAML document as well.
 
 It's not advisable to edit *manage.py* and *wsgi.py* scripts unless
 you are an advanced user and you know what you are doing.
@@ -116,33 +114,24 @@ you are an advanced user and you know what you are doing.
 Settings file
 -------------
 
-``settings.yml`` is a yaml file containing parameters used throughout the
+``settings.yaml`` is a yaml file containing constant values used by the
 application. All parameters are case sensitive and their names should be
 written in capital letters.
 
-The following parameters are recognised by the application:
+When slivka is started, a ``SLIVKA_HOME`` environment variable pointing
+to the directory containing the settings file is set if not already set.
+This variable is used whenever relative paths need to be resolved.
 
-:``BASE_DIR``:
-  Location of the project directory.
-  Absolute paths are preferred to relative paths which are resolved with
-  respect to the current working directory the process was started at.
-  All other relative paths which appear in the configuration files start at
-  the ``BASE_DIR`` path.
-  It defaults to the project root directory containing the ``manage.py`` file.
-  Additionally, slivka sets ``SLIVKA_HOME`` environment variable storing the
-  absolute ``BASE_DIR`` path which can be used whenever
-  the path to the project directory is needed.
+The following parameters should be present in the settings file:
 
-  Examples:
-
-  .. code-block:: yaml
-
-    BASE_DIR: /home/my-username/my-slivka
-    BASE_DIR: C:\Users\my-username\my-slivka
+:``VERSION``:
+  Version of the settings syntax used. Should be set to ``"1.1"`` for
+  the current version.
 
 :``UPLOADS_DIR``:
-  Directory for user uploaded files.
-  It can be either an absolute path or a path relative to the ``BASE_DIR``.
+  Directory where the user uploaded files will be saved to.
+  It can be either an absolute path or a path relative to the ``SLIVKA_HOME``
+  directory.
 
   Default: ``./media/uploads``
 
@@ -152,8 +141,9 @@ The following parameters are recognised by the application:
     the load put on the python application.
 
 :``JOBS_DIR``:
-  Directory where job working directories are created and output files are stored.
-  Can be either an absolute path or path relative to the ``BASE_DIR``.
+  Directory where job working directories are created and output files 
+  are stored.  Can be either an absolute path or path relative to the
+  ``SLIVKA_HOME`` directory.
 
   Default: ``./media/jobs``
 
@@ -163,35 +153,40 @@ The following parameters are recognised by the application:
     the load put on the python application.
 
 :``LOG_DIR``:
-  Log files directory location.
-  Can be either an absolute path or a path relative to the ``BASE_DIR``.
+  Log files directory location. Can be either an absolute path or a 
+  path relative to the ``SLIVKA_HOME`` directory.
 
   Default: ``./logs``
 
 :``SERVICES``:
-  Path to the *services.yml* file containing the list of available services.
-  Can be either an absolute path or a path relative to the ``BASE_DIR``.
-  More information about the services list in the `services list`_ section.
+  Path to the directory containing service definition files.
+  Can be either an absolute path or a path relative to the ``SLIVKA_HOME``
+  directory.
 
-  Default: ``./services.yml``
+  Default: ``./services``
 
 :``UPLOADS_URL_PATH``:
   The URL path where the uploaded files will be available from.
-  This setting enables you to set the path so the files can be served by a proxy server
-  e.g. Apache or Nginx. Serving media files through the python application is not recommended
-  due to the limited number of simultaneous connections.
+  This setting enables you to set the path so the files can be served 
+  by a proxy server e.g. Apache or Nginx. Serving media files through
+  the python application is not recommended due to the limited number 
+  of simultaneous connections.
 
   Default: ``/media/uploads``
 
 :``JOBS_URL_PATH``:
   The URL path where the tasks output files will be available from.
-  This setting enables you to set the path so the files can be served by a proxy server
-  e.g. Apache or Nginx. Serving media files through the python application is not recommended
-  due to the limited number of simultaneous connections.
+  This setting enables you to set the path so the files can be served
+  by a proxy server e.g. Apache or Nginx. Serving media files through
+  the python application is not recommended due to the limited number
+  of simultaneous connections.
+
+  Default: ``/media/jobs``
 
 :``ACCEPTED_MEDIA_TYPES``:
   The list of media types that will be accepted by the server.
-  Files having media types not specified in this list could not be uploaded to the server.
+  Files having media types not specified in this list could not be 
+  uploaded to the server.
 
   Example:
 
@@ -202,7 +197,8 @@ The following parameters are recognised by the application:
       - application/json
 
 :``SECRET_KEY``:
-  Randomly generated key used for authentication. Not used currently and might be removed in the future.
+  Randomly generated key used for authentication. Not used currently 
+  and might be removed in the future.
 
 :``SERVER_HOST``:
   The hostname which the server will be available at. Setting it to 0.0.0.0
@@ -210,21 +206,14 @@ The following parameters are recognised by the application:
   If the slivka server is running behind a proxy, it's recommended to accept
   the connections from the proxy server only e.g. 127.0.0.1.
 
-  .. note::
-    This parameter is only applicable when running slivka server through manage.py utility.
-    When using other wsgi application directly, refer to their documentation on
-    how to specify the server host
-
-
 :``SERVER_PORT``:
-  Port used for listening to the HTTP requests. Remember that using  port number lower than 1024
-  may be not allowed for regular users on your system.
+  Port used for listening to the HTTP requests. Note that using
+  port number lower than 1024 may not be allowed on your system.
 
-  .. note::
-    This parameter is only applicable when running slivka server through manage.py utility.
-    When using other wsgi application directly, refer to their documentation on
-    how to specify the server port
-
+:``URL_PREFIX``:
+  *(optional)* Prefix prepended to all API urls. Should be used in
+  case you wish Slivka to be asseccible at the location other than 
+  the root path. e.g. ``/slivka``.
 
 :``SLIVKA_QUEUE_ADDR``:
   Binding socket of the slivka queue. Can be either tcp or ipc socket.
@@ -241,86 +230,106 @@ The following parameters are recognised by the application:
 
     SLIVKA_QUEUE_ADDR: /home/slivka/local-queue.sock
 
-:``MONGODB_ADDR``:
+:``MONGODB``:
   The connection address to the mongo database.
-  It should be a full `mongodb URI`_ e.g. ``mongodb://mongodb0.example.com:27017``
-  or a simple hostname e.g. ``127.0.0.1:27017``.
-  This parameter is passed directly to the ``pymongo.MongoClient``
+  It should be a full `mongodb URI`_ e.g. ``mongodb://mongodb.example.com:27017/database``
+  or a simple hostname e.g. ``127.0.0.1:27017/database``.
+  Alternatively, a mapping containing keys: ``host`` or ``socket`` and ``database``
+  and optionally ``username`` and ``password`` can be used instead.
+
+  .. code-block:: yaml
+
+    MONGODB: mongodb://user:pass@127.0.0.1:27017/myDB
+
+    MONGODB:
+      username: user
+      password: pass
+      host: 127.0.0.1:27017
+      database: myDB
 
 .. _mongodb URI: https://docs.mongodb.com/manual/reference/connection-string/
 
--------------
-Services list
--------------
+------------------
+Service Definition
+------------------
 
-The services configuration file (*services.yml* by default) lists all available services
-and paths to their respective configuration files along with their metadata.
-The common use case is to create an individual service for each tool
-you want to make available on your server.
+Service definition files are located in the directory specified in the settings
+(*services/* by default).
+Each service definition is a separate file named *<name>.service.yaml*
+(``[\w_-]*\.service\.ya?ml`` for those familiar with regex)
+where service name should be substituted for *<name>* placeholder.
+The name should contain alphanumeric characters, dashes and underscores only
+and will be used as an unique identifier for the service.
+Using lowercase letters is recommended but not required.
+You can add as many services as you need as long as each name is unique.
 
-Each top level key represents service name that serves as an identifier,
-it must be unique and contain alphanumeric characters only.
-Using lowercase letters only is recommended.
+Service Metadata
+================
 
-Each section should contain the following parameters:
+The first thing that need to be included in the service definition file is
+its metadata.
 
-:``label``:
-  **required** A human readable name of the service.
+The first key in the service file should be the service ``label``.
+The label will be presented to the users and should be short and descriptive.
 
-:``form``:
-  **required** The path to the form definition file described in the
-  `Form Definition`_ section.
-
-:``command``:
-  **required** The path to the command configuration file whose structure is
-   described in the `Command Configuration`_ section.
-
-:``presets``:
-  Path to the file containing parameter presets described in the `Presets`_ section.
-
-:``classifiers``:
-  A list of categories or tags that this service fits into. There is no strict rule
-  of how the classifiers are defined and you are free to tag the services as you wish.
+The second key are the service ``classifiers``. It should be a list of tags that
+allow to categorise the service based on inputs/outputs or performed operation.
+There are no rules for classifiers but ideally they should be both human and
+machine readable.
 
 Example:
 
 .. code-block:: yaml
 
-  example:
-    label: Example service
-    form: conf/example_form.yml
-    command: conf/example_command.yml
-    classifiers:
-    - "Topic :: Example"
-    - "Operation :: Testing :: Operation testing"
+  label: MyService
+  classifiers:
+    - Purpose=Example
+    - Type=Tutorial
 
----------------
 Form Definition
----------------
+===============
 
-Form description file specifies the parameters which are exposed to the front end user
-through the web API.
-It contains the list of modifiable properties which will be submitted to the new job.
-Each top level key defines a unique field name, only alphanumeric characters,
-hyphen and underscore are allowed and using lowercase letters only is recommended.
-The values for each key define additional information about the field and 
-constrains of accepted values.
-The following section defines allowed parameters for each field.
+Slivka forms serve the same role as web forms -- they are collections of
+fields representing input parameters which are populated and submitted by
+the users. They also define which parameters are exposed through the web API
+and modifiable by the users. Values provided in the form are further 
+used to create command line arguments.
+
+Each form field has a unique name (which will be used as a parameter key
+when the job is submitted), a short label, a description and allowed
+value contraints.
+
+The form is created using ``form`` key containing the mapping of the
+field name to their corresponding `field object`_.
+As with services, field name should contain alphanumeric characters,
+dashes and underscores only (preferably lowercase) and serve as unique
+field identifiers.
 
 Field Object
-============
+------------
+Each element of the form definition consists of the key-value pair
+where key is the field name and the value is the field object
+having the following properties:
 
-============= ================== =================
- Key           Type               Description
-============= ================== =================
-label         string             **Required.** A human readable field name.
-description   string             Detailed information about the field 
-                                 a.k.a. help text
-value         `Value Object`_    **Required.** Details about accepted value
-                                 type and constraints.
-============= ================== =================
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
-Example of the form accepting two fields: *input* and *format* is shown below.
+  * - Key
+    - Type
+    - Description
+  * - label
+    - string
+    - **Required.** A human readable field name.
+  * - description
+    - string
+    - Detailed information about the field / Help text
+  * - value
+    - `Value Object`_
+    - **Required.** Accepted value metadata: type and constraints
+
+
+Example of the form accepting two fields: *input* and *filename* is shown below:
 
 .. code-block:: yaml
 
@@ -329,58 +338,59 @@ Example of the form accepting two fields: *input* and *format* is shown below.
     description: JSON, YAML or XML file containing input data.
     value:
       type: file
-      maxSize: 2KB
-      required: yes
-  format:
-    label: File format
+  filename:
+    label: Filename
     value:
-      type: choice
-      choices:
-        JSON: json
-        YAML: yaml
-        XML: xml
-      required: yes
-      default: JSON
+      type: text
 
 
 Value object
-============
+------------
 
-Value objects contain the information about the field type and value contraints.
-The parameter specified here are used to validate the user-provided parameters.
-The configurable properties differ depending on the field type.
-Properties: ``type``, ``required`` and ``default`` are available regardless
-of the field type.
+The value object contains the metadata defining the accepted value type and
+constraints. Those parameters are used to validate the user-provided input.
+The available constraints differ dependingon the field type; however,
+properties: ``type``, ``required``, ``default`` and ``multiple`` are
+available for all field types.
 
-============ ========== ========================
- Key          Type       Description
-============ ========== ========================
- type         string     **Required.** Type of the field,
-                         must be: int, float, text, boolean, choice or file.
- required     boolean    **Required.** Whether the value for that field must be provided.
-                         Default is *True* if not specified.
- default      any        Default value used when the user does not specify that parameter.
-                         Its type must match the type of the field.
-============ ========== ========================
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
+  * - Key
+    - Type
+    - Description
+  * - type
+    - string
+    - **Required.** Type of the field, must be either one of the built-in
+      types: int, decimal, text, flag, choice or file; or the path to the
+      custom field class.
+  * - required
+    - boolean
+    - Whether the field value must be provided by the user. Default: yes
+  * - default
+    - any
+    - Default value used if no value is provided by the user. The default
+      value must also meet all value constraints.
+  * - multiple
+    - boolean
+    - Whether the field accepts multiple values. Default: no
 
-Note that supplying the default value automatically makes the field not required 
-since the default value is used when the field is left empty.
+Note that specifying the default value automatically makes the field not
+required since the default value is used when the field is left empty.
 
-All other properties listed below are optional and are specific to
+All other parameter listed below are optional and are specific to
 their respective field types.
 
-Integer Value object
---------------------
+int type
+''''''''
 
-``type: int``
-
-============ ========= =========================
- Field Name   Type      Description
-============ ========= =========================
- min          integer   Minimum value, unbound if not provided.
- max          integer   Maximum value, unbound if not provided.
-============ ========= =========================
+===== ========= =========================
+ Key   Type      Description
+===== ========= =========================
+min   integer   Minimum value, unbound if not provided.
+max   integer   Maximum value, unbound if not provided.
+===== ========= =========================
 
 Example:
 
@@ -393,19 +403,17 @@ Example:
   default: 5
 
 
-Float Value object
-------------------
+decimal type
+''''''''''''
 
-``type: float`` or ``decimal``
-
-============== ========= =========================
- Field Name     Type      Description
-============== ========= =========================
- min            float     Minimum value, unbound if not provided
- max            float     Maximum value, unbound if not provided
- minExclusive   boolean   Whether the minimum should be excluded.
- maxExclusive   boolean   Whether the maximum should be excluded.
-============== ========= =========================
+============== ======= =======================================
+ Key            Type    Description
+============== ======= =======================================
+min            float   Minimum value, unbound if not provided.
+max            float   Maximum value, unbound if not provided.
+min-exclusive  boolean Whether the minimum should be excluded.
+max-exclusive  boolean Whether the maximum should be excluded.
+============== ======= =======================================
 
 Example:
 
@@ -413,62 +421,59 @@ Example:
 
   type: decimal
   min: -4.0
-  minExclusive: false
+  min-exclusive: false
   max: 4.5
-  maxExlusive: true
+  max-exlusive: true
   default: 0
 
-Text Value object
------------------
+text type
+'''''''''
 
-``type: text``
-
-============ ========= =========================
- Field Name  Type      Description
-============ ========= =========================
- minLength   integer   The minimum length of the text.
- maxLength   integer   The maximum length of the text.
-============ ========= =========================
+=========== ======== ===============================
+ Key         Type     Description
+=========== ======== ===============================
+min-length  integer  The minimum length of the text.
+max-length  integer  The maximum length of the text.
+=========== ======== ===============================
 
 Example:
 
 .. code-block:: yaml
 
   type: text
-  minLength: 1
-  maxLength: 8
+  min-length: 1
+  max-length: 8
 
-Boolean Value object
---------------------
+flag type
+'''''''''
 
-``type boolean`` or ``flag``
-
-============ ========= =========================
- Field Name  Type      Description
-============ ========= =========================
+===== ========= =========================
+ Key  Type      Description
+===== ========= =========================
  *(no additional properties)*
-================================================
+=========================================
 
 Example:
 
 .. code-block:: yaml
 
-  type: boolean,
+  type: flag
   default: false
 
-Choice Value object
--------------------
+choice type
+'''''''''''
 
-``type: choice``
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
-============ ======================== ==========================================
- Field Name   Type                     Description
-============ ======================== ==========================================
- choices      map[string, string]      Mapping of available choices where keys represent
-                                       the values presented to the user
-                                       and values the command line parameters
-                                       substituted for that choice.
-============ ======================== ==========================================
+  * - Key
+    - Type
+    - Description
+  * - choices
+    - map[str, str]
+    - Mapping of available choices where the user choses one of the keys
+      which is then converted to the value on the server side
 
 Example:
 
@@ -481,99 +486,132 @@ Example:
     Gamma: --third-option
   default: Alpha
 
-File Value object
------------------
+file type
+'''''''''
 
-``type: file``
+.. list-table::
+  :header-rows: 1
+  :widths: auto
 
-============ ======== ===================
- Field Name   Type     Description
-============ ======== ===================
- mimetype     string   Accepted content type e.g. text/plain
- maxSize      string   The maximum size of the file. The size is represented
-                       with an integer and one of the allowed units: B, KB, MB, GB, TB
-                       e.g. 5MB
-============ ======== ===================
+  * - Key
+    - Type
+    - Description
+  * - media-type
+    - string
+    - Accepted media type e.g. text/plain.
+  * - media-type-parameters
+    - map[str, any]
+    - Auxiliary media type information/constraints.
+  * - max-size
+    - string
+    - The maximum file size in bytes. Decimal unit prefixes are allowed.
+      e.g. 1024B, 500KB or 10MB
 
 Example:
 
 .. code-block:: yaml
 
   type: file
-  mimetype: text/plain
-  maxSize: 1KB
+  media-type: text/plain
+  media-type-parameters:
+    max-lines: 100
+  max-size: 1KB
 
 
----------------------
-Command configuration
----------------------
+Command definition
+==================
 
 Command configuration tells Slivka how to construct the command line parameters
-for the program and how to submit it to the queuing system along with
-extra arguments and environment variables.
+for the program and what environment variables should be set.
+The command definition appears under ``command`` key in the service file.
 
-=============== ================================ ================================================
- Field name      Type                             Description
-=============== ================================ ================================================
-baseCommand     array[string]                    **Required.** A list of command arguments appearing before any other parameters.
-env             map[string, string]              Additional environment variables which will be
-                                                 set for this job.
-inputs          map[string, `Argument Object`_]  **Required.** A mapping of field values to the command
-                                                 line parameters. Each key corresponds
-                                                 to the field name in the form definition file
-                                                 and the value is an argument object described below.
-arguments       array[string]                    A list of arguments added at the end of the command.
-outputs         map[string, `Output Object`_]    **Required.** Collection of output files produced by
-                                                 the command line program.
-runners         map[string, `Runner Object`_]    **Required.** Collection of runner configurations
-                                                 that will be used to send jobs to the queuing systems.
-limiter         string                           Path to the python class which will assign jobs to
-                                                 appropriate runners (see `Advanced Usage <advanced_usage.html#limiters>`_)
-=============== ================================ ================================================
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
-Argument Object
-===============
-Each key (property name) specified in the inputs is mapped to the field with the same name
-defined in the form description file.
-If you want to add a command line parameter which doesn't have a corresponding form field
-it is recommended to prepend the name with an underscore ``_`` to distinguish it
-from arguments taken from the input form.
+  * - Key
+    - Type
+    - Description
+  * - baseCommand
+    - str or array[str]
+    - **Required.** A list of command line arguments appearing before any
+      other parameters.
+  * - inputs
+    - map[str, `Input Object`_]
+    - **Required.** The instructions how the form inputs are mapped to
+      the command line arguments.
+  * - env
+    - map[str, str]
+    - Environment variables that will be set for the process.
+  * - arguments
+    - array[str]
+    - Additional arguments added after the input parameters.
+  * - outputs
+    - map[str, `Output Object`_]
+    - **Required.** Output files produced by the command line program.
+
+
+Input Object
+------------
+Each key (field name) specified in the inputs is linked to the 
+corresponding field in the form definition.
+The value provided by the user will be used to construct each command
+line parameter.
+If you want to add an argument which is not mapped to the
+form field it is recommended to indicate it by prepending the name with
+an underscore ``_`` to distinguish it from arguments taken from the input form.
 Note that the value of this parameter will always be empty and will be skipped
 unless a default value is provided.
 
-Each argument object corresponds to a single command line parameter passed
-to the executable. They will be inserted in the order they are listed in the
-configuration file skipping those having empty values.
+Each input object corresponds to a single command line parameter passed
+to the executable. They will be inserted in the order they appear in the
+file skipping those having empty values.
+
+.. list-table::
+  :header-rows: 1
+  :widths: auto
+
+  * - Key
+    - Type
+    - Description
+  * - arg
+    - string
+    - **Required.** Command line parameter template. Use ``$(value)``
+      as the placeholder for the input value.
+  * - type
+    - string
+    - Parameter type ensuring proper type conversion.
+      One of: ``string``, ``number``, ``flag``, ``file`` or ``array``.
+      Defaults to string if not specified.
+  * - value
+    - any
+    - Default value used if no value was provided in the form.
+  * - symlink
+    - string
+    - Name of the symlink created in the job's working directory
+      pointing to the input file. Applicable with file type only.
+  * - join
+    - string
+    - A delimiter used to join multiple values. The parameter will be
+      repeated for multiple values if not specified.
+      Applicable with array type only.
+
 Each argument object have one required property ``arg`` which is a command
-line argument template. Use ``$(value)`` placeholder to refer to the value supplied by the user.
-You can also use environment variables using unix syntax ``${VARIABLE}``.
-Additionally, there is a special environment variable ``SLIVKA_HOME`` available
-which contains the path to the slivka project base directory.
+line argument template. Use ``$(value)`` placeholder to refer to the 
+value supplied by the user in the form. You can also use environment variables 
+using ``${VARIABLE}`` syntax. Additionally, a special environment variable
+``SLIVKA_HOME`` pointing to the slivka project directory is available. 
 
-If the type of the parameter is other than string, you must specify ``type`` parameter
-to ensure proper value conversion.
-Optionally you may add ``value`` property if you need to specify a default value.
-This value will be used if the field was not provided by the form. It's expecially
-useful when defining constant command line arguments.
+If the type of the parameter is other than string, you must specify 
+``type`` parameter to ensure proper value conversion. Optionally you 
+may add ``value`` property if you need to specify a default value.
+This value will be used if the field was not given in the form. 
+It's expecially useful when defining constant command line arguments.
 
-============ ====== =============================
- Field Name   Type   Description
-============ ====== =============================
-arg          string **Required.** Command line parameter template.
-type         string Type of the value. Allowed values are string, number, flag, file or array.
-                    Defaults to string if not specified.
-value        any    Value used if no matching value is provided by the form.
-symlink      string Some command line programs require input file to sit in the current working directory.
-                    Use this parameter to set the name of the link that will be created in the
-                    job's current working directory. Available only with ``type: file``
-join         string Character used to join values if multiple values are provided.
-                    If join is not defined, the argument will be repeated for each value.
-                    Available only with ``type: array``
-============ ====== =============================
-
-
-Here is an exmaple of the command line parameters definition corresponding
-to the form having ``file``, ``inputformat``, ``outputformat`` fields:
+Here is an exmaple configuration of the command line program
+*json-converter* taking two options ``--in-format`` and ``--out-format``
+and input file argument, with the corresponding form 
+having ``file``, ``inputformat`` and ``outputformat`` fields:
 
 .. code-block:: yaml
 
@@ -594,21 +632,21 @@ to the form having ``file``, ``inputformat``, ``outputformat`` fields:
       symlink: input.txt
 
 
-If the following values provided
+For the following input parameters:
 
 - ``file: /home/slivka/media/input.json``
 - ``inputformat: xml``
 - ``outputformat: [yaml, json]``
 
-The constructed command line is going to be ::
+The constructed command line is ::
 
   json-converter --in-format=xml --out-format=yaml,json input.txt
 
-and */job/working/directory/input.txt* will be a sumlink pointing to
-*/home/slivka/media/input.json*.
+and */home/slivka/media/input.json* is automatically symlinked to
+*/job/working/directory/input.txt*
 
 Output Object
-=============
+-------------
 
 Output objects describe individual files or groups of files created by the
 command line program. Each output object have the following properties:
@@ -648,29 +686,34 @@ Example:
 
 
 .. warning::
-  Patterns starting with special characters must be quoted.
+  Patterns starting with a special characters must be quoted.
 
 
-Runner Object
-=============
+Runners
+=======
 
 So far, the configuration regarded the construction of command line arguments.
-The runner object defines the way those commands are actually executed on the system.
-By default, the ``default`` runner is always selected. This behaviour can be overridden
-by providing a limiter script described in the advanced usage section.
+The ``runners`` define how these commands are executed on the system.
+Each key in the runners section is the name of the runner and the value
+is an object having following fields:
 
-Each runner object have two properties ``class`` and ``parameters``.
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
-============ =================== =========================================================
- Field Name   Type                Description
-============ =================== =========================================================
-class        string              **Required.** Python path to the class extending
-                                 ``Runner`` interface. Built-in runners: SlivkaQueueRunner,
-                                 GridEngineRunner and ShellRunner do not require full path
-                                 but class name only.
-parameters   map[string, any]    Additional keyword arguments passed to the Runner constructor.
-                                 Refer to the specific runner instance for details.
-============ =================== =========================================================
+  * - Key
+    - Type
+    - Description
+  * - class
+    - string
+    - **Required.** A name of a built-in runner type or a path to the class
+      extending the ``slivka.scheduler.Runner`` interface.
+      Currently available runners are ``SlivkaQueueRunner`` and
+      ``GridEngineRunner``
+  * - parameters
+    - map[str, any]
+    - Additional parameters passed to the runner. Available parameters
+      depend on the runner constructor.
 
 Example:
 
@@ -692,69 +735,197 @@ Example:
 
 
 For non-advanced users it's recommended to set the default runner to
-``SlivkaQueueRunner`` which uses no additional parameters.
+``SlivkaQueueRunner`` which takes no additional parameters.
+``GridEngineRunner`` takes one parameter -- ``qsub_args`` -- containing
+the list of arguments passed directly to the qsub command.
 
--------
+Limiter
+=======
+
+Limiter allows controlling the selection of the runner based on the input
+parameters. The value should be a path to the class extending
+``slivka.scheduler.Limiter``. The usage of limiters is covered in
+the `advanced usage`_
+
+.. _`advanced usage`: advanced_usage.html#limiters
+
 Presets
--------
+=======
 
 It is possible to pre-define commonly used sets of parameters to provide users
-with useful input parameter combinations. The configuration file should have a single
-``presets`` property containing the list of preset object defined below.
+with frequently used parameters combinations using ``presets`` property
+containing the list of preset objects defined below.
 
-============ ================ =================================================================
- Field name   Type             Description
-============ ================ =================================================================
-id           string           **Required.** Unique identifier of this preset.
-name         string           **Required.** Short name of the preset.
-description  string           Additional details of the configuration.
-values       map[string, any] **Required.** Mapping of form fields to the pre-configured values.
-============ ================ =================================================================
+.. list-table::
+  :widths: auto
+  :header-rows: 1
 
-The presets serve as a hint for the users only and the use of the pre-defined values
-is not enforced.
+  * - Key
+    - Type
+    - Description
+  * - id
+    - string
+    - **Required.** Unique preset identifier.
+  * - name
+    - string
+    - **Required.** Short name of the preset.
+  * - description
+    - string
+    - More detailed description of the parameters set.
+  * - values
+    - map[str, any]
+    - **Required.** Pre-configured form values.
+
+
+.. note::
+  The presets serve as a hint for the users only and the use of the
+  pre-defined values is not enforced or checked in any way.
+
 
 =====================
 Launching the Project
 =====================
 
-Slivka consists of two core parts: RESTful HTTP server and job scheduler (dispatcher)
-and an additional worker queue included to run tasks
-on the local machine without additional queuing system installed.
-Their separation allows to run those parts independently of each other.
+Slivka consists of three components: RESTful HTTP server, job 
+scheduler (dispatcher) and a simple worker queue running jobs
+on the local machine.
+The separation allows to run those parts independently of each other.
 In situaitions when the scheduler is down, the server keeps collecting
 the requests stashing them in the database, so when the scheduler is working
 again it can catch up with the server and dispatch all pending requests.
 Similarly, when the server is down, the currently submitted jobs 
 are unaffected and can still be processed.
 
-Each component can be started using the *manage.py* script created in the project's
-root directory.
+Each component can be started using ``slivka`` executable created during
+Slivka package installation.
 
-Before you start, make sure that you set up and run a mongodb server on your machine
-so that slivka can use it to store and exchange data between processes.
+.. warning:: 
+  Before you start, make sure that you have access to the running mongodb
+  server which is required but is not part of slivka package.
 
-Next, you need to launch the REST server and the scheduler processes. ::
+-----------
+HTTP Server
+-----------
 
-  python manage.py server -t gunicorn
+Slivka server can be started form the directory containing settings file with: 
 
-::
+.. code-block::
 
-  python manage.py scheduler
+  slivka start server --type gunicorn
 
-It will automatically set up gunicorn server to listen on the address specified in the
-*settings.yml* file and lanch the main scheduler.
+This will start a gunicorn using default settings specified in the
+*settings.yaml* file.
 
-If you want to have more control or decided to use different wsgi application
-to run the server, you can use *wsgi.py* script provided in the project directory.
-Here is an example of starting slivka server with gunicorn ::
+Full command line specification is:
+
+.. code-block:: sh
+
+  slivka start [--home SLIVKA_HOME] server \
+    [--type TYPE] [--daemon/--no-daemon] [--pid-file PIDFILE] \
+    [--workers WORKERS] [--http-socket SOCKET]
+
+.. list-table::
+  :header-rows: 1
+  :widths: auto
+  
+  * - Parameter
+    - Description
+  * - ``SLIVKA_HOME``
+    - Path to the configurations directory.
+      Alternatively a SLIVKA_HOME environment variable can be set.
+      If neither is set, the current working directory is used.
+  * - ``TYPE``
+    - The wsgi application used to run the server. Currently available
+      options are: gunicorn, uwsgi and devel. Using devel is discouragd
+      in production as it can serve one client at the time and may
+      potentially leak sensitive data.
+  * - ``--daemon/--no-daemon``
+    - Whether the process should be daemonised on startup.
+  * - ``PIDFILE``
+    - Path to the file where pid will be written to.
+  * - ``WORKERS``
+    - Number of serwer processes spawned on startup. Not applicable to
+      the development server.
+  * - ``SOCKET``
+    - Specify the socket the server will accept connection from
+      overriding the value from the settings file.
+
+If you want to have more control or decided to use different wsgi
+application to run the server, you can use *wsgi.py* script provided
+in the project directory which contains wsgi compatible applicaiton
+(see `PEP 3333`).
+Here is an alternative way of starting slivka server with gunicorn
+which should work with other wsgi middleware as well. ::
 
   gunicorn -b 0.0.0.0:8000 -w 4 -n slivka-http wsgi
 
-If you want to use the default local queue to execute jobs, you can start it with ::
+.. _`PEP 3333`: https://www.python.org/dev/peps/pep-3333/
 
-  python manage.py local-queue
+---------
+Scheduler
+---------
+
+Slivka scheduler can be started using ::
+
+  slivka start scheduler
+
+The full command line specification:
+
+.. code-block:: sh
+
+  slivka start [--home SLIVKA_HOME] scheduler \
+    [--daemon/--no-daemon] [--pid-file PIDFILE]
+
+.. list-table::
+  :header-rows: 1
+  :widths: auto
+  
+  * - Parameter
+    - Description
+  * - ``SLIVKA_HOME``
+    - Path to the configurations directory.
+      Alternatively a SLIVKA_HOME environment variable can be set.
+      If neither is set, the current working directory is used.
+  * - ``--daemon/--no-daemon``
+    - Whether the process should be daemonised on startup.
+  * - ``PIDFILE``
+    - Path to the file where pid will be written to.
+
+-----------
+Local Queue
+-----------
+
+The local queue can be started with ::
+
+  slivka start local-queue
+
+The full command line specification:
+
+.. code-block:: sh
+
+  slivka start [--home SLIVKA_HOME] local-queue \
+    [--daemon/--no-daemon] [--pid-file PIDFILE]
+ 
+.. list-table::
+  :header-rows: 1
+  :widths: auto
+  
+  * - Parameter
+    - Description
+  * - ``SLIVKA_HOME``
+    - Path to the configurations directory.
+      Alternatively a SLIVKA_HOME environment variable can be set.
+      If neither is set, the current working directory is used.
+  * - ``--daemon/--no-daemon``
+    - Whether the process should be daemonised on startup.
+  * - ``PIDFILE``
+    - Path to the file where pid will be written to.
+
+-------------------
+Stopping Components
+-------------------
 
 To stop any of these processes, send the ``SIGINT`` (2) "interrupt" or
 ``SIGTERM`` (15) "terminate" signal to the process or press **Ctrl + C**
 to send ``KeyboardInterrupt`` to the current process.
+
