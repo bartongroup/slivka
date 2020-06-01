@@ -1,34 +1,9 @@
-import mongomock
-import pytest
-
-import slivka.db
-from slivka.db.documents import JobRequest
 from slivka.scheduler import Limiter
-
-
-@pytest.fixture('function')
-def mock_mongo():
-    slivka.db.mongo = mongomock.MongoClient()
-    slivka.db.database = slivka.db.mongo.slivkadb
-    yield slivka.db.database
-    del slivka.db.database
-    del slivka.db.mongo
-
-
-@pytest.fixture('function')
-def insert_jobs(mock_mongo):
-    all_jobs = []
-    collection = JobRequest.get_collection(mock_mongo)
-
-    def insert(jobs):
-        all_jobs.extend(jobs)
-        collection.insert_many(jobs)
-        return jobs
-
-    yield insert
-    collection.delete_many({'_id': {'$in': [job['_id'] for job in all_jobs]}})
 
 
 class LimiterStub(Limiter):
     def limit_runner1(self, inputs): return inputs.get('runner') == 1
     def limit_runner2(self, inputs): return inputs.get('runner') == 2
+    def limit_default(self, inputs): return inputs.get('use_default', False)
+    def limit_foo(self, inputs): return inputs.get('use_foo', False)
+    def limit_bar(self, inputs): return inputs.get('use_bar', False)

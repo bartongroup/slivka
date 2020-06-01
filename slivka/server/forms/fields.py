@@ -10,7 +10,7 @@ from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
-from slivka.server.forms.file_validators import validate_file_content
+import slivka.server.forms.file_validators as validators
 from slivka.utils import cached_property, class_property
 from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
@@ -493,7 +493,7 @@ def _choice_validator(choices, value):
 
 def _media_type_validator(media_type, file: FileProxy):
     file.reopen()
-    if not validate_file_content(file, media_type):
+    if not validators.validate_file_content(file, media_type):
         raise ValidationError(
             "This media type is not accepted", 'media_type'
         )

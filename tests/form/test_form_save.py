@@ -1,9 +1,9 @@
+import io
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-import io
 import mongomock
-import pytest
+import nose
 from werkzeug.datastructures import MultiDict, FileStorage
 
 from slivka.server.forms.fields import *
@@ -20,12 +20,22 @@ class MyForm(BaseForm):
     file_field = FileField('file', required=False)
 
 
-@pytest.fixture('function')
-def database():
-    return mongomock.MongoClient().db
+def setup_database():
+    global database
+    database = mongomock.MongoClient().db
 
 
-def test_save_form(database: mongomock.Database):
+def setup_tempdir():
+    global tempdir
+    tempdir = TemporaryDirectory()
+
+
+def teardown_tempdir():
+    tempdir.cleanup()
+
+
+@nose.with_setup(setup_database)
+def test_save_form():
     form = MyForm(MultiDict([
         ('ints', '19'), ('ints', '20'), ('ints', '21'),
         ('dec', '12.05'), ('choice', 'a'), ('flag', 'yes')
@@ -35,7 +45,8 @@ def test_save_form(database: mongomock.Database):
     assert job
 
 
-def test_saved_form_data(database: mongomock.Database):
+@nose.with_setup(setup_database)
+def test_saved_form_data():
     form = MyForm(MultiDict([
         ('ints', '19'), ('ints', '20'), ('ints', '21'),
         ('dec', '12.05'), ('choice', 'a'), ('flag', 'yes')
@@ -51,18 +62,14 @@ def test_saved_form_data(database: mongomock.Database):
     }
 
 
-@pytest.fixture('module')
-def temp_dir():
-    with TemporaryDirectory() as dirname:
-        yield dirname
-
-
-def test_file_saving(temp_dir, database: mongomock.Database):
+@nose.with_setup(setup_database)
+@nose.with_setup(setup_tempdir, teardown_tempdir)
+def test_file_saving():
     form = MyForm(MultiDict([
         ('file', FileStorage(stream=io.BytesIO(b'hello\n'), content_type='text/plain'))
     ]))
-    form.fields['file'].save_location = temp_dir
-    with mock.patch('slivka.server.forms.fields.validate_file_content', return_value=True):
+    form.fields['file'].save_location = tempdir.name
+    with mock.patch('slivka.server.forms.file_validators.validate_file_content', return_value=True):
         request = form.save(database)
     with open(request['inputs']['file'], 'rb') as f:
         assert f.read() == b'hello\n'

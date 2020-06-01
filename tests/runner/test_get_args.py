@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+from nose.tools import assert_list_equal
+
 from tests.runner.stubs import RunnerStub, runner_factory
 
 
@@ -11,7 +13,7 @@ def test_arguments_passed():
         'arguments': args.copy(),
         'outputs': {}
     })
-    assert runner.get_args({}) == args
+    assert_list_equal(runner.get_args({}), args)
 
 
 def test_number_option():
@@ -22,12 +24,12 @@ def test_number_option():
         },
         'outputs': {}
     })
-    assert runner.get_args({}) == []
-    assert runner.get_args({'myoption': 3.1415}) == ['-n', '3.1415']
-    assert runner.get_args({'myoption': '5.24'}) == ['-n', '5.24']
-    assert runner.get_args({'myoption': 0}) == ['-n', '0']
-    assert runner.get_args({'myoption': '0'}) == ['-n', '0']
-    assert runner.get_args({'myoption': False}) == []
+    assert_list_equal(runner.get_args({}), [])
+    assert_list_equal(runner.get_args({'myoption': 3.1415}), ['-n', '3.1415'])
+    assert_list_equal(runner.get_args({'myoption': '5.24'}), ['-n', '5.24'])
+    assert_list_equal(runner.get_args({'myoption': 0}), ['-n', '0'])
+    assert_list_equal(runner.get_args({'myoption': '0'}), ['-n', '0'])
+    assert_list_equal(runner.get_args({'myoption': False}), [])
 
 
 def test_symbol_delimited_option():
@@ -38,10 +40,13 @@ def test_symbol_delimited_option():
         },
         'outputs': {}
     })
-    assert runner.get_args({}) == []
-    assert runner.get_args({'myoption': None}) == []
-    assert runner.get_args({'myoption': ''}) == ['--option=']
-    assert runner.get_args({'myoption': 'my value'}) == ['--option=my value']
+    assert_list_equal(runner.get_args({}), [])
+    assert_list_equal(runner.get_args({'myoption': None}), [])
+    assert_list_equal(runner.get_args({'myoption': ''}), ['--option='])
+    assert_list_equal(
+        runner.get_args({'myoption': 'my value'}),
+        ['--option=my value']
+    )
 
 
 def test_space_delimited_option():
@@ -52,9 +57,18 @@ def test_space_delimited_option():
         },
         'outputs': {}
     })
-    assert runner.get_args({'myoption': 'value'}) == ['--option', 'value']
-    assert runner.get_args({'myoption': 'my value'}) == ['--option', 'my value']
-    assert runner.get_args({'myoption': 'my \'fun \' value'}) == ['--option', 'my \'fun \' value']
+    assert_list_equal(
+        runner.get_args({'myoption': 'value'}),
+        ['--option', 'value']
+    )
+    assert_list_equal(
+        runner.get_args({'myoption': 'my value'}),
+        ['--option', 'my value']
+    )
+    assert_list_equal(
+        runner.get_args({'myoption': 'my \'fun \' value'}),
+        ['--option', 'my \'fun \' value']
+    )
 
 
 def test_quoted_option():
@@ -66,12 +80,27 @@ def test_quoted_option():
         },
         'outputs': {}
     })
-    assert runner.get_args({'myoption': 'value'}) == ['--option value']
-    assert runner.get_args({'myoption': 'my value'}) == ['--option my value']
-    assert runner.get_args({'otheropt': 'my value'}) == ['--option my value']
+    assert_list_equal(
+        runner.get_args({'myoption': 'value'}),
+        ['--option value']
+    )
+    assert_list_equal(
+        runner.get_args({'myoption': 'my value'}),
+        ['--option my value']
+    )
+    assert_list_equal(
+        runner.get_args({'otheropt': 'my value'}),
+        ['--option my value']
+    )
 
-    assert runner.get_args({'myoption': 'my \'fun \' value'}) == ['--option my \'fun \' value']
-    assert runner.get_args({'otheropt': 'my \'fun \' value'}) == ['--option my \'fun \' value']
+    assert_list_equal(
+        runner.get_args({'myoption': 'my \'fun \' value'}),
+        ['--option my \'fun \' value']
+    )
+    assert_list_equal(
+        runner.get_args({'otheropt': 'my \'fun \' value'}),
+        ['--option my \'fun \' value']
+    )
 
 
 def test_flag_option():
@@ -82,10 +111,10 @@ def test_flag_option():
         },
         'outputs': {}
     })
-    assert runner.get_args({}) == []
-    assert runner.get_args({'myflag': False}) == []
-    assert runner.get_args({'myflag': None}) == []
-    assert runner.get_args({'myflag': True}) == ['--flag']
+    assert_list_equal(runner.get_args({}), [])
+    assert_list_equal(runner.get_args({'myflag': False}), [])
+    assert_list_equal(runner.get_args({'myflag': None}), [])
+    assert_list_equal(runner.get_args({'myflag': True}), ['--flag'])
 
 
 def test_default_substitution():
@@ -99,10 +128,10 @@ def test_default_substitution():
         },
         'outputs': {}
     })
-    assert runner.get_args({'input': 'foo'}) == ['-v=foo']
-    assert runner.get_args({'input': None}) == ['-v=default']
-    assert runner.get_args({'input': ''}) == ['-v=']
-    assert runner.get_args({}) == ['-v=default']
+    assert_list_equal(runner.get_args({'input': 'foo'}), ['-v=foo'])
+    assert_list_equal(runner.get_args({'input': None}), ['-v=default'])
+    assert_list_equal(runner.get_args({'input': ''}), ['-v='])
+    assert_list_equal(runner.get_args({}), ['-v=default'])
 
 
 def test_parameters_ordering():
@@ -130,7 +159,7 @@ def test_parameters_ordering():
         "env": {}
     })
 
-    assert runner.get_args({}) == []
+    assert_list_equal(runner.get_args({}), [])
 
     inputs = {
         'iters': 5,
@@ -138,22 +167,27 @@ def test_parameters_ordering():
         'verbose': True,
         'infile': 'input.txt'
     }
-    args = ['--iter=5', '-o', 'output.txt', '-V', 'input.txt']
-    assert runner.get_args(inputs) == args
+    assert_list_equal(
+        runner.get_args(inputs),
+        ['--iter=5', '-o', 'output.txt', '-V', 'input.txt']
+    )
 
     inputs = {
         'iters': 3,
         'verbose': False,
         'infile': 'input.txt'
     }
-    assert runner.get_args(inputs) == ['--iter=3', 'input.txt']
+    assert_list_equal(runner.get_args(inputs), ['--iter=3', 'input.txt'])
 
     inputs = {
         'outfile': 'out.out',
         'verbose': True,
         'iters': 10
     }
-    assert runner.get_args(inputs) == ['--iter=10', '-o', 'out.out', '-V']
+    assert_list_equal(
+        runner.get_args(inputs),
+        ['--iter=10', '-o', 'out.out', '-V']
+    )
 
 
 def test_file_input():
@@ -168,9 +202,9 @@ def test_file_input():
         },
         'outputs': {}
     })
-    assert runner.get_args({'input': 'myfile'}) == ['input.in']
-    assert runner.get_args({'input': None}) == []
-    assert runner.get_args({}) == []
+    assert_list_equal(runner.get_args({'input': 'myfile'}), ['input.in'])
+    assert_list_equal(runner.get_args({'input': None}), [])
+    assert_list_equal(runner.get_args({}), [])
 
 
 def test_repeated_array_input():
@@ -180,9 +214,11 @@ def test_repeated_array_input():
             'type': 'array'
         }
     })
-    assert (runner.get_args({'array': ['a', 'b', 'c', 'd']}) ==
-            ['-m=a', '-m=b', '-m=c', '-m=d'])
-    assert runner.get_args({'array': []}) == []
+    assert_list_equal(
+        runner.get_args({'array': ['a', 'b', 'c', 'd']}),
+        ['-m=a', '-m=b', '-m=c', '-m=d']
+    )
+    assert_list_equal(runner.get_args({'array': []}), [])
 
 
 def test_joined_array_input():
@@ -193,4 +229,4 @@ def test_joined_array_input():
             'join': ','
         }
     })
-    assert runner.get_args({'array': ['a', 'b', 'c']}) == ['-m=a,b,c']
+    assert_list_equal(runner.get_args({'array': ['a', 'b', 'c']}), ['-m=a,b,c'])

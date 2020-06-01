@@ -1,12 +1,13 @@
 from unittest import mock
 
+from nose.tools import assert_list_equal
+
 from slivka.db.documents import JobRequest
 from slivka.scheduler import Scheduler, Limiter
 from slivka.scheduler.core import REJECTED, ERROR
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import BackoffCounter
-# noinspection PyUnresolvedReferences
-from . import mock_mongo, LimiterStub
+from . import LimiterStub
 
 
 def MockRunner(service, name):
@@ -30,10 +31,10 @@ def test_grouping():
         JobRequest(service='stub', inputs={'runner': 0})
     ]
     grouped = scheduler.group_requests(requests)
-    assert grouped[runner1] == [requests[0], requests[2]]
-    assert grouped[runner2] == [requests[1]]
-    assert grouped[REJECTED] == [requests[3]]
-    assert grouped[ERROR] == []
+    assert_list_equal(grouped[runner1], [requests[0], requests[2]])
+    assert_list_equal(grouped[runner2], [requests[1]])
+    assert_list_equal(grouped[REJECTED], [requests[3]])
+    assert_list_equal(grouped[ERROR], [])
 
 
 def test_successful_running():
@@ -45,7 +46,7 @@ def test_successful_running():
     ]
     runner.batch_run.return_value = range(len(requests))
     started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert [request for request, job in started] == requests
+    assert_list_equal([request for request, job in started], requests)
 
 
 def test_returned_jobs():
@@ -57,7 +58,7 @@ def test_returned_jobs():
     ]
     runner.batch_run.return_value = range(len(requests))
     started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert [job for request, job in started] == list(range(len(requests)))
+    assert_list_equal([job for request, job in started], list(range(len(requests))))
 
 
 def test_batch_run_called():
@@ -83,7 +84,7 @@ def test_deferred_running():
     ]
     runner.batch_run.side_effect = RuntimeError("failed successfully")
     started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert deferred == requests
+    assert_list_equal(deferred, requests)
 
 
 def test_failed_running():
@@ -97,7 +98,7 @@ def test_failed_running():
     with mock.patch.dict(scheduler._backoff_counters,
                          {runner: BackoffCounter(0)}):
         started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert failed == requests
+    assert_list_equal(failed, requests)
 
 
 

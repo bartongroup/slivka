@@ -2,18 +2,17 @@ import itertools
 from typing import Iterator
 from unittest import mock
 
-import pytest
+import mongomock
+from nose.tools import assert_equal
 
 from slivka import JobStatus
 from slivka.db.documents import JobRequest, CancelRequest, JobMetadata
 from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Runner, Scheduler
 from slivka.scheduler.runners.runner import RunnerID, RunInfo
+import slivka.db
 
 from . import LimiterStub
-
-# noinspection PyUnresolvedReferences
-from . import mock_mongo
 
 
 class MockRunner(Runner):
@@ -33,41 +32,41 @@ class MockRunner(Runner):
         pass
 
 
-@pytest.fixture(scope='function')
-def scheduler(mock_mongo):
-    scheduler = Scheduler()
-    runner = MockRunner('stub', 'runner1')
-    scheduler.add_runner(runner)
-    scheduler.limiters['stub'] = LimiterStub()
-    return scheduler
+def setup_module():
+    slivka.db.mongo = mongomock.MongoClient()
+    slivka.db.database = slivka.db.mongo.slivkadb
+
+def teardown_module():
+    del slivka.db.database
+    del slivka.db.mongo
 
 
-def test_cancelled(mock_mongo, scheduler):
-    request = JobRequest(service='stub', inputs={'runner': 1})
-    insert_one(mock_mongo, request)
-    insert_one(mock_mongo, CancelRequest(uuid=request.uuid))
-    scheduler.run_cycle()
-    pull_one(mock_mongo, request)
-    assert request.state == JobStatus.DELETED
+class TestJobCancelling:
+    def setup(self):
+        self.scheduler = scheduler = Scheduler()
+        scheduler.add_runner(MockRunner('stub', 'runner1'))
+        scheduler.limiters['stub'] = LimiterStub()
+        self.request = JobRequest(service='stub', inputs={'runner': 1})
+        insert_one(slivka.db.database, self.request)
 
+    def test_deleted(self):
+        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
+        self.scheduler.run_cycle()
+        pull_one(slivka.db.database, self.request)
+        assert_equal(self.request.state, JobStatus.DELETED)
 
-def test_cancelling_state_update(mock_mongo, scheduler):
-    request = JobRequest(service='stub', inputs={'runner': 1})
-    insert_one(mock_mongo, request)
-    scheduler.run_cycle()
-    insert_one(mock_mongo, CancelRequest(uuid=request.uuid))
-    scheduler.run_cycle()
-    pull_one(mock_mongo, request)
-    assert request.state == JobStatus.CANCELLING
+    def test_cancelling(self):
+        self.scheduler.run_cycle()
+        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
+        self.scheduler.run_cycle()
+        pull_one(slivka.db.database, self.request)
+        assert_equal(self.request.state, JobStatus.CANCELLING)
 
-
-def test_cancel_called(mock_mongo, scheduler):
-    runner = scheduler.runners['stub', 'runner1']
-    request = JobRequest(service='stub', inputs={'runner': 1})
-    insert_one(mock_mongo, request)
-    scheduler.run_cycle()
-    insert_one(mock_mongo, CancelRequest(uuid=request.uuid))
-    job = JobMetadata.find_one(mock_mongo, uuid=request.uuid)
-    with mock.patch.object(runner, 'cancel') as mock_cancel:
-        scheduler.run_cycle()
-        mock_cancel.assert_called_once_with(job.job_id, job.cwd)
+    def test_cancel_called(self):
+        runner = self.scheduler.runners['stub', 'runner1']
+        self.scheduler.run_cycle()
+        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
+        job = JobMetadata.find_one(slivka.db.database, uuid=self.request.uuid)
+        with mock.patch.object(runner, 'cancel') as mock_cancel:
+            self.scheduler.run_cycle()
+            mock_cancel.assert_called_once_with(job.job_id, job.cwd)

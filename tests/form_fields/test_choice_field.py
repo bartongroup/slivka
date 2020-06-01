@@ -1,4 +1,7 @@
-import pytest
+import math
+
+import nose
+from nose.tools import assert_equal, assert_list_equal, assert_is_none
 
 from slivka.server.forms.fields import ChoiceField, ValidationError
 
@@ -10,94 +13,110 @@ CHOICES = [
 ]
 
 
-@pytest.fixture('module')
-def default_field():
-    return ChoiceField('name', choices=CHOICES)
-
-
 # default value
+@nose.tools.raises(RuntimeError)
 def test_invalid_default():
-    with pytest.raises(Exception):
-        ChoiceField('name', choices=CHOICES, default='qux')
+    ChoiceField('name', choices=CHOICES, default='qux')
 
 
 # choice validation
 
-def test_text_choices():
-    field = ChoiceField('name', choices=CHOICES)
-    assert field.validate('BAZ') == 'BAZ'
-    assert field.validate('foo') == 'foo'
-    assert field.validate('bar') == 'bar'
-    with pytest.raises(ValidationError):
-        field.validate('quz')
+class TestChoices:
+    def setup(self):
+        self.field = ChoiceField('name', choices=CHOICES)
+
+    def test_valid_key(self):
+        assert_equal(self.field.validate('foo'), 'foo')
+
+    def test_valid_value(self):
+        assert_equal(self.field.validate('BAZ'), 'BAZ')
+
+    @nose.tools.raises(ValidationError)
+    def test_invalid(self):
+        self.field.validate('quz')
 
 
-def test_numerical_choices():
-    field = ChoiceField('name', choices=[(1, -5), (0.33, 3.1415)])
-    assert field.validate(1) == 1
-    assert field.validate(0.33) == 0.33
-    assert field.validate(3.1415)
-    with pytest.raises(ValidationError):
-        field.validate(0.34)
+class TestNumericalChoices:
+    def setup(self):
+        self.field = ChoiceField('name', choices=[(1, -5), (0.33, math.pi)])
+
+    def test_integer(self):
+        assert_equal(self.field.validate(1), 1)
+
+    def test_float(self):
+        assert_equal(self.field.validate(0.33), 0.33)
+
+    def test_long_float(self):
+        assert self.field.validate(math.pi)
+
+    @nose.tools.raises(ValidationError)
+    def test_invalid(self):
+        self.field.validate(0.34)
 
 
 # empty value validation
 
-def test_validate_none(default_field):
-    with pytest.raises(ValidationError):
-        default_field.validate(None)
+@nose.tools.raises(ValidationError)
+def test_validate_none():
+    field = ChoiceField('name', choices=CHOICES)
+    field.validate(None)
 
 
+@nose.tools.raises(ValidationError)
 def test_validate_empty_required():
     field = ChoiceField('name', required=True)
-    with pytest.raises(ValidationError):
-        field.validate(None)
+    field.validate(None)
 
 
 def test_validate_empty_not_required():
     field = ChoiceField(ValidationError, required=False)
-    assert field.validate(None) is None
+    assert_is_none(field.validate(None))
 
 
 # validation with default
 
 def test_validate_none_with_default():
     field = ChoiceField('name', choices=CHOICES, default='foo')
-    assert field.validate(None) == 'foo'
+    assert_equal(field.validate(None), 'foo')
 
 
 def test_validate_empty_with_default():
     field = ChoiceField('name', choices=CHOICES, default='FOO')
-    assert field.validate(()) == 'FOO'
-    assert field.validate([]) == 'FOO'
+    assert_equal(field.validate(()), 'FOO')
+    assert_equal(field.validate([]), 'FOO')
 
 
 def test_valid_value_with_default():
     field = ChoiceField('name', choices=CHOICES, default='bar')
-    assert field.validate('foo') == 'foo'
-    assert field.validate('bar') == 'bar'
+    assert_equal(field.validate('foo'), 'foo')
+    assert_equal(field.validate('bar'), 'bar')
 
 
+@nose.tools.raises(ValidationError)
 def test_invalid_value_with_default():
     field = ChoiceField('name', choices=CHOICES, default='bar')
-    with pytest.raises(ValidationError):
-        field.validate('QUX')
+    field.validate('QUX')
 
 
 def test_multiple_valid_values():
     field = ChoiceField('name', choices=CHOICES, multiple=True)
-    assert field.validate(['foo', 'BAR']) == ['foo', 'BAR']
+    assert_list_equal(
+        field.validate(['foo', 'BAR']), ['foo', 'BAR']
+    )
 
 
 # command line parameter conversion
 
 def test_to_cmd_parameter():
     field = ChoiceField('name', choices=CHOICES)
-    assert field.to_cmd_parameter('foo') == 'FOO'
-    assert field.to_cmd_parameter('BAZ') == 'BAZ'
-    assert field.to_cmd_parameter('missing') == 'missing'
+    assert_equal(field.to_cmd_parameter('foo'), 'FOO')
+    assert_equal(field.to_cmd_parameter('BAZ'), 'BAZ')
+    assert_equal(field.to_cmd_parameter('missing'), 'missing')
 
 
 def test_serialize_multiple():
     field = ChoiceField('name', choices=CHOICES, multiple=True)
-    assert field.serialize_value(['foo', 'BAR', 'baz']) == ['FOO', 'BAR', 'BAZ']
+    assert_list_equal(
+        field.serialize_value(['foo', 'BAR', 'baz']),
+        ['FOO', 'BAR', 'BAZ']
+    )

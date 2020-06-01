@@ -2,11 +2,11 @@ import contextlib
 import filecmp
 import os
 import tempfile
+import unittest.mock as mock
 from collections import OrderedDict
 from itertools import zip_longest
 
-import pytest
-import unittest.mock as mock
+from nose.tools import assert_equal, assert_list_equal
 
 from slivka import JobStatus
 from .stubs import runner_factory, RunnerStub
@@ -18,7 +18,7 @@ def test_run_count():
     runner = runner_factory(base_command=['mycommand'])
     runner.submit = mock.Mock(return_value='0xc0ffee')
     runner.run({})
-    assert runner.submit.call_count == 1
+    assert_equal(runner.submit.call_count, 1)
 
 
 def test_run_base_command_with_no_parameters():
@@ -28,7 +28,7 @@ def test_run_base_command_with_no_parameters():
     runner.run({})
     args, kwargs = submit_mock.call_args
     cmd, _ = args
-    assert cmd == ['mycommand']
+    assert_list_equal(cmd, ['mycommand'])
 
 
 def test_run_command_with_arguments():
@@ -37,7 +37,7 @@ def test_run_command_with_arguments():
     runner.run({})
     args, kwargs = runner.submit.call_args
     cmd, _ = args
-    assert cmd == ['mycommand', 'foo', 'bar', 'baz']
+    assert_list_equal(cmd, ['mycommand', 'foo', 'bar', 'baz'])
 
 
 def test_run_command_with_parameters():
@@ -53,21 +53,21 @@ def test_run_command_with_parameters():
     runner.run({'param1': 'xxx', 'param2': 'yyy'})
     args, kwargs = runner.submit.call_args
     cmd, _ = args
-    assert cmd == ['mycommand', '-p1', 'xxx', '-p2', 'yyy', 'foo', 'bar']
+    assert_list_equal(cmd, ['mycommand', '-p1', 'xxx', '-p2', 'yyy', 'foo', 'bar'])
 
 
 def test_returned_job_id():
     runner = runner_factory()
     runner.submit = mock.Mock(return_value='0xc0ffee')
     job_id, job_cwd = runner.run({})
-    assert job_id == '0xc0ffee'
+    assert_equal(job_id, '0xc0ffee')
 
 
 def test_job_working_directory():
     runner = runner_factory()
     runner.submit = mock.Mock(return_value='0xc0ffee')
     job_id, job_cwd = runner.run({})
-    assert os.path.dirname(job_cwd) == RunnerStub.JOBS_DIR
+    assert_equal(os.path.dirname(job_cwd), RunnerStub.JOBS_DIR)
     assert os.path.isdir(job_cwd)
 
 
@@ -129,7 +129,7 @@ def test_batch_run_count():
     runner = runner_factory(base_command=['mycommand'])
     runner.submit = mock.Mock(return_value='0xc0ffee')
     runner.batch_run([{}, {}, {}])
-    assert runner.submit.call_count == 3
+    assert_equal(runner.submit.call_count, 3)
 
 
 def test_batch_run_with_parameters():
@@ -144,7 +144,7 @@ def test_batch_run_with_parameters():
     runner.batch_run([{'param': arg} for arg in params])
     for param, (args, kwargs) in zip_longest(params, runner.submit.call_args_list):
         cmd, cwd = args
-        assert cmd == ['mycommand', param]
+        assert_list_equal(cmd, ['mycommand', param])
 
 
 # batch status check tests
@@ -156,4 +156,4 @@ def test_batch_check_status():
         side_effect=(JobStatus.COMPLETED, JobStatus.DELETED, JobStatus.QUEUED)
     )
     stats = runner.batch_check_status([mock.Mock()] * 3)
-    assert stats == [JobStatus.COMPLETED, JobStatus.DELETED, JobStatus.QUEUED]
+    assert_list_equal(stats, [JobStatus.COMPLETED, JobStatus.DELETED, JobStatus.QUEUED])

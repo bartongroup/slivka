@@ -1,59 +1,57 @@
-import pytest
+from nose.tools import assert_equal, raises, assert_is
 
 from slivka.server.forms.fields import TextField, ValidationError
 
 
-@pytest.fixture('module')
-def default_field():
-    return TextField('name')
-
-
 # valid value validation
 
-def test_valid_string(default_field):
-    assert default_field.validate('foo') == 'foo'
+def test_valid_string():
+    field = TextField("name")
+    assert_equal(field.validate('foo'), 'foo')
 
 
 # empty value validation
 
-def test_validate_none(default_field):
-    with pytest.raises(ValidationError):
-        default_field.validate(None)
+@raises(ValidationError)
+def test_validate_none():
+    field = TextField("name")
+    field.validate(None)
 
 
+@raises(ValidationError)
 def test_validate_none_required():
     field = TextField('name', required=True)
-    with pytest.raises(ValidationError):
-        field.validate(None)
+    field.validate(None)
 
 
+@raises(ValidationError)
 def test_validate_empty_required():
     field = TextField('name', required=True)
-    with pytest.raises(ValidationError):
-        field.validate('')
+    field.validate('')
 
 
 def test_validate_empty_not_required():
     field = TextField('name', required=False)
-    assert field.validate('') is None
+    assert_is(field.validate(''), None)
 
 
 def test_validate_none_not_required():
     field = TextField('name', required=False)
-    assert field.validate(None) is None
+    assert_is(field.validate(None), None)
 
 
 # validation with default provided
 
 def test_validate_none_with_default():
     field = TextField('name', default='bar')
-    assert field.validate(None) == 'bar'
+    assert_equal(field.validate(None), 'bar')
 
 
 def test_validate_empty_with_default():
     field = TextField('name', default='bar')
-    assert field.validate('') == 'bar'
+    assert_equal(field.validate(''), 'bar')
 
 
-def test_to_cmd_parameter(default_field):
-    assert default_field.to_cmd_parameter('foobar') == 'foobar'
+def test_to_cmd_parameter():
+    field = TextField("name")
+    assert_equal(field.to_cmd_parameter('foobar'), 'foobar')

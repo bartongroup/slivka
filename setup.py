@@ -29,6 +29,10 @@ setup(
         "simplejson>=3.16.0",
         "Werkzeug>=0.15",
     ],
+    tests_require=[
+        'nose>=1.3.7',
+        'mongomock>=3.18.0'
+    ],
     extras_require={
         'gunicorn': ["gunicorn>=19.9"],
         'uwsgi': ['uWSGI>=2.0'],

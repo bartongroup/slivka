@@ -11,7 +11,10 @@ class RunnerStub(Runner):
         super().__init__(*args, **kwargs)
 
 
-def runner_factory(base_command=[], inputs={}, arguments={}, outputs={}, env={}, cls=RunnerStub) -> Runner:
+def runner_factory(
+        base_command=[], inputs={}, arguments={},
+        outputs={}, env={}, cls=RunnerStub
+) -> Runner:
     return cls({
         'baseCommand': base_command,
         'inputs': inputs,
