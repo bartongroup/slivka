@@ -645,6 +645,19 @@ The constructed command line is ::
 and */home/slivka/media/input.json* is automatically symlinked to
 */job/working/directory/input.txt*
 
+.. warning::
+  **Never** write a service which executes code received from an 
+  untrusted source. One example is to run user provided text as
+  a shell command:
+
+  .. code-block:: yaml
+
+    baseCommand: sh
+    inputs:
+      command:
+        arg: -c $(value)
+  
+
 Output Object
 -------------
 
