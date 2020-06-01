@@ -712,6 +712,18 @@ having <code class="docutils literal notranslate"><span class="pre">file</span><
 </div>
 <p>and <em>/home/slivka/media/input.json</em> is automatically symlinked to
 <em>/job/working/directory/input.txt</em></p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Never</strong> write a service which executes code received from an
+untrusted source. One example is to run user provided text as
+a shell command:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">baseCommand</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">sh</span>
+<span class="nt">inputs</span><span class="p">:</span>
+  <span class="nt">command</span><span class="p">:</span>
+    <span class="nt">arg</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-c $(value)</span>
+</pre></div>
+</div>
+</div>
 </div>
 <div class="section" id="output-object">
 <h4>Output Object<a class="headerlink" href="#output-object" title="Permalink to this headline">¶</a></h4>
