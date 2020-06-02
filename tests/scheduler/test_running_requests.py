@@ -1,9 +1,11 @@
 from unittest import mock
 
+import mongomock
 from nose.tools import assert_list_equal
 
+import slivka.db
 from slivka.db.documents import JobRequest
-from slivka.scheduler import Scheduler, Limiter
+from slivka.scheduler import Scheduler
 from slivka.scheduler.core import REJECTED, ERROR
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import BackoffCounter
@@ -14,6 +16,16 @@ def MockRunner(service, name):
     runner = mock.MagicMock(spec=Runner)
     runner.id = RunnerID(service_name=service, runner_name=name)
     return runner
+
+
+def setup_module():
+    slivka.db.mongo = mongomock.MongoClient()
+    slivka.db.database = slivka.db.mongo.slivkadb
+
+
+def teardown_module():
+    del slivka.db.database
+    del slivka.db.mongo
 
 
 def test_grouping():
@@ -99,8 +111,6 @@ def test_failed_running():
                          {runner: BackoffCounter(0)}):
         started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal(failed, requests)
-
-
 
 # @pytest.fixture
 # def runner_mock():
