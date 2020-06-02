@@ -9,8 +9,8 @@ from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
 from pymongo import UpdateOne
 
 import slivka.db
-from slivka.db.documents import JobRequest, JobMetadata, CancelRequest
-from slivka.db.helpers import insert_many
+from slivka.db.documents import JobRequest, JobMetadata, CancelRequest, ServiceState
+from slivka.db.helpers import insert_many, replace_one
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
 
@@ -86,12 +86,21 @@ class Scheduler:
     def run_forever(self):
         if self._finished.is_set():
             raise RuntimeError
+        self.reset_service_states()
         self.log.info('scheduler started')
         try:
             while not self._finished.wait(1):
                 self.run_cycle()
         except KeyboardInterrupt:
             self.stop()
+
+    def reset_service_states(self):
+        for service, runner in self.runners.keys():
+            state = ServiceState(service=service, runner=runner)
+            replace_one(
+                slivka.db.database, state,
+                filter_keys=['service', 'runner'], upsert=True
+            )
 
     def run_cycle(self):
         log = self.log
@@ -238,6 +247,11 @@ class Scheduler:
             return RunResult(started=(), deferred=requests, failed=())
         try:
             jobs = runner.batch_run([req.inputs for req in requests])
+            service_state = ServiceState(
+                service=runner.service_name, runner=runner.name,
+                state=ServiceState.State.OK)
+            replace_one(slivka.db.database, service_state,
+                        filter_keys=['service', 'runner'])
             return RunResult(
                 started=zip(requests, jobs), deferred=(), failed=()
             )
@@ -245,9 +259,16 @@ class Scheduler:
             self.log.exception("Running requests with %s failed.", runner)
             counter.failure()
             if counter.give_up:
-                return RunResult(started=(), deferred=(), failed=requests)
+                state = ServiceState.State.FAILURE
+                result = RunResult(started=(), deferred=(), failed=requests)
             else:
-                return RunResult(started=(), deferred=requests, failed=())
+                state = ServiceState.State.WARNING
+                result = RunResult(started=(), deferred=requests, failed=())
+            service_state = ServiceState(
+                service=runner.service_name, runner=runner.name, state=state)
+            replace_one(slivka.db.database, service_state,
+                        filter_keys=['service', 'runner'])
+            return result
 
     def monitor_jobs(
             self,

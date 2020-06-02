@@ -1,6 +1,7 @@
+from typing import List
+
 import pymongo.database
 from pymongo import ReplaceOne
-from typing import List
 
 from .documents import MongoDocument
 
@@ -13,6 +14,14 @@ def insert_many(database: pymongo.database.Database, items: List[MongoDocument])
     if not items:
         return
     database[items[0].__collection__].insert_many(items)
+
+
+def replace_one(
+        database: pymongo.database.Database, item: MongoDocument,
+        filter_keys: List, upsert=False):
+    """Replaces one item in the database having the same filter_keys."""
+    filter = {key: item[key] for key in filter_keys}
+    database[item.__collection__].replace_one(filter, item, upsert=upsert)
 
 
 def push_one(database: pymongo.database.Database, item: MongoDocument):

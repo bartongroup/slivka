@@ -1,3 +1,4 @@
+import enum
 import os
 from base64 import b64encode
 
@@ -159,3 +160,37 @@ class UploadedFile(MongoDocument):
 
     def get_basename(self): return os.path.basename(self['path'])
     basename = property(get_basename)
+
+
+class ServiceState(MongoDocument):
+    __collection__ = 'servicestate'
+
+    class State(enum.IntEnum):
+        OK = 0
+        WARNING = 1
+        FAILURE = 2
+
+    def __init__(self, *,
+                 service,
+                 runner,
+                 state=State.OK,
+                 timestamp=None,
+                 **kwargs):
+        super().__init__(
+            service=service,
+            runner=runner,
+            state=state,
+            timestamp=timestamp or datetime.now(),
+            **kwargs
+        )
+
+    service = property(lambda self: self['service'])
+    runner = property(lambda self: self['runner'])
+
+    def _get_state(self): return self.State(self['state'])
+    def _set_state(self, val): self['state'] = val
+    state = property(_get_state, _set_state)
+
+    def _get_timestamp(self): return self['timestamp']
+    def reset_timestamp(self): self['timestamp'] = datetime.now()
+    timestamp = property(_get_timestamp)
