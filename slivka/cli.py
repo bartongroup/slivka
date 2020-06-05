@@ -200,4 +200,6 @@ def start_local_queue(address, workers, daemon, pid_file):
                help='Set-up slivka and start interactive python console.')
 def start_shell():
     import code
+    import slivka
+    sys.path.append(slivka.settings.base_dir)
     code.interact()
