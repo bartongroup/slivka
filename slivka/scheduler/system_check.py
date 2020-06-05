@@ -10,12 +10,11 @@ from functools import partial
 import yaml
 
 import slivka
-from slivka.scheduler.core import RunnerManager
 from slivka.scheduler import Runner, RunInfo
 
-selector = RunnerManager()
+scheduler = slivka.scheduler.Scheduler()
 for service in slivka.settings.services.values():
-    selector.add_runners(service.name, service.command)
+    scheduler.load_runners(service.name, service.command)
 
 
 RED = "\033[91m"
@@ -56,7 +55,7 @@ def run_test(file_path, cleanup_work_dir=True):
     test_dir = os.path.dirname(file_path)
     data = yaml.safe_load(open(file_path))
     try:
-        runner = selector.runners[data['service'], data['runner']]
+        runner = scheduler.runners[data['service'], data['runner']]
     except KeyError:
         print("Runner %(service)s:%(runner)s does not exist." % data)
         return 1
