@@ -14,5 +14,5 @@ A brief development blog is accessible here_.
 .. _Flask: https://github.com/pallets/flask
 .. _MongoDB: https://www.mongodb.com/
 .. _`Univa Grid Engine`: http://www.univa.com/products/
-.. _documentation: http://warownia1.github.io/Slivka/
+.. _documentation: http://bartongroup.github.io/slivka/
 .. _here: https://warownia1.github.io/slivka-blog/
