@@ -14,6 +14,7 @@ from slivka.db import database, documents
 from slivka.db.helpers import insert_one
 from . import JsonResponse
 from .forms import FormLoader
+from ..db.documents import ServiceState
 
 bp = flask.Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -101,6 +102,23 @@ def post_service_form(service):
                 for name, error in form.errors.items()
             ]
         }, status=420)
+
+
+@bp.route('/servicemonitor', methods=['GET'])
+def service_monitor():
+    states = ServiceState.find(slivka.db.database)
+    return JsonResponse({
+        'states': [
+            {
+                'service': state.service,
+                'runner': state.runner,
+                'state': state.state.name,
+                'timestamp': state.timestamp.isoformat()
+            }
+            for state in states
+        ]
+    })
+
 
 
 @bp.route('/services/<service>/presets', methods=['GET'])

@@ -287,6 +287,38 @@ paths:
               schema:
                 $ref: '#components/schemas/NotFoundError'
 
+  /api/servicemonitor:
+    get:
+      summary: Check the status of services and runners
+      tags: [services]
+      responses:
+        '200':
+          description: Service states
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  states:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        service:
+                          type: string
+                        runner:
+                          type: string
+                        state:
+                          enum:
+                            - OK
+                            - WARNING
+                            - FAILURE
+                          type: string
+                        timestamp:
+                          format: iso datetime
+                          type: string
+
+
   /api/files:
     post:
       summary: Upload the file to the server
