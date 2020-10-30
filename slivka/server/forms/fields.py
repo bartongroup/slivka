@@ -155,6 +155,7 @@ class IntegerField(BaseField):
             widget = NumberInputWidget(self.name)
             widget['min'] = self.min
             widget['max'] = self.max
+            widget['step'] = 1
             widget['value'] = self.default
             widget['required'] = self.required
             self._widget = widget
@@ -213,6 +214,7 @@ class DecimalField(BaseField):
             widget = NumberInputWidget(self.name)
             widget['min'] = self.min
             widget['max'] = self.max
+            widget['step'] = 'any'
             widget['value'] = self.default
             widget['required'] = self.required
             self._widget = widget
