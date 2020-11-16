@@ -174,12 +174,14 @@ class ServiceState(MongoDocument):
                  service,
                  runner,
                  state=State.OK,
+                 message="",
                  timestamp=None,
                  **kwargs):
         super().__init__(
             service=service,
             runner=runner,
             state=state,
+            message=message,
             timestamp=timestamp or datetime.now(),
             **kwargs
         )
@@ -192,5 +194,10 @@ class ServiceState(MongoDocument):
     state = property(_get_state, _set_state)
 
     def _get_timestamp(self): return self['timestamp']
+    def _set_timestamp(self, val): self['timestamp'] = val
     def reset_timestamp(self): self['timestamp'] = datetime.now()
-    timestamp = property(_get_timestamp)
+    timestamp = property(_get_timestamp, _set_timestamp)
+
+    def _get_message(self): return self['message']
+    def _set_message(self, val): self['message'] = val
+    message = property(_get_message, _set_message)
