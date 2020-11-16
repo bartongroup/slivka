@@ -85,7 +85,7 @@ class GridEngineRunner(Runner):
         :return: list of identifiers
         """
         def submit_wrapper(args): self.submit(*args)
-        return _executor.map(submit_wrapper, commands)
+        return list(_executor.map(submit_wrapper, commands))
 
     @classmethod
     def check_status(cls, job_id, cwd):
