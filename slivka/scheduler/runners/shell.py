@@ -1,12 +1,10 @@
 import contextlib
 import logging
 import os
-
 import subprocess
 
 from slivka import JobStatus
 from .runner import Runner
-
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -20,7 +18,8 @@ class ShellRunner(Runner):
             stdout=open(os.path.join(cwd, 'stdout'), 'wb'),
             stderr=open(os.path.join(cwd, 'stderr'), 'wb'),
             cwd=cwd,
-            env=self.env
+            env=self.env,
+            shell=True
         )
         self.procs[proc.pid] = proc
         return proc.pid
@@ -35,6 +34,8 @@ class ShellRunner(Runner):
             return JobStatus.RUNNING
         if return_code == 0:
             return JobStatus.COMPLETED
+        if return_code == 127:
+            return JobStatus.ERROR
         if return_code > 0:
             return JobStatus.FAILED
         if return_code < 0:

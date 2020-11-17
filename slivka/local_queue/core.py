@@ -1,11 +1,10 @@
 import asyncio
-from functools import partial
-from typing import Dict
-
 import itertools
 import logging
 import os
 import time
+from functools import partial
+from typing import Dict
 
 import attr
 import zmq
@@ -90,6 +89,7 @@ class LocalQueue:
             job.return_code = return_code
             job.state = (
                 JobStatus.COMPLETED if return_code == 0 else
+                JobStatus.ERROR if return_code == 127 else
                 JobStatus.FAILED if return_code > 0 else
                 JobStatus.INTERRUPTED
             )

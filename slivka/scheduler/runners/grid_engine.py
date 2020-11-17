@@ -1,14 +1,14 @@
 import atexit
 import logging
 import os
+import re
 import shlex
+import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from typing import Iterable, Tuple, List
 
 import pkg_resources
-import re
-import subprocess
-from typing import Iterable, Tuple, List
 
 from slivka import JobStatus
 from slivka.db.documents import JobMetadata
@@ -108,7 +108,11 @@ class GridEngineRunner(Runner):
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
-                    yield JobStatus.FAILED if return_code else JobStatus.COMPLETED
+                    yield (
+                        JobStatus.COMPLETED if return_code == 0 else
+                        JobStatus.ERROR if return_code == 127 else
+                        JobStatus.FAILED
+                    )
                 except FileNotFoundError:
                     yield JobStatus.INTERRUPTED
 
