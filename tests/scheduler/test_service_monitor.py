@@ -6,7 +6,6 @@ from nose.tools import assert_equal
 import slivka.db
 from slivka.db.documents import ServiceState, JobRequest
 from slivka.db.helpers import insert_one
-
 from slivka.scheduler import Runner, Scheduler
 from slivka.scheduler.runners.runner import RunnerID
 
@@ -57,7 +56,7 @@ class TestServiceStatusUpdates:
         service_state = ServiceState.find_one(
             database, service='stub', runner='default'
         )
-        assert_equal(service_state.state, service_state.State.FAILURE)
+        assert_equal(service_state.state, service_state.State.DOWN)
 
     def test_service_recovery(self):
         self.runner.batch_run.side_effect = [RuntimeError, ()]

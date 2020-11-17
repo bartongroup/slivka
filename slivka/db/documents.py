@@ -1,11 +1,11 @@
 import enum
 import os
-from base64 import b64encode
-
 import pathlib
-import pymongo
-from datetime import datetime, timedelta
+from base64 import b64encode
+from datetime import datetime
 from uuid import uuid4
+
+import pymongo
 
 from slivka import JobStatus
 from slivka.utils import deprecated
@@ -168,7 +168,7 @@ class ServiceState(MongoDocument):
     class State(enum.IntEnum):
         OK = 0
         WARNING = 1
-        FAILURE = 2
+        DOWN = 2
 
     def __init__(self, *,
                  service,

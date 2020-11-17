@@ -259,7 +259,7 @@ class Scheduler:
             self.log.exception("Running %s requests failed.", runner)
             counter.failure()
             if counter.give_up:
-                state = ServiceState.State.FAILURE
+                state = ServiceState.State.DOWN
                 result = RunResult(started=(), deferred=(), failed=requests)
             else:
                 state = ServiceState.State.WARNING
