@@ -1,13 +1,14 @@
 import contextlib
+import filecmp
+import itertools
 import logging
 import os
-import shlex
-import tempfile
-from collections import ChainMap, namedtuple
-
-import itertools
 import re
+import shlex
 import shutil
+import tempfile
+import time
+from collections import ChainMap, namedtuple
 from datetime import datetime
 from functools import partial
 from typing import List, Iterator, Iterable, Tuple, Match
@@ -60,6 +61,7 @@ class Runner:
             _envvar_regex.sub(replace, arg)
             for arg in arguments
         ]
+        self.test = command_def.get('test')
 
     def get_name(self): return self.id.runner_name
     name = property(get_name)
@@ -188,8 +190,52 @@ class Runner:
         for job in jobs:
             cls.cancel(job['job_id'], job['work_dir'])
 
+    def run_test(self):
+        if not self.test:
+            log.info("no test for runner %s", self)
+            return
+        log.info("running test for %s", self)
+        env = ChainMap(os.environ, {'SLIVKA_HOME': slivka.settings.base_dir})
+        replace = partial(_replace_from_env, env)
+        inputs = {
+            key: _envvar_regex.sub(replace, val)
+            for key, val in self.test['inputs'].items()
+        }
+        temp_dir = tempfile.TemporaryDirectory()
+        try:
+            job_id, cwd = self.run(inputs, temp_dir.name)
+            timeout = self.test.get('timeout', 8640000)
+            end_time = time.time() + timeout
+            while time.time() <= end_time:
+                state = self.check_status(job_id, cwd)
+                if state.is_finished():
+                    break
+                time.sleep(1)
+            else:
+                raise TimeoutError
+            if state != JobStatus.COMPLETED:
+                raise ValueError("job status is %s" % state.name)
+            for output in self.test['output-files']:
+                fp = os.path.join(cwd, output['path'])
+                if not os.path.isfile(fp):
+                    raise FileNotFoundError("missing output file %s" % fp)
+                match_fp = output.get('match')
+                if match_fp:
+                    match_fp = _envvar_regex.sub(replace, match_fp)
+                    if not filecmp.cmp(fp, match_fp, False):
+                        raise ValueError("output file %s content mismatch" % fp)
+        except Exception:
+            log.exception("test of %s failed", self)
+            return False
+        else:
+            log.info("test of %s successful", self )
+            return True
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                temp_dir.cleanup()
+
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.name)
+        return '%s(%s-%s)' % (self.__class__.__name__, self.service_name, self.name)
 
 
 def _replace_from_env(env: dict, match: Match):

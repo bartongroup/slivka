@@ -222,8 +222,10 @@ class JobStatus(enum.IntEnum):
     CANCELLING = 12  # Job is in progress of being cancelled
 
     def is_finished(self):
-        return self not in (JobStatus.PENDING, JobStatus.ACCEPTED,
-                            JobStatus.QUEUED, JobStatus.RUNNING)
+        return self in (
+            JobStatus.REJECTED, JobStatus.COMPLETED, JobStatus.INTERRUPTED,
+            JobStatus.DELETED, JobStatus.FAILED, JobStatus.ERROR
+        )
 
 
 class PidFile:

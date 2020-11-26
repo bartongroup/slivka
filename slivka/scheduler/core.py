@@ -80,6 +80,10 @@ class Scheduler:
             )
             self.log.info('loaded runner for service %s: %r', service_name, runner)
 
+    def test_runners(self):
+        for _id, runner in sorted(self.runners.items()):
+            runner.run_test()
+
     def stop(self):
         self._finished.set()
 

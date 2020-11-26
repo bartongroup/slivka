@@ -203,3 +203,17 @@ def start_shell():
     import slivka
     sys.path.append(slivka.settings.base_dir)
     code.interact()
+
+
+@start.command('services-test')
+def start_services_test():
+    import slivka.conf.logging
+    import slivka.scheduler
+    from slivka.conf import settings
+
+    sys.path.append(settings.base_dir)
+    slivka.conf.logging.configure_logging()
+    scheduler = slivka.scheduler.Scheduler()
+    for service in settings.services.values():
+        scheduler.load_runners(service.name, service.command)
+    scheduler.test_runners()

@@ -120,10 +120,12 @@ class SettingsLoaderV11:
             fp = os.path.join(conf_dir, fn)
             conf = yaml.load(open(fp), SafeTranscludingOrderedYamlLoader)
             name = str.split(fn, '.', maxsplit=1)[0]
-            command = conf['command']
-            command.update(runners=conf['runners'])
+            command = conf['command']  # type: dict
+            command['runners'] = conf['runners']
             if 'limiter' in conf:
-                command.update(limiter=conf['limiter'])
+                command['limiter'] = conf['limiter']
+            if 'test' in conf:
+                command['test'] = conf['test']
             yield name, Service(
                 name=name,
                 label=conf['label'],

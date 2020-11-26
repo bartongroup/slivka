@@ -65,6 +65,29 @@
     },
     "limiter": {
       "type": "string"
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "object"
+        },
+        "output-files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "match": {"type": "string"}
+            },
+            "required": ["path"]
+          }
+        },
+        "timeout": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
