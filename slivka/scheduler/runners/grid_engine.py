@@ -51,6 +51,13 @@ atexit.register(_executor.shutdown)
 
 
 class GridEngineRunner(Runner):
+    """ Implementation of the :py:class:`Runner` for Univa Grid Engine.
+
+    This runner submits jobs to the Univa Grid Engine using ``qsub``
+    command. Useful for more advanced systems dealing with high
+    load that needs to distribute computationally heavy jobs
+    and have high control over the resources used by each job.
+    """
 
     def __init__(self, command_def, id=None, qsub_args=()):
         super().__init__(command_def, id)
@@ -61,10 +68,17 @@ class GridEngineRunner(Runner):
         )
 
     def submit(self, cmd, cwd):
+        """
+        Creates a temporary script file containing the command to
+        execute and runs it with qsub. The output and error streams
+        are written to the stdout and stderr files in the job working
+        directory.
+        """
         fd, path = tempfile.mkstemp(prefix='run', suffix='.sh', dir=cwd)
         cmd = str.join(' ', map(shlex.quote, cmd))
         with open(fd, 'w') as f:
             f.write(_runner_sh_tpl.format(cmd=cmd))
+        # TODO: add -terse argument for job id only
         qsub_cmd = ['qsub', '-V', '-cwd', '-o', 'stdout', '-e', 'stderr',
                     *self.qsub_args, path]
         proc = subprocess.run(
@@ -81,6 +95,10 @@ class GridEngineRunner(Runner):
 
     def batch_submit(self, commands: Iterable[Tuple[List, str]]):
         """
+        Batch submit is performed by repeated calls to
+        :py:meth:`submit`. The thread pool executor ensures that
+        the limit of subprocesses is not be exceeded.
+
         :param commands: iterable of args list and cwd path pairs
         :return: list of identifiers
         """
@@ -89,6 +107,7 @@ class GridEngineRunner(Runner):
 
     @classmethod
     def check_status(cls, job_id, cwd):
+        # there is no single job status check
         job = dict(job_id=job_id, work_dir=cwd)
         return next(cls.batch_check_status([job]))
 

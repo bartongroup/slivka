@@ -39,6 +39,23 @@ def _get_schema(filename):
 
 
 class BaseField:
+    """ Base class for form fields providing validation and conversion
+
+    Field objects are contained within the form and are used to
+    retrieve data from the requests, validate and convent the values
+    to python and convert them to strings.
+    All form field classes must inherit from this class and call its
+    constructor. The subclasses may override :py:meth:`run_validation`
+    for custom value validation. The parameters for the fields are
+    provided from the configuration file.
+
+    :param name: the name of the field
+    :param label: human readable name/label
+    :param description: longer, human readable description
+    :param default: defualt value for the field
+    :param required: whether the field is required
+    :param multiple: whether the field accepts multiple values
+    """
     def __init__(self,
                  name,
                  label='',
@@ -55,15 +72,18 @@ class BaseField:
         self._widget = None
 
     schema = class_property(lambda cls: {})
+    """Json schema for the field item in the config file."""
 
     def value_from_request_data(self, data: MultiDict, files: MultiDict):
         """
-        Retrieve raw value from the request data.
-        The same value will be further passed to `validate` method
+        Retrieves value from the request data. This value will
+        be further passed to the validation method. The deriving
+        classes may need to override this method i.e. for file
+        retrieval, see :py:method:`FileField.value_from_request_data`.
 
         :param data: request POST data
         :param files: request multipart-POST files
-        :return:
+        :return: retrieved raw value
         """
         if self.multiple:
             return data.getlist(self.name)
@@ -71,13 +91,38 @@ class BaseField:
             return data.get(self.name)
 
     def run_validation(self, value):
-        """ Run validation and return converted value. """
+        """ Validates the value and converts to Python value.
+
+        Checks whether the value meets the field type and constraints.
+        Otherwise, raises :py:class:`ValidationError`.
+        Subclasses may override this method with their implementation
+        of validation, but the value should be converted with
+        their superclass' :py:meth:`run_validation` method first.
+
+        :param value: value to be validated and converted
+        :return: converted value
+        """
         if value in EMPTY_VALUES:
             return None
         else:
             return value
 
     def validate(self, value):
+        """ Runs validation of the value.
+
+        Used by form during :py:meth:`BaseForm.full_clean`to check
+        and convert the data from the HTTP request.
+        Performs the validation of the value obtained form
+        :py:meth:`value_from_request_data` and returns the value
+        converted to the Python type or default if none was provided.
+        It takes care of arrays by validating each value individually.
+
+        This method is final and must not be overridden!
+
+        :param value: the value or list of values to be validated
+        :return: validated value
+        :raise ValidationError: provided value is not valid
+        """
         if not self.multiple:
             value = self.run_validation(value)
             if value is None:
@@ -95,6 +140,13 @@ class BaseField:
             return [self.run_validation(v) for v in value]
 
     def _validate_default(self):
+        """ Passes the default value through validation.
+
+        It should be called at the end of `__init__` after all the
+        validators and default value are set up.
+
+        :raise RuntimeError: default value is invalid
+        """
         if self.default is not None:
             try:
                 self.run_validation(self.default)
@@ -108,9 +160,20 @@ class BaseField:
             return self.to_cmd_parameter(value)
 
     def to_cmd_parameter(self, value):
+        """ Converts the value to the command line parameter.
+
+        The returned value should be a string that can be inserted
+        into a command line argument directly.
+        By default, it returns the ``value`` directly, but
+        subclasses may implement different behaviour
+
+        :param value: a value to be converted
+        :return: value converted to the cmd argument
+        """
         return value
 
     def __json__(self):
+        """ Json representation of the field as shown to the client. """
         return {
             'type': 'undefined',
             'name': self.name,
@@ -131,6 +194,13 @@ class BaseField:
 
 
 class IntegerField(BaseField):
+    """ Represents a field that takes an integer value.
+
+    :param name: name of the field
+    :param min: minimum value or None if unbound
+    :param max: maximum value or None if unbound
+    :param **kwargs: see arguments of :py:class:`BaseField`
+    """
     # noinspection PyShadowingBuiltins
     def __init__(self,
                  name,
@@ -182,6 +252,15 @@ class IntegerField(BaseField):
 
 
 class DecimalField(BaseField):
+    """ Represents a field that takes a floating point number.
+
+    :param name: name of the field
+    :param min: minimum value or None if unbound
+    :param max: maximum value or None if unbound
+    :param min_exclusive: whether min is excluded, default False
+    :param max_exclusive: whether max is excluded, default False
+    :param **kwargs: see arguments of :py:class`BaseClass`
+    """
     # noinspection PyShadowingBuiltins
     def __init__(self,
                  name,
@@ -243,6 +322,13 @@ class DecimalField(BaseField):
 
 
 class TextField(BaseField):
+    """ Represents a field taking an text value.
+
+    :param name: name of the field
+    :param min_length: minimum length of text
+    :param max_length: maximum length of text
+    :param **kwargs: see arguments of :py:class:`BaseField`
+    """
     def __init__(self,
                  name,
                  min_length=None,
@@ -290,6 +376,14 @@ class TextField(BaseField):
 
 
 class BooleanField(BaseField):
+    """ Represents a field taking a boolean value.
+
+    The field interprets any string defined in a ``FALSE_STR`` set
+    as well as anything that evaluates to False as False.
+
+    :param name: field name
+    :param **kwargs: see arguments of :py:class:`BaseField`
+    """
     FALSE_STR = {'no', 'false', '0', 'n', 'f', 'none', 'null', 'off'}
 
     def __init__(self, name, **kwargs):
@@ -319,9 +413,19 @@ class BooleanField(BaseField):
 
 
 FlagField = BooleanField
+""" An alias for the BooleanField """
 
 
 class ChoiceField(BaseField):
+    """ Represents a field taking one of the available options.
+
+    The choices mapping is used to convert the value to the
+    command line parameter.
+
+    :param name: field name
+    :param choices: a mapping of user choices to the cmd values
+    :param **kwargs: see arguments of :py:class:`BaseField`
+    """
     def __init__(self,
                  name,
                  choices=(),
@@ -346,6 +450,11 @@ class ChoiceField(BaseField):
         return self._widget
 
     def run_validation(self, value):
+        """
+        Checks if the value is in either choices keys or values,
+        validation fails otherwise
+        """
+        # FIXME: should also convert the value here
         value = super().run_validation(value)
         if value is None:
             return None
@@ -357,6 +466,7 @@ class ChoiceField(BaseField):
         return value
 
     def to_cmd_parameter(self, value):
+        """ Converts value to the cmd argument using choices map"""
         return self.choices.get(value, value)
 
     def __json__(self):
@@ -367,6 +477,20 @@ class ChoiceField(BaseField):
 
 
 class FileField(BaseField):
+    """ Represents a field taking a file.
+
+    The file can be supplied as a uuid or :py:class:`werkzeug.FileStorage`.
+    The values are converted to a :py:class:`FileProxy` convenience
+    wrapper.
+
+    :param name: field name
+    :param media_type: accepted media (content) type; used in file
+        content validation
+    :param media_type_parameters: additional parameters regarding
+        file content; used solely as a hint
+    :param extensions: accepted file extensions; used solely as a hint
+    :param **kwargs: see arguments of :py:class:`BaseField`
+    """
     def __init__(self,
                  name,
                  media_type=None,
@@ -405,6 +529,18 @@ class FileField(BaseField):
         return self._widget
 
     def run_validation(self, value) -> typing.Optional['FileProxy']:
+        """
+        Validates and converts ``value`` to the :py:class:`FileProxy`
+        object. The value can be a :py:class:`FileProxy` which will
+        be returned directly, a :py:class:`werkzeug.FileStorage`
+        object which will be wrapped in :py:class:`FileProxy`
+        or a file id in which case a database lookup is performed
+        to find the path that will be used to construct a
+        :py:class:`FileProxy`.
+
+        :param value: file from the request or file id
+        :return: a wrapper around the file
+        """
         value = super().run_validation(value)
         if value is None:
             return None
@@ -435,6 +571,11 @@ class FileField(BaseField):
         return j
 
     def to_cmd_parameter(self, value: 'FileProxy'):
+        """ Converts FileProxy to cmd argument.
+
+        The file is written to teh disk if not saved already
+        and its path is returned.
+        """
         if not value: return None
         if value.path is None:
             (fd, path) = mkstemp(dir=self.save_location)
@@ -442,6 +583,8 @@ class FileField(BaseField):
                 value.save_as(path=path, fp=fp)
         return value.path
 
+
+# Helper methods that are used for value validation.
 
 def _max_value_validator(limit, value):
     if value > limit:
@@ -502,6 +645,7 @@ def _media_type_validator(media_type, file: FileProxy):
 
 
 class ValidationError(Exception):
+    """ Exception raised in value validation fails. """
     def __init__(self, message, code=None):
         super().__init__(message, code)
         self.message = message
