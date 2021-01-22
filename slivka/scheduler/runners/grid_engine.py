@@ -86,7 +86,7 @@ class GridEngineRunner(Runner):
         :param commands: iterable of args list and cwd path pairs
         :return: list of identifiers
         """
-        def submit_wrapper(args): self.submit(*args)
+        def submit_wrapper(args): return self.submit(*args)
         return list(_executor.map(submit_wrapper, commands))
 
     @classmethod
@@ -102,7 +102,8 @@ class GridEngineRunner(Runner):
         for job_id, status in matches:
             states[job_id] = _status_letters[status]
         for job in jobs:
-            state = states.get(job['job_id'])
+            job_id = job['job_id']
+            state = states.get(job_id)
             if state is not None:
                 yield state
             else:
@@ -110,6 +111,7 @@ class GridEngineRunner(Runner):
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
+                    cls.finished_job_timestamp.pop(job_id, None)
                     yield (
                         JobStatus.COMPLETED if return_code == 0 else
                         JobStatus.ERROR if return_code == 127 else
@@ -117,11 +119,11 @@ class GridEngineRunner(Runner):
                     )
                 except FileNotFoundError:
                     # one minute window for file system synchronization
-                    ts = cls.finished_job_timestamp[job['job_id']]
+                    ts = cls.finished_job_timestamp[job_id]
                     if datetime.now() - ts < timedelta(minutes=1):
                         yield JobStatus.RUNNING
                     else:
-                        del cls.finished_job_timestamp[job['job_id']]
+                        del cls.finished_job_timestamp[job_id]
                         yield JobStatus.INTERRUPTED
 
     @classmethod
