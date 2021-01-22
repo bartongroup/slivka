@@ -5,7 +5,9 @@ import re
 import shlex
 import subprocess
 import tempfile
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from typing import Iterable, Tuple, List
 
 import pkg_resources
@@ -45,12 +47,12 @@ _status_letters = _StatusLetterDict({
     b'Eqw': JobStatus.ERROR
 })
 
-
 _executor = ThreadPoolExecutor()
 atexit.register(_executor.shutdown)
 
 
 class GridEngineRunner(Runner):
+    finished_job_timestamp = defaultdict(datetime.now)
 
     def __init__(self, command_def, id=None, qsub_args=()):
         super().__init__(command_def, id)
@@ -114,7 +116,13 @@ class GridEngineRunner(Runner):
                         JobStatus.FAILED
                     )
                 except FileNotFoundError:
-                    yield JobStatus.INTERRUPTED
+                    # one minute window for file system synchronization
+                    ts = cls.finished_job_timestamp[job['job_id']]
+                    if datetime.now() - ts < timedelta(minutes=1):
+                        yield JobStatus.RUNNING
+                    else:
+                        del cls.finished_job_timestamp[job['job_id']]
+                        yield JobStatus.INTERRUPTED
 
     @classmethod
     def cancel(cls, job_id, cwd):
