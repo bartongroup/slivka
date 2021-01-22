@@ -8,7 +8,7 @@ parser = ArgumentParser()
 parser.add_argument('-v', action='store_true')
 parser.add_argument('--infile')
 parser.add_argument('-t', '--text')
-parser.add_argument('-x', '--extra', type=int, default=0)
+parser.add_argument('-r', '--repeat', type=int, default=0)
 parser.add_argument('-w', '--sleep', type=float, default=0)
 parser.add_argument('--log', action='store_true')
 parser.add_argument('outfile')
@@ -27,7 +27,7 @@ with open(args.outfile, 'w') as f:
 
 if args.log: print('Some log', file=sys.stderr)
 
-for i in range(1, args.extra + 1):
+for i in range(1, args.repeat + 1):
     with open('extra-output.%d.json' % i, 'w') as f:
         print('{"hello": "world"}', file=f)
 

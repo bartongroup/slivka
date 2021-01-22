@@ -34,9 +34,9 @@ form:
       max-length: 15
 
   # Integer type input example
-  extra-count:
-    label: Number of files
-    description: Specifies the number of auxilary files to generate
+  repeat:
+    label: Repeat output
+    description: Number of times the output file is repeated
     value:
       required: yes
       type: int
@@ -72,8 +72,8 @@ command:
       symlink: input.txt
     msg:
       arg: -t $(value)
-    extra-count:
-      arg: -x $(value)
+    repeat:
+      arg: -r $(value)
       type: number
     sleep:
       arg: -w $(value)
@@ -90,6 +90,10 @@ command:
   arguments:
     - output.txt
 
+  # environment variables set for the  process
+  env:
+    PATH: ${HOME}/bin:${PATH}
+
   # list of output files created by the program
   outputs:
     message:
@@ -104,7 +108,7 @@ command:
       path: stderr
       media-type: text/plain
     extra:
-      # glob patterns are also allowed
+      # glob patterns are also supported
       path: extra-output.*.json
       media-type: application/json
 
