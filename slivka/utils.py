@@ -113,21 +113,24 @@ class BackoffCounter:
         self.current = 0
 
 
-# noinspection PyPep8Naming
-class cached_property:
-    """ A data descriptor delaying field initialization and caching the value. """
-    def __init__(self, initializer):
-        self._init = initializer
+try:
+    from functools import cached_property
+except ImportError:
+    # noinspection PyPep8Naming
+    class cached_property:
+        """ A data descriptor delaying field initialization and caching the value. """
+        def __init__(self, initializer):
+            self._init = initializer
 
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
-        val = self._init(instance)
-        name = self._init.__name__
-        if name.startswith('__') and not name.endswith('__'):
-            name = '_' + owner.__name__ + name
-        instance.__dict__[name] = val
-        return val
+        def __get__(self, instance, owner):
+            if instance is None:
+                return self
+            val = self._init(instance)
+            name = self._init.__name__
+            if name.startswith('__') and not name.endswith('__'):
+                name = '_' + owner.__name__ + name
+            instance.__dict__[name] = val
+            return val
 
 
 # noinspection PyPep8Naming
