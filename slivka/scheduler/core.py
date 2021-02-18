@@ -4,14 +4,15 @@ from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
 from importlib import import_module
 from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
-                    Sequence)
+                    Sequence, NamedTuple)
 
 from pymongo import UpdateOne
 
 import slivka.db
-from slivka.db.documents import JobRequest, JobMetadata, CancelRequest, ServiceState
+from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
+                                 ServiceState)
 from slivka.db.helpers import insert_many, replace_one
-from slivka.scheduler.runners.runner import RunnerID, Runner
+from slivka.scheduler.runners.runner import RunnerID, Runner, RunInfo
 from slivka.utils import JobStatus, BackoffCounter
 
 
@@ -39,6 +40,20 @@ ERROR = object()
 
 
 class Scheduler:
+    """
+    Scheduler is a central hub of the slivka system. It runs in it's
+    individual process and manages jobs.
+
+    In it's main loot, it first
+    fetches the pending job requests from the database and sorts them
+    to available runners using provided limiters (see :py:class:`Limiter`)
+    for decision making. Then, the accepted requests are being executed
+    with the runner and the created jobs are stored in the database.
+
+    In the next stage, the scheduler checks all currently running jobs
+    and updates their state into the database.
+    """
+
     def __init__(self):
         self.log = logging.getLogger(__name__)
         self._finished = threading.Event()
@@ -49,11 +64,13 @@ class Scheduler:
         )  # type: DefaultDict[Any, BackoffCounter]
 
     def is_running(self):
+        """ Checks whether the scheduler is running. """
         return not self._finished.is_set()
 
     is_running = property(is_running)
 
     def set_failure_limit(self, limit):
+        """ Sets the limit of allowed exceptions before job is rejected. """
         factory = partial(BackoffCounter, max_tries=limit)
         self._backoff_counters.default_factory = factory
         for counter in self._backoff_counters.values():
@@ -63,6 +80,7 @@ class Scheduler:
         self.runners[runner.id] = runner
 
     def load_runners(self, service_name, conf_dict):
+        """ Automatically adds runners from the configuration. """
         limiter_cp = conf_dict.get('limiter')
         if limiter_cp is not None:
             mod, attr = limiter_cp.rsplit('.', 1)
@@ -78,9 +96,11 @@ class Scheduler:
             runner = self.runners[runner_id] = cls(
                 conf_dict, id=RunnerID(service_name, name), **kwargs
             )
-            self.log.info('loaded runner for service %s: %r', service_name, runner)
+            self.log.info('loaded runner for service %s: %r', service_name,
+                          runner)
 
     def test_runners(self):
+        """ Run tests for all runners. """
         for _id, runner in sorted(self.runners.items()):
             runner.run_test()
 
@@ -88,6 +108,12 @@ class Scheduler:
         self._finished.set()
 
     def run_forever(self):
+        """ Starts the main loop
+
+        The main loop is running until the :py:meth:`stop` is called.
+        It repeatedly performs work cycles with one second delay
+        between them.
+        """
         if self._finished.is_set():
             raise RuntimeError
         self.reset_service_states()
@@ -99,6 +125,7 @@ class Scheduler:
             self.stop()
 
     def reset_service_states(self):
+        """ Resets all service states in the database. """
         for service, runner in self.runners.keys():
             state = ServiceState(service=service, runner=runner)
             replace_one(
@@ -109,7 +136,6 @@ class Scheduler:
     def run_cycle(self):
         log = self.log
         database = slivka.db.database
-        request_operations = []
 
         # fetching new requests
         new_requests = _fetch_pending_requests(database)
@@ -202,7 +228,8 @@ class Scheduler:
 
         # monitoring jobs
         cursor = JobMetadata.collection(database).aggregate([
-            {'$match': {'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}}},
+            {'$match': {
+                'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}}},
             {'$group': {
                 '_id': '$runner_class',
                 'jobs': {'$push': '$$CURRENT'}
@@ -244,8 +271,21 @@ class Scheduler:
                 grouped[runner].append(request)
         return grouped
 
-    def run_requests(self, runner: Runner, requests: List[JobRequest]) -> RunResult:
-        """Run all requests in the list using the runner."""
+    def run_requests(self, runner: Runner, requests: List[JobRequest]) \
+            -> NamedTuple[Iterable[Tuple[JobRequest, RunInfo]],
+                          Iterable[JobRequest], Iterable[JobRequest]]:
+        """ Run all requests with the runner provided.
+
+        Runs all the job requests using the supplied implementation
+        of :py:class:`Runner` and returns a three-element tuple
+        containing three groups of requests: started, deferred and failed.
+        The "started" group contains an iterable of :py:class:`JobRequest`
+        and :py:class:`RunInfo` pairs corresponding to the successfully
+        started jobs. The "deferred" group contains requests delayed due
+        to failure. The "failed" group contains requests that failed
+        multiple run attempts and should not be repeated.
+        """
+        # FIXME: this method should have cleaner implementation
         counter = self._backoff_counters[runner]
         if not requests or next(counter) > 0:
             return RunResult(started=(), deferred=requests, failed=())
@@ -281,7 +321,11 @@ class Scheduler:
             runner: Union[Runner, Type[Runner]],
             jobs: List[JobMetadata]
     ) -> Sequence[Tuple[JobMetadata, JobStatus]]:
-        """Checks status of jobs and returns modified."""
+        """ Checks status of jobs.
+
+        Checks status of jobs using the provided runner or runner class
+        and returns a list of those, whose status have changed.
+        """
         counter = self._backoff_counters[runner]
         if not jobs or next(counter) > 0:
             return ()
@@ -339,6 +383,15 @@ class LimiterMeta(type):
 
 
 class Limiter(metaclass=LimiterMeta):
+    """ The helper class that allows defining limits as methods.
+
+    Extending classes can specify limits by declaring methods
+    named ``limit_<runner name>`` that take one input parameters
+    argument and return True or False whether this runner should
+    be used. The methods are evaluated in order of declaration
+    and the first one to return True is selected. Otherwise,
+    the job is rejected.
+    """
     def __call__(self, inputs):
         try:
             self.setup(inputs)
