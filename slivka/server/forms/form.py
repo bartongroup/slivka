@@ -1,9 +1,10 @@
 import collections
 from collections import OrderedDict
 from importlib import import_module
+from typing import Optional
+from typing import Type
 
 from frozendict import frozendict
-from typing import Type
 from werkzeug.datastructures import MultiDict
 
 import slivka
@@ -15,9 +16,10 @@ from .fields import *
 class DeclarativeFormMetaclass(type):
     """
     A metaclass allowing the form fields to be defined as class attributes.
-    All attributes which are instances of ``BaseField`` are moved to the
-    ``fields`` property - a mapping from field names to field objects.
+    All attributes which are instances of :py:class:`BaseField` are moved to the
+    :py:attr:`fields` property - a mapping of field names to field objects.
     """
+
     @classmethod
     def __prepare__(mcs, name, bases):
         return OrderedDict()
@@ -34,18 +36,27 @@ class DeclarativeFormMetaclass(type):
 
 class BaseForm(metaclass=DeclarativeFormMetaclass):
     """
-    The base class for all forms. It uses ``DeclarativeFormMetaclass``
+    The base class for all forms. It uses :py:class:`DeclarativeFormMetaclass`
     as its metaclass so all deriving forms will have fields automatically
-    populated from class' attributes.
-    The class also adds essential form functionality such as data storage,
-    validation and saving.
-    All forms deriving from this class are the containers of fields
-    and user input data.
+    populated from class attributes. The class also provides form
+    functionality such as data storage, validation and saving.
+    If the data or files are provided, the "bound" form will be created
+    which can be used to validate and save the request.
+    Otherwise, the unbound form can be used to retrieve field information.
+    Typically, form objects are created by the server components
+    and are populated with request data.
+
+    This class' functionality was heavily inspired by django forms.
+
+    :param data: POST request form data, defaults to None
+    :param files: files sent with multipart form, defaults to None
     """
     service = ''
     save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 
-    def __init__(self, data=None, files=None):
+    def __init__(self,
+                 data: Optional[MultiDict] = None,
+                 files: Optional[MultiDict] = None):
         """
         Constructs the form with the data coming from the web request.
         If the data or files are provided, the "bound" form will be created
@@ -65,22 +76,30 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
 
     @property
     def errors(self) -> collections.Mapping:
-        """ Performs the validation if not done yet and returns errors. """
+        """ Performs the full clean if not done yet and returns errors. """
         if self._errors is None:
             self.full_clean()
         return self._errors
 
     @property
     def cleaned_data(self) -> collections.Mapping:
-        """ Returns the cleaned form data after validation. """
+        """ Returns the validated form data. """
+        # TODO: perform full clean if empty
         return self._cleaned_data
 
     def is_valid(self):
-        """ Check whether the data is valid. """
+        """ Check whether the form data is valid. """
         return self.is_bound and not self.errors
 
     def full_clean(self):
-        """ Performs full validation of the input data. """
+        """ Performs full validation of the input data.
+        If the form is bound, retrieves the value from the request
+        data for each registered field. Then, validates the values
+        against corresponding fields and populates
+        :py:attr:`cleaned_data` and :py:attr:`errors`.
+
+        .. seealso:: methods of :py:class:`fields.BaseField`
+        """
         errors = {}
         if not self.is_bound:
             return
@@ -127,6 +146,7 @@ class FormLoader(metaclass=Singleton):
     calls return the same object) providing a single point where all
     forms can be accessed from.
     """
+
     def __init__(self):
         self._forms = {}
 
@@ -135,7 +155,7 @@ class FormLoader(metaclass=Singleton):
         for service in slivka.settings.services.values():
             self.read_dict(service.name, service.form)
 
-    def read_dict(self, name: str,  dictionary: dict) -> Type:
+    def read_dict(self, name: str, dictionary: dict) -> Type:
         """Load form definition from dictionary.
 
         :param name: service name

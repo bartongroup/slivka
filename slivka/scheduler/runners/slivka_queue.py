@@ -11,6 +11,14 @@ log = logging.getLogger('slivka.scheduler')
 
 
 class SlivkaQueueRunner(Runner):
+    """ Implementation of the :py:class:`Runner` for Slivka workers.
+
+    This runner delegates the job execution the the slivka's
+    simple queuing system running as a separate process.
+    It has an advantage of running jobs on a separate system/node,
+    controlling the number of simultaneous jobs and preserving jobs
+    between scheduler restarts.
+    """
     client = None  # type: LocalQueueClient
 
     def __init__(self, command_def, id=None):
