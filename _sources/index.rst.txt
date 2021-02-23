@@ -26,6 +26,7 @@ Table of contents
    :maxdepth: 2
 
    getting_started
+   specification
    advanced_usage
    python_client
 
