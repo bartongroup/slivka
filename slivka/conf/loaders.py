@@ -1,7 +1,7 @@
 import json
 import os.path
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Collection
 from importlib import import_module
 from urllib.parse import quote_plus
 
@@ -126,14 +126,20 @@ class SettingsLoaderV11:
                 command['limiter'] = conf['limiter']
             if 'test' in conf:
                 command['test'] = conf['test']
-            yield name, Service(
-                name=name,
-                label=conf['label'],
-                classifiers=conf['classifiers'],
-                form=conf['form'],
-                command=command,
-                presets=conf.get('presets')
-            )
+            try:
+                yield name, Service(
+                    name=name,
+                    label=conf['label'],
+                    classifiers=conf['classifiers'],
+                    form=conf['form'],
+                    command=command,
+                    presets=conf.get('presets')
+                )
+            except ServiceSyntaxException as e:
+                path = "%s" % '/'.join(e.path)
+                msg = ('"{file}" contains error at \'{path}\'. {reason}'
+                       .format(file=fn, path=path, reason=e.message))
+                raise ValueError(msg) from None
 
 
 def _prepare_dir(root, path):
@@ -200,8 +206,12 @@ def _form_validator(_obj, _attr, val):
         "choice": fields.ChoiceField,
         "file": fields.FileField,
     }
-    for field in val.values():
-        jsonschema.validate(field, basic_schema, Draft4Validator)
+    for field_name, field in val.items():
+        try:
+            jsonschema.validate(field, basic_schema, Draft4Validator)
+        except jsonschema.ValidationError as e:
+            raise ServiceSyntaxException(e.message,
+                                         ['form', field_name, *e.path])
         field_type = field['value']['type']
         cls = classes.get(field_type)
         if cls is None:
@@ -209,15 +219,24 @@ def _form_validator(_obj, _attr, val):
                 mod, attrib = field_type.rsplit('.', 1)
                 cls = getattr(import_module(mod), attrib)
             except (ValueError, AttributeError):
-                raise ValueError("Invalid field type %s" % field_type)
-        jsonschema.validate(field, cls.schema)
+                raise ServiceSyntaxException(
+                    "Invalid field type '%s'" % field_type,
+                    ['form', field_name, 'value', 'type']
+                ) from None
+        try:
+            jsonschema.validate(field, cls.schema)
+        except jsonschema.ValidationError as e:
+            raise ServiceSyntaxException(e.message,
+                                         ['form', field_name, *e.path])
 
 
 def _json_schema_validator(schema_file):
     schema = json.loads(pkg_resources.resource_string(
         "slivka.conf", schema_file).decode())
 
-    def validator(_obj, _attr, val): jsonschema.validate(val, schema, Draft4Validator)
+    def validator(_obj, _attr, val):
+        jsonschema.validate(val, schema, Draft4Validator)
+
     return validator
 
 
@@ -226,8 +245,15 @@ class Service:
     name = attr.ib(type=str)
     label = attr.ib(type=str)
     form = attr.ib(validator=_form_validator)
-    command = attr.ib(validator=_json_schema_validator("commandDefSchema.json"))
+    command = attr.ib(
+        validator=_json_schema_validator("commandDefSchema.json"))
     presets = attr.ib(validator=attr.validators.optional(
         _json_schema_validator("presetsSchema.json")
     ))
     classifiers = attr.ib(factory=list, type=list)
+
+
+class ServiceSyntaxException(Exception):
+    def __init__(self, message, path: Collection):
+        self.message = message
+        self.path = path
