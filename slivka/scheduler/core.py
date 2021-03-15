@@ -4,7 +4,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
 from importlib import import_module
 from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
-                    Sequence, NamedTuple)
+                    Sequence)
 
 from pymongo import UpdateOne
 
@@ -12,7 +12,7 @@ import slivka.db
 from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
                                  ServiceState)
 from slivka.db.helpers import insert_many, replace_one
-from slivka.scheduler.runners.runner import RunnerID, Runner, RunInfo
+from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
 
 
@@ -272,8 +272,7 @@ class Scheduler:
         return grouped
 
     def run_requests(self, runner: Runner, requests: List[JobRequest]) \
-            -> NamedTuple[Iterable[Tuple[JobRequest, RunInfo]],
-                          Iterable[JobRequest], Iterable[JobRequest]]:
+            -> RunResult:
         """ Run all requests with the runner provided.
 
         Runs all the job requests using the supplied implementation
