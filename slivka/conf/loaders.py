@@ -22,9 +22,9 @@ class SettingsLoaderV10:
     def __call__(self):
         home = os.getenv('SLIVKA_HOME', os.getcwd())
         settings_path = (
-            os.getenv('SLIVKA_SETTINGS') or
-            next((fn for fn in os.listdir(home)
-                  if re.match(r'settings\.ya?ml', fn)), None)
+                os.getenv('SLIVKA_SETTINGS') or
+                next((fn for fn in os.listdir(home)
+                      if re.match(r'settings\.ya?ml', fn)), None)
         )
         if settings_path is None:
             raise ImproperlyConfigured(
@@ -230,12 +230,16 @@ def _form_validator(_obj, _attr, val):
                                          ['form', field_name, *e.path])
 
 
-def _json_schema_validator(schema_file):
+def _json_schema_validator(schema_file, path=None):
+    path = path or []
     schema = json.loads(pkg_resources.resource_string(
         "slivka.conf", schema_file).decode())
 
     def validator(_obj, _attr, val):
-        jsonschema.validate(val, schema, Draft4Validator)
+        try:
+            jsonschema.validate(val, schema, Draft4Validator)
+        except jsonschema.ValidationError as e:
+            raise ServiceSyntaxException(e.message, [*path, *e.path])
 
     return validator
 
@@ -245,11 +249,10 @@ class Service:
     name = attr.ib(type=str)
     label = attr.ib(type=str)
     form = attr.ib(validator=_form_validator)
-    command = attr.ib(
-        validator=_json_schema_validator("commandDefSchema.json"))
+    command = attr.ib(validator=_json_schema_validator(
+        "commandDefSchema.json", ['command']))
     presets = attr.ib(validator=attr.validators.optional(
-        _json_schema_validator("presetsSchema.json")
-    ))
+        _json_schema_validator("presetsSchema.json", ['preset'])))
     classifiers = attr.ib(factory=list, type=list)
 
 
