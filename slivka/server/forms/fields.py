@@ -155,7 +155,7 @@ class BaseField:
     def test_condition(self, values):
         if self.condition:
             return self.condition.evaluate({
-                'value': values[self.name], **values
+                'self': values[self.name], **values
             })
         else:
             return True
