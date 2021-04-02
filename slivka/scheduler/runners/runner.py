@@ -139,7 +139,7 @@ class Runner:
         and inserting values for $(value) placeholder.
 
         :param values: values to inserted to the command arguments
-        :type values: dict[str, str]
+        :type values: dict[str, Any]
         :return: list of command line arguments
         """
         replace = partial(_replace_from_env, self.env)
