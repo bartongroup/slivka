@@ -1,11 +1,15 @@
+from nose.tools import assert_is_none, assert_equal, assert_list_equal, \
+    assert_true
 from werkzeug.datastructures import MultiDict
 
-from slivka.server.forms.form import BaseForm
 from slivka.server.forms.fields import *
+from slivka.server.forms.form import BaseForm
 
 
 class DummyForm(BaseForm):
     field1 = IntegerField('int', min=0, max=10, default=1)
+    field1a = IntegerField('int2', required=False, default=2)
+    field1b = IntegerField('int3', required=False)
     field2 = IntegerField('m_int', multiple=True, required=False)
     field3 = IntegerField('m_int2', multiple=True, required=False)
     field4 = IntegerField('m_int3', multiple=True, required=False)
@@ -35,31 +39,37 @@ class TestFormValues:
         assert self.form.is_valid()
 
     def test_cleaned_integer_field(self):
-        assert self.form.cleaned_data['int'] == 5
+        assert_equal(self.form.cleaned_data['int'], 5)
+
+    def test_cleaned_default_value(self):
+        assert_equal(self.form.cleaned_data['int2'], 2)
+
+    def test_cleaned_no_value(self):
+        assert_is_none(self.form.cleaned_data['int3'])
 
     def test_cleaned_multiple(self):
-        assert self.form.cleaned_data['m_int'] == [10, 15, 0]
+        assert_list_equal(self.form.cleaned_data['m_int'], [10, 15, 0])
 
     def test_cleaned_multiple_one_value(self):
-        assert self.form.cleaned_data['m_int2'] == [2]
+        assert_list_equal(self.form.cleaned_data['m_int2'], [2])
 
     def test_cleaned_multiple_no_value(self):
-        assert self.form.cleaned_data['m_int3'] == []
+        assert_is_none(self.form.cleaned_data['m_int3'])
 
     def test_cleaned_decimal_field(self):
-        assert self.form.cleaned_data['float'] == 5.0
+        assert_equal(self.form.cleaned_data['float'], 5.0)
 
     def test_cleaned_text_field(self):
-        assert self.form.cleaned_data['text'] == 'foo bar baz'
+        assert_equal(self.form.cleaned_data['text'], 'foo bar baz')
 
     def test_cleaned_bool_true_value(self):
-        assert self.form.cleaned_data['bool'] is True
+        assert_true(self.form.cleaned_data['bool'])
 
     def test_cleaned_bool_false_value(self):
-        assert self.form.cleaned_data['bool2'] is None
+        assert_is_none(self.form.cleaned_data['bool2'])
 
     def test_cleaned_choice_field(self):
-        assert self.form.cleaned_data['choice'] == 'a'
+        assert_equal(self.form.cleaned_data['choice'], 'a')
 
     def test_cleaned_multiple_choice_field(self):
-        assert self.form.cleaned_data['m_choice'] == ['a', 'c']
+        assert_list_equal(self.form.cleaned_data['m_choice'], ['a', 'c'])
