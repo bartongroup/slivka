@@ -127,7 +127,8 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         disabled_fields = []
         values = ChainMap(provided_values, default_values)
         for field in self.fields.values():
-            if not field.test_condition(values):
+            if values[field.name] is not None and not field.test_condition(
+                    values):
                 if field.name in provided_values:
                     error = ValidationError(
                         "Additional condition not met", 'condition')
@@ -141,7 +142,8 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         for name in disabled_fields:
             default_values[name] = None
         for field in self.fields.values():
-            if not field.test_condition(values):
+            if values[field.name] is not None and not field.test_condition(
+                    values):
                 error = ValidationError(
                     "Additional condition not met", 'condition')
                 errors[field.name] = error
