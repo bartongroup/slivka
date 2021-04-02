@@ -1,11 +1,11 @@
+import itertools
 import json
+import typing
 from collections import OrderedDict
+from functools import partial
 from tempfile import mkstemp
 
-import itertools
 import pkg_resources
-import typing
-from functools import partial
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
@@ -26,8 +26,6 @@ __all__ = [
     'FileField',
     'ValidationError'
 ]
-
-EMPTY_VALUES = ({}, set(), [], (), None, '')
 
 
 def _get_schema(filename):
@@ -56,6 +54,7 @@ class BaseField:
     :param required: whether the field is required
     :param multiple: whether the field accepts multiple values
     """
+
     def __init__(self,
                  name,
                  label='',
@@ -102,7 +101,7 @@ class BaseField:
         :param value: value to be validated and converted
         :return: converted value
         """
-        if value in EMPTY_VALUES:
+        if hasattr(value, '__len__') and len(value) == 0:
             return None
         else:
             return value
@@ -154,6 +153,8 @@ class BaseField:
                 raise RuntimeError("Invalid default value") from e
 
     def serialize_value(self, value):
+        if value is None:
+            return None
         if self.multiple:
             return [self.to_cmd_parameter(val) for val in value]
         else:
