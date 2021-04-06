@@ -17,21 +17,21 @@ setup(
     version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
-        "attrs>=19",
-        "click>=7.0",
-        "Flask>=1.0",
-        "frozendict>=1.2",
-        "jsonschema>=2.5.1",
-        "MarkupSafe>=1.0",
-        "pymongo>=3.7",
-        "PyYAML>=3.11",
-        "pyzmq>=17.0"
-        "simplejson>=3.16.0",
-        "Werkzeug>=0.15",
+        "attrs>=19.0,<20.0",
+        "click>=7.0,<8.0",
+        "Flask>=1.0,<2.0",
+        "frozendict>=1.2,<2.0",
+        "jsonschema>=3.0,<4.0",
+        "MarkupSafe>=1.0,<2.0",
+        "pymongo>=3.7,<4.0",
+        "PyYAML>=3.11,<4.0",
+        "pyzmq>=19.0,<20.0",
+        "simplejson>=3.16,<4.0",
+        "Werkzeug>=1.0,<2.0",
     ],
     tests_require=[
         'nose>=1.3.7',
-        'mongomock>=3.18.0'
+        'mongomock>=3.18,<4.0'
     ],
     extras_require={
         'gunicorn': ["gunicorn>=19.9"],
