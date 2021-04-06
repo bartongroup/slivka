@@ -189,7 +189,7 @@ class FormLoader(metaclass=Singleton):
             'required': value_dict.get('required', True),
             'multiple': value_dict.get('multiple', False)
         }
-        if field_type == 'int':
+        if field_type == 'int' or field_type == 'integer':
             return IntegerField(
                 **common_kwargs,
                 min=value_dict.get('min'),
@@ -203,7 +203,7 @@ class FormLoader(metaclass=Singleton):
                 min_exclusive=value_dict.get('min-exclusive', False),
                 max_exclusive=value_dict.get('max-exclusive', False)
             )
-        elif field_type == 'text':
+        elif field_type == 'text' or field_type == 'string':
             return TextField(
                 **common_kwargs,
                 min_length=value_dict.get('min-length'),

@@ -139,7 +139,7 @@ class SettingsLoaderV11:
                 path = "%s" % '/'.join(e.path)
                 msg = ('"{file}" contains error at \'{path}\'. {reason}'
                        .format(file=fn, path=path, reason=e.message))
-                raise ValueError(msg) from None
+                raise ImproperlyConfigured(msg) from None
 
 
 def _prepare_dir(root, path):
@@ -198,9 +198,11 @@ def _form_validator(_obj, _attr, val):
     from slivka.server.forms import fields
     classes = {
         "int": fields.IntegerField,
+        "integer": fields.IntegerField,
         "float": fields.DecimalField,
         "decimal": fields.DecimalField,
         "text": fields.TextField,
+        "string": fields.TextField,
         "boolean": fields.BooleanField,
         "flag": fields.FlagField,
         "choice": fields.ChoiceField,

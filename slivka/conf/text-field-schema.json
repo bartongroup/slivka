@@ -7,7 +7,7 @@
     "value": {
       "type": "object",
       "properties": {
-        "type": {"enum": ["text"]},
+        "type": {"enum": ["text", "string"]},
         "required": {"type": "boolean"},
         "multiple": {"type": "boolean"},
         "min-length": {"type": "integer", "minimum": 0},
