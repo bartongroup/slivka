@@ -33,6 +33,12 @@ class DeclarativeFormMetaclass(type):
         attrs['fields'] = fields
         return super().__new__(mcs, name, bases, attrs)
 
+    def __iter__(cls):
+        return iter(cls.fields.values())
+
+    def __getitem__(cls, item):
+        return cls.fields[item]
+
 
 class BaseForm(metaclass=DeclarativeFormMetaclass):
     """
