@@ -224,7 +224,8 @@ class FormLoader(metaclass=Singleton):
             'description': field_dict.get('description'),
             'default': value_dict.get('default'),
             'required': value_dict.get('required', True),
-            'multiple': value_dict.get('multiple', False)
+            'multiple': value_dict.get('multiple', False),
+            'condition': value_dict.get('condition')
         }
         if field_type == 'int' or field_type == 'integer':
             return IntegerField(
