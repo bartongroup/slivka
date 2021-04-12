@@ -50,18 +50,42 @@ def test_validation_none_not_required():
 
 # validation with default provided
 
-def test_validate_none_with_default():
-    field = BooleanField('name', default=True)
-    assert_is(field.validate(None), True)
-    field = BooleanField('name', default=False)
-    assert_is(field.validate(None), None)
+
+class TestValidationWithDefault:
+    def test_default_unset(self):
+        field = BooleanField('name', required=False)
+        yield self.check_field, field, None, None
+        yield self.check_field, field, False, None
+        yield self.check_field, field, True, True
+        yield self.check_field, field, (), None
+
+    def test_default_none(self):
+        field = BooleanField('name', required=False, default=None)
+        yield self.check_field, field, None, None
+        yield self.check_field, field, False, None
+        yield self.check_field, field, True, True
+
+    def test_default_false(self):
+        field = BooleanField('name', required=False, default=False)
+        yield self.check_field, field, None, None
+        yield self.check_field, field, False, None
+        yield self.check_field, field, True, True
+        yield self.check_field, field, [], None
+
+    def test_default_true(self):
+        field = BooleanField('name', required=False, default=True)
+        yield self.check_field, field, None, True
+        yield self.check_field, field, False, None
+        yield self.check_field, field, True, True
+        yield self.check_field, field, {}, True
+        yield self.check_field, field, '', True
+
+    @staticmethod
+    def check_field(field, value, expected):
+        assert_is(field.validate(value), expected)
 
 
-def test_validate_empty_with_default():
-    field = BooleanField('name', default=True)
-    assert_is(field.validate({}), True)
-    assert_is(field.validate(''), True)
-
+# command line parameter conversion
 
 def test_true_to_cmd_parameter():
     field = BooleanField('name', required=False)
@@ -71,3 +95,8 @@ def test_true_to_cmd_parameter():
 def test_none_to_cmd_parameter():
     field = BooleanField('name', required=False)
     assert_is(field.to_cmd_parameter(None), None)
+
+
+def test_false_to_cmd_parameter():
+    field = BooleanField('name', required=False)
+    assert_is(field.to_cmd_parameter(False), None)
