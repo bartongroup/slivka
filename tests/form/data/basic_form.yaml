@@ -1,0 +1,19 @@
+alpha:
+  label: example label
+  description: example description
+  value:
+    type: int
+
+bravo:
+  label: example label
+  value:
+    type: int
+    required: no
+    multiple: no
+
+charlie:
+  label: example label
+  value:
+    type: int
+    required: yes
+    multiple: yes

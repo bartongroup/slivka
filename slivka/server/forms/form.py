@@ -161,7 +161,7 @@ class FormLoader(metaclass=Singleton):
         for service in slivka.settings.services.values():
             self.read_dict(service.name, service.form)
 
-    def read_dict(self, name: str, dictionary: dict) -> Type:
+    def read_dict(self, name: str, dictionary: dict) -> Type[BaseForm]:
         """Load form definition from dictionary.
 
         :param name: service name

@@ -1,0 +1,16 @@
+field:
+  label: text field
+  description: A text value
+  value:
+    type: text
+    min-length: 10
+    max-length: 20
+    default: default text
+    required: no
+    multiple: yes
+
+default-field:
+  label: def text
+  description: Default params text
+  value:
+    type: text

@@ -1,0 +1,14 @@
+field:
+  label: choice field
+  value:
+    type: choice
+    choices:
+      alpha: 1
+      beta: 2
+    default: alpha
+
+default-field:
+  label: def choice
+  value:
+    type: choice
+    choices: []

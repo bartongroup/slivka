@@ -1,0 +1,18 @@
+field:
+  label: float field
+  description: A decimal value
+  value:
+    type: float
+    min: 0.5
+    max: 5.1
+    default: 1.8
+    min-exclusive: no
+    max-exclusive: yes
+    required: no
+    multiple: yes
+
+default-field:
+  label: def float
+  description: Default parameters float
+  value:
+    type: float

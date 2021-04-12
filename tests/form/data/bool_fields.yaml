@@ -1,0 +1,12 @@
+field:
+  label: bool field
+  description: A bool value
+  value:
+    type: flag
+    default: false
+    required: no
+
+default-field:
+  label: def bool
+  value:
+    type: flag
