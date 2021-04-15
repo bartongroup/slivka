@@ -66,10 +66,11 @@ def test_saved_form_data():
 @nose.with_setup(setup_tempdir, teardown_tempdir)
 def test_file_saving():
     form = MyForm(MultiDict([
-        ('file', FileStorage(stream=io.BytesIO(b'hello\n'), content_type='text/plain'))
+        ('file',
+         FileStorage(stream=io.BytesIO(b'hello\n'), content_type='text/plain'))
     ]))
-    form.fields['file'].save_location = tempdir.name
-    with mock.patch('slivka.server.forms.file_validators.validate_file_content', return_value=True):
+    form['file'].save_location = tempdir.name
+    with mock.patch('slivka.utils.media_types.validate', return_value=True):
         request = form.save(database)
     with open(request['inputs']['file'], 'rb') as f:
         assert f.read() == b'hello\n'

@@ -1,6 +1,5 @@
 import contextlib
 import os.path
-from unittest import mock
 from unittest.mock import sentinel
 
 import mongomock
@@ -13,7 +12,6 @@ import slivka.db
 from slivka.db.documents import UploadedFile
 from slivka.server.forms.fields import FileField, ValidationError
 from slivka.server.forms.file_proxy import FileProxy
-from slivka.server.forms.file_validators import ValidatorDict
 
 
 def setup_module():
@@ -101,53 +99,33 @@ def test_to_cmd_parameter():
     assert_equal(field.to_cmd_parameter(wrapper), uploaded_file['path'])
 
 
-# @pytest.fixture("function")
-def setup_validators():
-    global _validators_patch, validators
-    _validators_patch = mock.patch.object(
-        slivka.server.forms.fields.validators,
-        'validators',
-        new=ValidatorDict()
-    )
-    validators = _validators_patch.start()
+class TestMediaTypeValidation:
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
-def teardown_validators():
-    _validators_patch.stop()
+    def setup(self):
+        pass
 
+    def teardown(self):
+        pass
 
-@with_setup(setup_validators, teardown_validators)
-def test_text_validation():
-    validators.add('text/plain')
-    field = FileField('name', media_type='text/plain')
-    path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
-    file = FileProxy(path=path)
-    field.validate(file)
-
-
-@with_setup(setup_validators, teardown_validators)
-def test_text_validation_fail():
-    validators.add('text/plain')
-    field = FileField('name', media_type='text/plain')
-    path = os.path.join(os.path.dirname(__file__), 'data', 'example.bin')
-    file = FileProxy(path=path)
-    with assert_raises(ValidationError):
+    def test_text(self):
+        field = FileField("name", media_type='text/plain')
+        file = FileProxy(path=os.path.join(self.data_dir, 'lipsum.txt'))
         field.validate(file)
 
+    def test_not_text(self):
+        field = FileField("name", media_type='text/plain')
+        file = FileProxy(path=os.path.join(self.data_dir, 'example.bin'))
+        with assert_raises(ValidationError):
+            field.validate(file)
 
-@with_setup(setup_validators, teardown_validators)
-def test_json_validation():
-    validators.add('application/json')
-    field = FileField('name', media_type="application/json")
-    path = os.path.join(os.path.dirname(__file__), 'data', 'example.json')
-    file = FileProxy(path=path)
-    field.validate(file)
-
-
-@with_setup(setup_validators, teardown_validators)
-def test_json_validation_fail():
-    validators.add('application/json')
-    field = FileField('name', media_type='application/json')
-    path = os.path.join(os.path.dirname(__file__), 'data', 'lipsum.txt')
-    file = FileProxy(path=path)
-    with assert_raises(ValidationError):
+    def test_json(self):
+        field = FileField('name', media_type='application/json')
+        file = FileProxy(path=os.path.join(self.data_dir, 'example.json'))
         field.validate(file)
+
+    def test_not_json(self):
+        field = FileField('name', media_type='application/json')
+        file = FileProxy(path=os.path.join(self.data_dir, 'lipsum.txt'))
+        with assert_raises(ValidationError):
+            field.validate(file)

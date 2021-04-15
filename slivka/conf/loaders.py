@@ -49,7 +49,6 @@ class SettingsLoaderV10:
             uploads_url_path=conf['UPLOADS_URL_PATH'],
             jobs_url_path=conf['JOBS_URL_PATH'],
             url_prefix=conf.get('URL_PREFIX'),
-            accepted_media_types=conf['ACCEPTED_MEDIA_TYPES'],
             slivka_queue_address=conf['SLIVKA_QUEUE_ADDR'],
             mongodb=conf.get('MONGODB') or conf.get('MONGODB_ADDR'),
             secret_key=conf.get('SECRET_KEY'),
@@ -106,7 +105,6 @@ class SettingsLoaderV11:
             uploads_url_path=conf['UPLOADS_URL_PATH'],
             jobs_url_path=conf['JOBS_URL_PATH'],
             url_prefix=conf.get('URL_PREFIX'),
-            accepted_media_types=conf.get('ACCEPTED_MEDIA_TYPES', []),
             slivka_queue_address=conf['SLIVKA_QUEUE_ADDR'],
             mongodb=conf.get('MONGODB') or conf.get('MONGODB_ADDR'),
             secret_key=conf.get('SECRET_KEY'),
@@ -185,7 +183,6 @@ class Settings:
     jobs_url_path = attr.ib()
     url_prefix = attr.ib()
 
-    accepted_media_types = attr.ib(type=list)
     slivka_queue_address = attr.ib()
     mongodb = attr.ib(converter=_mongodb_converter)
     services = attr.ib()
