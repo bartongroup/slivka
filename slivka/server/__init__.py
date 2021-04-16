@@ -11,9 +11,6 @@ except ImportError:
 import slivka
 
 
-_app = None
-
-
 class PrefixMiddleware:
     def __init__(self, wsgi_app, prefix=''):
         self.app = wsgi_app
@@ -31,22 +28,19 @@ def init():
 
 
 def create_app(prefix=None):
-    global _app
-    if _app is not None:
-        raise RuntimeError("Flask application already exists")
-    _app = flask.Flask('slivka', static_url_path='')
-    _app.config.update(
+    app = flask.Flask('slivka', static_url_path='')
+    app.config.update(
         UPLOADS_DIR=slivka.settings.uploads_dir
     )
     from . import api_routes
     from . import global_routes
-    _app.register_blueprint(api_routes.bp, url_prefix='/api')
-    _app.register_blueprint(api_routes.bp)
-    _app.register_blueprint(global_routes.bp)
+    app.register_blueprint(api_routes.bp, url_prefix='/api')
+    app.register_blueprint(api_routes.bp)
+    app.register_blueprint(global_routes.bp)
     prefix = prefix or slivka.settings.url_prefix
     if prefix is not None:
-        _app.wsgi_app = PrefixMiddleware(_app.wsgi_app, prefix)
-    return _app
+        app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix)
+    return app
 
 
 # noinspection PyPep8Naming
