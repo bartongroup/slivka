@@ -1,6 +1,7 @@
 import itertools
 import json
 import typing
+from abc import ABC
 from collections import OrderedDict
 from functools import partial
 from tempfile import mkstemp
@@ -16,14 +17,14 @@ from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
 __all__ = [
-    'BaseField',
-    'IntegerField',
-    'DecimalField',
-    'TextField',
-    'BooleanField',
-    'FlagField',
-    'ChoiceField',
-    'FileField',
+    'BaseField', 'ArrayFieldMixin',
+    'IntegerField', 'IntegerArrayField',
+    'DecimalField', 'DecimalArrayField',
+    'TextField', 'TextArrayField',
+    'BooleanField', 'BooleanArrayField',
+    'FlagField', 'FlagArrayField',
+    'ChoiceField', 'ChoiceArrayField',
+    'FileField', 'FileArrayField',
     'ValidationError'
 ]
 
@@ -202,6 +203,42 @@ class BaseField:
         return self.widget.render()
 
 
+class ArrayFieldMixin(BaseField, ABC):
+    def fetch_value(self, data: MultiDict, files: MultiDict):
+        """ Retrieves multiple values from the request data. """
+        return data.getlist(self.name)
+
+    def validate(self, value):
+        """ Runs validation for each value in the list. """
+        if value is None:
+            return super(ArrayFieldMixin, self).validate(None)
+        value = [val for val in value if val is not None]
+        if len(value) == 0:
+            return super(ArrayFieldMixin, self).validate(None)
+        return [super(ArrayFieldMixin, self).validate(val) for val in value]
+
+    def serialize_value(self, value):
+        """ Serializes each value in the list. """
+        if value is None:
+            return None
+        return [super(ArrayFieldMixin, self).serialize_value(val)
+                for val in value]
+
+    def _validate_default(self):
+        """ Checks the default value which is an array. """
+        if self.default is not None:
+            try:
+                for val in self.default:
+                    self.run_validation(val)
+            except ValidationError as e:
+                raise RuntimeError("Invalid default value") from e
+
+    def __json__(self):
+        js = super().__json__()
+        js['multiple'] = True
+        return js
+
+
 class IntegerField(BaseField):
     """ Represents a field that takes an integer value.
 
@@ -258,6 +295,10 @@ class IntegerField(BaseField):
         if self.min is not None: j['min'] = self.min
         if self.max is not None: j['max'] = self.max
         return j
+
+
+class IntegerArrayField(ArrayFieldMixin, IntegerField):
+    pass
 
 
 class DecimalField(BaseField):
@@ -330,6 +371,10 @@ class DecimalField(BaseField):
         return j
 
 
+class DecimalArrayField(ArrayFieldMixin, DecimalField):
+    pass
+
+
 class TextField(BaseField):
     """ Represents a field taking an text value.
 
@@ -384,6 +429,10 @@ class TextField(BaseField):
         return j
 
 
+class TextArrayField(ArrayFieldMixin, TextField):
+    pass
+
+
 class BooleanField(BaseField):
     """ Represents a field taking a boolean value.
 
@@ -421,7 +470,12 @@ class BooleanField(BaseField):
         return j
 
 
+class BooleanArrayField(ArrayFieldMixin, BooleanField):
+    pass
+
+
 FlagField = BooleanField
+FlagArrayField = BooleanArrayField
 """ An alias for the BooleanField """
 
 
@@ -483,6 +537,10 @@ class ChoiceField(BaseField):
         j['type'] = 'choice'
         j['choices'] = list(self.choices)
         return j
+
+
+class ChoiceArrayField(ArrayFieldMixin, ChoiceField):
+    pass
 
 
 class FileField(BaseField):
@@ -591,6 +649,10 @@ class FileField(BaseField):
             with open(fd, 'wb') as fp:
                 value.save_as(path=path, fp=fp)
         return value.path
+
+
+class FileArrayField(ArrayFieldMixin, FileField):
+    pass
 
 
 # Helper methods that are used for value validation.
