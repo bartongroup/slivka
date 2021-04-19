@@ -5,6 +5,7 @@ from abc import ABC
 from collections import OrderedDict
 from functools import partial
 from tempfile import mkstemp
+from typing import Union, List
 
 import pkg_resources
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -161,26 +162,18 @@ class BaseField:
         else:
             return True
 
-    def serialize_value(self, value):
-        if value is None:
-            return None
-        if self.multiple:
-            return [self.to_cmd_parameter(val) for val in value]
-        else:
-            return self.to_cmd_parameter(value)
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        """ Converts value to argument or list of arguments.
 
-    def to_cmd_parameter(self, value):
-        """ Converts the value to the command line parameter.
-
-        The returned value should be a string that can be inserted
-        into a command line argument directly.
-        By default, it returns the ``value`` directly, but
-        subclasses may implement different behaviour
+        This method is used to convert values to the command line
+        arguments just before saving them to the database.
+        By default, it returns the string representation of the
+        ``value``, but subclasses may implement different behaviour
 
         :param value: a value to be converted
-        :return: value converted to the cmd argument
+        :return: one or multiple command line arguments
         """
-        return value
+        return str(value) if value is not None else None
 
     def __json__(self):
         """ Json representation of the field as shown to the client. """
@@ -217,12 +210,16 @@ class ArrayFieldMixin(BaseField, ABC):
             return super(ArrayFieldMixin, self).validate(None)
         return [super(ArrayFieldMixin, self).validate(val) for val in value]
 
-    def serialize_value(self, value):
-        """ Serializes each value in the list. """
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        """ Converts each value in the list to cmd arg. """
         if value is None:
             return None
-        return [super(ArrayFieldMixin, self).serialize_value(val)
-                for val in value]
+        converted = (
+            super(ArrayFieldMixin, self).to_cmd_args(val)
+            for val in value
+        )
+        args = [val for val in converted if val is not None]
+        return args if len(args) > 0 else None
 
     def _check_default(self):
         """ Checks the default value which is an array. """
@@ -528,7 +525,7 @@ class ChoiceField(BaseField):
             )
         return value
 
-    def to_cmd_parameter(self, value):
+    def to_cmd_args(self, value):
         """ Converts value to the cmd argument using choices map"""
         return self.choices.get(value, value)
 
@@ -637,7 +634,7 @@ class FileField(BaseField):
         if self.extensions: j['extensions'] = self.extensions
         return j
 
-    def to_cmd_parameter(self, value: 'FileProxy'):
+    def to_cmd_args(self, value: 'FileProxy'):
         """ Converts FileProxy to cmd argument.
 
         The file is written to teh disk if not saved already

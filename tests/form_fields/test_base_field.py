@@ -75,27 +75,27 @@ def test_validate_with_default_value():
 
 def test_int_to_cmd_parameter():
     field = BaseField('myfield')
-    assert_equal(field.to_cmd_parameter(1), 1)
+    assert_equal(field.to_cmd_args(1), '1')
 
 
 def test_str_to_cmd_parameter():
     field = BaseField('myfield')
-    assert_equal(field.to_cmd_parameter('foo'), 'foo')
+    assert_equal(field.to_cmd_args('foo'), 'foo')
 
 
 def test_none_to_cmd_parameter():
     field = BaseField('myfield')
-    assert_is_none(field.to_cmd_parameter(None))
+    assert_is_none(field.to_cmd_args(None))
 
 
 def test_true_to_cmd_parameter():
     field = BaseField('myfield')
-    assert_true(bool(field.to_cmd_parameter(True)))
+    assert_true(bool(field.to_cmd_args(True)))
 
 
 def test_false_to_cmd_parameter():
     field = BaseField('myfield')
-    assert_false(bool(field.to_cmd_parameter(False)))
+    assert_false(bool(field.to_cmd_args(False)))
 
 
 def test_get_multiple_value_from_data():

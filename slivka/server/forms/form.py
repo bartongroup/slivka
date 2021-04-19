@@ -170,7 +170,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         inputs = {}
         for name, field in self.fields.items():
             value = self.cleaned_data[name]
-            inputs[name] = field.serialize_value(value)
+            inputs[name] = field.to_cmd_args(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
         return request

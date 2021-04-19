@@ -96,7 +96,7 @@ def test_posted_file():
 def test_to_cmd_parameter():
     field = FileField('name')
     wrapper = field.validate(uploaded_file['uuid'])
-    assert_equal(field.to_cmd_parameter(wrapper), uploaded_file['path'])
+    assert_equal(field.to_cmd_args(wrapper), uploaded_file['path'])
 
 
 class TestMediaTypeValidation:

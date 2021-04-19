@@ -4,6 +4,7 @@ from unittest import mock
 
 import mongomock
 import nose
+from nose.tools import assert_dict_equal
 from werkzeug.datastructures import MultiDict, FileStorage
 
 from slivka.server.forms.fields import *
@@ -11,7 +12,7 @@ from slivka.server.forms.form import BaseForm
 
 
 class MyForm(BaseForm):
-    ints_field = IntegerField('ints', required=False, multiple=True)
+    ints_field = IntegerArrayField('ints', required=False)
     dec_field = DecimalField('dec', required=False)
     choice_field = ChoiceField(
         'choice', choices=[('a', 'A'), ('b', 'B'), ('c', 'C')], required=False
@@ -53,13 +54,14 @@ def test_saved_form_data():
     ]))
     request = form.save(database)
     job = database[request.__collection__].find_one({'uuid': request.uuid})
-    assert job['inputs'] == {
-        'ints': [19, 20, 21],
-        'dec': 12.05,
+    expected = {
+        'ints': ['19', '20', '21'],
+        'dec': '12.05',
         'choice': 'A',
-        'flag': True,
+        'flag': 'True',
         'file': None
     }
+    assert_dict_equal(job['inputs'], expected)
 
 
 @nose.with_setup(setup_database)
