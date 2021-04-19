@@ -230,7 +230,7 @@ class ArrayFieldMixin(BaseField, ABC):
             try:
                 for val in self.default:
                     self.run_validation(val)
-            except ValidationError as e:
+            except (ValidationError, TypeError) as e:
                 raise RuntimeError("Invalid default value") from e
 
     def __json__(self):
