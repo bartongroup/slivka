@@ -139,7 +139,7 @@ class BaseField:
                     return None
             return [self.run_validation(v) for v in value]
 
-    def _validate_default(self):
+    def _check_default(self):
         """ Passes the default value through validation.
 
         It should be called at the end of `__init__` after all the
@@ -224,7 +224,7 @@ class ArrayFieldMixin(BaseField, ABC):
         return [super(ArrayFieldMixin, self).serialize_value(val)
                 for val in value]
 
-    def _validate_default(self):
+    def _check_default(self):
         """ Checks the default value which is an array. """
         if self.default is not None:
             try:
@@ -261,7 +261,7 @@ class IntegerField(BaseField):
             self.__validators.append(partial(_max_value_validator, max))
         if min is not None:
             self.__validators.append(partial(_min_value_validator, min))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('int-field-schema.json'))
 
@@ -333,7 +333,7 @@ class DecimalField(BaseField):
             validator = (_exclusive_min_value_validator
                          if min_exclusive else _min_value_validator)
             self.__validators.append(partial(validator, min))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('decimal-field-schema.json'))
 
@@ -400,7 +400,7 @@ class TextField(BaseField):
             self.__validators.append(partial(
                 _max_length_validator, max_length
             ))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('text-field-schema.json'))
 
@@ -446,7 +446,7 @@ class BooleanField(BaseField):
 
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('boolean-field-schema.json'))
 
@@ -500,7 +500,7 @@ class ChoiceField(BaseField):
             _choice_validator,
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('choice-field-schema.json'))
 
