@@ -9,11 +9,14 @@ bravo:
   value:
     type: int
     required: no
-    multiple: no
 
 charlie:
   label: example label
   value:
     type: int
     required: yes
-    multiple: yes
+
+delta:
+  label: example label
+  value:
+    type: int[]

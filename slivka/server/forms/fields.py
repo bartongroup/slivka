@@ -1,9 +1,11 @@
 import itertools
 import json
 import typing
+from abc import ABC
 from collections import OrderedDict
 from functools import partial
 from tempfile import mkstemp
+from typing import Union, List
 
 import pkg_resources
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -16,14 +18,14 @@ from .file_proxy import FileProxy, _get_file_from_uuid
 from .widgets import *
 
 __all__ = [
-    'BaseField',
-    'IntegerField',
-    'DecimalField',
-    'TextField',
-    'BooleanField',
-    'FlagField',
-    'ChoiceField',
-    'FileField',
+    'BaseField', 'ArrayFieldMixin',
+    'IntegerField', 'IntegerArrayField',
+    'DecimalField', 'DecimalArrayField',
+    'TextField', 'TextArrayField',
+    'BooleanField', 'BooleanArrayField',
+    'FlagField', 'FlagArrayField',
+    'ChoiceField', 'ChoiceArrayField',
+    'FileField', 'FileArrayField',
     'ValidationError'
 ]
 
@@ -61,14 +63,12 @@ class BaseField:
                  description='',
                  default=None,
                  required=True,
-                 multiple=False,
                  condition=None):
         self.name = name
         self.label = label
         self.description = description
         self.default = default
         self.required = required and default is None
-        self.multiple = multiple
         self.condition = (None if condition is None
                           else expression_parser.Expression(condition))
         self._widget = None
@@ -87,10 +87,7 @@ class BaseField:
         :param files: request multipart-POST files
         :return: retrieved raw value
         """
-        if self.multiple:
-            return data.getlist(self.name)
-        else:
-            return data.get(self.name)
+        return data.get(self.name)
 
     def run_validation(self, value):
         """ Validates the value and converts to Python value.
@@ -125,20 +122,12 @@ class BaseField:
         :return: validated value
         :raise ValidationError: provided value is not valid
         """
-        if not self.multiple:
-            value = self.run_validation(value)
-            if value is None and self.required:
-                raise ValidationError("Field is required", 'required')
-            return value
-        else:
-            if value is None or len(value) == 0:
-                if self.required:
-                    raise ValidationError("Field is required", 'required')
-                else:
-                    return None
-            return [self.run_validation(v) for v in value]
+        value = self.run_validation(value)
+        if value is None and self.required:
+            raise ValidationError("Field is required", 'required')
+        return value
 
-    def _validate_default(self):
+    def _check_default(self):
         """ Passes the default value through validation.
 
         It should be called at the end of `__init__` after all the
@@ -160,26 +149,18 @@ class BaseField:
         else:
             return True
 
-    def serialize_value(self, value):
-        if value is None:
-            return None
-        if self.multiple:
-            return [self.to_cmd_parameter(val) for val in value]
-        else:
-            return self.to_cmd_parameter(value)
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        """ Converts value to argument or list of arguments.
 
-    def to_cmd_parameter(self, value):
-        """ Converts the value to the command line parameter.
-
-        The returned value should be a string that can be inserted
-        into a command line argument directly.
-        By default, it returns the ``value`` directly, but
-        subclasses may implement different behaviour
+        This method is used to convert values to the command line
+        arguments just before saving them to the database.
+        By default, it returns the string representation of the
+        ``value``, but subclasses may implement different behaviour
 
         :param value: a value to be converted
-        :return: value converted to the cmd argument
+        :return: one or multiple command line arguments
         """
-        return value
+        return str(value) if value is not None else None
 
     def __json__(self):
         """ Json representation of the field as shown to the client. """
@@ -189,7 +170,7 @@ class BaseField:
             'label': self.label,
             'description': self.description or "",
             'required': self.required,
-            'multiple': self.multiple,
+            'multiple': False,
             'default': self.default
         }
 
@@ -200,6 +181,46 @@ class BaseField:
     @property
     def input_tag(self):
         return self.widget.render()
+
+
+class ArrayFieldMixin(BaseField, ABC):
+    def fetch_value(self, data: MultiDict, files: MultiDict):
+        """ Retrieves multiple values from the request data. """
+        return data.getlist(self.name) or None
+
+    def validate(self, value):
+        """ Runs validation for each value in the list. """
+        if value is None:
+            return super(ArrayFieldMixin, self).validate(None)
+        value = [val for val in value if val is not None]
+        if len(value) == 0:
+            return super(ArrayFieldMixin, self).validate(None)
+        return [super(ArrayFieldMixin, self).validate(val) for val in value]
+
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        """ Converts each value in the list to cmd arg. """
+        if value is None:
+            return None
+        converted = (
+            super(ArrayFieldMixin, self).to_cmd_args(val)
+            for val in value
+        )
+        args = [val for val in converted if val is not None]
+        return args if len(args) > 0 else None
+
+    def _check_default(self):
+        """ Checks the default value which is an array. """
+        if self.default is not None:
+            try:
+                for val in self.default:
+                    self.run_validation(val)
+            except (ValidationError, TypeError) as e:
+                raise RuntimeError("Invalid default value") from e
+
+    def __json__(self):
+        js = super().__json__()
+        js['multiple'] = True
+        return js
 
 
 class IntegerField(BaseField):
@@ -224,7 +245,7 @@ class IntegerField(BaseField):
             self.__validators.append(partial(_max_value_validator, max))
         if min is not None:
             self.__validators.append(partial(_min_value_validator, min))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('int-field-schema.json'))
 
@@ -260,6 +281,10 @@ class IntegerField(BaseField):
         return j
 
 
+class IntegerArrayField(ArrayFieldMixin, IntegerField):
+    pass
+
+
 class DecimalField(BaseField):
     """ Represents a field that takes a floating point number.
 
@@ -292,7 +317,7 @@ class DecimalField(BaseField):
             validator = (_exclusive_min_value_validator
                          if min_exclusive else _min_value_validator)
             self.__validators.append(partial(validator, min))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('decimal-field-schema.json'))
 
@@ -330,6 +355,10 @@ class DecimalField(BaseField):
         return j
 
 
+class DecimalArrayField(ArrayFieldMixin, DecimalField):
+    pass
+
+
 class TextField(BaseField):
     """ Represents a field taking an text value.
 
@@ -355,7 +384,7 @@ class TextField(BaseField):
             self.__validators.append(partial(
                 _max_length_validator, max_length
             ))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('text-field-schema.json'))
 
@@ -384,6 +413,10 @@ class TextField(BaseField):
         return j
 
 
+class TextArrayField(ArrayFieldMixin, TextField):
+    pass
+
+
 class BooleanField(BaseField):
     """ Represents a field taking a boolean value.
 
@@ -397,7 +430,7 @@ class BooleanField(BaseField):
 
     def __init__(self, name, **kwargs):
         super().__init__(name, **kwargs)
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('boolean-field-schema.json'))
 
@@ -415,13 +448,23 @@ class BooleanField(BaseField):
             value = False
         return True if value else None
 
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        if isinstance(value, str) and value.lower() in self.FALSE_STR:
+            value = False
+        return 'true' if value else None
+
     def __json__(self):
         j = super().__json__()
         j['type'] = 'boolean'
         return j
 
 
+class BooleanArrayField(ArrayFieldMixin, BooleanField):
+    pass
+
+
 FlagField = BooleanField
+FlagArrayField = BooleanArrayField
 """ An alias for the BooleanField """
 
 
@@ -446,7 +489,7 @@ class ChoiceField(BaseField):
             _choice_validator,
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
-        self._validate_default()
+        self._check_default()
 
     schema = class_property(lambda cls: _get_schema('choice-field-schema.json'))
 
@@ -455,7 +498,7 @@ class ChoiceField(BaseField):
         if self._widget is None:
             self._widget = SelectWidget(self.name, options=self.choices)
             self._widget['required'] = self.required
-            self._widget['multiple'] = self.multiple
+            self._widget['multiple'] = isinstance(self, ArrayFieldMixin)
         return self._widget
 
     def run_validation(self, value):
@@ -474,7 +517,7 @@ class ChoiceField(BaseField):
             )
         return value
 
-    def to_cmd_parameter(self, value):
+    def to_cmd_args(self, value):
         """ Converts value to the cmd argument using choices map"""
         return self.choices.get(value, value)
 
@@ -483,6 +526,10 @@ class ChoiceField(BaseField):
         j['type'] = 'choice'
         j['choices'] = list(self.choices)
         return j
+
+
+class ChoiceArrayField(ArrayFieldMixin, ChoiceField):
+    pass
 
 
 class FileField(BaseField):
@@ -522,10 +569,7 @@ class FileField(BaseField):
     save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
-        if self.multiple:
-            return files.getlist(self.name) + data.getlist(self.name)
-        else:
-            return files.get(self.name) or data.get(self.name)
+        return files.get(self.name) or data.get(self.name)
 
     @property
     def widget(self):
@@ -579,7 +623,7 @@ class FileField(BaseField):
         if self.extensions: j['extensions'] = self.extensions
         return j
 
-    def to_cmd_parameter(self, value: 'FileProxy'):
+    def to_cmd_args(self, value: 'FileProxy'):
         """ Converts FileProxy to cmd argument.
 
         The file is written to teh disk if not saved already
@@ -591,6 +635,11 @@ class FileField(BaseField):
             with open(fd, 'wb') as fp:
                 value.save_as(path=path, fp=fp)
         return value.path
+
+
+class FileArrayField(ArrayFieldMixin, FileField):
+    def fetch_value(self, data: MultiDict, files: MultiDict):
+        return (files.getlist(self.name) + data.getlist(self.name)) or None
 
 
 # Helper methods that are used for value validation.

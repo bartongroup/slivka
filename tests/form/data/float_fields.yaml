@@ -9,10 +9,14 @@ field:
     min-exclusive: no
     max-exclusive: yes
     required: no
-    multiple: yes
 
 default-field:
   label: def float
   description: Default parameters float
   value:
     type: float
+
+array-field:
+  label: array field
+  value:
+    type: float[]

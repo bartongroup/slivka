@@ -7,9 +7,7 @@ from nose.tools import (
 )
 
 from slivka.server.forms import FormLoader
-from slivka.server.forms.fields import DecimalField, TextField, FlagField, \
-    ChoiceField, FileField
-from slivka.server.forms.fields import IntegerField
+from slivka.server.forms.fields import *
 
 curdir = os.path.dirname(__file__)
 
@@ -23,7 +21,7 @@ class TestGeneralFieldLoader:
 
     def test_fields_present(self):
         names = [field.name for field in self.form.fields.values()]
-        expected = ['alpha', 'bravo', 'charlie']
+        expected = ['alpha', 'bravo', 'charlie', 'delta']
         assert_sequence_equal(names, expected)
 
     def test_required_unset(self):
@@ -35,15 +33,8 @@ class TestGeneralFieldLoader:
     def test_required_set_true(self):
         assert_true(self.form['charlie'].required)
 
-    def test_multiple_unset(self):
-        assert_false(self.form['alpha'].multiple)
-
-    def test_multiple_set_false(self):
-        assert_false(self.form['bravo'].multiple)
-
-    def test_multiple_set_true(self):
-        assert_true(self.form['charlie'].multiple)
-
+    def test_array_type(self):
+        assert_is_instance(self.form['delta'], ArrayFieldMixin)
 
 
 class TestIntFieldLoader:
@@ -56,6 +47,12 @@ class TestIntFieldLoader:
 
     def test_type(self):
         assert_is_instance(self.field, IntegerField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, IntegerArrayField)
+        assert_is_instance(field, IntegerField)
+        assert_is_instance(field, ArrayFieldMixin)
 
     def test_label(self):
         assert_equal(self.field.label, 'int field')
@@ -75,9 +72,6 @@ class TestIntFieldLoader:
     def test_required(self):
         assert_false(self.field.required)
 
-    def test_multiple(self):
-        assert_true(self.field.multiple)
-
     def test_default_min(self):
         assert_is_none(self.default_field.min)
 
@@ -86,9 +80,6 @@ class TestIntFieldLoader:
 
     def test_default_default(self):
         assert_is_none(self.default_field.default)
-
-    def test_default_multiple(self):
-        assert_false(self.default_field.multiple)
 
     def test_default_required(self):
         assert_true(self.default_field.required)
@@ -104,6 +95,12 @@ class TestFloatFieldLoader:
 
     def test_type(self):
         assert_is_instance(self.field, DecimalField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, DecimalArrayField)
+        assert_is_instance(field, DecimalField)
+        assert_is_instance(field, ArrayFieldMixin)
 
     def test_min(self):
         assert_equal(self.field.min, 0.5)
@@ -122,9 +119,6 @@ class TestFloatFieldLoader:
 
     def test_required(self):
         assert_false(self.field.required)
-
-    def test_multiple(self):
-        assert_true(self.field.multiple)
 
     def test_default_min(self):
         assert_is_none(self.default_field.min)
@@ -149,6 +143,12 @@ class TestTextFieldLoader:
 
     def test_type(self):
         assert_is_instance(self.field, TextField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, TextArrayField)
+        assert_is_instance(field, TextField)
+        assert_is_instance(field, ArrayFieldMixin)
 
     def test_min_length(self):
         assert_equal(self.field.min_length, 10)
@@ -177,6 +177,12 @@ class TestBooleanFieldLoader:
     def test_type(self):
         assert_is_instance(self.field, FlagField)
 
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, BooleanArrayField)
+        assert_is_instance(field, BooleanField)
+        assert_is_instance(field, ArrayFieldMixin)
+
     def test_default(self):
         assert_false(self.field.default)
 
@@ -194,6 +200,12 @@ class TestChoiceFieldLoader:
 
     def test_type(self):
         assert_is_instance(self.field, ChoiceField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, ChoiceArrayField)
+        assert_is_instance(field, ChoiceField)
+        assert_is_instance(field, ArrayFieldMixin)
 
     def test_choices(self):
         expected = {'alpha': 1, 'beta': 2}
@@ -216,6 +228,12 @@ class TestFileFieldLoader:
 
     def test_type(self):
         assert_is_instance(self.field, FileField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, FileArrayField)
+        assert_is_instance(field, FileField)
+        assert_is_instance(field, ArrayFieldMixin)
 
     def test_media_type(self):
         assert_equal(self.field.media_type, "image/*")

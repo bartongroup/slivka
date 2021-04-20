@@ -10,3 +10,8 @@ default-field:
   label: def bool
   value:
     type: flag
+
+array-field:
+  label: array
+  value:
+    type: flag[]

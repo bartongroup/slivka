@@ -7,10 +7,14 @@ field:
     max-length: 20
     default: default text
     required: no
-    multiple: yes
 
 default-field:
   label: def text
   description: Default params text
   value:
     type: text
+
+array-field:
+  label: array
+  value:
+    type: text[]

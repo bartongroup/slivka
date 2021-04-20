@@ -1,4 +1,5 @@
 import collections
+import warnings
 from collections import OrderedDict, ChainMap
 from importlib import import_module
 from typing import Optional
@@ -170,10 +171,34 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         inputs = {}
         for name, field in self.fields.items():
             value = self.cleaned_data[name]
-            inputs[name] = field.serialize_value(value)
+            inputs[name] = field.to_cmd_args(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
         return request
+
+
+FIELD_TYPES = {
+    'int': IntegerField,
+    'int[]': IntegerArrayField,
+    'integer': IntegerField,
+    'integer[]': IntegerArrayField,
+    'float': DecimalField,
+    'float[]': DecimalArrayField,
+    'decimal': DecimalField,
+    'decimal[]': DecimalArrayField,
+    'text': TextField,
+    'text[]': TextArrayField,
+    'string': TextField,
+    'string[]': TextArrayField,
+    'boolean': BooleanField,
+    'boolean[]': BooleanArrayField,
+    'flag': FlagField,
+    'flag[]': FlagArrayField,
+    'choice': ChoiceField,
+    'choice[]': ChoiceArrayField,
+    'file': FileField,
+    'file[]': FileArrayField
+}
 
 
 class FormLoader(metaclass=Singleton):
@@ -186,6 +211,7 @@ class FormLoader(metaclass=Singleton):
 
     def __init__(self):
         self._forms = {}
+        self.extra_types = {}
 
     def read_settings(self):
         """Load forms from global settings."""
@@ -213,65 +239,83 @@ class FormLoader(metaclass=Singleton):
         """ Retrieve form class by service name. """
         return self._forms[item]
 
-    @staticmethod
-    def _build_field(name, field_dict) -> BaseField:
+    def _build_field(self, name, field_dict) -> BaseField:
         """ Constructs a field from the configuration """
         value_dict = field_dict['value']
         field_type = value_dict['type']
-        common_kwargs = {
+        if value_dict.get('multiple') and not field_type.endswith('[]'):
+            field_type += '[]'
+            warnings.warn(
+                "Using \"multiple\" field parameter is deprecated, "
+                "set %s as field type instead." % field_type,
+                RuntimeWarning
+            )
+        kwargs = {
             'name': name,
             'label': field_dict['label'],
             'description': field_dict.get('description'),
             'default': value_dict.get('default'),
             'required': value_dict.get('required', True),
-            'multiple': value_dict.get('multiple', False),
             'condition': value_dict.get('condition')
         }
-        if field_type == 'int' or field_type == 'integer':
-            return IntegerField(
-                **common_kwargs,
+        cls = FIELD_TYPES.get(field_type)
+        if issubclass(cls, IntegerField):
+            return cls(
+                **kwargs,
                 min=value_dict.get('min'),
                 max=value_dict.get('max')
             )
-        elif field_type == 'float' or field_type == 'decimal':
-            return DecimalField(
-                **common_kwargs,
+        elif issubclass(cls, DecimalField):
+            return cls(
+                **kwargs,
                 min=value_dict.get('min'),
                 max=value_dict.get('max'),
                 min_exclusive=value_dict.get('min-exclusive', False),
                 max_exclusive=value_dict.get('max-exclusive', False)
             )
-        elif field_type == 'text' or field_type == 'string':
-            return TextField(
-                **common_kwargs,
+        elif issubclass(cls, TextField):
+            return cls(
+                **kwargs,
                 min_length=value_dict.get('min-length'),
                 max_length=value_dict.get('max-length')
             )
-        elif field_type == 'boolean' or field_type == 'flag':
-            return FlagField(
-                **common_kwargs
+        elif issubclass(cls, FlagField):
+            return cls(
+                **kwargs
             )
-        elif field_type == 'choice':
-            return ChoiceField(
-                **common_kwargs,
+        elif issubclass(cls, ChoiceField):
+            return cls(
+                **kwargs,
                 choices=value_dict.get('choices')
             )
-        elif field_type == 'file':
-            return FileField(
-                **common_kwargs,
+        elif issubclass(cls, FileField):
+            return cls(
+                **kwargs,
                 extensions=value_dict.get('extensions', ()),
                 media_type=value_dict.get('media-type'),
                 media_type_parameters=value_dict.get('media-type-parameters')
             )
-        else:
-            # if ``field_type`` is not a recognised type, try importing the
-            # custom field using the type as a classpath.
-            kwargs = common_kwargs
+        elif cls is None:
             kwargs.update(value_dict)
             kwargs.pop("type")
+            kwargs.pop("multiple", None)
             try:
-                mod, attr = field_type.rsplit('.', 1)
-                cls = getattr(import_module(mod), attr)
+                cls = self._get_custom_field_class(field_type)
                 return cls(**kwargs)
             except (ValueError, AttributeError):
                 raise ValueError('Invalid field type "%r"' % field_type)
+        else:
+            raise RuntimeError('Invalid field type "%r"' % field_type)
+
+    def _get_custom_field_class(self, field_type) -> Type[BaseField]:
+        """ Imports class that custom type points to. """
+        cls = self.extra_types.get(field_type)
+        if cls is None:
+            if field_type.endswith('[]'):
+                base = self._get_custom_field_class(field_type[:-2])
+                cls = type(base.__name__ + '[]', (ArrayFieldMixin, base), {})
+            else:
+                mod, attr = field_type.rsplit('.', 1)
+                cls = getattr(import_module(mod), attr)
+            self.extra_types[field_type] = cls
+        return cls

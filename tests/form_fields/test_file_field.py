@@ -10,7 +10,8 @@ from werkzeug.datastructures import MultiDict, FileStorage
 
 import slivka.db
 from slivka.db.documents import UploadedFile
-from slivka.server.forms.fields import FileField, ValidationError
+from slivka.server.forms.fields import FileField, ValidationError, \
+    FileArrayField
 from slivka.server.forms.file_proxy import FileProxy
 
 
@@ -47,7 +48,7 @@ def test_value_from_data():
 
 
 def test_multiple_files():
-    field = FileField('test', multiple=True)
+    field = FileArrayField('test')
     data = MultiDict([('test', 'c0ffee'), ('test', 'f00ba4')])
     assert_list_equal(
         field.fetch_value(data, MultiDict()),
@@ -56,7 +57,7 @@ def test_multiple_files():
 
 
 def test_multiple_fields_mixed():
-    field = FileField('test', multiple=True)
+    field = FileArrayField('test')
     data = MultiDict([('test', 'c0ffee'), ('test', 'f00ba4')])
     files = MultiDict({'test': sentinel.file})
     assert_set_equal(
@@ -96,7 +97,7 @@ def test_posted_file():
 def test_to_cmd_parameter():
     field = FileField('name')
     wrapper = field.validate(uploaded_file['uuid'])
-    assert_equal(field.to_cmd_parameter(wrapper), uploaded_file['path'])
+    assert_equal(field.to_cmd_args(wrapper), uploaded_file['path'])
 
 
 class TestMediaTypeValidation:

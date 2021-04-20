@@ -7,7 +7,7 @@
     "value": {
       "type": "object",
       "properties": {
-        "type": {"enum": ["choice"]},
+        "type": {"enum": ["choice", "choice[]"]},
         "required": {"type": "boolean"},
         "multiple": {"type": "boolean"},
         "default": {"type": "string"},

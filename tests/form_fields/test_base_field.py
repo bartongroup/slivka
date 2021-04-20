@@ -1,132 +1,175 @@
 from nose.tools import assert_equal, raises, assert_is_none, assert_true, \
-    assert_false, assert_list_equal
+    assert_false, assert_list_equal, assert_raises
 from werkzeug.datastructures import MultiDict
 
-from slivka.server.forms.fields import BaseField, ValidationError
+from slivka.server.forms.fields import BaseField, ValidationError, \
+    ArrayFieldMixin
 
 
-class BaseFieldStub(BaseField):
+class FieldStub(BaseField):
     def run_validation(self, value):
         value = super().run_validation(value)
         if value == 'FAIL':
-            raise ValidationError("MESSAGE", 'code')
+            raise ValidationError("Invalid value 'FAIL'", 'invalid')
+        if value == 'CHANGEME':
+            return 'CHANGED'
         return value
 
 
-def test_field_name():
-    field = BaseField('foobar')
-    assert_equal(field.name, 'foobar')
+class ArrayFieldStub(ArrayFieldMixin, FieldStub):
+    pass
 
 
-def test_field_description():
-    field = BaseField('name', description='example description')
-    assert_equal(field.description, 'example description')
+class TestBasicProperties:
+    def test_name(self):
+        field = BaseField('foobar')
+        assert_equal(field.name, 'foobar')
+
+    def test_description(self):
+        field = BaseField('name', description='example description')
+        assert_equal(field.description, 'example description')
+
+    def test_default_required(self):
+        field = BaseField('name')
+        assert_true(field.required)
+
+    def test_required(self):
+        field = BaseField('name', required=True)
+        assert_true(field.required)
+
+    def test_optional(self):
+        field = BaseField('name', required=False)
+        assert_false(field.required)
+
+    def test_default(self):
+        field = BaseField('name', default='default-value')
+        assert_equal(field.default, 'default-value')
+        assert_false(field.required)
 
 
-def test_get_value_from_data():
-    field = BaseField('myfield')
-    data = MultiDict({
-        'alpha': 1,
-        'beta': -0.53,
-        'myfield': 'myvalue',
-        'gamma': 'foobar'
-    })
-    assert_equal(field.fetch_value(data, {}), 'myvalue')
+class TestDataFetch:
+    def setup(self):
+        self.field = FieldStub('test')
+        self.arr_field = ArrayFieldStub('test')
+
+    def test_fetch_value(self):
+        data = MultiDict({
+            'alpha': 1,
+            'bravo': -0.53,
+            'test': 'field-value',
+        })
+        assert_equal(self.field.fetch_value(data, MultiDict()), 'field-value')
+
+    def test_fetch_missing(self):
+        data = MultiDict({
+            'alpha': 1,
+            'bravo': -0.53,
+        })
+        assert_is_none(self.field.fetch_value(data, MultiDict()))
+
+    def test_fetch_array(self):
+        data = MultiDict([('test', 'a'), ('test', 'b')])
+        assert_list_equal(
+            self.arr_field.fetch_value(data, MultiDict()), ['a', 'b'])
+
+    def test_fetch_array_missing(self):
+        assert_is_none(
+            self.arr_field.fetch_value(MultiDict(), MultiDict()), [])
 
 
-def test_get_missing_value_from_data():
-    field = BaseField('myfield')
-    data = MultiDict({
-        'alpha': 1,
-        'beta': -0.53,
-        'gamma': 'foobar'
-    })
-    assert_is_none(field.fetch_value(data, {}))
+class TestValidation:
+    def setup(self):
+        self.field = FieldStub('name')
+        self.opt_field = FieldStub('name', required=False)
+        self.def_field = FieldStub('name', default=0, required=True)
+
+    def test_valid_value(self):
+        assert_equal(self.field.validate('value'), 'value')
+
+    def test_value_changed(self):
+        assert_equal(self.field.validate('CHANGEME'), 'CHANGED')
+
+    @raises(ValidationError)
+    def test_invalid_value(self):
+        self.field.validate('FAIL')
+
+    @raises(ValidationError)
+    def test_missing_required_value(self):
+        self.field.validate(None)
+
+    def test_missing_optional_value(self):
+        assert_is_none(self.opt_field.validate(None))
+        assert_is_none(self.opt_field.validate(''))
+
+    def test_required_with_default(self):
+        assert_equal(self.def_field.validate(None), None)
+        assert_equal(self.def_field.validate('value'), 'value')
 
 
-def test_validate_valid_value():
-    field = BaseFieldStub('name')
-    assert_equal(field.validate('value'), 'value')
+class TestArrayValidation:
+    def setup(self):
+        self.field = ArrayFieldStub('name')
+        self.opt_field = ArrayFieldStub('name', required=False)
+
+    def test_valid_values(self):
+        values = self.field.validate(['foo', 'bar'])
+        assert_list_equal(values, ['foo', 'bar'])
+
+    def test_no_values(self):
+        with assert_raises(ValidationError) as ctx:
+            self.field.validate([])
+        assert_equal(ctx.exception.code, 'required')
+
+    def test_list_of_nulls(self):
+        with assert_raises(ValidationError) as ctx:
+            self.field.validate([None, None])
+        assert_equal(ctx.exception.code, 'required')
+
+    def test_null_skipped(self):
+        assert_list_equal(self.field.validate([None, 'alpha']), ['alpha'])
+
+    def test_value_invalid(self):
+        with assert_raises(ValidationError) as ctx:
+            self.field.validate(['val', 'FAIL'])
+        assert_equal(ctx.exception.code, 'invalid')
+
+    def test_value_converted(self):
+        values = self.field.validate(['CHANGEME', 'bravo'])
+        assert_list_equal(values, ['CHANGED', 'bravo'])
+
+    def test_opt_no_values(self):
+        values = self.opt_field.validate([])
+        assert_is_none(values)
+
+    def test_opt_null(self):
+        values = self.opt_field.validate(None)
+        assert_is_none(values)
 
 
-@raises(ValidationError)
-def test_validate_invalid_value():
-    field = BaseFieldStub('name')
-    field.validate('FAIL')
+class TestCmdArg:
+    def setup(self):
+        self.field = FieldStub('test')
+        self.array_field = ArrayFieldStub('test')
 
+    def test_single_arg(self):
+        yield self.check_cmd_arg, 1, '1'
+        yield self.check_cmd_arg, 'foo', 'foo'
+        yield self.check_cmd_arg, None, None
+        yield self.check_cmd_arg, True, 'True'
 
-@raises(ValidationError)
-def test_validate_missing_required_value():
-    field = BaseFieldStub('name')
-    field.validate(None)
+    def test_arg_array(self):
+        yield self.check_cmd_arg_array, [1, 2, 3], ['1', '2', '3']
+        yield self.check_cmd_arg_array, ['1', 2], ['1', '2']
+        yield (self.check_cmd_arg_array,
+               ['alpha', None, 'bravo'], ['alpha', 'bravo'])
+        yield self.check_null, [None, None]
+        yield self.check_null, None
 
+    def check_cmd_arg(self, value, expected):
+        assert_equal(self.field.to_cmd_args(value), expected)
 
-def test_validate_missing_not_required_value():
-    field = BaseFieldStub('name', required=False)
-    assert_is_none(field.validate(None))
-    assert_is_none(field.validate(''))
+    def check_cmd_arg_array(self, value, expected):
+        assert_list_equal(self.array_field.to_cmd_args(value), expected)
 
-
-def test_validate_with_default_value():
-    field = BaseFieldStub('name', default='value')
-    assert_equal(field.validate(None), None)
-    assert_equal(field.validate('other value'), 'other value')
-
-
-def test_int_to_cmd_parameter():
-    field = BaseField('myfield')
-    assert_equal(field.to_cmd_parameter(1), 1)
-
-
-def test_str_to_cmd_parameter():
-    field = BaseField('myfield')
-    assert_equal(field.to_cmd_parameter('foo'), 'foo')
-
-
-def test_none_to_cmd_parameter():
-    field = BaseField('myfield')
-    assert_is_none(field.to_cmd_parameter(None))
-
-
-def test_true_to_cmd_parameter():
-    field = BaseField('myfield')
-    assert_true(bool(field.to_cmd_parameter(True)))
-
-
-def test_false_to_cmd_parameter():
-    field = BaseField('myfield')
-    assert_false(bool(field.to_cmd_parameter(False)))
-
-
-def test_get_multiple_value_from_data():
-    field = BaseField('name', multiple=True)
-    data = MultiDict([('name', 'a'), ('name', 'b')])
-    assert_list_equal(field.fetch_value(data, MultiDict()), ['a', 'b'])
-
-
-def test_multiple_missing_value_from_data():
-    field = BaseField('name', multiple=True)
-    assert_list_equal(field.fetch_value(MultiDict(), MultiDict()), [])
-
-
-def test_validate_multiple_valid_values():
-    field = BaseFieldStub('name', multiple=True)
-    assert_list_equal(field.validate(['foo', 'bar']), ['foo', 'bar'])
-
-
-@raises(ValidationError)
-def test_validate_multiple_no_values():
-    field = BaseFieldStub('name', multiple=True)
-    field.validate([])
-
-
-def test_validate_multiple_with_default():
-    field = BaseFieldStub('name', multiple=True, default='default')
-    assert_equal(field.validate(None), None)
-    assert_equal(field.validate([]), None)
-
-
-@raises(ValidationError)
-def test_validate_multiple_containing_invalid():
-    field = BaseFieldStub('name', multiple=True)
-    field.validate(['x', 'y', 'FAIL', 'z'])
+    def check_null(self, value):
+        assert_is_none(self.array_field.to_cmd_args(value))

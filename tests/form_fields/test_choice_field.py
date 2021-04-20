@@ -3,7 +3,8 @@ import math
 import nose
 from nose.tools import assert_equal, assert_list_equal, assert_is_none
 
-from slivka.server.forms.fields import ChoiceField, ValidationError
+from slivka.server.forms.fields import ChoiceField, ValidationError, \
+    ChoiceArrayField
 
 CHOICES = [
     ('foo', 'FOO'),
@@ -99,7 +100,7 @@ def test_invalid_value_with_default():
 
 
 def test_multiple_valid_values():
-    field = ChoiceField('name', choices=CHOICES, multiple=True)
+    field = ChoiceArrayField('name', choices=CHOICES)
     assert_list_equal(
         field.validate(['foo', 'BAR']), ['foo', 'BAR']
     )
@@ -109,15 +110,15 @@ def test_multiple_valid_values():
 
 def test_to_cmd_parameter():
     field = ChoiceField('name', choices=CHOICES)
-    assert_equal(field.to_cmd_parameter('foo'), 'FOO')
-    assert_equal(field.to_cmd_parameter('BAZ'), 'BAZ')
-    assert_equal(field.to_cmd_parameter('missing'), 'missing')
-    assert_is_none(field.to_cmd_parameter('void'))
+    assert_equal(field.to_cmd_args('foo'), 'FOO')
+    assert_equal(field.to_cmd_args('BAZ'), 'BAZ')
+    assert_equal(field.to_cmd_args('missing'), 'missing')
+    assert_is_none(field.to_cmd_args('void'))
 
 
 def test_serialize_multiple():
-    field = ChoiceField('name', choices=CHOICES, multiple=True)
+    field = ChoiceArrayField('name', choices=CHOICES)
     assert_list_equal(
-        field.serialize_value(['foo', 'BAR', 'baz']),
+        field.to_cmd_args(['foo', 'BAR', 'baz']),
         ['FOO', 'BAR', 'BAZ']
     )
