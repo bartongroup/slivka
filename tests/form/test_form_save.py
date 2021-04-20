@@ -58,7 +58,7 @@ def test_saved_form_data():
         'ints': ['19', '20', '21'],
         'dec': '12.05',
         'choice': 'A',
-        'flag': 'True',
+        'flag': 'true',
         'file': None
     }
     assert_dict_equal(job['inputs'], expected)

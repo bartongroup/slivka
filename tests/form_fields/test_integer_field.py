@@ -1,6 +1,7 @@
 from nose.tools import raises, assert_equal, assert_is, assert_list_equal
 
-from slivka.server.forms.fields import IntegerField, ValidationError
+from slivka.server.forms.fields import IntegerField, ValidationError, \
+    IntegerArrayField
 
 
 class TestValue:
@@ -107,12 +108,12 @@ class TestDefault:
 # multiple values validation
 
 def test_multiple_valid_values():
-    field = IntegerField('name', multiple=True)
+    field = IntegerArrayField('name')
     assert_list_equal(field.validate([1, 2, 4, 8]), [1, 2, 4, 8])
     assert_list_equal(field.validate(['1', 4, '6']), [1, 4, 6])
 
 
 @raises(ValidationError)
 def test_multiple_invalid_value():
-    field = IntegerField('name', multiple=True)
+    field = IntegerArrayField('name')
     field.validate([4, 5, 'a'])

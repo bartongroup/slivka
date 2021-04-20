@@ -11,3 +11,8 @@ default-field:
   label: def file
   value:
     type: file
+
+array-field:
+  label: array
+  value:
+    type: file[]

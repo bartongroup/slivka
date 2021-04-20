@@ -7,10 +7,14 @@ field:
     max: 5
     default: 0
     required: no
-    multiple: yes
 
 default-field:
   label: def integer
   description: Default parameters int
   value:
     type: int
+
+array-field:
+  label: array field
+  value:
+    type: int[]

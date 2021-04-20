@@ -11,16 +11,16 @@ class TestCleanedValues:
         field1 = IntegerField('int', min=0, max=10, default=1)
         field1a = IntegerField('int2', required=False, default=2)
         field1b = IntegerField('int3', required=False)
-        field2 = IntegerField('m_int', multiple=True, required=False)
-        field3 = IntegerField('m_int2', multiple=True, required=False)
-        field4 = IntegerField('m_int3', multiple=True, required=False)
+        field2 = IntegerArrayField('m_int', required=False)
+        field3 = IntegerArrayField('m_int2', required=False)
+        field4 = IntegerArrayField('m_int3', required=False)
         field5 = DecimalField('float', min=0.0, max=10.0, required=False)
         field6 = TextField('text', required=False)
         field7 = BooleanField('bool')
         field8 = BooleanField('bool2', required=False)
         CHOICES = [('a', 'A'), ('b', 'B'), ('c', 'C')]
         field9 = ChoiceField('choice', choices=CHOICES)
-        field10 = ChoiceField('m_choice', choices=CHOICES, multiple=True)
+        field10 = ChoiceArrayField('m_choice', choices=CHOICES)
 
     def setup(self):
         self.form = TestCleanedValues.DummyForm(MultiDict([

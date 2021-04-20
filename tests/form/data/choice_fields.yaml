@@ -12,3 +12,9 @@ default-field:
   value:
     type: choice
     choices: []
+
+array-field:
+  label: array
+  value:
+    type: choice[]
+    choices: []

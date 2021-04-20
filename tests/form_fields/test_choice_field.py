@@ -100,7 +100,7 @@ def test_invalid_value_with_default():
 
 
 def test_multiple_valid_values():
-    field = ChoiceField('name', choices=CHOICES, multiple=True)
+    field = ChoiceArrayField('name', choices=CHOICES)
     assert_list_equal(
         field.validate(['foo', 'BAR']), ['foo', 'BAR']
     )

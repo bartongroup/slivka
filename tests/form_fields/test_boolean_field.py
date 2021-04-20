@@ -1,3 +1,5 @@
+from functools import partial
+
 from nose.tools import assert_is, raises, assert_true
 
 from slivka.server.forms.fields import BooleanField, ValidationError
@@ -54,31 +56,35 @@ def test_validation_none_not_required():
 class TestValidationWithDefault:
     def test_default_unset(self):
         field = BooleanField('name', required=False)
-        yield self.check_field, field, None, None
-        yield self.check_field, field, False, None
-        yield self.check_field, field, True, True
-        yield self.check_field, field, (), None
+        check = partial(self.check_field, field)
+        yield check, None, None
+        yield check, False, None
+        yield check, True, True
+        yield check, (), None
 
     def test_default_none(self):
         field = BooleanField('name', required=False, default=None)
-        yield self.check_field, field, None, None
-        yield self.check_field, field, False, None
-        yield self.check_field, field, True, True
+        check = partial(self.check_field, field)
+        yield check, None, None
+        yield check, False, None
+        yield check, True, True
 
     def test_default_false(self):
         field = BooleanField('name', required=False, default=False)
-        yield self.check_field, field, None, None
-        yield self.check_field, field, False, None
-        yield self.check_field, field, True, True
-        yield self.check_field, field, [], None
+        check = partial(self.check_field, field)
+        yield check, None, None
+        yield check, False, None
+        yield check, True, True
+        yield check, [], None
 
     def test_default_true(self):
         field = BooleanField('name', required=False, default=True)
-        yield self.check_field, field, None, True
-        yield self.check_field, field, False, None
-        yield self.check_field, field, True, True
-        yield self.check_field, field, {}, True
-        yield self.check_field, field, '', True
+        check = partial(self.check_field, field)
+        yield check, None, True
+        yield check, False, None
+        yield check, True, True
+        yield check, {}, True
+        yield check, '', True
 
     @staticmethod
     def check_field(field, value, expected):
