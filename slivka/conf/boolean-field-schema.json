@@ -7,7 +7,7 @@
     "value": {
       "type": "object",
       "properties": {
-        "type": {"enum": ["boolean", "flag"]},
+        "type": {"enum": ["boolean", "flag", "boolean[]", "flag[]"]},
         "required": {"type": "boolean"},
         "multiple": {"type": "boolean"},
         "default": {"type": "boolean"},

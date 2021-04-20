@@ -7,7 +7,7 @@
     "value": {
       "type": "object",
       "properties": {
-        "type": {"enum": ["int", "integer"]},
+        "type": {"enum": ["int", "integer", "int[]", "integer[]"]},
         "required": {"type": "boolean"},
         "multiple": {"type": "boolean"},
         "min": {"type": "integer"},

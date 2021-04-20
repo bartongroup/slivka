@@ -7,7 +7,7 @@
     "value": {
       "type": "object",
       "properties": {
-        "type": {"enum": ["file"]},
+        "type": {"enum": ["file", "file[]"]},
         "required": {"type": "boolean"},
         "multiple": {"type": "boolean"},
         "media-type": {"type": "string"},

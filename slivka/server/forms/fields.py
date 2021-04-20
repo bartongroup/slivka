@@ -63,14 +63,12 @@ class BaseField:
                  description='',
                  default=None,
                  required=True,
-                 multiple=False,
                  condition=None):
         self.name = name
         self.label = label
         self.description = description
         self.default = default
         self.required = required and default is None
-        self.multiple = multiple
         self.condition = (None if condition is None
                           else expression_parser.Expression(condition))
         self._widget = None
@@ -89,10 +87,7 @@ class BaseField:
         :param files: request multipart-POST files
         :return: retrieved raw value
         """
-        if self.multiple:
-            return data.getlist(self.name)
-        else:
-            return data.get(self.name)
+        return data.get(self.name)
 
     def run_validation(self, value):
         """ Validates the value and converts to Python value.
@@ -127,18 +122,10 @@ class BaseField:
         :return: validated value
         :raise ValidationError: provided value is not valid
         """
-        if not self.multiple:
-            value = self.run_validation(value)
-            if value is None and self.required:
-                raise ValidationError("Field is required", 'required')
-            return value
-        else:
-            if value is None or len(value) == 0:
-                if self.required:
-                    raise ValidationError("Field is required", 'required')
-                else:
-                    return None
-            return [self.run_validation(v) for v in value]
+        value = self.run_validation(value)
+        if value is None and self.required:
+            raise ValidationError("Field is required", 'required')
+        return value
 
     def _check_default(self):
         """ Passes the default value through validation.
@@ -183,7 +170,7 @@ class BaseField:
             'label': self.label,
             'description': self.description or "",
             'required': self.required,
-            'multiple': self.multiple,
+            'multiple': False,
             'default': self.default
         }
 
@@ -199,7 +186,7 @@ class BaseField:
 class ArrayFieldMixin(BaseField, ABC):
     def fetch_value(self, data: MultiDict, files: MultiDict):
         """ Retrieves multiple values from the request data. """
-        return data.getlist(self.name)
+        return data.getlist(self.name) or None
 
     def validate(self, value):
         """ Runs validation for each value in the list. """
@@ -461,6 +448,11 @@ class BooleanField(BaseField):
             value = False
         return True if value else None
 
+    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+        if isinstance(value, str) and value.lower() in self.FALSE_STR:
+            value = False
+        return 'true' if value else None
+
     def __json__(self):
         j = super().__json__()
         j['type'] = 'boolean'
@@ -506,7 +498,7 @@ class ChoiceField(BaseField):
         if self._widget is None:
             self._widget = SelectWidget(self.name, options=self.choices)
             self._widget['required'] = self.required
-            self._widget['multiple'] = self.multiple
+            self._widget['multiple'] = isinstance(self, ArrayFieldMixin)
         return self._widget
 
     def run_validation(self, value):
@@ -577,10 +569,7 @@ class FileField(BaseField):
     save_location = cached_property(lambda self: slivka.settings.uploads_dir)
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
-        if self.multiple:
-            return files.getlist(self.name) + data.getlist(self.name)
-        else:
-            return files.get(self.name) or data.get(self.name)
+        return files.get(self.name) or data.get(self.name)
 
     @property
     def widget(self):
@@ -649,7 +638,8 @@ class FileField(BaseField):
 
 
 class FileArrayField(ArrayFieldMixin, FileField):
-    pass
+    def fetch_value(self, data: MultiDict, files: MultiDict):
+        return (files.getlist(self.name) + data.getlist(self.name)) or None
 
 
 # Helper methods that are used for value validation.
