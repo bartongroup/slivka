@@ -10,7 +10,7 @@ def auto_schema(cls):
     properties['type'] = {}
     signature = inspect.signature(cls)
     for param in signature.parameters.values():
-        if param.kind == param.VAR_KEYWORD:
+        if param.name == 'name' or param.kind == param.VAR_KEYWORD:
             continue
         properties[param.name] = {}
         if param.default == param.empty:

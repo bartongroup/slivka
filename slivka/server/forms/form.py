@@ -259,7 +259,16 @@ class FormLoader(metaclass=Singleton):
             'condition': value_dict.get('condition')
         }
         cls = FIELD_TYPES.get(field_type)
-        if issubclass(cls, IntegerField):
+        if cls is None:
+            kwargs.update(value_dict)
+            kwargs.pop("type")
+            kwargs.pop("multiple", None)
+            try:
+                cls = self._get_custom_field_class(field_type)
+                return cls(**kwargs)
+            except (ValueError, AttributeError):
+                raise ValueError('Invalid field type "%r"' % field_type)
+        elif issubclass(cls, IntegerField):
             return cls(
                 **kwargs,
                 min=value_dict.get('min'),
@@ -295,15 +304,6 @@ class FormLoader(metaclass=Singleton):
                 media_type=value_dict.get('media-type'),
                 media_type_parameters=value_dict.get('media-type-parameters')
             )
-        elif cls is None:
-            kwargs.update(value_dict)
-            kwargs.pop("type")
-            kwargs.pop("multiple", None)
-            try:
-                cls = self._get_custom_field_class(field_type)
-                return cls(**kwargs)
-            except (ValueError, AttributeError):
-                raise ValueError('Invalid field type "%r"' % field_type)
         else:
             raise RuntimeError('Invalid field type "%r"' % field_type)
 

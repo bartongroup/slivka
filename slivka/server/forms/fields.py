@@ -32,9 +32,7 @@ __all__ = [
 
 def _get_schema(filename):
     return json.loads(
-        pkg_resources.resource_string(
-            "slivka.conf", filename
-        ).decode()
+        pkg_resources.resource_string("slivka.conf", filename).decode()
     )
 
 
@@ -73,7 +71,7 @@ class BaseField:
                           else expression_parser.Expression(condition))
         self._widget = None
 
-    schema = class_property(lambda cls: {})
+    schema = class_property(lambda cls: _get_schema('any-field-schema.json'))
     """Json schema for the field item in the config file."""
 
     def fetch_value(self, data: MultiDict, files: MultiDict):

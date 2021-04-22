@@ -1,0 +1,12 @@
+field:
+  label: field
+  value:
+    type: tests.form.CustomField
+    alpha: 13
+    bravo: 97
+
+array-field:
+  label: array
+  value:
+    type: tests.form.CustomField[]
+    alpha: 0

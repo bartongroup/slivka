@@ -190,8 +190,6 @@ class Settings:
 
 
 def _form_validator(_obj, _attr, val):
-    basic_schema = json.loads(pkg_resources.resource_string(
-        "slivka.conf", "any-field-schema.json").decode())
     from slivka.server.forms import fields
     classes = {
         "int": fields.IntegerField,
@@ -207,10 +205,10 @@ def _form_validator(_obj, _attr, val):
     }
     for field_name, field in val.items():
         try:
-            jsonschema.validate(field, basic_schema, Draft4Validator)
+            jsonschema.validate(field, fields.BaseField.schema)
         except jsonschema.ValidationError as e:
-            raise ServiceSyntaxException(e.message,
-                                         ['form', field_name, *e.path])
+            raise ServiceSyntaxException(
+                e.message, ['form', field_name, *e.path])
         field_type = field['value']['type']
         cls = classes.get(field_type)
         if cls is None:

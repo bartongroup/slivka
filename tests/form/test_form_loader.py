@@ -8,6 +8,7 @@ from nose.tools import (
 
 from slivka.server.forms import FormLoader
 from slivka.server.forms.fields import *
+from .custom_field import CustomField
 
 curdir = os.path.dirname(__file__)
 
@@ -254,3 +255,23 @@ class TestFileFieldLoader:
 
     def test_default_extensions(self):
         assert_sequence_equal(self.default_field.extensions, [])
+
+
+class TestCustomFieldLoader:
+    def setup(self):
+        path = os.path.join(curdir, 'data', 'custom_fields.yaml')
+        data = yaml.safe_load(open(path))
+        self.form = FormLoader().read_dict('custom', data)
+
+    def test_field_type(self):
+        assert_is_instance(self.form['field'], CustomField)
+
+    def test_array_type(self):
+        field = self.form['array-field']
+        assert_is_instance(field, CustomField)
+        assert_is_instance(field, ArrayFieldMixin)
+
+    def test_parameters(self):
+        field = self.form['field']
+        assert_equal(field.alpha, 13)
+        assert_equal(field.bravo, 97)
