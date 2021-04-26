@@ -170,6 +170,10 @@ class ServiceState(MongoDocument):
         WARNING = 1
         DOWN = 2
 
+    OK = State.OK
+    WARNING = State.WARNING
+    DOWN = State.DOWN
+
     def __init__(self, *,
                  service,
                  runner,

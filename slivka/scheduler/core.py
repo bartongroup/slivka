@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
@@ -81,6 +82,7 @@ class Scheduler:
 
     def load_runners(self, service_name, conf_dict):
         """ Automatically adds runners from the configuration. """
+        # fixme: this is a job for a RunnerFactory
         limiter_cp = conf_dict.get('limiter')
         if limiter_cp is not None:
             mod, attr = limiter_cp.rsplit('.', 1)
@@ -92,10 +94,8 @@ class Scheduler:
                 mod, attr = 'slivka.scheduler.runners', conf['class']
             cls = getattr(import_module(mod), attr)
             kwargs = conf.get('parameters', {})
-            runner_id = RunnerID(service_name, name)
-            runner = self.runners[runner_id] = cls(
-                conf_dict, id=RunnerID(service_name, name), **kwargs
-            )
+            runner = cls(conf_dict, id=RunnerID(service_name, name), **kwargs)
+            self.add_runner(runner)
             self.log.info('loaded runner for service %s: %r', service_name,
                           runner)
 
@@ -179,7 +179,8 @@ class Scheduler:
                 database, {'uuid': {'$in': cancel_requests}})
             for job in cancelled_jobs:
                 runner = self.runners[job.service, job.runner]
-                runner.cancel(job.job_id, job.cwd)
+                with contextlib.suppress(OSError):
+                    runner.cancel(job.job_id, job.cwd)
             CancelRequest.collection(database).delete_many(
                 {'uuid': {'$in': cancel_requests}})
 
@@ -256,9 +257,8 @@ class Scheduler:
                 for (job, state) in updated
             ], ordered=False)
 
-    def group_requests(
-            self, requests: Iterable[JobRequest]
-    ) -> Dict[Union[Runner, object], List[JobRequest]]:
+    def group_requests(self, requests: Iterable[JobRequest]) \
+            -> Dict[Union[Runner, object], List[JobRequest]]:
         """Group requests to their corresponding runners or reject."""
         grouped = defaultdict(list)
         for request in requests:

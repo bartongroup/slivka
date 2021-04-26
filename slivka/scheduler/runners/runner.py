@@ -341,9 +341,9 @@ class Runner:
             is no test for that runner.
         """
         if not self.test:
-            log.info("no test for runner %s", self)
+            log.info("no test found for %s", self)
             return True
-        log.info("running test for %s", self)
+        log.info("starting test for %s", self)
         env = ChainMap(os.environ, {'SLIVKA_HOME': slivka.settings.base_dir})
         replace = partial(_replace_from_env, env)
         inputs = {
@@ -377,7 +377,7 @@ class Runner:
             log.exception("test of %s failed", self)
             return False
         else:
-            log.info("test of %s successful", self )
+            log.info("test of %s passed", self )
             return True
         finally:
             with contextlib.suppress(FileNotFoundError):
