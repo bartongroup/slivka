@@ -5,13 +5,12 @@ from unittest import mock
 import mongomock
 from nose.tools import assert_equal
 
+import slivka.db
 from slivka import JobStatus
 from slivka.db.documents import JobRequest, CancelRequest, JobMetadata
 from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Runner, Scheduler
 from slivka.scheduler.runners.runner import RunnerID, RunInfo
-import slivka.db
-
 from . import LimiterStub
 
 
@@ -21,14 +20,14 @@ class MockRunner(Runner):
     def __init__(self, service, name):
         self.id = RunnerID(service, name)
 
-    def batch_run(self, inputs_list) -> Iterator[RunInfo]:
+    def batch_start(self, inputs_list) -> Iterator[RunInfo]:
         return [RunInfo(self.submit(None, '/tmp'), '/tmp') for _ in inputs_list]
 
     def submit(self, cmd, cwd):
         job_id = self.next_job_id()
         return job_id
 
-    def cancel(cls, job_id, cwd):
+    def cancel(self, job_id, cwd):
         pass
 
 
@@ -46,6 +45,7 @@ class TestJobCancelling:
         self.scheduler = scheduler = Scheduler()
         scheduler.add_runner(MockRunner('stub', 'runner1'))
         scheduler.limiters['stub'] = LimiterStub()
+        scheduler.reset_service_states()
         self.request = JobRequest(service='stub', inputs={'runner': 1})
         insert_one(slivka.db.database, self.request)
 

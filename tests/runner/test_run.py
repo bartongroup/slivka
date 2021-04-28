@@ -17,7 +17,7 @@ from .stubs import runner_factory, RunnerStub
 def test_run_count():
     runner = runner_factory(base_command=['mycommand'])
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    runner.run({})
+    runner.start({})
     assert_equal(runner.submit.call_count, 1)
 
 
@@ -25,7 +25,7 @@ def test_run_base_command_with_no_parameters():
     runner = runner_factory(base_command=['mycommand'])
     submit_mock = mock.Mock(return_value='0xc0ffee')
     runner.submit = submit_mock
-    runner.run({})
+    runner.start({})
     args, kwargs = submit_mock.call_args
     cmd, _ = args
     assert_list_equal(cmd, ['mycommand'])
@@ -34,7 +34,7 @@ def test_run_base_command_with_no_parameters():
 def test_run_command_with_arguments():
     runner = runner_factory(base_command='mycommand', arguments=['foo', 'bar', 'baz'])
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    runner.run({})
+    runner.start({})
     args, kwargs = runner.submit.call_args
     cmd, _ = args
     assert_list_equal(cmd, ['mycommand', 'foo', 'bar', 'baz'])
@@ -50,7 +50,7 @@ def test_run_command_with_parameters():
         ])
     )
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    runner.run({'param1': 'xxx', 'param2': 'yyy'})
+    runner.start({'param1': 'xxx', 'param2': 'yyy'})
     args, kwargs = runner.submit.call_args
     cmd, _ = args
     assert_list_equal(cmd, ['mycommand', '-p1', 'xxx', '-p2', 'yyy', 'foo', 'bar'])
@@ -59,14 +59,14 @@ def test_run_command_with_parameters():
 def test_returned_job_id():
     runner = runner_factory()
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    job_id, job_cwd = runner.run({})
+    job_id, job_cwd = runner.start({})
     assert_equal(job_id, '0xc0ffee')
 
 
 def test_job_working_directory():
     runner = runner_factory()
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    job_id, job_cwd = runner.run({})
+    job_id, job_cwd = runner.start({})
     assert_equal(os.path.dirname(job_cwd), RunnerStub.JOBS_DIR)
     assert os.path.isdir(job_cwd)
 
@@ -76,7 +76,7 @@ def test_working_directory_cleanup():
     MyError = type('MyError', (Exception,), {})
     runner.submit = mock.Mock(side_effect=MyError)
     with contextlib.suppress(MyError):
-        runner.run({})
+        runner.start({})
     (cmd, cwd), kwargs = runner.submit.call_args
     assert not os.path.exists(cwd)
 
@@ -86,7 +86,7 @@ def test_batch_working_directory_cleanup():
     MyError = type('MyError', (Exception,), {})
     runner.submit = mock.Mock(side_effect=MyError)
     with contextlib.suppress(MyError):
-        runner.batch_run([{}, {}, {}, {}])
+        runner.batch_start([{}, {}, {}, {}])
     for args, kwargs in runner.submit.call_args_list:
         cmd, cwd = args
         assert not os.path.exists(cwd)
@@ -102,7 +102,7 @@ def test_link_created():
     infile.write(b'hello world\n')
     infile.flush()
     runner.submit = mock.Mock(return_value='')
-    job_id, job_cwd = runner.run({'input': infile.name})
+    job_id, job_cwd = runner.start({'input': infile.name})
     path = os.path.join(job_cwd, 'input.txt')
     assert filecmp.cmp(infile.name, path), \
         'Files %s and %s are not identical' % (infile.name, path)
@@ -116,7 +116,7 @@ def test_batch_run_file_linking():
     infile.write(b'hello world\n')
     infile.flush()
     runner.submit = mock.Mock(return_value='')
-    results = runner.batch_run([{'input': infile.name}] * 5)
+    results = runner.batch_start([{'input': infile.name}] * 5)
     for job_id, job_cwd in results:
         path = os.path.join(job_cwd, 'input.txt')
         assert filecmp.cmp(infile.name, path), \
@@ -128,7 +128,7 @@ def test_batch_run_file_linking():
 def test_batch_run_count():
     runner = runner_factory(base_command=['mycommand'])
     runner.submit = mock.Mock(return_value='0xc0ffee')
-    runner.batch_run([{}, {}, {}])
+    runner.batch_start([{}, {}, {}])
     assert_equal(runner.submit.call_count, 3)
 
 
@@ -141,7 +141,7 @@ def test_batch_run_with_parameters():
     )
     runner.submit = mock.Mock(return_value='')
     params = ['foo', 'bar', 'baz']
-    runner.batch_run([{'param': arg} for arg in params])
+    runner.batch_start([{'param': arg} for arg in params])
     for param, (args, kwargs) in zip_longest(params, runner.submit.call_args_list):
         cmd, cwd = args
         assert_list_equal(cmd, ['mycommand', param])

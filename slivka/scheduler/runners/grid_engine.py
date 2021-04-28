@@ -107,14 +107,12 @@ class GridEngineRunner(Runner):
         def submit_wrapper(args): return self.submit(*args)
         return list(_executor.map(submit_wrapper, commands))
 
-    @classmethod
-    def check_status(cls, job_id, cwd):
+    def check_status(self, job_id, cwd):
         # there is no single job status check
         job = dict(job_id=job_id, work_dir=cwd)
-        return next(cls.batch_check_status([job]))
+        return next(iter(self.batch_check_status([job])))
 
-    @classmethod
-    def batch_check_status(cls, jobs):
+    def batch_check_status(self, jobs):
         stdout = subprocess.check_output('qstat')
         states = {}
         matches = _job_status_regex.findall(stdout)
@@ -130,7 +128,7 @@ class GridEngineRunner(Runner):
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
-                    cls.finished_job_timestamp.pop(job_id, None)
+                    self.finished_job_timestamp.pop(job_id, None)
                     yield (
                         JobStatus.COMPLETED if return_code == 0 else
                         JobStatus.ERROR if return_code == 127 else
@@ -138,17 +136,15 @@ class GridEngineRunner(Runner):
                     )
                 except FileNotFoundError:
                     # one minute window for file system synchronization
-                    ts = cls.finished_job_timestamp[job_id]
+                    ts = self.finished_job_timestamp[job_id]
                     if datetime.now() - ts < timedelta(minutes=1):
                         yield JobStatus.RUNNING
                     else:
-                        del cls.finished_job_timestamp[job_id]
+                        del self.finished_job_timestamp[job_id]
                         yield JobStatus.INTERRUPTED
 
-    @classmethod
-    def cancel(cls, job_id, cwd):
+    def cancel(self, job_id, cwd):
         subprocess.run([b'qdel', job_id])
 
-    @classmethod
-    def batch_cancel(cls, jobs: Iterable[JobMetadata]):
+    def batch_cancel(self, jobs: Iterable[JobMetadata]):
         subprocess.run([b'qdel', *(job['job_id'] for job in jobs)])

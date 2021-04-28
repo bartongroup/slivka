@@ -37,10 +37,9 @@ class ShellRunner(Runner):
         self.procs[proc.pid] = proc
         return proc.pid
 
-    @classmethod
-    def check_status(cls, pid, cwd):
+    def check_status(self, pid, cwd):
         try:
-            return_code = cls.procs[pid].poll()
+            return_code = self.procs[pid].poll()
         except KeyError:
             return JobStatus.INTERRUPTED
         if return_code is None:
@@ -54,7 +53,6 @@ class ShellRunner(Runner):
         if return_code < 0:
             return JobStatus.INTERRUPTED
 
-    @classmethod
-    def cancel(cls, pid, cwd):
+    def cancel(self, pid, cwd):
         with contextlib.suppress(OSError, KeyError):
-            cls.procs[pid].terminate()
+            self.procs[pid].terminate()

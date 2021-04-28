@@ -4,15 +4,16 @@ import threading
 from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
 from importlib import import_module
-from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
+from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
                     Sequence)
 
+from bson import ObjectId
 from pymongo import UpdateOne
 
 import slivka.db
 from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
                                  ServiceState)
-from slivka.db.helpers import insert_many, replace_one
+from slivka.db.helpers import insert_many, replace_one, push_one
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
 
@@ -178,6 +179,7 @@ class Scheduler:
             cancelled_jobs = JobMetadata.find(
                 database, {'uuid': {'$in': cancel_requests}})
             for job in cancelled_jobs:
+                # fixme: do not blindly trust data from the database
                 runner = self.runners[job.service, job.runner]
                 with contextlib.suppress(OSError):
                     runner.cancel(job.job_id, job.cwd)
@@ -210,7 +212,6 @@ class Scheduler:
                         uuid=request.uuid,
                         service=request.service,
                         runner=runner.name,
-                        runner_class=get_classpath(type(runner)),
                         job_id=job.id,
                         work_dir=job.cwd,
                         status=JobStatus.QUEUED
@@ -230,19 +231,22 @@ class Scheduler:
         # monitoring jobs
         cursor = JobMetadata.collection(database).aggregate([
             {'$match': {
-                'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}}},
+                'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}
+            }},
             {'$group': {
-                '_id': '$runner_class',
+                '_id': {'service': '$service',
+                        'runner': '$runner'},
                 'jobs': {'$push': '$$CURRENT'}
             }}
         ])
         for item in cursor:
+            _id = item['_id']
             jobs = [JobMetadata(**kw) for kw in item['jobs']]
             try:
-                mod, attr = item['_id'].rsplit('.', 1)
-                runner = getattr(import_module(mod), attr)
-            except AttributeError:
-                log.exception("Runner class cannot be imported")
+                runner = self.runners[_id['service'], _id['runner']]
+            except KeyError:
+                log.exception("Runner(%s, %s) does not exist",
+                              _id['service'], _id['runner'])
                 updated = [(job, JobStatus.ERROR) for job in jobs]
             else:
                 updated = self.monitor_jobs(runner, jobs)
@@ -285,11 +289,11 @@ class Scheduler:
         multiple run attempts and should not be repeated.
         """
         # FIXME: this method should have cleaner implementation
-        counter = self._backoff_counters[runner]
+        counter = self._backoff_counters[runner.start]
         if not requests or next(counter) > 0:
             return RunResult(started=(), deferred=requests, failed=())
         try:
-            jobs = runner.batch_run([req.inputs for req in requests])
+            jobs = runner.batch_start([req.inputs for req in requests])
             service_state = ServiceState(
                 service=runner.service_name, runner=runner.name,
                 state=ServiceState.State.OK)
@@ -315,30 +319,46 @@ class Scheduler:
                         filter_keys=['service', 'runner'])
             return result
 
-    def monitor_jobs(
-            self,
-            runner: Union[Runner, Type[Runner]],
-            jobs: List[JobMetadata]
-    ) -> Sequence[Tuple[JobMetadata, JobStatus]]:
+    def monitor_jobs(self, runner: Runner, jobs: List[JobMetadata]) \
+            -> Sequence[Tuple[JobMetadata, JobStatus]]:
         """ Checks status of jobs.
 
         Checks status of jobs using the provided runner or runner class
         and returns a list of those, whose status have changed.
         """
-        counter = self._backoff_counters[runner]
+        counter = self._backoff_counters[runner.check_status]
         if not jobs or next(counter) > 0:
             return ()
+        service_state = ServiceState.find_one(
+            slivka.db.database, service=runner.service_name,
+            runner=runner.name
+        )
+        if service_state is None:
+            service_state = ServiceState(
+                service=runner.service_name, runner=runner.name, _id=ObjectId())
         try:
             states = runner.batch_check_status(jobs)
-            return [(job, state) for (job, state)
-                    in zip(jobs, states) if job.state != state]
+            states = [(job, state) for (job, state)
+                      in zip(jobs, states) if job.state != state]
+            if all(v[1] == JobStatus.ERROR for v in states):
+                self.log.exception(
+                    "Jobs of %s returned an error state", runner)
+                counter.failure()
+                service_state.state = ServiceState.DOWN
+            else:
+                service_state.state = ServiceState.OK
+            return states
         except Exception as e:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
+                service_state.state = ServiceState.DOWN
                 return [(job, JobStatus.ERROR) for job in jobs]
             else:
+                service_state.state = ServiceState.WARNING
                 return ()
+        finally:
+            push_one(slivka.db.database, service_state, upsert=True)
 
 
 class IntervalThread(threading.Thread):

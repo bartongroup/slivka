@@ -42,7 +42,7 @@ class TestServiceStatusUpdates:
         assert_equal(service_state.state, service_state.State.OK)
 
     def test_service_warning(self):
-        self.runner.batch_run.side_effect = RuntimeError
+        self.runner.batch_start.side_effect = RuntimeError
         self.scheduler.run_cycle()
         service_state = ServiceState.find_one(
             database, service='stub', runner='default'
@@ -50,7 +50,7 @@ class TestServiceStatusUpdates:
         assert_equal(service_state.state, service_state.State.WARNING)
 
     def test_service_failure(self):
-        self.runner.batch_run.side_effect = RuntimeError
+        self.runner.batch_start.side_effect = RuntimeError
         self.scheduler.set_failure_limit(0)
         self.scheduler.run_cycle()
         service_state = ServiceState.find_one(
@@ -59,7 +59,7 @@ class TestServiceStatusUpdates:
         assert_equal(service_state.state, service_state.State.DOWN)
 
     def test_service_recovery(self):
-        self.runner.batch_run.side_effect = [RuntimeError, ()]
+        self.runner.batch_start.side_effect = [RuntimeError, ()]
         self.scheduler.run_cycle()
         # one cycle is wasted on passing through backoff counter
         self.scheduler.run_cycle()
