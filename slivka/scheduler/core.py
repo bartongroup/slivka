@@ -302,7 +302,7 @@ class Scheduler:
             return RunResult(
                 started=zip(requests, jobs), deferred=(), failed=()
             )
-        except Exception as exc:
+        except OSError as e:
             self.log.exception("Running %s requests failed.", runner)
             counter.failure()
             if counter.give_up:
@@ -313,7 +313,7 @@ class Scheduler:
                 result = RunResult(started=(), deferred=requests, failed=())
             service_state = ServiceState(
                 service=runner.service_name, runner=runner.name,
-                state=state, message=str(exc)
+                state=state, message=str(e)
             )
             replace_one(slivka.db.database, service_state,
                         filter_keys=['service', 'runner'])
@@ -348,7 +348,7 @@ class Scheduler:
             else:
                 service_state.state = ServiceState.OK
             return states
-        except Exception as e:
+        except OSError:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
