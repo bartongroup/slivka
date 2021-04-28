@@ -2,8 +2,10 @@ import enum
 import fcntl
 import functools
 import itertools
+import math
 import os
 import sys
+import time
 import warnings
 from collections import OrderedDict
 
@@ -131,6 +133,31 @@ except ImportError:
                 name = '_' + owner.__name__ + name
             instance.__dict__[name] = val
             return val
+
+
+def ttl_cache(*, ttl=math.inf):
+    """ Decorator that caches function value for `ttl` seconds.
+
+    The cached value is invalidated after time-to-live.
+    Can only be used with functions having no arguments.
+
+    :param ttl: duration the cached value should remain valid
+    """
+    def decorator(func):
+        invalidate_time = -math.inf
+        cached_result = None
+
+        @functools.wraps(func)
+        def inner():
+            nonlocal invalidate_time, cached_result
+            if invalidate_time < time.monotonic():
+                cached_result = func()
+                invalidate_time = time.monotonic() + ttl
+            return cached_result
+
+        return inner
+    return decorator
+
 
 
 # noinspection PyPep8Naming

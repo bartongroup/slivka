@@ -14,6 +14,7 @@ import pkg_resources
 
 from slivka import JobStatus
 from slivka.db.documents import JobMetadata
+from slivka.utils import ttl_cache
 from .runner import Runner
 
 log = logging.getLogger('slivka.scheduler')
@@ -49,6 +50,15 @@ _status_letters = _StatusLetterDict({
 
 _executor = ThreadPoolExecutor()
 atexit.register(_executor.shutdown)
+
+
+@ttl_cache(ttl=5)
+def _job_stat():
+    stdout = subprocess.check_output('qstat')
+    return {
+        jid: _status_letters[letter]
+        for jid, letter in _job_status_regex.findall(stdout)
+    }
 
 
 class GridEngineRunner(Runner):
@@ -113,11 +123,7 @@ class GridEngineRunner(Runner):
         return next(iter(self.batch_check_status([job])))
 
     def batch_check_status(self, jobs):
-        stdout = subprocess.check_output('qstat')
-        states = {}
-        matches = _job_status_regex.findall(stdout)
-        for job_id, status in matches:
-            states[job_id] = _status_letters[status]
+        states = _job_stat()
         for job in jobs:
             job_id = job['job_id']
             state = states.get(job_id)
