@@ -27,6 +27,9 @@ class MockRunner(Runner):
         job_id = self.next_job_id()
         return job_id
 
+    def check_status(self, job_id, cwd):
+        return JobStatus.QUEUED
+
     def cancel(self, job_id, cwd):
         pass
 
@@ -45,7 +48,6 @@ class TestJobCancelling:
         self.scheduler = scheduler = Scheduler()
         scheduler.add_runner(MockRunner('stub', 'runner1'))
         scheduler.limiters['stub'] = LimiterStub()
-        scheduler.reset_service_states()
         self.request = JobRequest(service='stub', inputs={'runner': 1})
         insert_one(slivka.db.database, self.request)
 

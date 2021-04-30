@@ -15,6 +15,8 @@ from . import LimiterStub
 def MockRunner(service, name):
     runner = mock.MagicMock(spec=Runner)
     runner.id = RunnerID(service_name=service, runner_name=name)
+    runner.service_name = service
+    runner.name = name
     return runner
 
 
@@ -94,7 +96,7 @@ def test_deferred_running():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.side_effect = RuntimeError("failed successfully")
+    runner.batch_start.side_effect = OSError("failed successfully")
     started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal(deferred, requests)
 
@@ -106,7 +108,7 @@ def test_failed_running():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.side_effect = RuntimeError("failed successfully")
+    runner.batch_start.side_effect = OSError("failed successfully")
     with mock.patch.dict(scheduler._backoff_counters,
                          {runner.start: BackoffCounter(0)}):
         started, deferred, failed = scheduler.run_requests(runner, requests)

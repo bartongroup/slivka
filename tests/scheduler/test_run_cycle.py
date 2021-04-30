@@ -68,7 +68,7 @@ class TestJobSubmission:
         assert_equal(requests[1].state, JobStatus.FAILED)
 
     def test_submission_delayed(self):
-        def submit(cmd, cwd): raise RuntimeError("failed")
+        def submit(cmd, cwd): raise OSError("failed")
         with mock.patch.object(self.runner, 'submit', submit):
             self.scheduler.run_cycle()
         requests = self.requests
@@ -77,7 +77,7 @@ class TestJobSubmission:
         assert_equal(requests[1].state, JobStatus.ACCEPTED)
 
     def test_failed_submission(self):
-        def submit(cmd, cwd): raise RuntimeError("failed")
+        def submit(cmd, cwd): raise OSError("failed")
         self.scheduler.set_failure_limit(0)
         with mock.patch.object(self.runner, 'submit', submit):
             self.scheduler.run_cycle()
