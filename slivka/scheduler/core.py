@@ -355,7 +355,7 @@ class Scheduler:
             results = runner.batch_check_status(jobs)
             results = [(job, state) for (job, state)
                        in zip(jobs, results) if job.state != state]
-            if all(v[1] == JobStatus.ERROR for v in results):
+            if results and all(v[1] == JobStatus.ERROR for v in results):
                 self.log.exception(
                     "Jobs of %s exited with error state", runner)
                 counter.failure()
