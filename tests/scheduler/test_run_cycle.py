@@ -1,13 +1,11 @@
-from unittest import mock
-
 import itertools
 from typing import Iterator
+from unittest import mock
 
 import mongomock
 from nose.tools import assert_equal
 
 import slivka.db
-
 from slivka.db.documents import JobRequest
 from slivka.db.helpers import insert_many, pull_many
 from slivka.scheduler import Scheduler, Runner
@@ -31,14 +29,13 @@ class MockRunner(Runner):
     def __init__(self, service, name):
         self.id = RunnerID(service_name=service, runner_name=name)
 
-    def batch_run(self, inputs_list) -> Iterator[RunInfo]:
+    def batch_start(self, inputs_list) -> Iterator[RunInfo]:
         return [RunInfo(self.submit(None, '/tmp'), '/tmp') for _ in inputs_list]
 
     def submit(self, cmd, cwd):
         return self.next_job_id()
 
-    @classmethod
-    def check_status(cls, job_id, cwd) -> JobStatus:
+    def check_status(self, job_id, cwd) -> JobStatus:
         return JobStatus.COMPLETED
 
 
@@ -63,7 +60,7 @@ class TestJobSubmission:
 
     def test_failed(self):
         def check_status(job_id, cwd): return JobStatus.FAILED
-        with mock.patch.object(MockRunner, 'check_status', check_status):
+        with mock.patch.object(self.runner, 'check_status', check_status):
             self.scheduler.run_cycle()
         requests = self.requests
         pull_many(slivka.db.database, requests)
@@ -71,7 +68,7 @@ class TestJobSubmission:
         assert_equal(requests[1].state, JobStatus.FAILED)
 
     def test_submission_delayed(self):
-        def submit(cmd, cwd): raise RuntimeError("failed")
+        def submit(cmd, cwd): raise OSError("failed")
         with mock.patch.object(self.runner, 'submit', submit):
             self.scheduler.run_cycle()
         requests = self.requests
@@ -80,7 +77,7 @@ class TestJobSubmission:
         assert_equal(requests[1].state, JobStatus.ACCEPTED)
 
     def test_failed_submission(self):
-        def submit(cmd, cwd): raise RuntimeError("failed")
+        def submit(cmd, cwd): raise OSError("failed")
         self.scheduler.set_failure_limit(0)
         with mock.patch.object(self.runner, 'submit', submit):
             self.scheduler.run_cycle()

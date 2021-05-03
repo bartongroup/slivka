@@ -179,7 +179,7 @@ class Runner:
         args.extend(self.arguments)
         return args
 
-    def run(self, inputs: dict, cwd: str = None) -> RunInfo:
+    def start(self, inputs: dict, cwd: str = None) -> RunInfo:
         """ Runs the command in the queuing system.
 
         Prepares the command for execution by creating a working
@@ -210,7 +210,7 @@ class Runner:
                 shutil.rmtree(cwd)
             raise
 
-    def batch_run(self, inputs_list: List[dict]) -> Iterable[RunInfo]:
+    def batch_start(self, inputs_list: List[dict]) -> Iterable[RunInfo]:
         """ Runs multiple commands in the queuing system.
 
         An alternative to the :py:meth:`.run` method submitting
@@ -285,8 +285,7 @@ class Runner:
         """
         return [self.submit(cmd, cwd) for cmd, cwd in commands]
 
-    @classmethod
-    def check_status(cls, job_id, cwd) -> JobStatus:
+    def check_status(self, job_id, cwd) -> JobStatus:
         """ Returns the job status in the queuing system.
 
         Deriving classes must provide a concrete implementation
@@ -298,8 +297,7 @@ class Runner:
         """
         raise NotImplementedError
 
-    @classmethod
-    def batch_check_status(cls, jobs: Iterable[JobMetadata]) \
+    def batch_check_status(self, jobs: Iterable[JobMetadata]) \
             -> Iterable[JobStatus]:
         """ Returns the status of multiple jobs.
 
@@ -311,10 +309,9 @@ class Runner:
 
         :param jobs: iterable of :py:class:`JobMetadata` objects
         """
-        return [cls.check_status(job.job_id, job.work_dir) for job in jobs]
+        return [self.check_status(job.job_id, job.work_dir) for job in jobs]
 
-    @classmethod
-    def cancel(cls, job_id, cwd):
+    def cancel(self, job_id, cwd):
         """ Requests the queuing system to cancel the job.
 
         Deriving classes must provide concrete implementation
@@ -325,11 +322,10 @@ class Runner:
         """
         raise NotImplementedError
 
-    @classmethod
-    def batch_cancel(cls, jobs: Iterable[JobMetadata]):
+    def batch_cancel(self, jobs: Iterable[JobMetadata]):
         """ Requests cancellation of multiple jobs."""
         for job in jobs:
-            cls.cancel(job['job_id'], job['work_dir'])
+            self.cancel(job['job_id'], job['work_dir'])
 
     def run_test(self) -> bool:
         """ Performs the test of the runner with a sample job.
@@ -352,7 +348,7 @@ class Runner:
         }
         temp_dir = tempfile.TemporaryDirectory()
         try:
-            job_id, cwd = self.run(inputs, temp_dir.name)
+            job_id, cwd = self.start(inputs, temp_dir.name)
             timeout = self.test.get('timeout', 8640000)
             end_time = time.time() + timeout
             while time.time() <= end_time:
@@ -384,7 +380,7 @@ class Runner:
                 temp_dir.cleanup()
 
     def __repr__(self):
-        return '%s(%s-%s)' % (self.__class__.__name__, self.service_name, self.name)
+        return '%s(%s, %s)' % (self.__class__.__name__, self.service_name, self.name)
 
 
 def mklink(src, dst):

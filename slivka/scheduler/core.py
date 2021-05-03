@@ -1,18 +1,20 @@
 import contextlib
 import logging
+import operator
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
 from importlib import import_module
-from typing import (Iterable, Tuple, Dict, List, Any, Type, Union, DefaultDict,
+from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
                     Sequence)
 
+from bson import ObjectId
 from pymongo import UpdateOne
 
 import slivka.db
 from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
                                  ServiceState)
-from slivka.db.helpers import insert_many, replace_one
+from slivka.db.helpers import insert_many, push_one, insert_one
 from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
 
@@ -40,6 +42,42 @@ REJECTED = object()
 ERROR = object()
 
 
+class _ServiceStateHelper:
+    def __init__(self, database=None):
+        self._db = database or slivka.db.database
+        self._states = {}  # type: dict[tuple, ServiceState]
+        self._ids = {}
+
+    def update_state(self, service, runner, tag, state, message):
+        current = self._get_service_state(service, runner, tag)
+        if current.state != state or current.message != message:
+            current.reset_timestamp()
+            current.message = message
+            current.state = state
+            filter_key = (service, runner)
+            most_severe = max(
+                (v for k, v in self._states.items() if k[:2] == filter_key),
+                key=operator.attrgetter('state')
+            )
+            push_one(self._db, most_severe)
+
+    def _get_service_state(self, service, runner, tag) -> ServiceState:
+        try:
+            return self._states[service, runner, tag]
+        except KeyError:
+            _id = self._get_database_id(service, runner)
+            state = ServiceState(_id=_id, service=service, runner=runner)
+            self._states[service, runner, tag] = state
+            return state
+
+    def _get_database_id(self, service, runner) -> ObjectId:
+        state = ServiceState.find_one(self._db, service=service, runner=runner)
+        if state is None:
+            state = ServiceState(service=service, runner=runner)
+            insert_one(self._db, state)
+        return state.id
+
+
 class Scheduler:
     """
     Scheduler is a central hub of the slivka system. It runs in it's
@@ -63,6 +101,7 @@ class Scheduler:
         self._backoff_counters = defaultdict(
             partial(BackoffCounter, max_tries=10)
         )  # type: DefaultDict[Any, BackoffCounter]
+        self._service_states = _ServiceStateHelper()
 
     def is_running(self):
         """ Checks whether the scheduler is running. """
@@ -96,8 +135,7 @@ class Scheduler:
             kwargs = conf.get('parameters', {})
             runner = cls(conf_dict, id=RunnerID(service_name, name), **kwargs)
             self.add_runner(runner)
-            self.log.info('loaded runner for service %s: %r', service_name,
-                          runner)
+            self.log.info('loaded runner for service %s: %r', service_name, runner)
 
     def test_runners(self):
         """ Run tests for all runners. """
@@ -116,22 +154,12 @@ class Scheduler:
         """
         if self._finished.is_set():
             raise RuntimeError
-        self.reset_service_states()
         self.log.info('scheduler started')
         try:
             while not self._finished.wait(1):
                 self.run_cycle()
         except KeyboardInterrupt:
             self.stop()
-
-    def reset_service_states(self):
-        """ Resets all service states in the database. """
-        for service, runner in self.runners.keys():
-            state = ServiceState(service=service, runner=runner)
-            replace_one(
-                slivka.db.database, state,
-                filter_keys=['service', 'runner'], upsert=True
-            )
 
     def run_cycle(self):
         log = self.log
@@ -178,6 +206,7 @@ class Scheduler:
             cancelled_jobs = JobMetadata.find(
                 database, {'uuid': {'$in': cancel_requests}})
             for job in cancelled_jobs:
+                # fixme: do not blindly trust data from the database
                 runner = self.runners[job.service, job.runner]
                 with contextlib.suppress(OSError):
                     runner.cancel(job.job_id, job.cwd)
@@ -210,7 +239,6 @@ class Scheduler:
                         uuid=request.uuid,
                         service=request.service,
                         runner=runner.name,
-                        runner_class=get_classpath(type(runner)),
                         job_id=job.id,
                         work_dir=job.cwd,
                         status=JobStatus.QUEUED
@@ -230,19 +258,22 @@ class Scheduler:
         # monitoring jobs
         cursor = JobMetadata.collection(database).aggregate([
             {'$match': {
-                'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}}},
+                'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}
+            }},
             {'$group': {
-                '_id': '$runner_class',
+                '_id': {'service': '$service',
+                        'runner': '$runner'},
                 'jobs': {'$push': '$$CURRENT'}
             }}
         ])
         for item in cursor:
+            _id = item['_id']
             jobs = [JobMetadata(**kw) for kw in item['jobs']]
             try:
-                mod, attr = item['_id'].rsplit('.', 1)
-                runner = getattr(import_module(mod), attr)
-            except AttributeError:
-                log.exception("Runner class cannot be imported")
+                runner = self.runners[_id['service'], _id['runner']]
+            except KeyError:
+                log.exception("Runner(%s, %s) does not exist",
+                              _id['service'], _id['runner'])
                 updated = [(job, JobStatus.ERROR) for job in jobs]
             else:
                 updated = self.monitor_jobs(runner, jobs)
@@ -285,20 +316,18 @@ class Scheduler:
         multiple run attempts and should not be repeated.
         """
         # FIXME: this method should have cleaner implementation
-        counter = self._backoff_counters[runner]
+        counter = self._backoff_counters[runner.start]
         if not requests or next(counter) > 0:
             return RunResult(started=(), deferred=requests, failed=())
         try:
-            jobs = runner.batch_run([req.inputs for req in requests])
-            service_state = ServiceState(
-                service=runner.service_name, runner=runner.name,
-                state=ServiceState.State.OK)
-            replace_one(slivka.db.database, service_state,
-                        filter_keys=['service', 'runner'])
+            jobs = runner.batch_start([req.inputs for req in requests])
+            self._service_states.update_state(
+                runner.service_name, runner.name, 'start', ServiceState.OK, 'OK'
+            )
             return RunResult(
                 started=zip(requests, jobs), deferred=(), failed=()
             )
-        except Exception as exc:
+        except OSError as e:
             self.log.exception("Running %s requests failed.", runner)
             counter.failure()
             if counter.give_up:
@@ -307,38 +336,49 @@ class Scheduler:
             else:
                 state = ServiceState.State.WARNING
                 result = RunResult(started=(), deferred=requests, failed=())
-            service_state = ServiceState(
-                service=runner.service_name, runner=runner.name,
-                state=state, message=str(exc)
+            self._service_states.update_state(
+                runner.service_name, runner.name, 'start', state, str(e)
             )
-            replace_one(slivka.db.database, service_state,
-                        filter_keys=['service', 'runner'])
             return result
 
-    def monitor_jobs(
-            self,
-            runner: Union[Runner, Type[Runner]],
-            jobs: List[JobMetadata]
-    ) -> Sequence[Tuple[JobMetadata, JobStatus]]:
+    def monitor_jobs(self, runner: Runner, jobs: List[JobMetadata]) \
+            -> Sequence[Tuple[JobMetadata, JobStatus]]:
         """ Checks status of jobs.
 
         Checks status of jobs using the provided runner or runner class
         and returns a list of those, whose status have changed.
         """
-        counter = self._backoff_counters[runner]
+        counter = self._backoff_counters[runner.check_status]
         if not jobs or next(counter) > 0:
             return ()
         try:
-            states = runner.batch_check_status(jobs)
-            return [(job, state) for (job, state)
-                    in zip(jobs, states) if job.state != state]
-        except Exception as e:
+            results = runner.batch_check_status(jobs)
+            results = [(job, state) for (job, state)
+                       in zip(jobs, results) if job.state != state]
+            if results and all(v[1] == JobStatus.ERROR for v in results):
+                self.log.exception(
+                    "Jobs of %s exited with error state", runner)
+                counter.failure()
+                service_state = ServiceState.DOWN
+                service_message = 'All jobs reported error status.'
+            else:
+                service_state = ServiceState.OK
+                service_message = 'OK'
+        except OSError as e:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
-                return [(job, JobStatus.ERROR) for job in jobs]
+                results = [(job, JobStatus.ERROR) for job in jobs]
+                service_state = ServiceState.DOWN
             else:
-                return ()
+                results = ()
+                service_state = ServiceState.WARNING
+            service_message = str(e)
+        self._service_states.update_state(
+            runner.service_name, runner.name, 'state', service_state,
+            service_message
+        )
+        return results
 
 
 class IntervalThread(threading.Thread):

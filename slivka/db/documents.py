@@ -18,7 +18,7 @@ def b64_uuid4():
 class MongoDocument(dict):
     __collection__ = None
 
-    def _get_id(self): return self['_id']
+    def _get_id(self): return self.get('_id')
     id = property(fget=_get_id)
 
     @classmethod
@@ -63,12 +63,13 @@ class MongoDocument(dict):
 class JobRequest(MongoDocument):
     __collection__ = 'requests'
 
-    def __init__(self,
+    def __init__(self, *,
                  service,
                  inputs,
                  uuid=None,
                  timestamp=None,
                  status=None,
+                 runner=None,
                  **kwargs):
         super().__init__(
             service=service,
@@ -76,6 +77,7 @@ class JobRequest(MongoDocument):
             uuid=uuid if uuid is not None else b64_uuid4(),
             timestamp=timestamp if timestamp is not None else datetime.now(),
             status=status if status is not None else JobStatus.PENDING,
+            runner=runner,
             **kwargs
         )
 
@@ -88,6 +90,10 @@ class JobRequest(MongoDocument):
     def _set_state(self, val): self['status'] = val
     state = property(_get_state, _set_state)
     status = property(_get_state, _set_state)
+
+    def _get_runner(self): return self['runner']
+    def _set_runner(self, val): self['runner'] = val
+    runner = property(_get_runner, _set_runner)
 
 
 class CancelRequest(MongoDocument):
@@ -102,19 +108,19 @@ class CancelRequest(MongoDocument):
 class JobMetadata(MongoDocument):
     __collection__ = 'jobs'
 
-    def __init__(self,
+    def __init__(self, *,
                  uuid,
                  service,
+                 runner,
                  work_dir,
-                 runner_class,
                  job_id,
                  status,
                  **kwargs):
         super().__init__(
             uuid=uuid,
             service=service,
+            runner=runner,
             work_dir=work_dir,
-            runner_class=runner_class,
             job_id=job_id,
             status=status,
             **kwargs
@@ -125,7 +131,6 @@ class JobMetadata(MongoDocument):
     runner = property(lambda self: self['runner'])
     work_dir = property(lambda self: self['work_dir'])
     cwd = work_dir
-    runner_class = property(lambda self: self['runner_class'])
     job_id = property(lambda self: self['job_id'])
 
     def _get_state(self): return JobStatus(self['status'])

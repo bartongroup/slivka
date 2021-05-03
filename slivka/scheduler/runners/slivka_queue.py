@@ -6,7 +6,6 @@ from slivka import JobStatus
 from slivka.local_queue import LocalQueueClient
 from .runner import Runner
 
-
 log = logging.getLogger('slivka.scheduler')
 
 
@@ -36,11 +35,9 @@ class SlivkaQueueRunner(Runner):
         )
         return response.id
 
-    @classmethod
-    def check_status(cls, identifier, cwd):
-        response = cls.client.get_job_status(identifier)
+    def check_status(self, identifier, cwd):
+        response = self.client.get_job_status(identifier)
         return JobStatus(response.state)
 
-    @classmethod
-    def cancel(cls, job_id, cwd):
-        cls.client.cancel_job(job_id)
+    def cancel(self, job_id, cwd):
+        self.client.cancel_job(job_id)

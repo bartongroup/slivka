@@ -1,7 +1,7 @@
 from unittest import mock
 
 import mongomock
-from nose.tools import assert_list_equal
+from nose.tools import assert_list_equal, assert_sequence_equal
 
 import slivka.db
 from slivka.db.documents import JobRequest
@@ -15,6 +15,8 @@ from . import LimiterStub
 def MockRunner(service, name):
     runner = mock.MagicMock(spec=Runner)
     runner.id = RunnerID(service_name=service, runner_name=name)
+    runner.service_name = service
+    runner.name = name
     return runner
 
 
@@ -56,7 +58,7 @@ def test_successful_running():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_run.return_value = range(len(requests))
+    runner.batch_start.return_value = range(len(requests))
     started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal([request for request, job in started], requests)
 
@@ -68,7 +70,7 @@ def test_returned_jobs():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_run.return_value = range(len(requests))
+    runner.batch_start.return_value = range(len(requests))
     started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal([job for request, job in started], list(range(len(requests))))
 
@@ -80,9 +82,9 @@ def test_batch_run_called():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_run.return_value = range(len(requests))
+    runner.batch_start.return_value = range(len(requests))
     scheduler.run_requests(runner, requests)
-    runner.batch_run.assert_called_once_with(
+    runner.batch_start.assert_called_once_with(
         [mock.sentinel.inputs, mock.sentinel.inputs]
     )
 
@@ -94,7 +96,7 @@ def test_deferred_running():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_run.side_effect = RuntimeError("failed successfully")
+    runner.batch_start.side_effect = OSError("failed successfully")
     started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal(deferred, requests)
 
@@ -106,11 +108,11 @@ def test_failed_running():
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_run.side_effect = RuntimeError("failed successfully")
+    runner.batch_start.side_effect = OSError("failed successfully")
     with mock.patch.dict(scheduler._backoff_counters,
-                         {runner: BackoffCounter(0)}):
+                         {runner.start: BackoffCounter(0)}):
         started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert_list_equal(failed, requests)
+    assert_sequence_equal(failed, requests)
 
 # @pytest.fixture
 # def runner_mock():

@@ -14,6 +14,7 @@ import pkg_resources
 
 from slivka import JobStatus
 from slivka.db.documents import JobMetadata
+from slivka.utils import ttl_cache
 from .runner import Runner
 
 log = logging.getLogger('slivka.scheduler')
@@ -49,6 +50,15 @@ _status_letters = _StatusLetterDict({
 
 _executor = ThreadPoolExecutor()
 atexit.register(_executor.shutdown)
+
+
+@ttl_cache(ttl=5)
+def _job_stat():
+    stdout = subprocess.check_output('qstat')
+    return {
+        jid: _status_letters[letter]
+        for jid, letter in _job_status_regex.findall(stdout)
+    }
 
 
 class GridEngineRunner(Runner):
@@ -107,19 +117,13 @@ class GridEngineRunner(Runner):
         def submit_wrapper(args): return self.submit(*args)
         return list(_executor.map(submit_wrapper, commands))
 
-    @classmethod
-    def check_status(cls, job_id, cwd):
+    def check_status(self, job_id, cwd):
         # there is no single job status check
         job = dict(job_id=job_id, work_dir=cwd)
-        return next(cls.batch_check_status([job]))
+        return next(iter(self.batch_check_status([job])))
 
-    @classmethod
-    def batch_check_status(cls, jobs):
-        stdout = subprocess.check_output('qstat')
-        states = {}
-        matches = _job_status_regex.findall(stdout)
-        for job_id, status in matches:
-            states[job_id] = _status_letters[status]
+    def batch_check_status(self, jobs):
+        states = _job_stat()
         for job in jobs:
             job_id = job['job_id']
             state = states.get(job_id)
@@ -130,7 +134,7 @@ class GridEngineRunner(Runner):
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
-                    cls.finished_job_timestamp.pop(job_id, None)
+                    self.finished_job_timestamp.pop(job_id, None)
                     yield (
                         JobStatus.COMPLETED if return_code == 0 else
                         JobStatus.ERROR if return_code == 127 else
@@ -138,17 +142,15 @@ class GridEngineRunner(Runner):
                     )
                 except FileNotFoundError:
                     # one minute window for file system synchronization
-                    ts = cls.finished_job_timestamp[job_id]
+                    ts = self.finished_job_timestamp[job_id]
                     if datetime.now() - ts < timedelta(minutes=1):
                         yield JobStatus.RUNNING
                     else:
-                        del cls.finished_job_timestamp[job_id]
+                        del self.finished_job_timestamp[job_id]
                         yield JobStatus.INTERRUPTED
 
-    @classmethod
-    def cancel(cls, job_id, cwd):
+    def cancel(self, job_id, cwd):
         subprocess.run([b'qdel', job_id])
 
-    @classmethod
-    def batch_cancel(cls, jobs: Iterable[JobMetadata]):
+    def batch_cancel(self, jobs: Iterable[JobMetadata]):
         subprocess.run([b'qdel', *(job['job_id'] for job in jobs)])

@@ -24,10 +24,10 @@ def replace_one(
     database[item.__collection__].replace_one(filter, item, upsert=upsert)
 
 
-def push_one(database: pymongo.database.Database, item: MongoDocument):
+def push_one(database: pymongo.database.Database, item: MongoDocument, **kwargs):
     """Updates the database from the object's keys."""
     database[item.__collection__].update_one(
-        {'_id': item.id}, {'$set': item}
+        {'_id': item.id}, {'$set': item}, **kwargs
     )
 
 
