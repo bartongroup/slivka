@@ -13,7 +13,7 @@ The value of the parameter should contain the path to the Python
 :ref:`limiter class <creating-limiter-class>` which analyses the input data and
 chooses the appropriate runner for that job. The path must point to the class located
 in the module importable for the current python interpreter.
-The format of the path follows *package[.subpackages].classname* pattern.
+The format of the path follows *package[.subpackage].classname* pattern.
 The directory containing Python script file must be a valid python package
 meaning that the directory and all its parent directories must contain a
 *__init__.py* file and should be listed in the PYTHONPATH environment variable

@@ -3,8 +3,9 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
-    <title>Advanced Usage &#8212; slivka 0.6b5 documentation</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Advanced Usage &#8212; slivka 0.7b2 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -31,7 +32,7 @@
         <li class="right" >
           <a href="specification.html" title="Specification"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -40,9 +41,9 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="advanced-usage">
+  <section id="advanced-usage">
 <h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="limiters">
+<section id="limiters">
 <h2>Limiters<a class="headerlink" href="#limiters" title="Permalink to this headline">¶</a></h2>
 <p>The job of limiter is to select one of the runners based on the input data.
 It can filter-out long jobs and redirect them to the dedicated
@@ -51,12 +52,12 @@ The value of the parameter should contain the path to the Python
 <a class="reference internal" href="#creating-limiter-class"><span class="std std-ref">limiter class</span></a> which analyses the input data and
 chooses the appropriate runner for that job. The path must point to the class located
 in the module importable for the current python interpreter.
-The format of the path follows <em>package[.subpackages].classname</em> pattern.
+The format of the path follows <em>package[.subpackage].classname</em> pattern.
 The directory containing Python script file must be a valid python package
 meaning that the directory and all its parent directories must contain a
 <em>__init__.py</em> file and should be listed in the PYTHONPATH environment variable
 if not available from the current working directory.</p>
-<div class="section" id="creating-limiter-class">
+<section id="creating-limiter-class">
 <span id="id1"></span><h3>Creating limiter class<a class="headerlink" href="#creating-limiter-class" title="Permalink to this headline">¶</a></h3>
 <p>In your project you may create one or more Python modules
 containing limiter classes. Each class should contain methods for
@@ -122,14 +123,14 @@ json file or less than 20B yaml file, are tested.
 If they are not met, the program continues to the second configuration
 which is executed if the file size does not exceed 1000B.
 Otherwise, the scheduler will refuse to start the job altogether.</p>
-</div>
-</div>
-<div class="section" id="custom-runners">
+</section>
+</section>
+<section id="custom-runners">
 <h2>Custom Runners<a class="headerlink" href="#custom-runners" title="Permalink to this headline">¶</a></h2>
 <p>Sometimes there is a need for a custom submission method e.g. when using a different queuing system
 which is not natively supported by Slivka. Custom runner may be as simple as a script executing
 a new subprocess or may involve data exchange between multiple machines.</p>
-<div class="section" id="basic-functionality">
+<section id="basic-functionality">
 <h3>Basic functionality<a class="headerlink" href="#basic-functionality" title="Permalink to this headline">¶</a></h3>
 <p>A minimal runner is limited to two operations:</p>
 <ul class="simple">
@@ -162,9 +163,9 @@ and <code class="docutils literal notranslate"><span class="pre">cwd</span></cod
 The method should return <code class="docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code> corresponding to the current status of the job.
 Once the value corresponding to the finished job is returned, the status of that job will not be checked anymore.
 If this method raises an exception, the job status is set to <code class="docutils literal notranslate"><span class="pre">JobStatus.ERROR</span></code> automatically.</p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -226,11 +227,11 @@ If this method raises an exception, the job status is set to <code class="docuti
         <li class="right" >
           <a href="specification.html" title="Specification"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2020, Mateusz Maciej Warowny.
+        &#169; Copyright 2021, Mateusz Maciej Warowny.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
     </div>
   </body>

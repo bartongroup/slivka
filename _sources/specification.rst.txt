@@ -97,7 +97,7 @@ Here is the list of settings parameters that must be specified in the file
 
 :``JOBS_URL_PATH``:
   The URL path where the tasks output files will be available from.
-  Confgure the path so that the files can be served by a proxy server
+  Configure the path so that the files can be served by a proxy server
   e.g. Apache or Nginx directly. Serving media files through
   the python application is not recommended due to the limited number
   of simultaneous connections.
@@ -345,7 +345,7 @@ Example:
   min: -4.0
   min-exclusive: false
   max: 4.5
-  max-exlusive: true
+  max-exclusive: true
   default: 0
 
 text type
@@ -529,9 +529,9 @@ If the type of the parameter is other than string, you must specify
 ``type`` parameter to ensure proper value conversion. Optionally you 
 may add ``value`` property if you need to specify a default value.
 This value will be used if the field was not given in the form. 
-It's expecially useful when defining constant command line arguments.
+It's especially useful when defining constant command line arguments.
 
-Here is an exmaple configuration of the command line program
+Here is an example configuration of the command line program
 *json-converter* taking two options ``--in-format`` and ``--out-format``
 and input file argument, with the corresponding form 
 having ``file``, ``inputformat`` and ``outputformat`` fields:
@@ -557,11 +557,13 @@ having ``file``, ``inputformat`` and ``outputformat`` fields:
 
 For the following input parameters:
 
-- ``file: /home/slivka/media/input.json``
-- ``inputformat: xml``
-- ``outputformat: [yaml, json]``
+- file = ``/home/slivka/media/input.json``
+- inputformat =  ``xml``
+- outputformat =  ``[yaml, json]``
 
-The constructed command line is ::
+The constructed command line is
+
+.. code-block:: sh
 
   json-converter --in-format=xml --out-format=yaml,json input.txt
 
@@ -728,7 +730,7 @@ Slivka consists of three components: RESTful HTTP server, job
 scheduler (dispatcher) and a simple worker queue running jobs
 on the local machine.
 The separation allows to run those parts independently of each other.
-In situaitions when the scheduler is down, the server keeps collecting
+In situations when the scheduler is down, the server keeps collecting
 the requests stashing them in the database, so when the scheduler is working
 again it can catch up with the server and dispatch all pending requests.
 Similarly, when the server is down, the currently submitted jobs 
@@ -745,16 +747,16 @@ Slivka package installation.
 HTTP Server
 -----------
 
-Slivka server can be started form the directory containing settings file with: 
+Slivka server can be started from the directory containing settings file with: 
 
 .. code-block::
 
   slivka start server --type gunicorn
 
-This will start a gunicorn using default settings specified in the
-*settings.yaml* file.
+This will start a gunicorn server, serving slivka endpoints
+using default settings specified in the *settings.yaml* file.
 
-Full command line specification is:
+A full command line specification is:
 
 .. code-block:: sh
 
@@ -774,15 +776,15 @@ Full command line specification is:
       If neither is set, the current working directory is used.
   * - ``TYPE``
     - The wsgi application used to run the server. Currently available
-      options are: gunicorn, uwsgi and devel. Using devel is discouragd
-      in production as it can serve one client at the time and may
+      options are: gunicorn, uwsgi and devel. Using devel is discouraged
+      in production as it can only serve one client at the time and may
       potentially leak sensitive data.
   * - ``--daemon/--no-daemon``
-    - Whether the process should be daemonised on startup.
+    - Whether the process should run as a daemon.
   * - ``PIDFILE``
-    - Path to the file where pid will be written to.
+    - Path to the file where process' pid will be written to.
   * - ``WORKERS``
-    - Number of serwer processes spawned on startup. Not applicable to
+    - Number of server processes spawned on startup. Not applicable to
       the development server.
   * - ``SOCKET``
     - Specify the socket the server will accept connection from
@@ -790,24 +792,27 @@ Full command line specification is:
 
 If you want to have more control or decided to use different wsgi
 application to run the server, you can use *wsgi.py* script provided
-in the project directory which contains wsgi compatible application
-(see `PEP 3333`).
-Here is an alternative way of starting slivka server with gunicorn
-which should work with other wsgi middleware as well. ::
+in the project directory which contains a wsgi-compatible application
+(see `PEP 3333`_).
+Here is an alternative way of starting slivka server using gunicorn
+(for details how to run the wsgi application with other servers
+refer to their respective documentations).
+
+.. code-block:: sh
 
   gunicorn -b 0.0.0.0:8000 -w 4 -n slivka-http wsgi
-
-.. _`PEP 3333`: https://www.python.org/dev/peps/pep-3333/
 
 ---------
 Scheduler
 ---------
 
-Slivka scheduler can be started using ::
+Slivka scheduler can be started from the project directory using
+
+.. code-block:: sh
 
   slivka start scheduler
 
-The full command line specification:
+The full command line specification is:
 
 .. code-block:: sh
 
@@ -825,9 +830,9 @@ The full command line specification:
       Alternatively a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
   * - ``--daemon/--no-daemon``
-    - Whether the process should be daemonised on startup.
+    - Whether the process should run as a daemon.
   * - ``PIDFILE``
-    - Path to the file where pid will be written to.
+    - Path to the file where process' pid will be written to.
 
 -----------
 Local Queue
@@ -855,15 +860,16 @@ The full command line specification:
       Alternatively a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
   * - ``--daemon/--no-daemon``
-    - Whether the process should be daemonised on startup.
+    - Whether the process should run as a daemon.
   * - ``PIDFILE``
-    - Path to the file where pid will be written to.
+    - Path to the file where process' pid will be written to.
 
--------------------
-Stopping Components
--------------------
+------------------
+Stopping Processes
+------------------
 
 To stop any of these processes, send the ``SIGINT`` (2) "interrupt" or
 ``SIGTERM`` (15) "terminate" signal to the process or press **Ctrl + C**
-to send ``KeyboardInterrupt`` to the current process.
-
+to send ``KeyboardInterrupt`` to the current process. Avoid using
+``SIGKILL`` (9) as killing the process abruptly may cause data
+corruption.

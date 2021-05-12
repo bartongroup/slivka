@@ -3,8 +3,9 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
-    <title>Client applications &#8212; slivka 0.6b5 documentation</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Client applications &#8212; slivka 0.7b2 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -27,7 +28,7 @@
         <li class="right" >
           <a href="advanced_usage.html" title="Advanced Usage"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -36,15 +37,15 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="client-applications">
+  <section id="client-applications">
 <h1>Client applications<a class="headerlink" href="#client-applications" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="rest-api">
+<section id="rest-api">
 <h2>REST API<a class="headerlink" href="#rest-api" title="Permalink to this headline">¶</a></h2>
 <p>Slivka provides REST API which allows you to develop applications that interact with
 the servers. The interactive view of available API endpoints is available at <code class="docutils literal notranslate"><span class="pre">api/</span></code>
 endpoint of every Slivka server.</p>
-</div>
-<div class="section" id="python">
+</section>
+<section id="python">
 <h2>Python<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h2>
 <p>If you are using Python, there is an official Slivka client library that abstracts
 communication with the server. The most recent version of the library can be installed
@@ -52,9 +53,9 @@ from our github repository:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">warownia1</span><span class="o">/</span><span class="n">slivka</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">client</span><span class="o">.</span><span class="n">git</span>
 </pre></div>
 </div>
-<div class="section" id="usage">
+<section id="usage">
 <h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
-<div class="section" id="creating-client">
+<section id="creating-client">
 <h4>Creating client<a class="headerlink" href="#creating-client" title="Permalink to this headline">¶</a></h4>
 <p>Once the library is installed, you can import <a class="reference internal" href="#slivka_client.SlivkaClient" title="slivka_client.SlivkaClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">SlivkaClient</span></code></a> from <code class="xref py py-mod docutils literal notranslate"><span class="pre">slivka_client</span></code>
 module and create its instance using a single <em>url</em> argument or provide
@@ -76,8 +77,8 @@ while <code class="docutils literal notranslate"><span class="pre">example.org/s
 </div>
 <p><a class="reference internal" href="#slivka_client.SlivkaClient" title="slivka_client.SlivkaClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.SlivkaClient</span></code></a> object is used for services discovery,
 file uploading and retrieval and job monitoring.</p>
-</div>
-<div class="section" id="services-listing-and-job-submission">
+</section>
+<section id="services-listing-and-job-submission">
 <h4>Services listing and job submission<a class="headerlink" href="#services-listing-and-job-submission" title="Permalink to this headline">¶</a></h4>
 <p>The list of available services can be accessed through the
 <a class="reference internal" href="#slivka_client.SlivkaClient.services" title="slivka_client.SlivkaClient.services"><code class="xref py py-attr docutils literal notranslate"><span class="pre">services</span></code></a> property of the <code class="xref py py-obj docutils literal notranslate"><span class="pre">client</span></code> object.
@@ -94,12 +95,12 @@ If you need to fetch one service by its name you can use item access syntax
 <span class="go">&#39;clustalo&#39;</span>
 </pre></div>
 </div>
-<p>Each <a class="reference internal" href="#slivka_client.Service" title="slivka_client.Service"><code class="xref py py-class docutils literal notranslate"><span class="pre">Service</span></code></a> object represents a single service on the server side.
+<p>Each <a class="reference internal" href="#slivka_client.Service" title="slivka_client.Service"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.Service</span></code></a> object represents a single service on the server side.
 They provide access to service information as well as the submission forms
 needed to send new job requests to the server.</p>
-<p>A <a class="reference internal" href="#slivka_client.Form" title="slivka_client.Form"><code class="xref py py-class docutils literal notranslate"><span class="pre">Form</span></code></a> stores the collection of parameters needed to run a job.
-A new empty form is created every time <a class="reference internal" href="#slivka_client.Service.form" title="slivka_client.Service.form"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Service.form</span></code></a> attribute is
-accessed or <a class="reference internal" href="#slivka_client.Service.new_form" title="slivka_client.Service.new_form"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Service.new_form()</span></code></a> method is called.
+<p>A <a class="reference internal" href="#slivka_client.Form" title="slivka_client.Form"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.Form</span></code></a> stores the collection of parameters needed to run a job.
+A new empty form is created every time <a class="reference internal" href="#slivka_client.Service.form" title="slivka_client.Service.form"><code class="xref py py-attr docutils literal notranslate"><span class="pre">slivka_client.Service.form</span></code></a> attribute is
+accessed or <a class="reference internal" href="#slivka_client.Service.new_form" title="slivka_client.Service.new_form"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.Service.new_form()</span></code></a> method is called.
 Forms are dictionary-like objects providing a view of the service input parameters,
 storing input values and mediating job submission to the server.
 Iterating over the form directly or accessing <code class="xref py py-attr docutils literal notranslate"><span class="pre">fields</span></code> gives
@@ -174,7 +175,7 @@ In most cases the following types are expected for each field:</p>
 <dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
 </dd>
 <dt class="field-even">FileField</dt>
-<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code> (file uuid) or <a class="reference internal" href="#slivka_client.File" title="slivka_client.File"><code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code></a> or <code class="xref py py-class docutils literal notranslate"><span class="pre">io.IOBase</span></code></p>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code> (file uuid) or <a class="reference internal" href="#slivka_client.File" title="slivka_client.File"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.File</span></code></a> or <code class="xref py py-class docutils literal notranslate"><span class="pre">io.IOBase</span></code></p>
 </dd>
 </dl>
 <p>However, these values might differ depending on the service requirements
@@ -195,8 +196,8 @@ before submitting the job.</p>
 <p>Internally, the values are stored in the <code class="xref py py-class docutils literal notranslate"><span class="pre">defaultdict</span></code>
 having an empty list as a default factory. That dictionary may be accessed
 and manipulated directly (it’s not recommended though)
-through the <code class="xref py py-attr docutils literal notranslate"><span class="pre">values</span></code> attribute of the <a class="reference internal" href="#slivka_client.Form" title="slivka_client.Form"><code class="xref py py-class docutils literal notranslate"><span class="pre">Form</span></code></a> object.
-Keep in mind that methods <a class="reference internal" href="#slivka_client.Form.append" title="slivka_client.Form.append"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Form.append()</span></code></a> and <a class="reference internal" href="#slivka_client.Form.extend" title="slivka_client.Form.extend"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Form.extend()</span></code></a>
+through the <code class="xref py py-attr docutils literal notranslate"><span class="pre">values</span></code> attribute of the <a class="reference internal" href="#slivka_client.Form" title="slivka_client.Form"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.Form</span></code></a> object.
+Keep in mind that methods <a class="reference internal" href="#slivka_client.Form.append" title="slivka_client.Form.append"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.Form.append()</span></code></a> and <a class="reference internal" href="#slivka_client.Form.extend" title="slivka_client.Form.extend"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.Form.extend()</span></code></a>
 use the respective methods of the underlying lists in the <em>values</em> dictionary.
 If the value was previously set to something not implementing
 <code class="xref py py-class docutils literal notranslate"><span class="pre">MutableSequence</span></code> those calls will raise <code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
@@ -221,20 +222,20 @@ while <em>dealign</em> is set for this single submission only.</p>
 <span class="go">&#39;1WsqR3H2RwOxTps1XI22xQ&#39;</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="retrieving-job-state-and-result">
+</section>
+<section id="retrieving-job-state-and-result">
 <h4>Retrieving job state and result<a class="headerlink" href="#retrieving-job-state-and-result" title="Permalink to this headline">¶</a></h4>
 <p>Once the job is successfully submitted its state can be checked using
-<a class="reference internal" href="#slivka_client.SlivkaClient.get_job_state" title="slivka_client.SlivkaClient.get_job_state"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SlivkaClient.get_job_state()</span></code></a> which takes job uuid returned by
-<a class="reference internal" href="#slivka_client.Form.submit" title="slivka_client.Form.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Form.submit()</span></code></a> and returns the <a class="reference internal" href="#slivka_client.JobState" title="slivka_client.JobState"><code class="xref py py-class docutils literal notranslate"><span class="pre">JobState</span></code></a>.</p>
+<a class="reference internal" href="#slivka_client.SlivkaClient.get_job_state" title="slivka_client.SlivkaClient.get_job_state"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.SlivkaClient.get_job_state()</span></code></a> which takes job uuid returned by
+<a class="reference internal" href="#slivka_client.Form.submit" title="slivka_client.Form.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.Form.submit()</span></code></a> and returns the <a class="reference internal" href="#slivka_client.JobState" title="slivka_client.JobState"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka_client.JobState</span></code></a>.</p>
 <p>You can fetch the list of results even if the job is still running
-using <a class="reference internal" href="#slivka_client.SlivkaClient.get_job_results" title="slivka_client.SlivkaClient.get_job_results"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SlivkaClient.get_job_results()</span></code></a> providing job uuid as an argument.
+using <a class="reference internal" href="#slivka_client.SlivkaClient.get_job_results" title="slivka_client.SlivkaClient.get_job_results"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slivka_client.SlivkaClient.get_job_results()</span></code></a> providing job uuid as an argument.
 Keep in mind that the results may be incomplete when the job is in
 unfinished state.
 The method returns the list of file handlers (more information in the next
 section) that can be used to inspect files’ metadata and stream their content.</p>
-</div>
-<div class="section" id="working-with-file-objects">
+</section>
+<section id="working-with-file-objects">
 <h4>Working with File objects<a class="headerlink" href="#working-with-file-objects" title="Permalink to this headline">¶</a></h4>
 <p>Instead of working with files directly, Slivka assigns a uuid to each file and
 uses it instead. This approach helps to avoid sending the same data
@@ -274,9 +275,9 @@ but in many cases text streams should work as well.</p>
 <p>If you want to use the same input file multiple times, it’s a good idea
 to upload it once and re-use the file handler to speed up the submission
 process, save time and bandwidth.</p>
-</div>
-</div>
-<div class="section" id="api-reference">
+</section>
+</section>
+<section id="api-reference">
 <h3>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="slivka_client.SlivkaClient">
@@ -684,7 +685,7 @@ be used in this submission only or pass them as keyword arguments.</p>
 
 </dd></dl>
 
-<div class="section" id="form-fields">
+<section id="form-fields">
 <h4>Form Fields<a class="headerlink" href="#form-fields" title="Permalink to this headline">¶</a></h4>
 <dl class="class">
 <dt id="slivka_client.form._BaseField">
@@ -914,10 +915,10 @@ attributes for deriving types.</p>
 
 </dd></dl>
 
-</div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -980,11 +981,11 @@ attributes for deriving types.</p>
         <li class="right" >
           <a href="advanced_usage.html" title="Advanced Usage"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2020, Mateusz Maciej Warowny.
+        &#169; Copyright 2021, Mateusz Maciej Warowny.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
     </div>
   </body>

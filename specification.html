@@ -3,8 +3,9 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
-    <title>Specification &#8212; slivka 0.6b5 documentation</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Specification &#8212; slivka 0.7b2 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -31,7 +32,7 @@
         <li class="right" >
           <a href="getting_started.html" title="Getting Started"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -40,9 +41,9 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="specification">
+  <section id="specification">
 <h1>Specification<a class="headerlink" href="#specification" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="project-structure">
+<section id="project-structure">
 <h2>Project Structure<a class="headerlink" href="#project-structure" title="Permalink to this headline">¶</a></h2>
 <p>Each newly created project contains three files and
 a <em>services</em> directory with an example service by default.</p>
@@ -72,8 +73,8 @@ If you are not familiar with YAML structure you can use JSON instead since
 any JSON document is a valid YAML document as well.</p>
 <p>It’s not advisable to edit <em>manage.py</em> and <em>wsgi.py</em> scripts unless
 you are an advanced user and you know what you are doing.</p>
-</div>
-<div class="section" id="settings-file">
+</section>
+<section id="settings-file">
 <h2>Settings file<a class="headerlink" href="#settings-file" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">settings.yaml</span></code> stores values used across the application.</p>
 <p>When slivka is started, a <code class="docutils literal notranslate"><span class="pre">SLIVKA_HOME</span></code> environment variable pointing
@@ -129,7 +130,7 @@ of simultaneous connections.</p>
 </dd>
 <dt class="field-odd"><code class="docutils literal notranslate"><span class="pre">JOBS_URL_PATH</span></code></dt>
 <dd class="field-odd"><p>The URL path where the tasks output files will be available from.
-Confgure the path so that the files can be served by a proxy server
+Configure the path so that the files can be served by a proxy server
 e.g. Apache or Nginx directly. Serving media files through
 the python application is not recommended due to the limited number
 of simultaneous connections.</p>
@@ -197,8 +198,8 @@ and optionally <code class="docutils literal notranslate"><span class="pre">user
 </div>
 </dd>
 </dl>
-</div>
-<div class="section" id="services">
+</section>
+<section id="services">
 <h2>Services<a class="headerlink" href="#services" title="Permalink to this headline">¶</a></h2>
 <p>Slivka creates the services using the service definition files located in the
 directory specified in the <em>settings.yaml</em> file (<em>services/</em> by default).
@@ -208,7 +209,7 @@ The filename (without the extension) should contain alphanumeric characters,
 dashes and underscores only and will be used as a unique service identifier.
 Using lowercase letters is recommended but not required.
 There is no limit on the number of services that can be created.</p>
-<div class="section" id="service-metadata">
+<section id="service-metadata">
 <h3>Service Metadata<a class="headerlink" href="#service-metadata" title="Permalink to this headline">¶</a></h3>
 <p>The first thing that should be included in the service definition file is
 its metadata.</p>
@@ -225,8 +226,8 @@ machine readable.</p>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">Type=Tutorial</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="form">
+</section>
+<section id="form">
 <h3>Form<a class="headerlink" href="#form" title="Permalink to this headline">¶</a></h3>
 <p>Forms in slivka serve similar purpose to the web forms – they are collections of
 fields representing input parameters that can be provided by the users.
@@ -238,7 +239,7 @@ of field names to <a class="reference internal" href="#field-object">field objec
 Each unique name should contain alphanumeric characters (preferably lowercase),
 dashes and underscores only. They will be used by slivka to identify fields
 and used in HTTP requests.</p>
-<div class="section" id="field-object">
+<section id="field-object">
 <h4>Field object<a class="headerlink" href="#field-object" title="Permalink to this headline">¶</a></h4>
 <p>Each element of the form definition consists of the key-value pair
 where key is the field name and the value is the <em>field object</em>
@@ -277,8 +278,8 @@ having the following properties:</p>
     <span class="nt">type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">text</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="value-object">
+</section>
+<section id="value-object">
 <span id="value-object-spec"></span><h4>Value object<a class="headerlink" href="#value-object" title="Permalink to this headline">¶</a></h4>
 <p>The value object contains the metadata defining the accepted value type and
 constraints. Those parameters are used to validate the user-provided input.
@@ -318,7 +319,7 @@ value must also meet all value constraints.</p></td>
 required since the default value is used when the field is left empty.</p>
 <p>All other parameter listed below are optional and are specific to
 their respective field types.</p>
-<div class="section" id="int-type">
+<section id="int-type">
 <h5>int type<a class="headerlink" href="#int-type" title="Permalink to this headline">¶</a></h5>
 <table class="docutils align-default">
 <colgroup>
@@ -351,8 +352,8 @@ their respective field types.</p>
 <span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">5</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="decimal-type">
+</section>
+<section id="decimal-type">
 <h5>decimal type<a class="headerlink" href="#decimal-type" title="Permalink to this headline">¶</a></h5>
 <table class="docutils align-default">
 <colgroup>
@@ -390,12 +391,12 @@ their respective field types.</p>
 <span class="nt">min</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-4.0</span>
 <span class="nt">min-exclusive</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="nt">max</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4.5</span>
-<span class="nt">max-exlusive</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">max-exclusive</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="text-type">
+</section>
+<section id="text-type">
 <h5>text type<a class="headerlink" href="#text-type" title="Permalink to this headline">¶</a></h5>
 <table class="docutils align-default">
 <colgroup>
@@ -426,8 +427,8 @@ their respective field types.</p>
 <span class="nt">max-length</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">8</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="flag-type">
+</section>
+<section id="flag-type">
 <h5>flag type<a class="headerlink" href="#flag-type" title="Permalink to this headline">¶</a></h5>
 <table class="docutils align-default">
 <colgroup>
@@ -451,8 +452,8 @@ their respective field types.</p>
 <span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="choice-type">
+</section>
+<section id="choice-type">
 <h5>choice type<a class="headerlink" href="#choice-type" title="Permalink to this headline">¶</a></h5>
 <table class="colwidths-auto docutils align-default">
 <thead>
@@ -478,8 +479,8 @@ which is then converted to the value on the server side</p></td>
 <span class="nt">default</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Alpha</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="file-type">
+</section>
+<section id="file-type">
 <h5>file type<a class="headerlink" href="#file-type" title="Permalink to this headline">¶</a></h5>
 <table class="colwidths-auto docutils align-default">
 <thead>
@@ -512,10 +513,10 @@ e.g. 1024B, 500KB or 10MB</p></td>
 <span class="nt">max-size</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1KB</span>
 </pre></div>
 </div>
-</div>
-</div>
-</div>
-<div class="section" id="command-definition">
+</section>
+</section>
+</section>
+<section id="command-definition">
 <h3>Command definition<a class="headerlink" href="#command-definition" title="Permalink to this headline">¶</a></h3>
 <p>Command configuration tells Slivka how to construct the command line parameters
 for the program and what environment variables should be set.
@@ -552,7 +553,7 @@ the command line arguments.</p></td>
 </tr>
 </tbody>
 </table>
-<div class="section" id="input-object">
+<section id="input-object">
 <h4>Input Object<a class="headerlink" href="#input-object" title="Permalink to this headline">¶</a></h4>
 <p>Each key (field name) specified in the inputs is linked to the
 corresponding field in the form definition.
@@ -611,8 +612,8 @@ using <code class="docutils literal notranslate"><span class="pre">${VARIABLE}</
 <code class="docutils literal notranslate"><span class="pre">type</span></code> parameter to ensure proper value conversion. Optionally you
 may add <code class="docutils literal notranslate"><span class="pre">value</span></code> property if you need to specify a default value.
 This value will be used if the field was not given in the form.
-It’s expecially useful when defining constant command line arguments.</p>
-<p>Here is an exmaple configuration of the command line program
+It’s especially useful when defining constant command line arguments.</p>
+<p>Here is an example configuration of the command line program
 <em>json-converter</em> taking two options <code class="docutils literal notranslate"><span class="pre">--in-format</span></code> and <code class="docutils literal notranslate"><span class="pre">--out-format</span></code>
 and input file argument, with the corresponding form
 having <code class="docutils literal notranslate"><span class="pre">file</span></code>, <code class="docutils literal notranslate"><span class="pre">inputformat</span></code> and <code class="docutils literal notranslate"><span class="pre">outputformat</span></code> fields:</p>
@@ -635,12 +636,12 @@ having <code class="docutils literal notranslate"><span class="pre">file</span><
 </div>
 <p>For the following input parameters:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">file:</span> <span class="pre">/home/slivka/media/input.json</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">inputformat:</span> <span class="pre">xml</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">outputformat:</span> <span class="pre">[yaml,</span> <span class="pre">json]</span></code></p></li>
+<li><p>file = <code class="docutils literal notranslate"><span class="pre">/home/slivka/media/input.json</span></code></p></li>
+<li><p>inputformat =  <code class="docutils literal notranslate"><span class="pre">xml</span></code></p></li>
+<li><p>outputformat =  <code class="docutils literal notranslate"><span class="pre">[yaml,</span> <span class="pre">json]</span></code></p></li>
 </ul>
 <p>The constructed command line is</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">json</span><span class="o">-</span><span class="n">converter</span> <span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">xml</span> <span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">yaml</span><span class="p">,</span><span class="n">json</span> <span class="nb">input</span><span class="o">.</span><span class="n">txt</span>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>json-converter --in-format<span class="o">=</span>xml --out-format<span class="o">=</span>yaml,json input.txt
 </pre></div>
 </div>
 <p>and <em>/home/slivka/media/input.json</em> is automatically symlinked to
@@ -657,8 +658,8 @@ a shell command:</p>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="output-object">
+</section>
+<section id="output-object">
 <h4>Output Object<a class="headerlink" href="#output-object" title="Permalink to this headline">¶</a></h4>
 <p>Output objects describe individual files or groups of files created by the
 command line program. Each output object have the following properties:</p>
@@ -712,9 +713,9 @@ and its absence on job completion does not raise any error.</p>
 <p class="admonition-title">Warning</p>
 <p>Patterns starting with a special characters must be quoted.</p>
 </div>
-</div>
-</div>
-<div class="section" id="runners">
+</section>
+</section>
+<section id="runners">
 <span id="runners-spec"></span><h3>Runners<a class="headerlink" href="#runners" title="Permalink to this headline">¶</a></h3>
 <p>So far, the configuration regarded the construction of command line arguments.
 The <code class="docutils literal notranslate"><span class="pre">runners</span></code> define how these commands are executed on the system.
@@ -762,14 +763,14 @@ depend on the runner constructor.</p></td>
 <code class="docutils literal notranslate"><span class="pre">SlivkaQueueRunner</span></code> which takes no additional parameters.
 <code class="docutils literal notranslate"><span class="pre">GridEngineRunner</span></code> takes one parameter – <code class="docutils literal notranslate"><span class="pre">qsub_args</span></code> – containing
 the list of arguments passed directly to the qsub command.</p>
-<div class="section" id="limiter">
+<section id="limiter">
 <h4>Limiter<a class="headerlink" href="#limiter" title="Permalink to this headline">¶</a></h4>
 <p>Limiter allows controlling the selection of the runner based on the input
 parameters. The value should be a path to the class extending
 <code class="docutils literal notranslate"><span class="pre">slivka.scheduler.Limiter</span></code>. The usage of limiters is covered in
 the <a class="reference external" href="advanced_usage.html#limiters">advanced usage</a></p>
-</div>
-<div class="section" id="presets">
+</section>
+<section id="presets">
 <h4>Presets<a class="headerlink" href="#presets" title="Permalink to this headline">¶</a></h4>
 <p>It is possible to pre-define commonly used sets of parameters to provide users
 with frequently used parameters combinations using <code class="docutils literal notranslate"><span class="pre">presets</span></code> property
@@ -805,16 +806,16 @@ containing the list of preset objects defined below.</p>
 <p>The presets serve as a hint for the users only and the use of the
 pre-defined values is not enforced or checked in any way.</p>
 </div>
-</div>
-</div>
-</div>
-<div class="section" id="launching-the-project">
+</section>
+</section>
+</section>
+<section id="launching-the-project">
 <h2>Launching the Project<a class="headerlink" href="#launching-the-project" title="Permalink to this headline">¶</a></h2>
 <p>Slivka consists of three components: RESTful HTTP server, job
 scheduler (dispatcher) and a simple worker queue running jobs
 on the local machine.
 The separation allows to run those parts independently of each other.
-In situaitions when the scheduler is down, the server keeps collecting
+In situations when the scheduler is down, the server keeps collecting
 the requests stashing them in the database, so when the scheduler is working
 again it can catch up with the server and dispatch all pending requests.
 Similarly, when the server is down, the currently submitted jobs
@@ -826,15 +827,15 @@ Slivka package installation.</p>
 <p>Before you start, make sure that you have access to the running mongodb
 server which is required but is not part of slivka package.</p>
 </div>
-<div class="section" id="http-server">
+<section id="http-server">
 <h3>HTTP Server<a class="headerlink" href="#http-server" title="Permalink to this headline">¶</a></h3>
-<p>Slivka server can be started form the directory containing settings file with:</p>
+<p>Slivka server can be started from the directory containing settings file with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span> <span class="n">start</span> <span class="n">server</span> <span class="o">--</span><span class="nb">type</span> <span class="n">gunicorn</span>
 </pre></div>
 </div>
-<p>This will start a gunicorn using default settings specified in the
-<em>settings.yaml</em> file.</p>
-<p>Full command line specification is:</p>
+<p>This will start a gunicorn server, serving slivka endpoints
+using default settings specified in the <em>settings.yaml</em> file.</p>
+<p>A full command line specification is:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>slivka start <span class="o">[</span>--home SLIVKA_HOME<span class="o">]</span> server <span class="se">\</span>
   <span class="o">[</span>--type TYPE<span class="o">]</span> <span class="o">[</span>--daemon/--no-daemon<span class="o">]</span> <span class="o">[</span>--pid-file PIDFILE<span class="o">]</span> <span class="se">\</span>
   <span class="o">[</span>--workers WORKERS<span class="o">]</span> <span class="o">[</span>--http-socket SOCKET<span class="o">]</span>
@@ -854,18 +855,18 @@ If neither is set, the current working directory is used.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">TYPE</span></code></p></td>
 <td><p>The wsgi application used to run the server. Currently available
-options are: gunicorn, uwsgi and devel. Using devel is discouragd
-in production as it can serve one client at the time and may
+options are: gunicorn, uwsgi and devel. Using devel is discouraged
+in production as it can only serve one client at the time and may
 potentially leak sensitive data.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--daemon/--no-daemon</span></code></p></td>
-<td><p>Whether the process should be daemonised on startup.</p></td>
+<td><p>Whether the process should run as a daemon.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PIDFILE</span></code></p></td>
-<td><p>Path to the file where pid will be written to.</p></td>
+<td><p>Path to the file where process’ pid will be written to.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WORKERS</span></code></p></td>
-<td><p>Number of serwer processes spawned on startup. Not applicable to
+<td><p>Number of server processes spawned on startup. Not applicable to
 the development server.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SOCKET</span></code></p></td>
@@ -876,21 +877,22 @@ overriding the value from the settings file.</p></td>
 </table>
 <p>If you want to have more control or decided to use different wsgi
 application to run the server, you can use <em>wsgi.py</em> script provided
-in the project directory which contains wsgi compatible application
-(see <cite>PEP 3333</cite>).
-Here is an alternative way of starting slivka server with gunicorn
-which should work with other wsgi middleware as well.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gunicorn</span> <span class="o">-</span><span class="n">b</span> <span class="mf">0.0</span><span class="o">.</span><span class="mf">0.0</span><span class="p">:</span><span class="mi">8000</span> <span class="o">-</span><span class="n">w</span> <span class="mi">4</span> <span class="o">-</span><span class="n">n</span> <span class="n">slivka</span><span class="o">-</span><span class="n">http</span> <span class="n">wsgi</span>
+in the project directory which contains a wsgi-compatible application
+(see <a href="#id1"><span class="problematic" id="id2">`PEP 3333`_</span></a>).
+Here is an alternative way of starting slivka server using gunicorn
+(for details how to run the wsgi application with other servers
+refer to their respective documentations).</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>gunicorn -b <span class="m">0</span>.0.0.0:8000 -w <span class="m">4</span> -n slivka-http wsgi
 </pre></div>
 </div>
-</div>
-<div class="section" id="scheduler">
+</section>
+<section id="scheduler">
 <h3>Scheduler<a class="headerlink" href="#scheduler" title="Permalink to this headline">¶</a></h3>
-<p>Slivka scheduler can be started using</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span> <span class="n">start</span> <span class="n">scheduler</span>
+<p>Slivka scheduler can be started from the project directory using</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>slivka start scheduler
 </pre></div>
 </div>
-<p>The full command line specification:</p>
+<p>The full command line specification is:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>slivka start <span class="o">[</span>--home SLIVKA_HOME<span class="o">]</span> scheduler <span class="se">\</span>
   <span class="o">[</span>--daemon/--no-daemon<span class="o">]</span> <span class="o">[</span>--pid-file PIDFILE<span class="o">]</span>
 </pre></div>
@@ -908,15 +910,15 @@ Alternatively a SLIVKA_HOME environment variable can be set.
 If neither is set, the current working directory is used.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--daemon/--no-daemon</span></code></p></td>
-<td><p>Whether the process should be daemonised on startup.</p></td>
+<td><p>Whether the process should run as a daemon.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PIDFILE</span></code></p></td>
-<td><p>Path to the file where pid will be written to.</p></td>
+<td><p>Path to the file where process’ pid will be written to.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="local-queue">
+</section>
+<section id="local-queue">
 <h3>Local Queue<a class="headerlink" href="#local-queue" title="Permalink to this headline">¶</a></h3>
 <p>The local queue can be started with</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span> <span class="n">start</span> <span class="n">local</span><span class="o">-</span><span class="n">queue</span>
@@ -940,22 +942,24 @@ Alternatively a SLIVKA_HOME environment variable can be set.
 If neither is set, the current working directory is used.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--daemon/--no-daemon</span></code></p></td>
-<td><p>Whether the process should be daemonised on startup.</p></td>
+<td><p>Whether the process should run as a daemon.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PIDFILE</span></code></p></td>
-<td><p>Path to the file where pid will be written to.</p></td>
+<td><p>Path to the file where process’ pid will be written to.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="stopping-components">
-<h3>Stopping Components<a class="headerlink" href="#stopping-components" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="stopping-processes">
+<h3>Stopping Processes<a class="headerlink" href="#stopping-processes" title="Permalink to this headline">¶</a></h3>
 <p>To stop any of these processes, send the <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code> (2) “interrupt” or
 <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code> (15) “terminate” signal to the process or press <strong>Ctrl + C</strong>
-to send <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code> to the current process.</p>
-</div>
-</div>
-</div>
+to send <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code> to the current process. Avoid using
+<code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code> (9) as killing the process abruptly may cause data
+corruption.</p>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -999,7 +1003,7 @@ to send <code class="docutils literal notranslate"><span class="pre">KeyboardInt
 <li><a class="reference internal" href="#http-server">HTTP Server</a></li>
 <li><a class="reference internal" href="#scheduler">Scheduler</a></li>
 <li><a class="reference internal" href="#local-queue">Local Queue</a></li>
-<li><a class="reference internal" href="#stopping-components">Stopping Components</a></li>
+<li><a class="reference internal" href="#stopping-processes">Stopping Processes</a></li>
 </ul>
 </li>
 </ul>
@@ -1045,11 +1049,11 @@ to send <code class="docutils literal notranslate"><span class="pre">KeyboardInt
         <li class="right" >
           <a href="getting_started.html" title="Getting Started"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.6b5 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2020, Mateusz Maciej Warowny.
+        &#169; Copyright 2021, Mateusz Maciej Warowny.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
     </div>
   </body>
