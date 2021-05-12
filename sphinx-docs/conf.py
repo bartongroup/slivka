@@ -50,7 +50,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'slivka'
-copyright = '2020, Mateusz Maciej Warowny'
+copyright = '2021, Mateusz Maciej Warowny'
 author = 'Mateusz Maciej Warowny'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -60,7 +60,7 @@ author = 'Mateusz Maciej Warowny'
 import slivka.__about__
 import re
 # The full version, including alpha/beta/rc tags.
-release = slivka.__about__.__version__
+release = "0.6b5"
 # The short X.Y version.
 version = re.match(r'\d+\.\d+', release).group()
 

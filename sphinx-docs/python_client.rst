@@ -53,10 +53,10 @@ Services listing and job submission
 -----------------------------------
 
 The list of available services can be accessed through the
-:attr:`~.SlivkaClient.services` property of the :obj:`client` object.
+:attr:`~slivka_client.SlivkaClient.services` property of the :obj:`client` object.
 The server will be contacted to provide the list of services on the first property access.
 Subsequent attempts will return the cached list immediately.
-Use :meth:`~.SlivkaClient.refresh_services` method whenever you want to reload
+Use :meth:`~slivka_client.SlivkaClient.refresh_services` method whenever you want to reload
 the list of services from the server.
 If you need to fetch one service by its name you can use item access syntax
 ``client[key]`` where *key* is the service name.
@@ -69,13 +69,13 @@ If you need to fetch one service by its name you can use item access syntax
     >>> service.name
     'clustalo'
 
-Each :class:`.Service` object represents a single service on the server side.
+Each :class:`slivka_client.Service` object represents a single service on the server side.
 They provide access to service information as well as the submission forms
 needed to send new job requests to the server.
 
-A :class:`.Form` stores the collection of parameters needed to run a job.
-A new empty form is created every time :attr:`.Service.form` attribute is
-accessed or :meth:`.Service.new_form` method is called.
+A :class:`slivka_client.Form` stores the collection of parameters needed to run a job.
+A new empty form is created every time :attr:`slivka_client.Service.form` attribute is
+accessed or :meth:`slivka_client.Service.new_form` method is called.
 Forms are dictionary-like objects providing a view of the service input parameters,
 storing input values and mediating job submission to the server.
 Iterating over the form directly or accessing :attr:`fields` gives
@@ -129,7 +129,7 @@ In most cases the following types are expected for each field:
 :TextField: :class:`str`
 :BooleanField: :class:`bool`
 :ChoiceField: :class:`str`
-:FileField: :class:`str` (file uuid) or :class:`.File` or :class:`io.IOBase`
+:FileField: :class:`str` (file uuid) or :class:`slivka_client.File` or :class:`io.IOBase`
 
 However, these values might differ depending on the service requirements
 and custom server-side validation. For more information refer to the service
@@ -150,8 +150,8 @@ as well as passing open streams.
 Internally, the values are stored in the :class:`.defaultdict`
 having an empty list as a default factory. That dictionary may be accessed
 and manipulated directly (it's not recommended though)
-through the :attr:`values` attribute of the :class:`.Form` object.
-Keep in mind that methods :meth:`.Form.append` and :meth:`.Form.extend`
+through the :attr:`values` attribute of the :class:`slivka_client.Form` object.
+Keep in mind that methods :meth:`slivka_client.Form.append` and :meth:`slivka_client.Form.extend`
 use the respective methods of the underlying lists in the *values* dictionary.
 If the value was previously set to something not implementing
 :class:`MutableSequence` those calls will raise :exc:`AttributeError`.
@@ -186,11 +186,11 @@ Retrieving job state and result
 -------------------------------
 
 Once the job is successfully submitted its state can be checked using
-:meth:`.SlivkaClient.get_job_state` which takes job uuid returned by
-:meth:`.Form.submit` and returns the :class:`.JobState`.
+:meth:`slivka_client.SlivkaClient.get_job_state` which takes job uuid returned by
+:meth:`slivka_client.Form.submit` and returns the :class:`slivka_client.JobState`.
 
 You can fetch the list of results even if the job is still running
-using :meth:`.SlivkaClient.get_job_results` providing job uuid as an argument.
+using :meth:`slivka_client.SlivkaClient.get_job_results` providing job uuid as an argument.
 Keep in mind that the results may be incomplete when the job is in
 unfinished state.
 The method returns the list of file handlers (more information in the next
