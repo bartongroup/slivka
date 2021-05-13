@@ -4,10 +4,8 @@ info:
   version: "1.0"
 
 servers:
-- url: https://compbio.dundee.ac.uk/slivka
+- url: https://www.compbio.dundee.ac.uk/slivka
   description: Compbio Public Server
-- url: http://gjb-www-1.cluster.lifesci.dundee.ac.uk:3203
-  description: Compbio Internal Server
 
 tags:
 - name: services
