@@ -13,7 +13,7 @@ _about_file = os.path.join(os.path.dirname(__file__), 'slivka', '__about__.py')
 exec(open(_about_file).read(), about)
 
 setup(
-    name="Slivka",
+    name="slivka",
     version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires=[
