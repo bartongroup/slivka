@@ -237,6 +237,20 @@ SafeTranscludingOrderedYamlLoader.add_constructor(
 )
 
 
+def flatten_mapping(mapping):
+    result = {
+        k.lower() + '.' + kn: vn
+        for k, v in mapping.items()
+        if isinstance(v, dict)
+        for kn, vn in flatten_mapping(v).items()
+    }
+    result.update(
+        (k.lower(), v) for (k, v) in mapping.items()
+        if not isinstance(v, dict)
+    )
+    return result
+
+
 class JobStatus(enum.IntEnum):
     PENDING = 1  # Request submitted to the database but not processed yet
     REJECTED = 2  # Request rejected due to input parameter limitations
