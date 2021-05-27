@@ -24,7 +24,7 @@ setup(
         "jsonschema>=3.0,<4.0",
         "MarkupSafe>=1.0,<2.0",
         "pymongo>=3.7,<4.0",
-        "PyYAML>=3.11,<4.0",
+        "PyYAML>=5.4,<6.0",
         "pyzmq>=19.0,<20.0",
         "simplejson>=3.16,<4.0",
         "Werkzeug>=1.0,<2.0",
