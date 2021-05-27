@@ -1,673 +1,437 @@
-openapi: 3.0.2
+---
+openapi: 3.0.3
 info:
   title: Slivka Web API
-  version: "1.0"
-
-servers:
-- url: https://www.compbio.dundee.ac.uk/slivka
-  description: Compbio Public Server
-
-tags:
-- name: services
-  description: Services availability and tasks submisison.
-- name: files
-  description: Uploading and downloading data files.
-- name: tasks
-  description: Task status and results.
-
+  version: '1.1'
 paths:
   /api/version:
     get:
-      summary: Returns version information of the Slivka instance and the API
+      summary: Show slivka version.
       responses:
         '200':
-          description: Service version information
+          description: 
+            Version of the slivka instance running on the server
+            and its corresponding REST API.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  statuscode:
-                    type: integer
-                    example: 200
-                  slivka:
-                    description: Slivka system version.
+                  slivkaVersion:
+                    description: Slivka version.
                     type: string
-                    example: "0.5a1"
-                  api:
-                    description: API specification version.
+                  APIVersion:
+                    description: REST API version
                     type: string
-                    example: "1.0"
 
   /api/services:
     get:
-      summary: Returns a list of available services.
-      tags: [services]
+      summary: Show list of all services.
       responses:
         '200':
-          description: A list of available services
+          description: List of all available web services.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                    example: 200
-                  services:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          description: Short service identificator.
-                          type: string
-                          example: Clustalo
-                        label:
-                          description: Human-readable name of the service.
-                          type: string
-                          example: Clustal Omega - 1.2.4
-                        URI:
-                          description: Location of the service.
-                          type: string
-                          format: uri
-                          example: /api/services/clustalo
-                        classifiers:
-                          description: Data tags annotating the service.
-                          type: array
-                          items:
-                            type: string
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceResource'
 
   /api/services/{service}:
-    get:
-      summary: Returns the service information and possible submission parameters.
-      tags: [services]
-      parameters:
+    parameters:
       - name: service
         in: path
         required: true
-        description: Service name
+        description: Service id
         schema:
           type: string
+
+    get:
+      summary: Show service information.
       responses:
         '200':
-          description: Service information and available submission parametes.
+          description:
+            Detailed description of the service. To start a new
+            job, send a POST request providing values for the listed
+            parameters.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                  name:
-                    type: string
-                  URI:
-                    type: string
-                    format: uri
-                  fields:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/FormField"
+                $ref: '#/components/schemas/ServiceResource'
         '404':
-          description: Specified service does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-        '503':
-          description: Specified service is unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServiceUnavailableError'
-    post:
-      summary: Submits a new job request.
-      tags: [services]
-      parameters:
+          description: Requested service not found.
+
+  /api/services/{service}/jobs:
+    parameters:
       - name: service
         in: path
         required: true
-        description: Service name
+        description: Service id
         schema:
           type: string
+
+    post:
+      summary: Submit new job request.
       requestBody:
-        required: true
+        description:
+          The request content can be either an URLencoded or a multipart
+          form data containing the service parameter ids and
+          their corresponding values. If a file needs to be submitted,
+          then multipart must be used.
         content:
           application/x-www-form-urlencoded:
-            schema:
-              type: object
-              additionalProperties:
-                type: string
+            description: URLencoded service parameters.
+            example: param1Id=value1&param2Id=value2
+          multipart/form-data:
+            description: Service parameters as multipart form data.
+          # application/json:
+          #   description: JSON object with job parameters.
+          #   schema:
+          #     type: object
+          #     additionalProperties: true
+          #   example:
+          #     param1Id: value1
+          #     param2Id: value2
+
+        required: true
       responses:
         '202':
-          description: Unique identifier of the submitted task
+          description: New job request has been created.
+          headers:
+            Location:
+              description: Location of the new resource.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResource'
+        '400':
+          description: 
+            Your job request contains invalid values.
+            Check job parameters and provided values.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  statuscode:
-                    type: integer
-                    example: 202
-                  uuid:
-                    type: string
-                    format: uuid
-                    example: 147a8f7a9da54fca93987b971b89286d
-                  URI:
-                    type: string
-                    format: uri
-                    example: /api/task/147a8f7a9da54fca93987b971b89286d
-
-        '404':
-          description: Specified service does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-        '503':
-          description: Specified service is unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServiceUnavailableError'
-        '420':
-          description: Submitted form contains errors
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                    example: 420
-                  error:
-                    type: string
-                    example: Incorrect data
                   errors:
                     type: array
                     items:
                       type: object
                       properties:
-                        field:
+                        parameter:
                           type: string
+                          description:
+                            Parameter id for which an error occurred.
                         errorCode:
                           type: string
+                          description: Short code identifying error type.
                         message:
                           type: string
-                      example:
-                        field: num-iters
-                        errorCode: max
-                        message: Value must be less than 20
-
-  /api/services/{service}/presets:
-    get:
-      summary: Returns the list of available presets for this service.
-      tags: [services]
-      parameters:
-        - name: service
-          in: path
-          required: true
-          description: Service name
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of presets available for this service.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                  presets:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        description:
-                          type: string
-                        values:
-                          type: object
+                          description: Description of the error.
         '404':
-          description: Service not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
+          description: Service not found.
 
-  /api/services/{service}/presets/{preset}:
-    get:
-      summary: Retrieve the preset
-      tags: [services]
-      parameters:
-        - name: service
-          in: path
-          required: true
-          description: Service name
-          schema:
-            type: string
-        - name: preset
-          in: path
-          required: true
-          description: Preset id
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Preset
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statuscode:
-                    type: integer
-                  preset:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      description:
-                        type: string
-                      values:
-                        type: object
-        '404':
-          description: Service or preset not found
-          content:
-            application/json:
-              schema:
-                $ref: '#components/schemas/NotFoundError'
-
-  /api/servicemonitor:
-    get:
-      summary: Check the status of services and runners
-      tags: [services]
-      responses:
-        '200':
-          description: Service states
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  states:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        service:
-                          type: string
-                        runner:
-                          type: string
-                        state:
-                          enum:
-                            - OK
-                            - WARNING
-                            - FAILURE
-                          type: string
-                        timestamp:
-                          format: iso datetime
-                          type: string
-
-
-  /api/files:
-    post:
-      summary: Upload the file to the server
-      tags: [files]
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '201':
-          description: Created file data
-          content:
-            application/json:
-              schema:
-                properties:
-                  statuscode:
-                    type: integer
-                    example: 201
-                  uuid:
-                    type: string
-                    format: uuid
-                  title:
-                    type: string
-                  mimetype:
-                    type: string
-                  URI:
-                    type: string
-                    format: uri
-                  contentURI:
-                    type: string
-                    format: uri
-                
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BadRequestError'
-        '415':
-          description: File type not supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UnsupportedMediaTypeError'
-        '507':
-          description: Insuficient storage. File too large.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InsufficientStorageError'
-
-  /api/files/{uuid}:
-    get:
-      summary: Retrieve file metadata
-      tags: [files]
-      parameters:
-      - name: uuid
+  /api/jobs/{jid}:
+    parameters:
+      - name: jid
         in: path
         required: true
-        description: Unique file identifier
+        description: Job id
         schema:
           type: string
-          format: uuid
-          example: dd660bcf78bf4d90a67672c8d442da8c
+        example: YKZFx3m3LxyfHFib
+
+    get:
+      summary: Retrieve job information.
+      description:
+        This endpoint can be used to poll for job status changes.
       responses:
         '200':
-          description: File metadata
+          description: Job information.
           content:
             application/json:
               schema:
-                allOf:
-                - properties:
-                    statuscode:
-                      type: integer
-                      example: 200
-                - $ref: '#/components/schemas/File'
+                $ref: '#/components/schemas/JobResource'
         '404':
-          description: File not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
+          description: Job not found.
 
-  /media/uploads/{path}:
-    get:
-      summary: Download the content of the uploaded file.
-      tags: [files]
-      parameters:
-        - name: path
-          in: path
-          required: true
-          description: Path to the file
-          schema:
-            type: string
+    delete:
+      summary: Cancel running job
       responses:
-        '200':
-          description: File can be downloaded.
-          content:
-            "*/*":
-              schema:
-                type: string
-                format: binary
+        '202':
+          description: Job deleted successfully.
         '404':
-          description: File not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
+          description: Job not found.
 
-  /media/tasks/{uuid}/{path}:
-    get:
-      summary: Download the content of the job output file.
-      tags: [files]
-      parameters:
-        - name: uuid
-          in: path
-          required: true
-          description: Unique identifier of the task.
-          schema:
-            type: string
-        - name: path
-          in: path
-          required: true
-          description: Path to the file
-          schema:
-            type: string
-      responses:
-        '200':
-          description: File can be downloaded.
-          content:
-            "*/*":
-              schema:
-                type: string
-                format: binary
-        '404':
-          description: File not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-
-  /api/tasks/{uuid}:
-    get:
-      summary: Check the status of the running task
-      tags: [tasks]
-      parameters:
-      - name: uuid
+  /api/jobs/{jid}/files:
+    parameters:
+      - name: jid
         in: path
         required: true
-        description: Unique task id issued on form submission
+        description: Job id
         schema:
           type: string
-          format: uuid
+        example: YKegj3m3LxQWnw7U
+
+    get:
+      summary: Show job files.
+      description:
+        The files can be fetched even if the job is not finished. 
+        In such case only currently existing files are shown and the 
+        list might be incomplete.
       responses:
         '200':
-          description: Task status
+          description: List of files created by the job.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  statuscode:
-                    type: integer
-                    example: 200
-                  status:
-                    type: string
-                    enum:
-                    - pending
-                    - accepted
-                    - queued
-                    - running
-                    - completed
-                    - failed
-                    - error
-                    - undefined
-                  ready:
-                    type: boolean
-                  filesURI:
-                    type: string
-                    format: uri
-                    example: /task/147a8f7a9da54fca93987b971b89286d/files
-        '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundError'
-
-  /api/tasks/{uuid}/files:
-    get:
-      summary: Returns a list of output file identifiers
-      tags: [tasks]
-      parameters:
-      - name: uuid
-        in: path
-        required: true
-        description: Unique task id issued on form submission
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: A JSON array of file ids produced by the task.
-          content:
-            application/json:
-              schema:
-                properties:
-                  statuscode:
-                    type: integer
-                    example: 200
                   files:
                     type: array
                     items:
-                      $ref: '#/components/schemas/File'
-        '404':
-          description: Task not found
+                      $ref: '#/components/schemas/FileResource'
+
+  /api/job/{jid}/files/{path}:
+    parameters:
+      - name: jid
+        in: path
+        required: true
+        description: Job id
+        schema:
+          type: string
+        example: YKegj3m3LxQWnw7U
+      - name: path
+        in: path
+        required: true
+        description: Path to the file
+        schema:
+          type: string
+        example: stdout
+
+    get:
+      summary: Show file information.
+      description:
+        Displays the metadata of the file and the url where the
+        content can be downloaded from.
+      responses:
+        '200':
+          description: File information.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotFoundError'
+                $ref: '#/components/schemas/FileResource'
 
+  /api/files:
+    post:
+      summary: Upload file.
+      description:
+        Uploaded files are given identifiers that can be used during
+        job submission without the need to re-upload them.
+        Upload the file first if you intent to reuse the same file
+        in multiple jobs.
+      responses:
+        '201':
+          description: New file resource created on the server.
+          headers:
+            Location:
+              description: Location of the new resource.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResource'
+
+  /api/files/{path}:
+    get:
+      summary: Show uploaded file resource.
+      responses:
+        '200':
+          description: File information.
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResource'
+        
 components:
   schemas:
-    FormField:
+    ServiceResource:
       type: object
       properties:
+        '@url':
+          type: string
+          format: uri
+          description: Location of the service resource.
+        id:
+          type: string
+          description: Unique identifier which the service is referred to by.
         name:
           type: string
-        type:
-          type: string
-          enum: [integer, decimal, text, boolean, choice, file]
-        label:
-          type: string
+          description: Human-readable service name.
         description:
           type: string
-        required:
-          type: boolean
-        default:
-          nullable: true
-        min:
-          type: number
-          nullable: true
-        max:
-          type: number
-          nullable: true
-        minExclusive:
-          type: boolean
-          nullable: true
-        maxExclusive:
-          type: boolean
-          nullable: true
-        minLength:
-          type: integer
-          nullable: true
-        maxLength:
-          type: integer
-          nullable: true
-        choices:
+          description: Long description of the service.
+        author:
+          type: string
+          description: Author of the service or the software.
+        version:
+          type: string
+          description: Version of the service or the underlying software.
+        license:
+          type: string
+          description: License which the software is released under.
+        classifiers:
           type: array
-          nullable: true
+          description:
+            List of tags that can be used to group services into categories.
           items:
             type: string
-        mimetype:
-          type: string
-          nullable: true
-        extension:
-          type: string
-          nullable: true
-        maxSize:
-          type: integer
-          nullable: true
-    
-    File:
+        parameters:
+          type: array
+          description:
+            Parameters that can be provided for a new job submission.
+            Each object in the array defines parameter type, id, name
+            and additional constraints.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description:
+                  The parameter ids should be used as parameters of
+                  the POST request.
+              name:
+                type: string
+                description: Human-readable parameter name.
+              description:
+                type: string
+              required:
+                type: boolean
+              array:
+                type: boolean
+                description: 
+                  Whether a single or multiple values are expected.
+              default: {}
+            additionalProperties:
+              description:
+                Additional properties that depend on the field type.
+        presets:
+          type: array
+          description: List of pre-defined parameter combinations.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Preset identifier.
+              name:
+                type: string
+                description: Human-readable name.
+              description:
+                type: string
+                description: Detailed description.
+              values:
+                type: object
+                additionalProperties: true
+                description: Mapping of parameter ids to values.
+        status:
+          type: object
+          description: Current operation status of the service.
+          properties:
+            status:
+              type: string
+              description:
+                Status of the service. Can be either OK, WARNING
+                indicating that some issues occurred or DOWN when
+                the service is non-operational.
+              enum:
+                - OK
+                - WARNING
+                - DOWN
+            errorMessage:
+              type: string
+              description: More detailed information about system error.
+            timestamp:
+              type: string
+              format: date-time
+              description: Date and time of this state report.
+
+    JobResource:
       type: object
       properties:
-        uuid:
-          type: string
-          format: uuid
-        title:
-          type: string
-        mimetype:
-          type: string
-        URI:
+        '@url':
           type: string
           format: uri
-        contentURI:
+          description: Location of the job resource.
+        id:
+          type: string
+          description: Unique identifier of the job.
+        service:
+          type: string
+          description: Service that this job was submitted to.
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+          description:
+            The mapping of parameters that was used to run the service.
+            The values might differ from the submitted ones as default
+            values will appear here.
+        submissionTime:
+          type: string
+          format: date-time
+          description: Job request creation time.
+        completionTime:
+          type: string
+          format: date-time
+          description: The time the job was completed.
+        status:
+          type: string
+          description:
+            Current status of the job. Each request starts at
+            the PENDING status and transitions to REJECTED or
+            ACCEPTED status once input values are processed.
+            Then it gets QUEUED in the queuing system and changes
+            to RUNNING after being started. Finally it changes to
+            COMPLETED when finished successfully or INTERRUPTED
+            if queuing system stopped the job, DELETED if it was
+            cancelled by the user, FAILED if the program didn't
+            return 0 or ERROR if system error occurred.
+          enum:
+            - PENDING
+            - REJECTED
+            - ACCEPTED
+            - QUEUED
+            - RUNNING
+            - COMPLETED
+            - INTERRUPTED
+            - CANCELLING
+            - DELETED
+            - FAILED
+            - ERROR
+            - UNKNOWN
+
+    FileResource:
+      type: object
+      properties:
+        '@url':
           type: string
           format: uri
-
-    NotFoundError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 404
-        error:
+          description: Location of the file resource.
+        "@content":
           type: string
-          example: Not found
-
-    ServiceUnavailableError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 503
-        error:
+          format: uri
+          description: Location of the file content.
+        jobId:
           type: string
-          example: Service unavailable
-
-    BadRequestError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 400
-        error:
+        path:
           type: string
-          example: Bad request
-
-    UnauthorisedError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 401
-        error:
+        label:
           type: string
-          example: Unauthorized
-
-    InsufficientStorageError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 507
-        error:
+        mediaType:
           type: string
-          example: Insufficient storage
-
-    UnsupportedMediaTypeError:
-      type: object
-      properties:
-        statuscode:
-          type: integer
-          example: 415
-        error:
-          type: string
-          example: Unsupported media type
-...
