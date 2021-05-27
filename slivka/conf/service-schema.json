@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "slivka-version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?(b\\d+)?$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "classifiers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9\\-_]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][\\w]*(\\.[A-Za-z_][\\w]+)*(\\[\\])?$"
+          },
+          "default": true,
+          "required": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "yes",
+                  "no"
+                ]
+              }
+            ],
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "command": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "args": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9\\-_]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "arg": {
+            "type": "string",
+            "minLength": 1
+          },
+          "symlink": {
+            "type": "string",
+            "minLength": 1
+          },
+          "join": {
+            "type": "string"
+          },
+          "default": {
+            "type": "string"
+          }
+        },
+        "required": ["arg"],
+        "additionalProperties": false
+      }
+    },
+    "env": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_\\-.]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "media-type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "runners": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][\\w]*(\\.[A-Za-z_][\\w]+)*$"
+              },
+              "parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "selector": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"
+        }
+      },
+      "required": [
+        "runners"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "slivka-version",
+    "name",
+    "parameters",
+    "command",
+    "args",
+    "outputs",
+    "execution"
+  ],
+  "additionalProperties": false
+}

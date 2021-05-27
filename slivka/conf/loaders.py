@@ -1,192 +1,204 @@
+import collections.abc
 import json
 import os.path
 import re
-from collections.abc import Mapping, Collection
+import typing
+from collections.abc import Sequence
+from distutils.version import StrictVersion
 from importlib import import_module
-from urllib.parse import quote_plus
+from typing import List, Dict, Union
+
+try:
+    from typing import get_origin, get_args
+except ImportError:
+    def get_origin(cls): return getattr(cls, '__origin__', None)
+    def get_args(cls): return getattr(cls, '__args__', None)
 
 import attr
 import jsonschema
 import pkg_resources
 import yaml
-from jsonschema import Draft4Validator
+from attr import attrs, attrib
+from frozendict import frozendict
+from jsonschema import Draft7Validator
 
-from slivka.utils import SafeTranscludingOrderedYamlLoader
+from slivka.utils import ConfigYamlLoader, flatten_mapping, unflatten_mapping
 
 
 class ImproperlyConfigured(Exception):
     pass
 
 
-class SettingsLoaderV10:
-    def __call__(self):
-        home = os.getenv('SLIVKA_HOME', os.getcwd())
-        settings_path = (
-                os.getenv('SLIVKA_SETTINGS') or
-                next((fn for fn in os.listdir(home)
-                      if re.match(r'settings\.ya?ml', fn)), None)
-        )
-        if settings_path is None:
-            raise ImproperlyConfigured(
-                'Settings file not found. Check if SLIVKA_SETTIGNS environment '
-                'variable is set correctly or the current working directory '
-                'contains settings.yaml file.'
+def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
+    home = home or os.getenv('SLIVKA_HOME', os.getcwd())
+    if config['version'] != '0.3':
+        raise ImproperlyConfigured("Expected config version 0.3")
+    config = flatten_mapping(config)
+    config_schema = json.loads(pkg_resources.resource_string(
+        "slivka.conf", "settings-schema.json").decode())
+    try:
+        jsonschema.validate(config, config_schema, Draft7Validator)
+    except jsonschema.ValidationError as e:
+        raise ImproperlyConfigured(
+            'Error in settings file at \'{path}\'. {reason}'.format(
+                path='.'.join(e.path), reason=e.message
             )
-        with open(settings_path) as f:
-            conf = yaml.safe_load(f)
-        if conf.get('VERSION', '1.0') != '1.0':
-            raise ImproperlyConfigured(
-                'Configuration version mismatch. Version 1.0 expected.')
-        root = os.path.join(os.path.dirname(settings_path), conf['BASE_DIR'])
-        return Settings(
-            base_dir=root,
-            uploads_dir=_prepare_dir(root, conf['UPLOADS_DIR']),
-            jobs_dir=_prepare_dir(root, conf['JOBS_DIR']),
-            logs_dir=_prepare_dir(root, conf['LOG_DIR']),
-            services=self._load_services(root, conf['SERVICES']),
-            server_host=conf['SERVER_HOST'],
-            server_port=conf['SERVER_PORT'],
-            uploads_url_path=conf['UPLOADS_URL_PATH'],
-            jobs_url_path=conf['JOBS_URL_PATH'],
-            url_prefix=conf.get('URL_PREFIX'),
-            slivka_queue_address=conf['SLIVKA_QUEUE_ADDR'],
-            mongodb=conf.get('MONGODB') or conf.get('MONGODB_ADDR'),
-            secret_key=conf.get('SECRET_KEY'),
         )
+    config['directory.home'] = os.path.abspath(home)
+    for key, value in config.items():
+        if key.startswith('directory.'):
+            path = os.path.normpath(os.path.join(home, value))
+            config[key] = path
 
-    @staticmethod
-    def _load_services(root, services_file):
-        with open(os.path.join(root, services_file)) as f:
-            data = yaml.safe_load(f)
-
-        def load_yaml(fn):
-            fp = os.path.join(root, fn)
-            return yaml.load(open(fp, 'r'), SafeTranscludingOrderedYamlLoader)
-
-        return {
-            name: Service(
-                name=name,
-                label=service['label'],
-                form=load_yaml(service['form']),
-                command=load_yaml(service['command']),
-                presets=(load_yaml(service['presets'])
-                         if 'presets' in service else None),
-                classifiers=service.get('classifiers', [])
-            )
-            for name, service in data.items()
-        }
-
-
-class SettingsLoaderV11:
-    def __call__(self):
-        root = os.getenv('SLIVKA_HOME', os.getcwd())
-        fp = os.path.join(root, 'settings.yml')
-        if not os.path.isfile(fp):
-            fp = os.path.join(root, 'settings.yaml')
+    service_schema = json.loads(pkg_resources.resource_string(
+        "slivka.conf", "service-schema.json").decode())
+    services_dir = config['directory.services']
+    services = config['services'] = []
+    for fn in os.listdir(services_dir):
+        fnmatch = re.match(r'([a-zA-Z0-9_\-.]+)\.service\.ya?ml', fn)
+        if not fnmatch:
+            continue
+        fn = os.path.join(services_dir, fn)
+        srvc_conf = yaml.load(open(fn), ConfigYamlLoader)
         try:
-            conf = yaml.safe_load(open(fp))
-        except FileNotFoundError as exc:
+            jsonschema.validate(srvc_conf, service_schema, Draft7Validator)
+        except jsonschema.ValidationError as e:
             raise ImproperlyConfigured(
-                'Settings file not found. Check if SLIVKA_HOME environment '
-                'variable is set correctly and the directory contains '
-                'settings.yaml file.'
-            ) from exc
-        if conf['VERSION'] != '1.1':
-            raise ImproperlyConfigured(
-                'Configuration version mismatch. Version 1.1 expected')
-        return Settings(
-            base_dir=root,
-            uploads_dir=_prepare_dir(root, conf['UPLOADS_DIR']),
-            jobs_dir=_prepare_dir(root, conf['JOBS_DIR']),
-            logs_dir=_prepare_dir(root, conf['LOG_DIR']),
-            services=dict(self._load_services(root, conf['SERVICES'])),
-            server_host=conf['SERVER_HOST'],
-            server_port=conf['SERVER_PORT'],
-            uploads_url_path=conf['UPLOADS_URL_PATH'],
-            jobs_url_path=conf['JOBS_URL_PATH'],
-            url_prefix=conf.get('URL_PREFIX'),
-            slivka_queue_address=conf['SLIVKA_QUEUE_ADDR'],
-            mongodb=conf.get('MONGODB') or conf.get('MONGODB_ADDR'),
-            secret_key=conf.get('SECRET_KEY'),
-        )
+                'Error in file "{file}" at \'{path}\'. {reason}'.format(
+                    file=fn, path='/'.join(e.path), reason=e.message
+                )
+            )
+        srvc_conf['id'] = fnmatch.group(1)
+        services.append(srvc_conf)
+    config = unflatten_mapping(config)
+    return _deserialize(SlivkaSettings, config)
 
-    @staticmethod
-    def _load_services(root, conf_dir):
-        pattern = re.compile(r'[\w_-]*\.service\.ya?ml')
-        conf_dir = os.path.join(root, conf_dir)
-        for fn in filter(pattern.match, os.listdir(conf_dir)):
-            fp = os.path.join(conf_dir, fn)
-            conf = yaml.load(open(fp), SafeTranscludingOrderedYamlLoader)
-            name = str.split(fn, '.', maxsplit=1)[0]
-            command = conf['command']  # type: dict
-            command['runners'] = conf['runners']
-            if 'limiter' in conf:
-                command['limiter'] = conf['limiter']
-            if 'test' in conf:
-                command['test'] = conf['test']
+
+def _deserialize(cls, obj):
+    if obj is None:
+        return obj
+    if attr.has(cls):
+        if isinstance(obj, cls):
+            return obj
+        elif not isinstance(obj, collections.abc.Mapping):
+            raise TypeError(
+                "Cannot deserialize type '%s' to '%s'" % (type(obj), cls)
+            )
+        kwargs = {
+            re.sub(r'[- ]', '_', key): val for key, val in obj.items()
+        }
+        fields = attr.fields_dict(cls)
+        for key, val in kwargs.items():
             try:
-                yield name, Service(
-                    name=name,
-                    label=conf['label'],
-                    classifiers=conf['classifiers'],
-                    form=conf['form'],
-                    command=command,
-                    presets=conf.get('presets')
-                )
-            except ServiceSyntaxException as e:
-                path = "%s" % '/'.join(e.path)
-                msg = ('"{file}" contains error at \'{path}\'. {reason}'
-                       .format(file=fn, path=path, reason=e.message))
-                raise ImproperlyConfigured(msg) from None
+                attribute = fields[key]
+            except KeyError:
+                continue
+            if attribute.type is not None:
+                kwargs[key] = _deserialize(attribute.type, val)
+        return cls(**kwargs)
+    if get_origin(cls) is None:
+        return obj
+    if issubclass(get_origin(cls), typing.Sequence):
+        cls = cls.__args__[0]
+        if (isinstance(obj, typing.Mapping) and
+                attr.has(cls) and
+                attr.fields(cls)[0].name == 'id'):
+            for key, val in obj.items():
+                val.setdefault('id', key)
+            obj = list(obj.values())
+        if not isinstance(obj, typing.Sequence):
+            raise TypeError('%r is not a sequence' % obj)
+        return [_deserialize(cls, val) for val in obj]
+    if issubclass(get_origin(cls), typing.Mapping):
+        cls = cls.__args__[1]
+        if not isinstance(obj, typing.Mapping):
+            raise TypeError("%r is not a mapping" % obj)
+        if attr.has(cls) and attr.fields(cls)[0].name == 'id':
+            for key, val in obj.items():
+                val.setdefault('id', key)
+        return {key: _deserialize(cls, val) for key, val in obj.items()}
+    return obj
 
 
-def _prepare_dir(root, path):
-    path = os.path.normpath(os.path.join(root, path))
-    os.makedirs(path, exist_ok=True)
-    return path
+@attrs(kw_only=True)
+class ServiceConfig:
+    @attrs
+    class Argument:
+        id = attrib(type=str)
+        arg = attrib(type=str)
+        symlink = attrib(type=str, default=None)
+        default = attrib(type=str, default=None)
+        join = attrib(type=str, default=None)
+
+    @attrs
+    class OutputFile:
+        id = attrib(type=str)
+        path = attrib(type=str)
+        name = attrib(type=str, default="")
+        media_type = attrib(type=str, default="")
+
+    @attrs
+    class Execution:
+        @attrs
+        class Runner:
+            id = attr.ib(type=str)
+            type = attr.ib(type=str)
+            parameters = attr.ib(type=dict, factory=dict)
+
+        runners = attr.ib(type=Dict[str, Runner])
+        selector = attr.ib(type=str)
+
+    id = attrib(type=str)
+    slivka_version = attr.ib(converter=StrictVersion)
+    name = attrib(type=str)
+    description = attrib(type=str, default="")
+    author = attrib(type=str, default="")
+    version = attrib(type=str, default="")
+    license = attrib(type=str, default="")
+    classifiers = attrib(type=List[str], factory=list)
+    parameters = attrib(type=dict, converter=frozendict)
+    command = attrib()
+    args = attrib(type=List[Argument])
+    env = attrib(type=Dict[str, str], converter=frozendict, factory=dict)
+    outputs = attrib(type=List[OutputFile])
+    execution = attrib(type=Execution)
 
 
-def _mongodb_converter(val):
-    if isinstance(val, str):
-        url, database = val.rsplit('/', 1)
-    elif isinstance(val, Mapping):
-        url = "mongodb://"
-        if 'username' in val:
-            if 'password' in val:
-                url += '%s:%s@' % (
-                    quote_plus(val['username']), quote_plus(val['password'])
-                )
-            else:
-                url += '%s@' % quote_plus(val['username'])
-        if 'host' in val:
-            url += val['host']
-        elif 'socket' in val:
-            url += quote_plus(val['socket'])
-        else:
-            raise KeyError("No 'host' or 'socket' specified")
-        database = val['database']
-    else:
-        raise TypeError
-    return url, database
+@attrs(kw_only=True)
+class SlivkaSettings:
+    @attrs
+    class Directory:
+        home = attrib()
+        uploads = attrib(default="./uploads")
+        jobs = attrib(default="./jobs")
+        logs = attrib(default="./logs")
+        services = attrib(default="./services")
 
+    @attrs
+    class Server:
+        prefix = attrib(default=None)
+        host = attrib(default="127.0.0.1:4040")
+        uploads_path = attrib(default="/uploads")
+        jobs_path = attrib(default="/jobs")
 
-@attr.s
-class Settings:
-    base_dir = attr.ib(type=str, converter=os.path.abspath)
-    uploads_dir = attr.ib(type=str)
-    jobs_dir = attr.ib(type=str)
-    logs_dir = attr.ib(type=str)
+    @attrs
+    class LocalQueue:
+        host = attrib(default="127.0.0.1:4041")
 
-    server_host = attr.ib()
-    server_port = attr.ib(converter=int)
-    uploads_url_path = attr.ib()
-    jobs_url_path = attr.ib()
-    url_prefix = attr.ib()
+    @attrs
+    class MongoDB:
+        host = attrib(default=None)
+        socket = attrib(default=None)
+        username = attrib(default=None)
+        password = attrib(default=None)
+        database = attrib(default="slivka")
 
-    slivka_queue_address = attr.ib()
-    mongodb = attr.ib(converter=_mongodb_converter)
-    services = attr.ib()
-    secret_key = attr.ib(default=None)
+    version = attrib(type=str)
+    directory = attrib(type=Directory)
+    server = attrib(type=Server)
+    local_queue = attrib(type=LocalQueue)
+    mongodb = attrib(type=MongoDB)
+    services = attrib(type=List[ServiceConfig])
 
 
 def _form_validator(_obj, _attr, val):
@@ -223,37 +235,11 @@ def _form_validator(_obj, _attr, val):
         try:
             jsonschema.validate(field, cls.schema)
         except jsonschema.ValidationError as e:
-            raise ServiceSyntaxException(e.message,
-                                         ['form', field_name, *e.path])
-
-
-def _json_schema_validator(schema_file, path=None):
-    path = path or []
-    schema = json.loads(pkg_resources.resource_string(
-        "slivka.conf", schema_file).decode())
-
-    def validator(_obj, _attr, val):
-        try:
-            jsonschema.validate(val, schema, Draft4Validator)
-        except jsonschema.ValidationError as e:
-            raise ServiceSyntaxException(e.message, [*path, *e.path])
-
-    return validator
-
-
-@attr.s
-class Service:
-    name = attr.ib(type=str)
-    label = attr.ib(type=str)
-    form = attr.ib(validator=_form_validator)
-    command = attr.ib(validator=_json_schema_validator(
-        "commandDefSchema.json", ['command']))
-    presets = attr.ib(validator=attr.validators.optional(
-        _json_schema_validator("presetsSchema.json", ['preset'])))
-    classifiers = attr.ib(factory=list, type=list)
+            raise ServiceSyntaxException(
+                e.message, ['form', field_name, *e.path])
 
 
 class ServiceSyntaxException(Exception):
-    def __init__(self, message, path: Collection):
+    def __init__(self, message, path: Sequence):
         self.message = message
         self.path = path

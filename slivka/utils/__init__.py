@@ -7,9 +7,10 @@ import os
 import sys
 import time
 import warnings
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import yaml.resolver
+
 
 try:
     import simplejson as json
@@ -159,7 +160,6 @@ def ttl_cache(*, ttl=math.inf):
     return decorator
 
 
-
 # noinspection PyPep8Naming
 class class_property:
     """A data descriptor allowing properties on class instances."""
@@ -199,7 +199,7 @@ def deprecated(func):
     return wrapper
 
 
-class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
+class ConfigYamlLoader(yaml.SafeLoader):
     def __init__(self, stream):
         try:
             self.root_path = os.path.dirname(stream.name)
@@ -209,7 +209,7 @@ class SafeTranscludingOrderedYamlLoader(yaml.SafeLoader):
         super().__init__(stream)
 
 
-def _include_constructor(loader: SafeTranscludingOrderedYamlLoader, node: yaml.Node):
+def _include_constructor(loader: ConfigYamlLoader, node: yaml.Node):
     val = loader.construct_scalar(node)
     val = val.replace('#', '::', 1).split('::', 1)
     fn, path = val if len(val) == 2 else (val[0], '/')
@@ -227,12 +227,12 @@ if sys.version_info < (3, 7):
         loader.flatten_mapping(node)
         return OrderedDict(loader.construct_pairs(node))
 
-    SafeTranscludingOrderedYamlLoader.add_constructor(
+    ConfigYamlLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
         _mapping_constructor
     )
 
-SafeTranscludingOrderedYamlLoader.add_constructor(
+ConfigYamlLoader.add_constructor(
     '!include', _include_constructor
 )
 
@@ -249,6 +249,22 @@ def flatten_mapping(mapping):
         if not isinstance(v, dict)
     )
     return result
+
+
+def unflatten_mapping(mapping):
+    def factory(): return defaultdict(factory)
+    result = factory()
+    for key, val in mapping.items():
+        path = key.split('.')
+        cur = result
+        for k in path[:-1]:
+            cur = cur[k]
+        cur[path[-1]] = val
+    return result
+
+
+def get_classpath(cls):
+    return cls.__module__ + '.' + cls.__name__
 
 
 class JobStatus(enum.IntEnum):

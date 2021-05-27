@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "const": "0.3"
+    },
+    "directory.uploads": {
+      "type": "string",
+      "default": "./uploads"
+    },
+    "directory.jobs": {
+      "type": "string",
+      "default": "./jobs"
+    },
+    "directory.logs": {
+      "type": "string",
+      "default": "./logs"
+    },
+    "directory.services": {
+      "type": "string",
+      "default": "./services"
+    },
+    "server.prefix": {
+      "type": "string"
+    },
+    "server.host": {
+      "type": "string",
+      "pattern": "^\\d{1,3}(?:\\.\\d{1,3}){3}(?::\\d{2,5})?$",
+      "default": "127.0.0.1:4040"
+    },
+    "server.uploads-path": {
+      "type": "string"
+    },
+    "server.jobs-path": {
+      "type": "string"
+    },
+    "local-queue.host": {
+      "type": "string",
+      "pattern": "^\\d{1,3}(?:\\.\\d{1,3}){3}(?::\\d{2,5})?$",
+      "default": "127.0.0.1:4041"
+    },
+    "mongodb.host": {
+      "type": "string",
+      "default": "127.0.0.1:27017"
+    },
+    "mongodb.socket": {
+      "type": "string"
+    },
+    "mongodb.username": {
+      "type": "string"
+    },
+    "mongodb.password": {
+      "type": "string"
+    },
+    "mongodb.database": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "directory.jobs",
+    "directory.logs",
+    "directory.uploads",
+    "directory.services",
+    "server.host",
+    "server.jobs-path",
+    "server.uploads-path",
+    "mongodb.database"
+  ],
+  "oneOf": [
+    {"required": ["mongodb.host"]},
+    {"required": ["mongodb.socket"]}
+  ],
+  "additionalProperties": false
+}
