@@ -325,59 +325,7 @@ class Runner:
     def batch_cancel(self, jobs: Iterable[JobMetadata]):
         """ Requests cancellation of multiple jobs."""
         for job in jobs:
-            self.cancel(job['job_id'], job['work_dir'])
-
-    def run_test(self) -> bool:
-        """ Performs the test of the runner with a sample job.
-
-        Tests are provided in the service configuration file
-        and consists of input parameters and expected output files.
-
-        :return: whether the test was successful or True if there
-            is no test for that runner.
-        """
-        if not self.test:
-            log.info("no test found for %s", self)
-            return True
-        log.info("starting test for %s", self)
-        env = ChainMap(os.environ, {'SLIVKA_HOME': slivka.settings.base_dir})
-        replace = partial(_replace_from_env, env)
-        inputs = {
-            key: _envvar_regex.sub(replace, val)
-            for key, val in self.test['inputs'].items()
-        }
-        temp_dir = tempfile.TemporaryDirectory()
-        try:
-            job_id, cwd = self.start(inputs, temp_dir.name)
-            timeout = self.test.get('timeout', 8640000)
-            end_time = time.time() + timeout
-            while time.time() <= end_time:
-                state = self.check_status(job_id, cwd)
-                if state.is_finished():
-                    break
-                time.sleep(1)
-            else:
-                raise TimeoutError
-            if state != JobStatus.COMPLETED:
-                raise ValueError("job status is %s" % state.name)
-            for output in self.test['output-files']:
-                fp = os.path.join(cwd, output['path'])
-                if not os.path.isfile(fp):
-                    raise FileNotFoundError("missing output file %s" % fp)
-                match_fp = output.get('match')
-                if match_fp:
-                    match_fp = _envvar_regex.sub(replace, match_fp)
-                    if not filecmp.cmp(fp, match_fp, False):
-                        raise ValueError("output file %s content mismatch" % fp)
-        except Exception:
-            log.exception("test of %s failed", self)
-            return False
-        else:
-            log.info("test of %s passed", self )
-            return True
-        finally:
-            with contextlib.suppress(FileNotFoundError):
-                temp_dir.cleanup()
+            self.cancel(job)
 
     def __repr__(self):
         return '%s(%s, %s)' % (self.__class__.__name__, self.service_name, self.name)
