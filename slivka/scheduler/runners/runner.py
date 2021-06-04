@@ -1,21 +1,17 @@
 import contextlib
-import filecmp
+import copy
 import itertools
 import logging
 import os
 import re
 import shlex
 import shutil
-import tempfile
-import time
 from collections import ChainMap, namedtuple
-from datetime import datetime
 from functools import partial
-from typing import List, Iterable, Tuple, Match, Any
+from typing import List, Iterable, Match, Any, Union, Dict, Collection, Sequence
 
-import slivka
 from slivka import JobStatus
-from slivka.db.documents import JobMetadata
+from slivka.conf import ServiceConfig
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -23,13 +19,13 @@ log = logging.getLogger('slivka.scheduler')
 # Regular expression capturing variable names $VAR or ${VAR}
 # and escaped dollar sign $$. Matches should be substituted
 # using _replace_from_env function.
-_envvar_regex = re.compile(
+_var_regex = re.compile(
     r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
     re.UNICODE | re.IGNORECASE
 )
 
 
-def _replace_from_env(env: dict, match: Match):
+def _replace_vars(env: dict, match: Match):
     """ Replaces matches of _envvar_regex with variables from env
 
     Given the match from the ``_envvar_regex`` returns the string
@@ -53,8 +49,9 @@ def _replace_from_env(env: dict, match: Match):
         return env.get(match.group(2) or match.group(3))
 
 
-RunInfo = namedtuple('RunInfo', 'id, cwd')
-RunnerID = namedtuple('RunnerID', 'service_name, runner_name')
+RunnerID = namedtuple('RunnerID', 'service, runner')
+Command = namedtuple("Command", ["args", "cwd"])
+Job = namedtuple("Job", ["id", "cwd"])
 
 
 class Runner:
@@ -71,67 +68,72 @@ class Runner:
     system, check the current status of the job and can cancel
     running job respectively.
 
-    All runners are instantiated from the data provided in the
-    configuration *service.yaml* files on scheduler startup and
-    stored and used by it.
+    The runners are typically instantiated from the data provided in the
+    configuration *service.yaml* files on scheduler startup.
 
-    All subclasses' constructors must have at least two parameters
-    ``command_def`` and ``id`` which are passed directly to their
-    superclass' (this class) constructor.
+    All subclasses' constructors must have the same positional arguments
+    and can have any number of arbitrary keyword arguments.
+    The keyword arguments are supplied from the service config file
+    using ``parameters`` property in the runner definition section.
 
-    :param command_def: command definition loaded from the config
-        file defined by *slivka/conf/commandDefSchema.json*
-    :type command_def: dict
-    :param id: identifier containing service and runner name,
-        defaults to None
-    :type id: RunnerID
-    :param jobs_dir: path to the directory the jobs will be run under,
-        None sets it to the ``JOBS_DIR`` from the workspace settings,
-        defaults to None
+    :param runner_id: a tuple of service and runner id
+    :param command: a string or a list of args representing a base command
+    :param args: list of argument configurations in order of appearance
+        in the command line
+    :param outputs: list of output file definitions, unused by the
+        base ``Runner`` but some implementations may make use of it.
+    :param jobs_dir: path to the directory where the job-specific
+        directories will be created. Typically it is set to the
+        value of ``directory.jobs`` from the settings file.
     """
     _next_id = (RunnerID('unknown', 'runner-%d' % i)
                 for i in itertools.count(1)).__next__
     JOBS_DIR = None
 
-    def __init__(self, command_def, id=None, jobs_dir=None):
-        self.jobs_dir = jobs_dir or self.JOBS_DIR or slivka.settings.jobs_dir
-        self.id = id or self._next_id()
-        self.inputs = command_def['inputs']
-        self.outputs = command_def['outputs']  # TODO: redundant field
-        self.env = env = {
+    def __init__(self,
+                 runner_id: RunnerID,
+                 command: Union[str, List[str]],
+                 args: List[ServiceConfig.Argument],
+                 outputs: List[ServiceConfig.OutputFile],
+                 env: Dict[str, str],
+                 jobs_dir: str):
+        self.id = runner_id or self._next_id()
+        self.jobs_dir = jobs_dir
+        self.outputs = outputs
+
+        self.env = {
             'PATH': os.getenv('PATH'),
             'SLIVKA_HOME': os.getenv('SLIVKA_HOME', os.getcwd())
         }
-        env.update(command_def.get('env', {}))
-        replace = partial(_replace_from_env, os.environ)
+        self.env.update(env)
+        replace = partial(_replace_vars, os.environ)
         # substitute variables with the system env vars
-        for key, val in env.items():
-            # noinspection PyTypeChecker
-            env[key] = _envvar_regex.sub(replace, val)
-        replace = partial(_replace_from_env, ChainMap(env, os.environ))
-        base_command = command_def['baseCommand']  # type: List[str]
-        if isinstance(base_command, str):
-            base_command = shlex.split(base_command)
-        # noinspection PyTypeChecker
-        self.base_command = [
-            _envvar_regex.sub(replace, arg)
-            for arg in base_command
-        ]
-        arguments = command_def.get('arguments', [])
-        # noinspection PyTypeChecker
-        self.arguments = [
-            _envvar_regex.sub(replace, arg)
-            for arg in arguments
-        ]
-        self.test = command_def.get('test')
+        for key, val in self.env.items():
+            self.env[key] = _var_regex.sub(replace, val)
 
-    def get_name(self): return self.id.runner_name
+        replace = partial(_replace_vars, ChainMap(env, os.environ))
+        if isinstance(command, str):
+            command = shlex.split(command)
+        self.command = [
+            _var_regex.sub(replace, arg) for arg in command
+        ]
+        self.arguments = list(map(copy.copy, args))
+        for argument in self.arguments:
+            args = _var_regex.sub(replace, argument.arg)
+            args = shlex.split(args)
+            argument.arg = args
+
+    def get_name(self): return self.id.runner
     name = property(get_name)
 
-    def get_service_name(self): return self.id.service_name
+    def get_service_name(self): return self.id.service
     service_name = property(get_service_name)
 
-    def get_args(self, values) -> List[str]:
+    @staticmethod
+    def _symlink_name(name, count):
+        return '%s.%04d' % (name, count)
+
+    def build_args(self, values) -> List[str]:
         """ Inserts given values and returns a list of arguments.
 
         Prepares the command line arguments using values from
@@ -142,113 +144,96 @@ class Runner:
         :type values: dict[str, Any]
         :return: list of command line arguments
         """
-        replace = partial(_replace_from_env, self.env)
         args = []
-        for name, inp in self.inputs.items():
-            value = values.get(name)
+        for argument in self.arguments:
+            value = values.get(argument.id)
             if value is None:
-                value = inp.get('value')
+                value = argument.default
             if value is None or value is False:
                 continue
-            # noinspection PyTypeChecker
-            # fixme: no need to regex sub every time, move to __init__
-            tpl = _envvar_regex.sub(replace, inp['arg'])
-            param_type = inp.get('type', 'string')
-            if param_type == 'flag':
-                value = 'true' if value else ''
-            elif param_type == 'number':
-                value = str(value)
-            elif param_type == 'file':
-                value = inp.get('symlink', value)
-            elif param_type == 'array':
-                join = inp.get('join')
-                if join is not None:
-                    value = str.join(join, value)
+
+            if isinstance(value, list):
+                if argument.symlink:
+                    value = [self._symlink_name(argument.symlink, i)
+                             for i in range(len(value))]
+                if argument.join is not None:
+                    value = str.join(argument.join, value)
+            elif argument.symlink:
+                value = argument.symlink
 
             if isinstance(value, list):
                 args.extend(
                     arg.replace('$(value)', val)
                     for val in value
-                    for arg in shlex.split(tpl)
+                    for arg in argument.arg
                 )
             else:
                 args.extend(
                     arg.replace('$(value)', value)
-                    for arg in shlex.split(tpl)
+                    for arg in argument.arg
                 )
-        args.extend(self.arguments)
         return args
 
-    def start(self, inputs: dict, cwd: str = None) -> RunInfo:
+    def _prepare_job(self, inputs, cwd):
+        with contextlib.suppress(FileExistsError):
+            os.mkdir(cwd)
+        for argument in self.arguments:
+            if argument.symlink:
+                val = inputs.get(argument.id)
+                if isinstance(val, list):
+                    for i, src in enumerate(val):
+                        if not os.path.isfile(src):
+                            raise FileNotFoundError("file '%s' does not exist")
+                        dst = self._symlink_name(argument.symlink, i)
+                        mklink(src, os.path.join(cwd, dst))
+                elif isinstance(val, str):
+                    if not os.path.isfile(val):
+                        raise FileNotFoundError("file '%s' does not exist")
+                    mklink(val, os.path.join(cwd, argument.symlink))
+                # None is also an option here and should be ignored
+
+    def start(self, inputs: dict, cwd: str) -> Job:
         """ Runs the command in the queuing system.
 
         Prepares the command for execution by creating a working
-        directory and linking all necessary input files.
-        Then, submits the command to the queuing system with
-        :py:meth:`.submit`.
+        directory, linking all necessary input files and constructing
+        the command line arguments. It then sends the command to the queuing
+        system using :py:meth:`.submit` and returns job id.
 
         :param inputs: inputs values for the command
-        :param cwd: current working directory, a new directory will
-            be created if None, defaults to None
-        :return: tuple containing job id and working directory
+        :param cwd: working directory, a new directory will be created if not
+            already present
+        :return: job id as returned by :py:meth:`.submit`
         """
-        cwd = cwd or tempfile.mkdtemp(
-            prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
-        )
-        for name, input_conf in self.inputs.items():
-            if input_conf.get('type') == 'file' and 'symlink' in input_conf:
-                src = inputs.get(name)
-                if src is not None:
-                    mklink(src, os.path.join(cwd, input_conf['symlink']))
-        cmd = self.base_command + self.get_args(inputs)
-        log.info('%s submitting command: %s, wd: %s',
+        self._prepare_job(inputs, cwd)
+        cmd = self.command + self.build_args(inputs)
+        log.info('%s starting command "%s" in %s',
                  self.__class__.__name__, ' '.join(map(repr, cmd)), cwd)
-        try:
-            return RunInfo(id=self.submit(cmd, cwd), cwd=cwd)
-        except Exception:
-            with contextlib.suppress(OSError):
-                shutil.rmtree(cwd)
-            raise
+        return self.submit(Command(cmd, cwd))
 
-    def batch_start(self, inputs_list: List[dict]) -> Iterable[RunInfo]:
+    def batch_start(self, inputs: List[dict], cwds: List[str]) -> Iterable[Any]:
         """ Runs multiple commands in the queuing system.
 
         An alternative to the :py:meth:`.run` method submitting
         multiple jobs at once with :py:meth:`.batch_submit`.
 
-        :param inputs_list: list of dictionaries containing input values
+        :param inputs: list of maps containing input values for each job
+        :param cwds: list of working directories for the jobs
         :return: iterable of job id and working directory pairs
         """
-        cwds = [
-            tempfile.mkdtemp(
-                prefix=datetime.now().strftime("%y%m%d"), dir=self.jobs_dir
-            )
-            for _ in inputs_list
-        ]
         cmds = []
-        for cwd, inputs in zip(cwds, inputs_list):
-            for name, input_conf in self.inputs.items():
-                if input_conf.get('type') == 'file' and 'symlink' in input_conf:
-                    src = inputs.get(name)
-                    if src is not None:
-                        mklink(src, os.path.join(cwd, input_conf['symlink']))
-            cmd = self.base_command + self.get_args(inputs)
+        for cwd, inp in zip(cwds, inputs):
+            self._prepare_job(inp, cwd)
+            cmd = self.command + self.build_args(inp)
             cmds.append(cmd)
         if log.isEnabledFor(logging.INFO):
             for i, cmd, cwd in zip(itertools.count(1), cmds, cwds):
-                log.info('%s submitting command: %s, wd: %s (%d of %d)',
+                log.info('%s starting command "%s" in %s (%d of %d)',
                          self.__class__.__name__, ' '.join(map(repr, cmd)),
                          cwd, i, len(cmds))
-        try:
-            job_ids = self.batch_submit(zip(cmds, cwds))
-            return map(RunInfo._make, zip(job_ids, cwds))
-        except Exception:
-            for cwd in cwds:
-                with contextlib.suppress(OSError):
-                    shutil.rmtree(cwd)
-            raise
+        return self.batch_submit(list(map(Command._make, zip(cmds, cwds))))
 
-    def submit(self, cmd: List[str], cwd: str) -> Any:
+    def submit(self, command: Command) -> Job:
         """ Submits the job to the queuing system.
 
         Used internally by the :py:meth:`run` method to send the jobs
@@ -259,15 +244,14 @@ class Runner:
         Returned job id must be json serializable and will be
         further used to monitor job status.
 
-        :param cmd: list of command line arguments
-        :param cwd: current working directory for the job
+        :param command: tuple containing command line arguments and working
+            directory
         :return: json-serializable job id
         :raise Exception: submission to the queue failed
         """
         raise NotImplementedError
 
-    def batch_submit(self, commands: Iterable[Tuple[List[str], str]]) \
-            -> Iterable[Any]:
+    def batch_submit(self, commands: Sequence[Command]) -> Sequence[Job]:
         """ Submits multiple jobs to the queueing system.
 
         A variant of the :py:meth:`submit` method optimized for
@@ -279,26 +263,25 @@ class Runner:
 
         Default implementation makes multiple calls to :py:meth:`submit`.
 
-        :param commands: iterable of command arguments and working directory pairs
+        :param commands: iterable of tuples consisting of arguments list
+            and working directory
         :return: iterable of json-serializable job ids
         :raise Exception: submission to the queue failed
         """
-        return [self.submit(cmd, cwd) for cmd, cwd in commands]
+        return list(map(self.submit, commands))
 
-    def check_status(self, job_id, cwd) -> JobStatus:
+    def check_status(self, job: Job) -> JobStatus:
         """ Returns the job status in the queuing system.
 
         Deriving classes must provide a concrete implementation
         which fetches the job status from the queuing system.
 
-        :param job_id: job id as returned by :py:meth:`submit`
-        :param cwd: working directory of the job
+        :param job: job as returned by :py:meth:`submit`
         :return: job status
         """
         raise NotImplementedError
 
-    def batch_check_status(self, jobs: Iterable[JobMetadata]) \
-            -> Iterable[JobStatus]:
+    def batch_check_status(self, jobs: Sequence[Job]) -> Sequence[JobStatus]:
         """ Returns the status of multiple jobs.
 
         Deriving classes may implement this method if fetching
@@ -309,20 +292,19 @@ class Runner:
 
         :param jobs: iterable of :py:class:`JobMetadata` objects
         """
-        return [self.check_status(job.job_id, job.work_dir) for job in jobs]
+        return list(map(self.check_status, jobs))
 
-    def cancel(self, job_id, cwd):
+    def cancel(self, job: Job):
         """ Requests the queuing system to cancel the job.
 
         Deriving classes must provide concrete implementation
         of this method for their queuing system.
 
-        :param job_id: job id as returned by :py:meth:`submit`
-        :param cwd: job's working directory
+        :param job: job as returned by :py:meth:`submit`
         """
         raise NotImplementedError
 
-    def batch_cancel(self, jobs: Iterable[JobMetadata]):
+    def batch_cancel(self, jobs: Collection[Job]):
         """ Requests cancellation of multiple jobs."""
         for job in jobs:
             self.cancel(job)
