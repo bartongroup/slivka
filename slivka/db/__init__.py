@@ -8,19 +8,20 @@ import slivka.conf
 from slivka.utils import cached_property
 
 
-def _build_mongodb_uri(*, host=None, socket=None, username=None,
-                       password=None, database):
+def _build_mongodb_uri(host=None, socket=None, username=None, password=None):
     uri = 'mongodb://'
     if username is not None:
         if password is None:
             uri += '%s@' % quote_plus(username)
         else:
             uri += '%s:%s@' % (quote_plus(username), quote_plus(password))
-    if host is not None:
+    if socket is not None:
+        uri += quote_plus(socket)
+    elif host is not None:
         uri += host
     else:
-        uri += quote_plus(socket)
-    return uri, database
+        raise ValueError("Either 'host' or 'socket' must be provided.")
+    return uri
 
 
 class _DBModule(types.ModuleType):
@@ -31,16 +32,19 @@ class _DBModule(types.ModuleType):
 
     @cached_property
     def mongo(self):
-        host, _ = slivka.conf.settings.mongodb
-        return pymongo.MongoClient(host)
+        cfg = slivka.conf.settings.mongodb
+        mongo_uri = _build_mongodb_uri(
+            host=cfg.host, socket=cfg.socket,
+            username=cfg.username, password=cfg.password
+        )
+        return pymongo.MongoClient(mongo_uri)
 
     @cached_property
     def database(self):
-        _, dbname = slivka.conf.settings.mongodb
-        return self.mongo[dbname]
+        return self.mongo[slivka.conf.settings.mongodb.database]
 
 
 mongo = ...  # type: pymongo.MongoClient
-database = ... # type: pymongo.database.Database
+database = ...  # type: pymongo.database.Database
 
 sys.modules[__name__] = _DBModule()
