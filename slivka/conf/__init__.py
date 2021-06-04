@@ -1,11 +1,12 @@
 import os
 import sys
-import types
+from types import ModuleType
 
 import yaml
 
-from . import loaders
 from slivka.utils import cached_property
+from . import loaders
+from .loaders import ServiceConfig, SlivkaSettings
 
 
 def _load():
@@ -37,13 +38,12 @@ def _load_dict(config):
     return conf
 
 
-class _ConfModule(types.ModuleType):
+class _ConfModule(ModuleType):
     def __init__(self):
         super().__init__(__name__)
         self.__path__ = __path__
         self.__file__ = __file__
-        self.__loader__ = __loader__
-        self.loaders = loaders
+        del self.__loader__
 
     @cached_property
     def settings(self):
@@ -55,7 +55,14 @@ class _ConfModule(types.ModuleType):
     def load_dict(self, config):
         self.settings = _load_dict(config)
 
+    def __getattr__(self, item):
+        try:
+            return globals()[item]
+        except KeyError:
+            raise AttributeError(
+                "module '%s' has no attribute '%s'" % (__name__, item))
 
-settings = ... # type: loaders.SlivkaSettings
+
+settings = ...  # type: loaders.SlivkaSettings
 
 sys.modules[__name__] = _ConfModule()
