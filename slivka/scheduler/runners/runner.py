@@ -8,7 +8,7 @@ import shlex
 import shutil
 from collections import ChainMap, namedtuple
 from functools import partial
-from typing import List, Iterable, Match, Any, Union, Dict, Collection, Sequence
+from typing import List, Match, Union, Dict, Collection, Sequence, Optional
 
 from slivka import JobStatus
 from slivka.conf import ServiceConfig
@@ -57,24 +57,26 @@ Job = namedtuple("Job", ["id", "cwd"])
 class Runner:
     """ An abstract class responsible for job execution and management.
 
-    This is an abstract base class which all runners should extends
-    serving as an abstraction layer between the scheduler and
-    external scheduling/queuing systems.
+    This is an abstract base class which all runners should extend
+    that serves as an abstraction layer between the scheduler and
+    the external execution systems.
     It provides methods for constructing command line arguments,
     and retrieving environment variables configured for the service.
 
     Concrete implementations must define ``submit``, ``check_status``
-    and ``cancel`` methods which submit the command to the queuing
-    system, check the current status of the job and can cancel
-    running job respectively.
+    and ``cancel`` methods which interact with the execution systems
+    directly. Additionally, these methods have overridable ``batch_*``
+    variants which may be implemented if performing those operations
+    in batches is more beneficial.
 
     The runners are typically instantiated from the data provided in the
     configuration *service.yaml* files on scheduler startup.
 
-    All subclasses' constructors must have the same positional arguments
-    and can have any number of arbitrary keyword arguments.
+    The constructors of the subclasses must have at least the same
+    positional arguments that this class have and can have any
+    arbitrary keyword arguments (as long as there is no name collision).
     The keyword arguments are supplied from the service config file
-    using ``parameters`` property in the runner definition section.
+    from the ``parameters`` property in the runner definition section.
 
     :param runner_id: a tuple of service and runner id
     :param command: a string or a list of args representing a base command
@@ -82,23 +84,18 @@ class Runner:
         in the command line
     :param outputs: list of output file definitions, unused by the
         base ``Runner`` but some implementations may make use of it.
-    :param jobs_dir: path to the directory where the job-specific
-        directories will be created. Typically it is set to the
-        value of ``directory.jobs`` from the settings file.
     """
     _next_id = (RunnerID('unknown', 'runner-%d' % i)
                 for i in itertools.count(1)).__next__
     JOBS_DIR = None
 
     def __init__(self,
-                 runner_id: RunnerID,
+                 runner_id: Optional[RunnerID],
                  command: Union[str, List[str]],
                  args: List[ServiceConfig.Argument],
                  outputs: List[ServiceConfig.OutputFile],
-                 env: Dict[str, str],
-                 jobs_dir: str):
+                 env: Dict[str, str]):
         self.id = runner_id or self._next_id()
-        self.jobs_dir = jobs_dir
         self.outputs = outputs
 
         self.env = {
@@ -211,7 +208,7 @@ class Runner:
                  self.__class__.__name__, ' '.join(map(repr, cmd)), cwd)
         return self.submit(Command(cmd, cwd))
 
-    def batch_start(self, inputs: List[dict], cwds: List[str]) -> Iterable[Any]:
+    def batch_start(self, inputs: List[dict], cwds: List[str]) -> Sequence[Job]:
         """ Runs multiple commands in the queuing system.
 
         An alternative to the :py:meth:`.run` method submitting
@@ -246,7 +243,8 @@ class Runner:
 
         :param command: tuple containing command line arguments and working
             directory
-        :return: json-serializable job id
+        :return: Job tuple containing json-serializable job id and the
+            working directory
         :raise Exception: submission to the queue failed
         """
         raise NotImplementedError
@@ -263,9 +261,10 @@ class Runner:
 
         Default implementation makes multiple calls to :py:meth:`submit`.
 
-        :param commands: iterable of tuples consisting of arguments list
-            and working directory
-        :return: iterable of json-serializable job ids
+        :param commands: sequence of Command tuples consisting of
+            arguments list and working directory
+        :return: sequence of :py:class:`Job` tuples, each containing
+            json-serializable job id and the working directory
         :raise Exception: submission to the queue failed
         """
         return list(map(self.submit, commands))
@@ -290,7 +289,9 @@ class Runner:
 
         Default implementation calls :py:meth:`check_status`.
 
-        :param jobs: iterable of :py:class:`JobMetadata` objects
+        :param jobs: sequence of :py:class:`Job` objects
+            as returned by :py:meth:`submit`
+        :return: sequence of statuses for each job
         """
         return list(map(self.check_status, jobs))
 
