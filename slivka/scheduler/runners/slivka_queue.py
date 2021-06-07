@@ -1,12 +1,19 @@
+import functools
 import logging
 import shlex
 
-import slivka
+import slivka.conf
 from slivka import JobStatus
 from slivka.local_queue import LocalQueueClient
-from .runner import Runner
+from . import Command
+from .runner import Runner, Job
 
 log = logging.getLogger('slivka.scheduler')
+
+
+@functools.lru_cache(maxsize=32)
+def _get_client(address):
+    return LocalQueueClient(address)
 
 
 class SlivkaQueueRunner(Runner):
@@ -18,26 +25,23 @@ class SlivkaQueueRunner(Runner):
     controlling the number of simultaneous jobs and preserving jobs
     between scheduler restarts.
     """
-    client = None  # type: LocalQueueClient
+    def __init__(self, *args, address=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if address is None:
+            address = slivka.conf.settings.local_queue.host
+        self.client = _get_client(address)
 
-    def __init__(self, command_def, id=None):
-        super().__init__(command_def, id)
-        if self.client is None:
-            SlivkaQueueRunner.client = LocalQueueClient(
-                slivka.settings.slivka_queue_address
-            )
-
-    def submit(self, cmd, cwd):
+    def submit(self, command: Command) -> Job:
         response = self.client.submit_job(
-            cmd=str.join(' ', map(shlex.quote, cmd)),
-            cwd=cwd,
+            cmd=str.join(' ', map(shlex.quote, command.args)),
+            cwd=command.cwd,
             env=self.env
         )
-        return response.id
+        return Job(response.id, command.cwd)
 
-    def check_status(self, identifier, cwd):
-        response = self.client.get_job_status(identifier)
+    def check_status(self, job: Job) -> JobStatus:
+        response = self.client.get_job_status(job.id)
         return JobStatus(response.state)
 
-    def cancel(self, job_id, cwd):
-        self.client.cancel_job(job_id)
+    def cancel(self, job: Job):
+        self.client.cancel_job(job.id)
