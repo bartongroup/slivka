@@ -4,7 +4,7 @@ import os
 import subprocess
 
 from slivka import JobStatus
-from .runner import Runner
+from .runner import Runner, Command, Job
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -24,22 +24,22 @@ class ShellRunner(Runner):
     """
     procs = {}
 
-    def submit(self, cmd, cwd):
+    def submit(self, command: Command) -> Job:
         """ Starts the job as a subprocess. """
         proc = subprocess.Popen(
-            cmd,
-            stdout=open(os.path.join(cwd, 'stdout'), 'wb'),
-            stderr=open(os.path.join(cwd, 'stderr'), 'wb'),
-            cwd=cwd,
+            command.args,
+            stdout=open(os.path.join(command.cwd, 'stdout'), 'wb'),
+            stderr=open(os.path.join(command.cwd, 'stderr'), 'wb'),
+            cwd=command.cwd,
             env=self.env,
             shell=True
         )
         self.procs[proc.pid] = proc
-        return proc.pid
+        return Job(proc.pid, command.cwd)
 
-    def check_status(self, pid, cwd):
+    def check_status(self, job: Job) -> JobStatus:
         try:
-            return_code = self.procs[pid].poll()
+            return_code = self.procs[job.id].poll()
         except KeyError:
             return JobStatus.INTERRUPTED
         if return_code is None:
@@ -53,6 +53,6 @@ class ShellRunner(Runner):
         if return_code < 0:
             return JobStatus.INTERRUPTED
 
-    def cancel(self, pid, cwd):
+    def cancel(self, job: Job):
         with contextlib.suppress(OSError, KeyError):
-            self.procs[pid].terminate()
+            self.procs[job.id].terminate()
