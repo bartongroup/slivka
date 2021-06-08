@@ -8,14 +8,13 @@ import tempfile
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Iterable, Tuple, List
+from typing import Sequence, Collection
 
 import pkg_resources
 
 from slivka import JobStatus
-from slivka.db.documents import JobMetadata
 from slivka.utils import ttl_cache
-from .runner import Runner
+from .runner import Runner, Job, Command
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -71,23 +70,23 @@ class GridEngineRunner(Runner):
     """
     finished_job_timestamp = defaultdict(datetime.now)
 
-    def __init__(self, command_def, id=None, qsub_args=()):
-        super().__init__(command_def, id)
+    def __init__(self, *args, qsub_args=(), **kwargs):
+        super().__init__(*args, **kwargs)
         self.qsub_args = qsub_args
         self.env.update(
             (env, os.getenv(env)) for env in os.environ
             if env.startswith('SGE')
         )
 
-    def submit(self, cmd, cwd):
+    def submit(self, command: Command) -> Job:
         """
         Creates a temporary script file containing the command to
         execute and runs it with qsub. The output and error streams
         are written to the stdout and stderr files in the job working
         directory.
         """
-        fd, path = tempfile.mkstemp(prefix='run', suffix='.sh', dir=cwd)
-        cmd = str.join(' ', map(shlex.quote, cmd))
+        fd, path = tempfile.mkstemp(prefix='run', suffix='.sh', dir=command.cwd)
+        cmd = str.join(' ', map(shlex.quote, command.args))
         with open(fd, 'w') as f:
             f.write(_runner_sh_tpl.format(cmd=cmd))
         # TODO: add -terse argument for job id only
@@ -97,15 +96,15 @@ class GridEngineRunner(Runner):
             qsub_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            cwd=cwd,
+            cwd=command.cwd,
             env=self.env,
             universal_newlines=False
         )
         proc.check_returncode()
         match = _job_submitted_regex.match(proc.stdout)
-        return match.group(1)
+        return Job(match.group(1), command.cwd)
 
-    def batch_submit(self, commands: Iterable[Tuple[List, str]]):
+    def batch_submit(self, commands: Sequence[Command]) -> Sequence[Job]:
         """
         Batch submit is performed by repeated calls to
         :py:meth:`submit`. The thread pool executor ensures that
@@ -114,43 +113,42 @@ class GridEngineRunner(Runner):
         :param commands: iterable of args list and cwd path pairs
         :return: list of identifiers
         """
-        def submit_wrapper(args): return self.submit(*args)
-        return list(_executor.map(submit_wrapper, commands))
+        return list(_executor.map(self.submit, commands))
 
-    def check_status(self, job_id, cwd):
+    def check_status(self, job: Job) -> JobStatus:
         # there is no single job status check
-        job = dict(job_id=job_id, work_dir=cwd)
-        return next(iter(self.batch_check_status([job])))
+        return self.batch_check_status([job])[0]
 
-    def batch_check_status(self, jobs):
+    def batch_check_status(self, jobs: Sequence[Job]) -> Sequence[JobStatus]:
         states = _job_stat()
+        result = []
         for job in jobs:
-            job_id = job['job_id']
-            state = states.get(job_id)
+            state = states.get(job.id)
             if state is not None:
-                yield state
+                result.append(state)
             else:
-                fn = os.path.join(job['work_dir'], 'finished')
+                fn = os.path.join(job.cwd, 'finished')
                 try:
                     with open(fn) as fp:
                         return_code = int(fp.read())
-                    self.finished_job_timestamp.pop(job_id, None)
-                    yield (
+                    self.finished_job_timestamp.pop(job.id, None)
+                    result.append(
                         JobStatus.COMPLETED if return_code == 0 else
                         JobStatus.ERROR if return_code == 127 else
                         JobStatus.FAILED
                     )
                 except FileNotFoundError:
                     # one minute window for file system synchronization
-                    ts = self.finished_job_timestamp[job_id]
+                    ts = self.finished_job_timestamp[job.id]
                     if datetime.now() - ts < timedelta(minutes=1):
-                        yield JobStatus.RUNNING
+                        result.append(JobStatus.RUNNING)
                     else:
-                        del self.finished_job_timestamp[job_id]
-                        yield JobStatus.INTERRUPTED
+                        del self.finished_job_timestamp[job.id]
+                        result.append(JobStatus.INTERRUPTED)
+        return result
 
-    def cancel(self, job_id, cwd):
-        subprocess.run([b'qdel', job_id])
+    def cancel(self, job: Job):
+        subprocess.run([b'qdel', job.id])
 
-    def batch_cancel(self, jobs: Iterable[JobMetadata]):
-        subprocess.run([b'qdel', *(job['job_id'] for job in jobs)])
+    def batch_cancel(self, jobs: Collection[Job]):
+        subprocess.run([b'qdel', *(job.id for job in jobs)])
