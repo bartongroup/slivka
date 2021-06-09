@@ -70,9 +70,9 @@ class GridEngineRunner(Runner):
     """
     finished_job_timestamp = defaultdict(datetime.now)
 
-    def __init__(self, *args, qsub_args=(), **kwargs):
+    def __init__(self, *args, qargs=(), **kwargs):
         super().__init__(*args, **kwargs)
-        self.qsub_args = qsub_args
+        self.qsub_args = qargs
         self.env.update(
             (env, os.getenv(env)) for env in os.environ
             if env.startswith('SGE')
