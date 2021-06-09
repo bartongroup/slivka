@@ -2,6 +2,7 @@ import atexit
 import logging.config
 import logging.handlers
 import os
+import tempfile
 
 import zmq
 
@@ -79,10 +80,10 @@ class ZMQQueueListener(logging.handlers.QueueListener):
 def get_logging_sock():
     from hashlib import md5
     from base64 import b64encode
-    home = slivka.settings.base_dir
+    home = slivka.conf.settings.directory.home
     suffix = b64encode(md5(home.encode()).digest()[:6], b'-_').decode()
-    tmp = os.environ.get('TEMP') or os.environ.get('TMP') or '/tmp'
-    path = 'ipc://%s/slivka-logging_%s.sock' % (tmp, suffix)
+    tmp = tempfile.gettempdir()
+    path = 'ipc://%s/slivka-logging-%s.sock' % (tmp, suffix)
     return path
 
 
