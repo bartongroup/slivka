@@ -99,11 +99,10 @@ class Scheduler:
         self.log = logging.getLogger(__name__)
         self._finished = threading.Event()
         self.jobs_directory = jobs_directory or slivka.conf.settings.directory.jobs
-        self.runners = {}  # type: Dict[RunnerID, Runner]
-        self.selectors = defaultdict(DefaultLimiter)  # type: Dict[str, Callable]
-        self._backoff_counters = defaultdict(
-            partial(BackoffCounter, max_tries=10)
-        )  # type: DefaultDict[Any, BackoffCounter]
+        self.runners: Dict[RunnerID, Runner] = {}
+        self.selectors: Dict[str, Callable] = defaultdict(lambda: Limiter.default)
+        self._backoff_counters: DefaultDict[Any, BackoffCounter] = \
+            defaultdict(partial(BackoffCounter, max_tries=10))
         self._service_states = _ServiceStateHelper()
 
     @property
@@ -437,8 +436,6 @@ class Limiter(metaclass=LimiterMeta):
     def setup(self, inputs):
         pass
 
-
-class DefaultLimiter(Limiter):
-    # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def limit_default(self, inputs):
-        return True
+    @staticmethod
+    def default(_inputs):
+        return "default"
