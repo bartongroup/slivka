@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 from nose.tools import raises, assert_equal, assert_is, assert_list_equal
 
 from slivka.server.forms.fields import IntegerField, ValidationError, \
@@ -79,6 +80,7 @@ class TestBoundedValue:
 
 class TestDefault:
     def setup(self):
+        raise SkipTest("default value substitution no longer applies")
         self.field = IntegerField("name", default=49, min=-1)
 
     def test_none(self):

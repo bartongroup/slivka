@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises, raises, assert_equal, assert_is_none
 
 from slivka.server.forms.fields import DecimalField, ValidationError
@@ -103,6 +104,7 @@ def test_validate_none_not_required():
 # validation with default
 
 def test_validate_none_with_default():
+    raise SkipTest("default value substitution no longer applies")
     field = DecimalField('name', default=5.0)
     assert_equal(field.validate(None), 5.0)
     field = DecimalField('name', default=0.0)
@@ -110,6 +112,7 @@ def test_validate_none_with_default():
 
 
 def test_validate_empty_with_default():
+    raise SkipTest("default value substitution no longer applies")
     field = DecimalField('name', default=4.0)
     assert_equal(field.validate(''), 4.0)
     assert_equal(field.validate(()), 4.0)

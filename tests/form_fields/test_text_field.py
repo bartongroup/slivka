@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal, raises, assert_is
 
 from slivka.server.forms.fields import TextField, ValidationError
@@ -43,11 +44,13 @@ def test_validate_none_not_required():
 # validation with default provided
 
 def test_validate_none_with_default():
+    raise SkipTest("default value substitution no longer applies")
     field = TextField('name', default='bar')
     assert_equal(field.validate(None), 'bar')
 
 
 def test_validate_empty_with_default():
+    raise SkipTest("default value substitution no longer applies")
     field = TextField('name', default='bar')
     assert_equal(field.validate(''), 'bar')
 

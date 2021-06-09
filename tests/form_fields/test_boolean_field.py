@@ -1,5 +1,6 @@
 from functools import partial
 
+from nose import SkipTest
 from nose.tools import assert_is, raises, assert_true
 
 from slivka.server.forms.fields import BooleanField, ValidationError
@@ -78,6 +79,7 @@ class TestValidationWithDefault:
         yield check, [], None
 
     def test_default_true(self):
+        raise SkipTest("default value substitution no longer applies")
         field = BooleanField('name', required=False, default=True)
         check = partial(self.check_field, field)
         yield check, None, True
