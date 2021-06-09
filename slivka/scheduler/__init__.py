@@ -1,2 +1,2 @@
-from .core import Scheduler, Limiter, DefaultLimiter
-from .runners.runner import Runner, RunInfo
+from .runners.runner import Runner
+from .scheduler import Scheduler, Limiter, DefaultLimiter

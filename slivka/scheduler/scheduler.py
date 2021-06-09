@@ -1,22 +1,24 @@
 import contextlib
 import logging
 import operator
+import os
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
 from functools import partial
-from importlib import import_module
 from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
-                    Sequence)
+                    Sequence, Callable)
 
 from bson import ObjectId
 from pymongo import UpdateOne
 
+import slivka.conf
 import slivka.db
 from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
                                  ServiceState)
 from slivka.db.helpers import insert_many, push_one, insert_one
-from slivka.scheduler.runners.runner import RunnerID, Runner
 from slivka.utils import JobStatus, BackoffCounter
+from .runners import Job as JobTuple
+from .runners.runner import RunnerID, Runner
 
 
 def _fetch_pending_requests(database) -> Iterable[JobRequest]:
@@ -93,21 +95,21 @@ class Scheduler:
     and updates their state into the database.
     """
 
-    def __init__(self):
+    def __init__(self, jobs_directory=None):
         self.log = logging.getLogger(__name__)
         self._finished = threading.Event()
+        self.jobs_directory = jobs_directory or slivka.conf.settings.directory.jobs
         self.runners = {}  # type: Dict[RunnerID, Runner]
-        self.limiters = defaultdict(DefaultLimiter)  # type: Dict[str, Limiter]
+        self.selectors = defaultdict(DefaultLimiter)  # type: Dict[str, Callable]
         self._backoff_counters = defaultdict(
             partial(BackoffCounter, max_tries=10)
         )  # type: DefaultDict[Any, BackoffCounter]
         self._service_states = _ServiceStateHelper()
 
+    @property
     def is_running(self):
         """ Checks whether the scheduler is running. """
         return not self._finished.is_set()
-
-    is_running = property(is_running)
 
     def set_failure_limit(self, limit):
         """ Sets the limit of allowed exceptions before job is rejected. """
@@ -119,28 +121,8 @@ class Scheduler:
     def add_runner(self, runner: Runner):
         self.runners[runner.id] = runner
 
-    def load_runners(self, service_name, conf_dict):
-        """ Automatically adds runners from the configuration. """
-        # fixme: this is a job for a RunnerFactory
-        limiter_cp = conf_dict.get('limiter')
-        if limiter_cp is not None:
-            mod, attr = limiter_cp.rsplit('.', 1)
-            self.limiters[service_name] = getattr(import_module(mod), attr)()
-        for name, conf in conf_dict['runners'].items():
-            if '.' in conf['class']:
-                mod, attr = conf['class'].rsplit('.', 1)
-            else:
-                mod, attr = 'slivka.scheduler.runners', conf['class']
-            cls = getattr(import_module(mod), attr)
-            kwargs = conf.get('parameters', {})
-            runner = cls(conf_dict, id=RunnerID(service_name, name), **kwargs)
-            self.add_runner(runner)
-            self.log.info('loaded runner for service %s: %r', service_name, runner)
-
-    def test_runners(self):
-        """ Run tests for all runners. """
-        for _id, runner in sorted(self.runners.items()):
-            runner.run_test()
+    def add_selector(self, service: str, selector: Callable):
+        self.selectors[service] = selector
 
     def stop(self):
         self._finished.set()
@@ -153,15 +135,15 @@ class Scheduler:
         between them.
         """
         if self._finished.is_set():
-            raise RuntimeError
+            raise RuntimeError("scheduler can only be started once")
         self.log.info('scheduler started')
         try:
             while not self._finished.wait(1):
-                self.run_cycle()
+                self.main_loop()
         except KeyboardInterrupt:
             self.stop()
 
-    def run_cycle(self):
+    def main_loop(self):
         log = self.log
         database = slivka.db.database
 
@@ -207,9 +189,10 @@ class Scheduler:
                 database, {'uuid': {'$in': cancel_requests}})
             for job in cancelled_jobs:
                 # fixme: do not blindly trust data from the database
+                #        the runner may not exist
                 runner = self.runners[job.service, job.runner]
                 with contextlib.suppress(OSError):
-                    runner.cancel(job.job_id, job.cwd)
+                    runner.cancel(JobTuple(job.job_id, job.cwd))
             CancelRequest.collection(database).delete_many(
                 {'uuid': {'$in': cancel_requests}})
 
@@ -217,8 +200,8 @@ class Scheduler:
         cursor = JobRequest.collection(database).aggregate([
             {'$match': {'status': JobStatus.ACCEPTED}},
             {'$group': {
-                '_id': {'service_name': '$service',
-                        'runner_name': '$runner'},
+                '_id': {'service': '$service',
+                        'runner': '$runner'},
                 'requests': {'$push': '$$CURRENT'}
             }}
         ])
@@ -293,8 +276,8 @@ class Scheduler:
         """Group requests to their corresponding runners or reject."""
         grouped = defaultdict(list)
         for request in requests:
-            limiter = self.limiters[request.service]
-            runner_name = limiter(request.inputs)
+            selector = self.selectors[request.service]
+            runner_name = selector(request.inputs)
             if runner_name is None:
                 grouped[REJECTED].append(request)
             else:
@@ -320,7 +303,10 @@ class Scheduler:
         if not requests or next(counter) > 0:
             return RunResult(started=(), deferred=requests, failed=())
         try:
-            jobs = runner.batch_start([req.inputs for req in requests])
+            jobs = runner.batch_start(
+                [req.inputs for req in requests],
+                [os.path.join(self.jobs_directory, req.uuid) for req in requests]
+            )
             self._service_states.update_state(
                 runner.service_name, runner.name, 'start', ServiceState.OK, 'OK'
             )
@@ -352,9 +338,9 @@ class Scheduler:
         if not jobs or next(counter) > 0:
             return ()
         try:
-            results = runner.batch_check_status(jobs)
-            results = [(job, state) for (job, state)
-                       in zip(jobs, results) if job.state != state]
+            statuses = runner.batch_check_status([JobTuple(j.id, j.cwd) for j in jobs])
+            results = [(job, status) for (job, status)
+                       in zip(jobs, statuses) if job.status != status]
             if results and all(v[1] == JobStatus.ERROR for v in results):
                 self.log.exception(
                     "Jobs of %s exited with error state", runner)

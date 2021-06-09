@@ -1,3 +1,6 @@
+import os
+import tempfile
+from functools import partial
 from unittest import mock
 
 import mongomock
@@ -6,37 +9,33 @@ from nose.tools import assert_list_equal, assert_sequence_equal
 import slivka.db
 from slivka.db.documents import JobRequest
 from slivka.scheduler import Scheduler
-from slivka.scheduler.core import REJECTED, ERROR
-from slivka.scheduler.runners.runner import RunnerID, Runner
-from slivka.utils import BackoffCounter
-from . import LimiterStub
+from slivka.scheduler.runners import Job
+from slivka.scheduler.scheduler import REJECTED, ERROR
+from . import LimiterStub, MockRunner
 
-
-def MockRunner(service, name):
-    runner = mock.MagicMock(spec=Runner)
-    runner.id = RunnerID(service_name=service, runner_name=name)
-    runner.service_name = service
-    runner.name = name
-    return runner
+_tempdir = ...  # type: tempfile.TemporaryDirectory
 
 
 def setup_module():
+    global _tempdir
+    _tempdir = tempfile.TemporaryDirectory()
     slivka.db.mongo = mongomock.MongoClient()
     slivka.db.database = slivka.db.mongo.slivkadb
 
 
 def teardown_module():
+    _tempdir.cleanup()
     del slivka.db.database
     del slivka.db.mongo
 
 
 def test_grouping():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner1 = MockRunner('stub', 'runner1')
     runner2 = MockRunner('stub', 'runner2')
     scheduler.add_runner(runner1)
     scheduler.add_runner(runner2)
-    scheduler.limiters['stub'] = LimiterStub()
+    scheduler.selectors['stub'] = LimiterStub()
 
     requests = [
         JobRequest(service='stub', inputs={'runner': 1}),
@@ -52,90 +51,77 @@ def test_grouping():
 
 
 def test_successful_running():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.return_value = range(len(requests))
-    started, deferred, failed = scheduler.run_requests(runner, requests)
+    with mock.patch.object(runner, "batch_start", return_value=range(len(requests))):
+        started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal([request for request, job in started], requests)
 
 
 def test_returned_jobs():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.return_value = range(len(requests))
     started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert_list_equal([job for request, job in started], list(range(len(requests))))
+    expected = [
+        Job(id=0, cwd=os.path.join(_tempdir.name, requests[0].uuid)),
+        Job(id=1, cwd=os.path.join(_tempdir.name, requests[1].uuid))
+    ]
+    assert_sequence_equal([job for _, job in started], expected)
 
 
 def test_batch_run_called():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.return_value = range(len(requests))
-    scheduler.run_requests(runner, requests)
-    runner.batch_start.assert_called_once_with(
-        [mock.sentinel.inputs, mock.sentinel.inputs]
-    )
+    expected_dirs = [
+        os.path.join(_tempdir.name, req.uuid) for req in requests
+    ]
+    with mock.patch.object(
+            runner, "batch_start",
+            side_effect=partial(MockRunner.batch_start, runner)):
+        scheduler.run_requests(runner, requests)
+        runner.batch_start.assert_called_once_with(
+            [mock.sentinel.inputs, mock.sentinel.inputs],
+            expected_dirs
+        )
 
 
 def test_deferred_running():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.side_effect = OSError("failed successfully")
-    started, deferred, failed = scheduler.run_requests(runner, requests)
+    with mock.patch.object(runner, "batch_start", side_effect=OSError):
+        started, deferred, failed = scheduler.run_requests(runner, requests)
     assert_list_equal(deferred, requests)
 
 
 def test_failed_running():
-    scheduler = Scheduler()
+    scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
         JobRequest(service='stub', inputs=mock.sentinel.inputs),
         JobRequest(service='stub', inputs=mock.sentinel.inputs)
     ]
-    runner.batch_start.side_effect = OSError("failed successfully")
-    with mock.patch.dict(scheduler._backoff_counters,
-                         {runner.start: BackoffCounter(0)}):
+    scheduler.set_failure_limit(0)
+    with mock.patch.object(runner, 'batch_start', side_effect=OSError):
         started, deferred, failed = scheduler.run_requests(runner, requests)
-    assert_sequence_equal(failed, requests)
+        assert_sequence_equal(failed, requests)
 
-# @pytest.fixture
-# def runner_mock():
-#     runner = mock.MagicMock(spec=Runner)
-#     runner.run.return_value = RunInfo(id=0, cwd='/tmp')
-#
-#     def batch_run(inputs):
-#         yield from (RunInfo(id=0, cwd='/tmp') for _ in inputs)
-#
-#     runner.batch_run.side_effect = batch_run
-#     return runner
-#
-#
-# @pytest.mark.usefixtures('mock_mongo')
-# def test_batch_run_called(insert_jobs, runner_mock):
-#     jobs = [JobRequest('dummy', {'param': 0}), JobRequest('dummy', {'param': 1})]
-#     insert_jobs(jobs)
-#     requests = {runner_mock: jobs}
-#     scheduler = Scheduler()
-#     scheduler.run_requests(requests)
-#     runner_mock.batch_run.assert_called_once_with([{'param': 0}, {'param': 1}])
-#
-#
+
 # def test_request_state_queued_set(mock_mongo, insert_jobs, runner_mock):
 #     jobs = [JobRequest('dummy', {'param': 0})]
 #     insert_jobs(jobs)
