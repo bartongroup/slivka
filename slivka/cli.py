@@ -137,13 +137,14 @@ def start_scheduler(daemon, pid_file):
     if daemon:
         slivka.utils.daemonize()
     pid_file_cm = (slivka.utils.PidFile(pid_file)
-                  if pid_file else nullcontext())
+                   if pid_file else nullcontext())
 
     import slivka.conf.logging
     import slivka.scheduler
+    from slivka.scheduler.factory import runners_from_config
     from slivka.conf import settings
 
-    sys.path.append(settings.base_dir)
+    sys.path.append(settings.directory.home)
     slivka.conf.logging.configure_logging()
 
     def terminate(_signum, _stack): scheduler.stop()
@@ -151,16 +152,19 @@ def start_scheduler(daemon, pid_file):
     signal.signal(signal.SIGTERM, terminate)
 
     handler = RotatingFileHandler(
-        os.path.join(settings.logs_dir, 'slivka.log'),
+        os.path.join(settings.directory.logs, 'slivka.log'),
         maxBytes=10 ** 8
     )
     listener = slivka.conf.logging.ZMQQueueListener(
         slivka.conf.logging.get_logging_sock(), (handler,)
     )
     with pid_file_cm, listener, closing(handler):
-        scheduler = slivka.scheduler.Scheduler()
-        for service in settings.services.values():
-            scheduler.load_runners(service.name, service.command)
+        scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
+        for service_config in settings.services:
+            selector, runners = runners_from_config(service_config)
+            scheduler.add_selector(service_config.id, selector)
+            for runner in runners:
+                scheduler.add_runner(runner)
         scheduler.run_forever()
 
 
