@@ -281,8 +281,15 @@ class Scheduler:
             if runner_name is None:
                 grouped[REJECTED].append(request)
             else:
-                runner = self.runners[request.service, runner_name]
-                grouped[runner].append(request)
+                try:
+                    runner = self.runners[request.service, runner_name]
+                    grouped[runner].append(request)
+                except KeyError:
+                    grouped[ERROR].append(request)
+                    self.log.exception(
+                        "runner \"%s\" does not exist for service \"%s\"",
+                        runner_name, request.service
+                    )
         return grouped
 
     def run_requests(self, runner: Runner, requests: List[JobRequest]) \
