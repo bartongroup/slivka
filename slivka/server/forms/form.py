@@ -216,7 +216,13 @@ class FormLoader(metaclass=Singleton):
     def read_settings(self):
         """Load forms from global settings."""
         for service in slivka.settings.services.values():
-            self.read_dict(service.name, service.form)
+            try:
+                self.read_dict(service.name, service.form)
+            except ValidationError as e:
+                msg = "Could not load service '%s'. " % service.name
+                msg += str(e) + ' '
+                msg += str(e.__cause__)
+                raise RuntimeError(msg)
 
     def read_dict(self, name: str, dictionary: dict) -> Type[BaseForm]:
         """Load form definition from dictionary.
@@ -246,8 +252,8 @@ class FormLoader(metaclass=Singleton):
         if value_dict.get('multiple') and not field_type.endswith('[]'):
             field_type += '[]'
             warnings.warn(
-                "Using \"multiple\" field parameter is deprecated, "
-                "set %s as field type instead." % field_type,
+                f"Using \"multiple\" is deprecated, set {field_type} "
+                f"as type of the '{name}' parameter instead.",
                 RuntimeWarning
             )
         kwargs = {

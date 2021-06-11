@@ -4,7 +4,7 @@ Slivka
 
 |version| |anaconda|
 
-.. |version| image:: https://img.shields.io/badge/version-0.7b4-informational
+.. |version| image:: https://img.shields.io/badge/version-0.7b5-informational
 
 .. |anaconda| image:: https://anaconda.org/slivka/slivka/badges/version.svg
    :target: https://anaconda.org/slivka/slivka
