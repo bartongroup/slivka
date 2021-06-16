@@ -1,24 +1,24 @@
 import enum
 import os
-import pathlib
-from base64 import b64encode
+from base64 import urlsafe_b64encode as b64encode
 from datetime import datetime
 from uuid import uuid4
 
 import pymongo
+from bson import ObjectId
 
 from slivka import JobStatus
 from slivka.utils import deprecated
 
 
 def b64_uuid4():
-    return b64encode(uuid4().bytes, altchars=b'_-').rstrip(b'=').decode()
+    return b64encode(uuid4().bytes).rstrip(b'=').decode()
 
 
 class MongoDocument(dict):
     __collection__ = None
 
-    def _get_id(self): return self.get('_id')
+    def _get_id(self) -> ObjectId: return self.get('_id')
     id = property(fget=_get_id)
 
     @classmethod
@@ -146,22 +146,26 @@ class UploadedFile(MongoDocument):
                  title=None,
                  media_type=None,
                  path,
-                 uuid=None,
                  **kwargs):
         super().__init__(
-            uuid=uuid or b64_uuid4(),
             title=title,
             media_type=media_type,
             path=path,
             **kwargs
         )
 
-    uuid = property(lambda self: self['uuid'])
+    @property
+    @deprecated
+    def uuid(self):
+        return self.b64id
+
+    def _get_b64id(self):
+        return b64encode(self._get_id().binary).decode()
+
+    b64id = property(_get_b64id)
     title = property(lambda self: self['title'])
     media_type = property(lambda self: self['media_type'])
-
-    def get_path(self): return pathlib.Path(self['path'])
-    path = property(get_path)
+    path = property(lambda self: self['path'])
 
     def get_basename(self): return os.path.basename(self['path'])
     basename = property(get_basename)
