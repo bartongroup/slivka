@@ -1,22 +1,19 @@
 field:
-  label: float field
+  name: float field
   description: A decimal value
-  value:
-    type: float
-    min: 0.5
-    max: 5.1
-    default: 1.8
-    min-exclusive: no
-    max-exclusive: yes
-    required: no
+  type: float
+  min: 0.5
+  max: 5.1
+  default: 1.8
+  min-exclusive: no
+  max-exclusive: yes
+  required: no
 
 default-field:
-  label: def float
+  name: def float
   description: Default parameters float
-  value:
-    type: float
+  type: float
 
 array-field:
-  label: array field
-  value:
-    type: float[]
+  name: array field
+  type: float[]

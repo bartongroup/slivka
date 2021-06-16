@@ -21,7 +21,7 @@ class TestGeneralFieldLoader:
         self.form = FormLoader().read_dict('example', data)
 
     def test_fields_present(self):
-        names = [field.name for field in self.form.fields.values()]
+        names = [field.id for field in self.form.fields.values()]
         expected = ['alpha', 'bravo', 'charlie', 'delta']
         assert_sequence_equal(names, expected)
 
@@ -56,7 +56,7 @@ class TestIntFieldLoader:
         assert_is_instance(field, ArrayFieldMixin)
 
     def test_label(self):
-        assert_equal(self.field.label, 'int field')
+        assert_equal(self.field.name, 'int field')
 
     def test_description(self):
         assert_equal(self.field.description, 'An integer value')

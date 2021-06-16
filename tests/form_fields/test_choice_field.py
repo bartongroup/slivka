@@ -113,15 +113,15 @@ def test_multiple_valid_values():
 
 def test_to_cmd_parameter():
     field = ChoiceField('name', choices=CHOICES)
-    assert_equal(field.to_cmd_args('foo'), 'FOO')
-    assert_equal(field.to_cmd_args('BAZ'), 'BAZ')
-    assert_equal(field.to_cmd_args('missing'), 'missing')
-    assert_is_none(field.to_cmd_args('void'))
+    assert_equal(field.to_arg('foo'), 'FOO')
+    assert_equal(field.to_arg('BAZ'), 'BAZ')
+    assert_equal(field.to_arg('missing'), 'missing')
+    assert_is_none(field.to_arg('void'))
 
 
 def test_serialize_multiple():
     field = ChoiceArrayField('name', choices=CHOICES)
     assert_list_equal(
-        field.to_cmd_args(['foo', 'BAR', 'baz']),
+        field.to_arg(['foo', 'BAR', 'baz']),
         ['FOO', 'BAR', 'BAZ']
     )

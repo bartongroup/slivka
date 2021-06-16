@@ -1,20 +1,17 @@
 field:
-  label: choice field
-  value:
-    type: choice
-    choices:
-      alpha: 1
-      beta: 2
-    default: alpha
+  name: choice field
+  type: choice
+  choices:
+    alpha: 1
+    beta: 2
+  default: alpha
 
 default-field:
-  label: def choice
-  value:
-    type: choice
-    choices: []
+  name: def choice
+  type: choice
+  choices: []
 
 array-field:
-  label: array
-  value:
-    type: choice[]
-    choices: []
+  name: array
+  type: choice[]
+  choices: []

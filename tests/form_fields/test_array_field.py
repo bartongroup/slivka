@@ -15,7 +15,7 @@ class TestArrayMixinFetch:
 
     def test_fetch_no_value(self):
         val = self.field.fetch_value(MultiDict(), MultiDict())
-        assert_list_equal(val, [])
+        assert_is_none(val)
 
 
 class TestArrayMixinValidation:

@@ -1,22 +1,18 @@
 alpha:
-  label: example label
+  name: example label
   description: example description
-  value:
-    type: int
+  type: int
 
 bravo:
-  label: example label
-  value:
-    type: int
-    required: no
+  name: example label
+  type: int
+  required: no
 
 charlie:
-  label: example label
-  value:
-    type: int
-    required: yes
+  name: example label
+  type: int
+  required: yes
 
 delta:
-  label: example label
-  value:
-    type: int[]
+  name: example label
+  type: int[]

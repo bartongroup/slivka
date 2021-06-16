@@ -97,14 +97,14 @@ class TestValidationWithDefault:
 
 def test_true_to_cmd_parameter():
     field = BooleanField('name', required=False)
-    assert_true(field.to_cmd_args(True))
+    assert_true(field.to_arg(True))
 
 
 def test_none_to_cmd_parameter():
     field = BooleanField('name', required=False)
-    assert_is(field.to_cmd_args(None), None)
+    assert_is(field.to_arg(None), None)
 
 
 def test_false_to_cmd_parameter():
     field = BooleanField('name', required=False)
-    assert_is(field.to_cmd_args(False), None)
+    assert_is(field.to_arg(False), None)

@@ -1,17 +1,14 @@
 field:
-  label: bool field
+  name: bool field
   description: A bool value
-  value:
-    type: flag
-    default: false
-    required: no
+  type: flag
+  default: false
+  required: no
 
 default-field:
-  label: def bool
-  value:
-    type: flag
+  name: def bool
+  type: flag
 
 array-field:
-  label: array
-  value:
-    type: flag[]
+  name: array
+  type: flag[]

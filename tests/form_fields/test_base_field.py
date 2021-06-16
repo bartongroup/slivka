@@ -21,9 +21,13 @@ class ArrayFieldStub(ArrayFieldMixin, FieldStub):
 
 
 class TestBasicProperties:
-    def test_name(self):
+    def test_id(self):
         field = BaseField('foobar')
-        assert_equal(field.name, 'foobar')
+        assert_equal(field.id, 'foobar')
+
+    def test_name(self):
+        field = BaseField('field', name="name")
+        assert_equal(field.name, "name")
 
     def test_description(self):
         field = BaseField('name', description='example description')
@@ -166,10 +170,10 @@ class TestCmdArg:
         yield self.check_null, None
 
     def check_cmd_arg(self, value, expected):
-        assert_equal(self.field.to_cmd_args(value), expected)
+        assert_equal(self.field.to_arg(value), expected)
 
     def check_cmd_arg_array(self, value, expected):
-        assert_list_equal(self.array_field.to_cmd_args(value), expected)
+        assert_list_equal(self.array_field.to_arg(value), expected)
 
     def check_null(self, value):
-        assert_is_none(self.array_field.to_cmd_args(value))
+        assert_is_none(self.array_field.to_arg(value))

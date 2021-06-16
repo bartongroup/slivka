@@ -1,20 +1,17 @@
 field:
-  label: int field
+  name: int field
   description: An integer value
-  value:
-    type: int
-    min: 0
-    max: 5
-    default: 0
-    required: no
+  type: int
+  min: 0
+  max: 5
+  default: 0
+  required: no
 
 default-field:
-  label: def integer
+  name: def integer
   description: Default parameters int
-  value:
-    type: int
+  type: int
 
 array-field:
-  label: array field
-  value:
-    type: int[]
+  name: array field
+  type: int[]

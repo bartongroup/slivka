@@ -1,18 +1,15 @@
 field:
-  label: file value
-  value:
-    type: file
-    media-type: image/*
-    extensions: ['bmp', 'png', 'jpg']
-    media-type-parameters:
-      dimensions: 40x40
+  name: file value
+  type: file
+  media-type: image/*
+  extensions: ['bmp', 'png', 'jpg']
+  media-type-parameters:
+    dimensions: 40x40
 
 default-field:
-  label: def file
-  value:
-    type: file
+  name: def file
+  type: file
 
 array-field:
-  label: array
-  value:
-    type: file[]
+  name: array
+  type: file[]

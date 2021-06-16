@@ -57,4 +57,4 @@ def test_validate_empty_with_default():
 
 def test_to_cmd_parameter():
     field = TextField("name")
-    assert_equal(field.to_cmd_args('foobar'), 'foobar')
+    assert_equal(field.to_arg('foobar'), 'foobar')

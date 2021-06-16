@@ -69,7 +69,7 @@ def test_multiple_fields_mixed():
 @with_setup(setup_uploaded_file)
 def test_uploaded_file():
     field = FileField('test')
-    file = field.validate(uploaded_file['uuid'])
+    file = field.validate(uploaded_file.uuid)
     with contextlib.closing(file) as stream:
         assert_equal(stream.readline(), b'Lorem ipsum dolor sit amet\n')
 
@@ -77,7 +77,8 @@ def test_uploaded_file():
 @raises(ValidationError)
 def test_missing_uploaded_file():
     field = FileField('test')
-    field.validate('missing_uuid')
+    # id must be 16 chars long
+    field.validate('bWlzc2luZ191dWlk')
 
 
 def test_posted_file():
@@ -96,8 +97,8 @@ def test_posted_file():
 @with_setup(setup_uploaded_file)
 def test_to_cmd_parameter():
     field = FileField('name')
-    wrapper = field.validate(uploaded_file['uuid'])
-    assert_equal(field.to_cmd_args(wrapper), uploaded_file['path'])
+    wrapper = field.validate(uploaded_file.b64id)
+    assert_equal(field.to_arg(wrapper), uploaded_file['path'])
 
 
 class TestMediaTypeValidation:
