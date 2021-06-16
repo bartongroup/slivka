@@ -1,20 +1,24 @@
 import itertools
 import json
+import os
 import typing
 from abc import ABC
+from base64 import urlsafe_b64encode
 from collections import OrderedDict
 from functools import partial
-from tempfile import mkstemp
 from typing import Union, List
 
 import pkg_resources
+import pymongo.database
+from bson import ObjectId
 from werkzeug.datastructures import FileStorage, MultiDict
 
 import slivka
 import slivka.db
-from slivka.utils import (cached_property, class_property, expression_parser,
-                          media_types)
-from .file_proxy import FileProxy, _get_file_from_uuid
+from slivka.db.documents import UploadedFile
+from slivka.db.helpers import insert_one
+from slivka.utils import class_property, expression_parser, media_types
+from .file_proxy import FileProxy
 from .widgets import *
 
 __all__ = [
@@ -30,7 +34,7 @@ __all__ = [
 ]
 
 
-def _get_schema(filename):
+def _load_schema(filename):
     return json.loads(
         pkg_resources.resource_string("slivka.conf", filename).decode()
     )
@@ -47,23 +51,23 @@ class BaseField:
     for custom value validation. The parameters for the fields are
     provided from the configuration file.
 
-    :param name: the name of the field
-    :param label: human readable name/label
+    :param id: field identifier
+    :param name: human readable name/label
     :param description: longer, human readable description
     :param default: default value for the field
     :param required: whether the field is required
-    :param multiple: whether the field accepts multiple values
+    :param condition: logical expression involving other fields
     """
 
     def __init__(self,
-                 name,
-                 label='',
+                 id,
+                 name='',
                  description='',
                  default=None,
                  required=True,
                  condition=None):
+        self.id = id
         self.name = name
-        self.label = label
         self.description = description
         self.default = default
         self.required = required and default is None
@@ -71,7 +75,7 @@ class BaseField:
                           else expression_parser.Expression(condition))
         self._widget = None
 
-    schema = class_property(lambda cls: _get_schema('any-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('any-field-schema.json'))
     """Json schema for the field item in the config file."""
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
@@ -85,7 +89,7 @@ class BaseField:
         :param files: request multipart-POST files
         :return: retrieved raw value
         """
-        return data.get(self.name)
+        return data.get(self.id)
 
     def run_validation(self, value):
         """ Validates the value and converts to Python value.
@@ -142,12 +146,12 @@ class BaseField:
     def test_condition(self, values):
         if self.condition:
             return self.condition.evaluate({
-                'self': values[self.name], **values
+                'self': values[self.id], **values
             })
         else:
             return True
 
-    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+    def to_arg(self, value) -> Union[None, str, List[str]]:
         """ Converts value to argument or list of arguments.
 
         This method is used to convert values to the command line
@@ -164,11 +168,11 @@ class BaseField:
         """ Json representation of the field as shown to the client. """
         return {
             'type': 'undefined',
+            'id': self.id,
             'name': self.name,
-            'label': self.label,
-            'description': self.description or "",
+            'description': self.description,
             'required': self.required,
-            'multiple': False,
+            'array': self.is_array,
             'default': self.default
         }
 
@@ -180,11 +184,15 @@ class BaseField:
     def input_tag(self):
         return self.widget.render()
 
+    @property
+    def is_array(self):
+        return False
+
 
 class ArrayFieldMixin(BaseField, ABC):
     def fetch_value(self, data: MultiDict, files: MultiDict):
         """ Retrieves multiple values from the request data. """
-        return data.getlist(self.name) or None
+        return data.getlist(self.id) or None
 
     def validate(self, value):
         """ Runs validation for each value in the list. """
@@ -195,12 +203,12 @@ class ArrayFieldMixin(BaseField, ABC):
             return super(ArrayFieldMixin, self).validate(None)
         return [super(ArrayFieldMixin, self).validate(val) for val in value]
 
-    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+    def to_arg(self, value) -> Union[None, str, List[str]]:
         """ Converts each value in the list to cmd arg. """
         if value is None:
             return None
         converted = (
-            super(ArrayFieldMixin, self).to_cmd_args(val)
+            super(ArrayFieldMixin, self).to_arg(val)
             for val in value
         )
         args = [val for val in converted if val is not None]
@@ -215,27 +223,26 @@ class ArrayFieldMixin(BaseField, ABC):
             except (ValidationError, TypeError) as e:
                 raise RuntimeError("Invalid default value") from e
 
-    def __json__(self):
-        js = super().__json__()
-        js['multiple'] = True
-        return js
+    def is_array(self):
+        return True
 
 
 class IntegerField(BaseField):
     """ Represents a field that takes an integer value.
 
-    :param name: name of the field
+    :param id: name of the field
     :param min: minimum value or None if unbound
     :param max: maximum value or None if unbound
     :param **kwargs: see arguments of :py:class:`BaseField`
     """
+
     # noinspection PyShadowingBuiltins
     def __init__(self,
-                 name,
+                 id,
                  min=None,
                  max=None,
                  **kwargs):
-        super().__init__(name, **kwargs)
+        super().__init__(id, **kwargs)
         self.__validators = []
         self.min = min
         self.max = max
@@ -245,7 +252,7 @@ class IntegerField(BaseField):
             self.__validators.append(partial(_min_value_validator, min))
         self._check_default()
 
-    schema = class_property(lambda cls: _get_schema('int-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('int-field-schema.json'))
 
     @property
     def widget(self):
@@ -286,22 +293,23 @@ class IntegerArrayField(ArrayFieldMixin, IntegerField):
 class DecimalField(BaseField):
     """ Represents a field that takes a floating point number.
 
-    :param name: name of the field
+    :param id: name of the field
     :param min: minimum value or None if unbound
     :param max: maximum value or None if unbound
     :param min_exclusive: whether min is excluded, default False
     :param max_exclusive: whether max is excluded, default False
     :param **kwargs: see arguments of :py:class`BaseClass`
     """
+
     # noinspection PyShadowingBuiltins
     def __init__(self,
-                 name,
+                 id,
                  min=None,
                  max=None,
                  min_exclusive=False,
                  max_exclusive=False,
                  **kwargs):
-        super().__init__(name, **kwargs)
+        super().__init__(id, **kwargs)
         self.__validators = []
         self.min = min
         self.max = max
@@ -317,7 +325,7 @@ class DecimalField(BaseField):
             self.__validators.append(partial(validator, min))
         self._check_default()
 
-    schema = class_property(lambda cls: _get_schema('decimal-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('decimal-field-schema.json'))
 
     @property
     def widget(self):
@@ -360,17 +368,18 @@ class DecimalArrayField(ArrayFieldMixin, DecimalField):
 class TextField(BaseField):
     """ Represents a field taking an text value.
 
-    :param name: name of the field
+    :param id: name of the field
     :param min_length: minimum length of text
     :param max_length: maximum length of text
     :param **kwargs: see arguments of :py:class:`BaseField`
     """
+
     def __init__(self,
-                 name,
+                 id,
                  min_length=None,
                  max_length=None,
                  **kwargs):
-        super().__init__(name, **kwargs)
+        super().__init__(id, **kwargs)
         self.__validators = []
         self.min_length = min_length
         self.max_length = max_length
@@ -384,7 +393,7 @@ class TextField(BaseField):
             ))
         self._check_default()
 
-    schema = class_property(lambda cls: _get_schema('text-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('text-field-schema.json'))
 
     @property
     def widget(self):
@@ -421,16 +430,16 @@ class BooleanField(BaseField):
     The field interprets any string defined in a ``FALSE_STR`` set
     as well as anything that evaluates to False as False.
 
-    :param name: field name
+    :param id: field name
     :param **kwargs: see arguments of :py:class:`BaseField`
     """
     FALSE_STR = {'no', 'false', '0', 'n', 'f', 'none', 'null', 'off'}
 
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(self, id, **kwargs):
+        super().__init__(id, **kwargs)
         self._check_default()
 
-    schema = class_property(lambda cls: _get_schema('boolean-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('boolean-field-schema.json'))
 
     @property
     def widget(self):
@@ -446,7 +455,7 @@ class BooleanField(BaseField):
             value = False
         return True if value else None
 
-    def to_cmd_args(self, value) -> Union[None, str, List[str]]:
+    def to_arg(self, value) -> Union[None, str, List[str]]:
         if isinstance(value, str) and value.lower() in self.FALSE_STR:
             value = False
         return 'true' if value else None
@@ -472,15 +481,16 @@ class ChoiceField(BaseField):
     The choices mapping is used to convert the value to the
     command line parameter.
 
-    :param name: field name
+    :param id: field name
     :param choices: a mapping of user choices to the cmd values
     :param **kwargs: see arguments of :py:class:`BaseField`
     """
+
     def __init__(self,
-                 name,
+                 id,
                  choices=(),
                  **kwargs):
-        super().__init__(name, **kwargs)
+        super().__init__(id, **kwargs)
         self.__validators = []
         self.choices = OrderedDict(choices)
         self.__validators.append(partial(
@@ -489,7 +499,7 @@ class ChoiceField(BaseField):
         ))
         self._check_default()
 
-    schema = class_property(lambda cls: _get_schema('choice-field-schema.json'))
+    schema = class_property(lambda cls: _load_schema('choice-field-schema.json'))
 
     @property
     def widget(self):
@@ -515,7 +525,7 @@ class ChoiceField(BaseField):
             )
         return value
 
-    def to_cmd_args(self, value):
+    def to_arg(self, value):
         """ Converts value to the cmd argument using choices map"""
         return self.choices.get(value, value)
 
@@ -537,7 +547,7 @@ class FileField(BaseField):
     The values are converted to a :py:class:`FileProxy` convenience
     wrapper.
 
-    :param name: field name
+    :param id: field name
     :param media_type: accepted media (content) type; used in file
         content validation
     :param media_type_parameters: additional parameters regarding
@@ -545,14 +555,15 @@ class FileField(BaseField):
     :param extensions: accepted file extensions; used solely as a hint
     :param **kwargs: see arguments of :py:class:`BaseField`
     """
+
     def __init__(self,
-                 name,
+                 id,
                  media_type=None,
                  media_type_parameters=(),
                  extensions=(),
                  **kwargs):
         assert kwargs.get('default') is None
-        super().__init__(name, **kwargs)
+        super().__init__(id, **kwargs)
         self.__validators = []
         self.extensions = extensions
         self.media_type = media_type
@@ -562,12 +573,10 @@ class FileField(BaseField):
                 _media_type_validator, media_type
             ))
 
-    schema = class_property(lambda cls: _get_schema('file-field-schema.json'))
-
-    save_location = cached_property(lambda self: slivka.settings.uploads_dir)
+    schema = class_property(lambda cls: _load_schema('file-field-schema.json'))
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
-        return files.get(self.name) or data.get(self.name)
+        return files.get(self.id) or data.get(self.id)
 
     @property
     def widget(self):
@@ -598,11 +607,9 @@ class FileField(BaseField):
         elif isinstance(value, FileStorage):
             file = FileProxy(file=value)
         elif isinstance(value, str):
-            file = _get_file_from_uuid(value, slivka.db.database)
+            file = FileProxy.from_id(value, slivka.db.database)
             if file is None:
-                raise ValidationError(
-                    "A file with given uuid not found", 'not_found'
-                )
+                raise ValidationError("File not found.", 'not_found')
         elif isinstance(value, FileProxy):
             file = value
         else:
@@ -621,23 +628,42 @@ class FileField(BaseField):
         if self.extensions: j['extensions'] = self.extensions
         return j
 
-    def to_cmd_args(self, value: 'FileProxy'):
+    def save_file(self, file: FileProxy,
+                  database: pymongo.database.Database,
+                  directory: str):
+        if file is None or file.path is not None:
+            return
+        oid = ObjectId()
+        path = os.path.join(directory, urlsafe_b64encode(oid.binary).decode())
+        file.save_as(path)
+        doc = UploadedFile(
+            _id=oid, title=self.id, media_type=self.media_type, path=path
+        )
+        insert_one(database, doc)
+
+    def to_arg(self, value: 'FileProxy'):
         """ Converts FileProxy to cmd argument.
 
         The file is written to teh disk if not saved already
         and its path is returned.
         """
-        if not value: return None
+        if not value:
+            return None
         if value.path is None:
-            (fd, path) = mkstemp(dir=self.save_location)
-            with open(fd, 'wb') as fp:
-                value.save_as(path=path, fp=fp)
+            raise ValueError("file has no path")
         return value.path
 
 
 class FileArrayField(ArrayFieldMixin, FileField):
     def fetch_value(self, data: MultiDict, files: MultiDict):
-        return (files.getlist(self.name) + data.getlist(self.name)) or None
+        return (files.getlist(self.id) + data.getlist(self.id)) or None
+
+    def save_file(self, files: List[FileProxy],
+                  database: pymongo.database.Database,
+                  directory: str):
+        if files is not None:
+            for file in files:
+                super().save_file(file, database, directory)
 
 
 # Helper methods that are used for value validation.
@@ -702,6 +728,7 @@ def _media_type_validator(media_type, file: FileProxy):
 
 class ValidationError(Exception):
     """ Exception raised in value validation fails. """
+
     def __init__(self, message, code=None):
         super().__init__(message, code)
         self.message = message

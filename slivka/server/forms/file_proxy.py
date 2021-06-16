@@ -1,13 +1,15 @@
+import io
 import os
-import typing
-
 import shutil
+from base64 import urlsafe_b64decode
+
+from bson import ObjectId
 
 from slivka.db.documents import UploadedFile, JobMetadata
 
 
 class FileProxy:
-    _file = None  # type: typing.IO
+    _file: io.IOBase = None
 
     closed = property(lambda self: self._file is None or self.file.closed)
     fileno = property(lambda self: self.file.fileno)
@@ -25,6 +27,25 @@ class FileProxy:
     writable = property(lambda self: self.file.writable)
     write = property(lambda self: self.file.write)
     writelines = property(lambda self: self.file.writelines)
+
+    @staticmethod
+    def from_id(file_id, database):
+        tokens = file_id.split('/', 1)
+        if len(tokens) == 1:
+            # user uploaded file
+            _id = ObjectId(urlsafe_b64decode(file_id))
+            uf = UploadedFile.find_one(database, _id=_id)
+            if uf is None: return None
+            return FileProxy(path=uf.path)
+        else:
+            # job output file
+            job_uuid, filename = tokens
+            job = JobMetadata.find_one(database, uuid=job_uuid)
+            if job is not None:
+                path = os.path.join(job.work_dir, filename)
+                if os.path.isfile(path):
+                    return FileProxy(path=path)
+            return None
 
     def __init__(self, file=None, path=None):
         self.file = file
@@ -45,13 +66,13 @@ class FileProxy:
         elif self.path and os.path.exists(self.path):
             self.file = open(self.path, 'rb')
         else:
-            raise OSError("Can't open the file.")
+            raise OSError("can't open the file.")
         return self
 
     def _get_file(self):
         if self._file is None:
             if self.path is None:
-                raise ValueError("The proxy has no associated file")
+                raise ValueError("file not set")
             self.reopen()
         return self._file
 
@@ -84,17 +105,3 @@ class FileProxy:
     def close(self):
         if self._file is not None:
             self._file.close()
-
-
-def _get_file_from_uuid(uuid, database):
-    tokens = uuid.split('/', 1)
-    if len(tokens) == 1:
-        # user uploaded file
-        uf = UploadedFile.find_one(database, uuid=uuid)
-        if uf is None: return None
-        return FileProxy(path=uf['path'])
-    else:
-        # job output file
-        job_uuid, filename = tokens
-        job = JobMetadata.find_one(database, uuid=job_uuid)
-        return job and FileProxy(path=os.path.join(job.work_dir, filename))

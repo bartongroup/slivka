@@ -1,16 +1,14 @@
 import collections
-import warnings
 from collections import OrderedDict, ChainMap
 from importlib import import_module
-from typing import Optional
+from typing import Optional, Iterator, Mapping
 from typing import Type
 
 from frozendict import frozendict
 from werkzeug.datastructures import MultiDict
 
-import slivka
+from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest
-from slivka.utils import Singleton, cached_property
 from .fields import *
 
 
@@ -29,7 +27,7 @@ class DeclarativeFormMetaclass(type):
         fields = OrderedDict()
         for key, field in list(attrs.items()):
             if isinstance(field, BaseField):
-                fields[field.name] = field
+                fields[field.id] = field
                 attrs.pop(key)
         attrs['fields'] = fields
         return super().__new__(mcs, name, bases, attrs)
@@ -58,8 +56,11 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     :param data: POST request form data, defaults to None
     :param files: files sent with multipart form, defaults to None
     """
-    service = ''
-    save_location = cached_property(lambda self: slivka.settings.uploads_dir)
+    _service = ''
+
+    @property
+    def service(self):
+        return self._service
 
     def __init__(self,
                  data: Optional[MultiDict] = None,
@@ -111,7 +112,7 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
             return
         errors = {}
         default_values = {
-            field.name: field.default for field in self.fields.values()
+            field.id: field.default for field in self.fields.values()
         }
         provided_values = {}
         for field in self.fields.values():
@@ -119,23 +120,23 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
             try:
                 value = field.validate(value)
                 if value is not None:
-                    provided_values[field.name] = value
+                    provided_values[field.id] = value
             except ValidationError as err:
-                errors[field.name] = err
+                errors[field.id] = err
         if errors:
             self._errors = frozendict(errors)
             return
         disabled_fields = []
         values = ChainMap(provided_values, default_values)
         for field in self.fields.values():
-            if values[field.name] is not None and not field.test_condition(
-                    values):
-                if field.name in provided_values:
+            if (values[field.id] is not None and
+                    not field.test_condition(values)):
+                if field.id in provided_values:
                     error = ValidationError(
                         "Additional condition not met", 'condition')
-                    errors[field.name] = error
+                    errors[field.id] = error
                 else:
-                    disabled_fields.append(field.name)
+                    disabled_fields.append(field.id)
         if errors:
             self._errors = frozendict(errors)
             return
@@ -143,11 +144,10 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         for name in disabled_fields:
             default_values[name] = None
         for field in self.fields.values():
-            if values[field.name] is not None and not field.test_condition(
-                    values):
+            if values[field.id] is not None and not field.test_condition(values):
                 error = ValidationError(
                     "Additional condition not met", 'condition')
-                errors[field.name] = error
+                errors[field.id] = error
         self._errors = frozendict(errors)
         if not errors:
             self._cleaned_data = frozendict(values)
@@ -158,20 +158,24 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
     def __getitem__(self, item):
         return self.fields[item]
 
-    def save(self, database) -> JobRequest:
+    def save(self, database, directory=None) -> JobRequest:
         """
-        If the form is valid, saves a new request to the database containing
-        the cleaned input data.
+        If the form is valid, saves all files and created
+        a new job request containing the cleaned input data
+        in the database.
 
         :param database: mongo database instance
+        :param directory: save location
         :return: created request
         """
         if not self.is_valid():
             raise RuntimeError(self.errors, 'invalid_form')
         inputs = {}
-        for name, field in self.fields.items():
-            value = self.cleaned_data[name]
-            inputs[name] = field.to_cmd_args(value)
+        for field in self.fields.values():
+            value = self.cleaned_data[field.id]
+            if isinstance(field, FileField):
+                field.save_file(value, database, directory)
+            inputs[field.id] = field.to_arg(value)
         request = JobRequest(service=self.service, inputs=inputs)
         request.insert(database)
         return request
@@ -201,7 +205,7 @@ FIELD_TYPES = {
 }
 
 
-class FormLoader(metaclass=Singleton):
+class FormLoader(collections.Mapping):
     """
     A helper factory dynamically creating the forms from the configuration.
     Only a single instance of the class is created (subsequent constructor
@@ -211,105 +215,53 @@ class FormLoader(metaclass=Singleton):
 
     def __init__(self):
         self._forms = {}
-        self.extra_types = {}
+        self._extra_types = {}
 
-    def read_settings(self):
-        """Load forms from global settings."""
-        for service in slivka.settings.services.values():
-            self.read_dict(service.name, service.form)
-
-    def read_dict(self, name: str, dictionary: dict) -> Type[BaseForm]:
-        """Load form definition from dictionary.
-
-        :param name: service name
-        :param dictionary: form configuration dictionary
-        :return: loaded form class
-        """
-        attrs = OrderedDict(
-            (key, self._build_field(key, val))
-            for key, val in dictionary.items()
-        )
-        attrs['service'] = name
-        self._forms[name] = cls = DeclarativeFormMetaclass(
-            name.capitalize() + 'Form', (BaseForm,), attrs
+    def read_config(self, service: ServiceConfig) -> Type[BaseForm]:
+        attrs = OrderedDict(_service=service.id)
+        for key, val in service.parameters.items():
+            attrs[key] = self._build_field(key, val)
+        self._forms[service.id] = cls = DeclarativeFormMetaclass(
+            service.id.capitalize() + "Form", (BaseForm,), attrs
         )
         return cls
 
-    def __getitem__(self, item):
+    def read_dict(self, service_id: str, params: Mapping) -> Type[BaseForm]:
+        attrs = OrderedDict(_service=service_id)
+        for key, val in params.items():
+            attrs[key] = self._build_field(key, val)
+        self._forms[service_id] = cls = DeclarativeFormMetaclass(
+            service_id.capitalize() + "Form", (BaseForm,), attrs
+        )
+        return cls
+
+    def __getitem__(self, item: str) -> BaseForm:
         """ Retrieve form class by service name. """
         return self._forms[item]
 
-    def _build_field(self, name, field_dict) -> BaseField:
+    def __len__(self) -> int:
+        return len(self._forms)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._forms)
+
+    def _build_field(self, param_id: str, field_dict: dict) -> BaseField:
         """ Constructs a field from the configuration """
-        value_dict = field_dict['value']
-        field_type = value_dict['type']
-        if value_dict.get('multiple') and not field_type.endswith('[]'):
-            field_type += '[]'
-            warnings.warn(
-                "Using \"multiple\" field parameter is deprecated, "
-                "set %s as field type instead." % field_type,
-                RuntimeWarning
-            )
-        kwargs = {
-            'name': name,
-            'label': field_dict['label'],
-            'description': field_dict.get('description'),
-            'default': value_dict.get('default'),
-            'required': value_dict.get('required', True),
-            'condition': value_dict.get('condition')
-        }
+        kwargs = {key.replace('-', '_'): val for key, val in field_dict.items()}
+        field_type = kwargs.pop('type')
         cls = FIELD_TYPES.get(field_type)
         if cls is None:
-            kwargs.update(value_dict)
-            kwargs.pop("type")
-            kwargs.pop("multiple", None)
             try:
                 cls = self._get_custom_field_class(field_type)
-                return cls(**kwargs)
+                if not issubclass(cls, BaseField):
+                    raise TypeError(f"'{cls!r}' do not extend 'BaseField'")
             except (ValueError, AttributeError):
-                raise ValueError('Invalid field type "%r"' % field_type)
-        elif issubclass(cls, IntegerField):
-            return cls(
-                **kwargs,
-                min=value_dict.get('min'),
-                max=value_dict.get('max')
-            )
-        elif issubclass(cls, DecimalField):
-            return cls(
-                **kwargs,
-                min=value_dict.get('min'),
-                max=value_dict.get('max'),
-                min_exclusive=value_dict.get('min-exclusive', False),
-                max_exclusive=value_dict.get('max-exclusive', False)
-            )
-        elif issubclass(cls, TextField):
-            return cls(
-                **kwargs,
-                min_length=value_dict.get('min-length'),
-                max_length=value_dict.get('max-length')
-            )
-        elif issubclass(cls, FlagField):
-            return cls(
-                **kwargs
-            )
-        elif issubclass(cls, ChoiceField):
-            return cls(
-                **kwargs,
-                choices=value_dict.get('choices')
-            )
-        elif issubclass(cls, FileField):
-            return cls(
-                **kwargs,
-                extensions=value_dict.get('extensions', ()),
-                media_type=value_dict.get('media-type'),
-                media_type_parameters=value_dict.get('media-type-parameters')
-            )
-        else:
-            raise RuntimeError('Invalid field type "%r"' % field_type)
+                raise ValueError(f"Invalid field type '{field_type!r}'")
+        return cls(param_id, **kwargs)
 
     def _get_custom_field_class(self, field_type) -> Type[BaseField]:
         """ Imports class that custom type points to. """
-        cls = self.extra_types.get(field_type)
+        cls = self._extra_types.get(field_type)
         if cls is None:
             if field_type.endswith('[]'):
                 base = self._get_custom_field_class(field_type[:-2])
@@ -317,5 +269,5 @@ class FormLoader(metaclass=Singleton):
             else:
                 mod, attr = field_type.rsplit('.', 1)
                 cls = getattr(import_module(mod), attr)
-            self.extra_types[field_type] = cls
+            self._extra_types[field_type] = cls
         return cls
