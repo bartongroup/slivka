@@ -6,7 +6,7 @@ import typing
 from collections.abc import Sequence
 from distutils.version import StrictVersion
 from importlib import import_module
-from typing import List, Dict, Union
+from typing import List, Dict
 
 try:
     from typing import get_origin, get_args
@@ -55,7 +55,7 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     services_dir = config['directory.services']
     services = config['services'] = []
     for fn in os.listdir(services_dir):
-        fnmatch = re.match(r'([a-zA-Z0-9_\-.]+)\.service\.ya?ml', fn)
+        fnmatch = re.match(r'([a-zA-Z0-9_\-.]+)\.service\.ya?ml$', fn)
         if not fnmatch:
             continue
         fn = os.path.join(services_dir, fn)
