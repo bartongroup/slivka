@@ -1,8 +1,7 @@
 import collections
 from collections import OrderedDict, ChainMap
 from importlib import import_module
-from typing import Optional, Iterator, Mapping
-from typing import Type
+from typing import Optional, Iterator, Mapping, Type
 
 from frozendict import frozendict
 from werkzeug.datastructures import MultiDict
@@ -83,14 +82,14 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         self._cleaned_data = frozendict()
 
     @property
-    def errors(self) -> collections.Mapping:
+    def errors(self) -> Mapping[str, ValidationError]:
         """ Performs the full clean if not done yet and returns errors. """
         if self._errors is None:
             self.full_clean()
         return self._errors
 
     @property
-    def cleaned_data(self) -> collections.Mapping:
+    def cleaned_data(self) -> Mapping:
         """ Returns the validated form data. """
         # TODO: perform full clean if empty
         return self._cleaned_data
