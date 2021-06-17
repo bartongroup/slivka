@@ -223,6 +223,7 @@ class ArrayFieldMixin(BaseField, ABC):
             except (ValidationError, TypeError) as e:
                 raise RuntimeError("Invalid default value") from e
 
+    @property
     def is_array(self):
         return True
 
