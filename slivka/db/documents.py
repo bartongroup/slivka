@@ -205,6 +205,7 @@ class ServiceState(MongoDocument):
     def _get_state(self): return self.State(self['state'])
     def _set_state(self, val): self['state'] = val
     state = property(_get_state, _set_state)
+    status = property(_get_state, _set_state)
 
     def _get_timestamp(self): return self['timestamp']
     def _set_timestamp(self, val): self['timestamp'] = val
