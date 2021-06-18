@@ -48,15 +48,15 @@ setup(
 
     author="Mateusz Maciej Warowny",
     author_email="m.m.z.warowny@dundee.ac.uk",
-    url="https://github.com/warownia1/Slivka",
-    download_url="https://github.com/warownia1/Slivka/archive/dev.zip",
+    url="http://bartongroup.github.io/slivka/",
+    download_url="https://github.com/bartongroup/slivka",
 
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3 :: Only",
         "Framework :: Flask",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
