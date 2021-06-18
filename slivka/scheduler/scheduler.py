@@ -344,7 +344,7 @@ class Scheduler:
         if not jobs or next(counter) > 0:
             return ()
         try:
-            statuses = runner.batch_check_status([JobTuple(j.id, j.cwd) for j in jobs])
+            statuses = runner.batch_check_status([JobTuple(j.job_id, j.cwd) for j in jobs])
             results = [(job, status) for (job, status)
                        in zip(jobs, statuses) if job.status != status]
             if results and all(v[1] == JobStatus.ERROR for v in results):
