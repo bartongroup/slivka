@@ -68,6 +68,7 @@ class JobRequest(MongoDocument):
                  inputs,
                  uuid=None,
                  timestamp=None,
+                 completion_time=None,
                  status=None,
                  runner=None,
                  **kwargs):
@@ -76,6 +77,7 @@ class JobRequest(MongoDocument):
             inputs=inputs,
             uuid=uuid if uuid is not None else b64_uuid4(),
             timestamp=timestamp if timestamp is not None else datetime.now(),
+            completion_time=completion_time,
             status=status if status is not None else JobStatus.PENDING,
             runner=runner,
             **kwargs
@@ -85,6 +87,8 @@ class JobRequest(MongoDocument):
     inputs = property(lambda self: self['inputs'])
     uuid = property(lambda self: self['uuid'])
     timestamp = property(lambda self: self['timestamp'])
+    submission_time = property(lambda self: self['timestamp'])
+    completion_time = property(lambda self: self['completion_time'])
 
     def _get_state(self): return JobStatus(self['status'])
     def _set_state(self, val): self['status'] = val
