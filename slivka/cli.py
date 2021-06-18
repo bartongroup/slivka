@@ -81,12 +81,10 @@ def start(home):
 @click.option('--workers', '-w', default=None, type=click.INT)
 @click.option('--http-socket', '-s')
 def start_server(server_type, daemon, pid_file, workers, http_socket):
-    import slivka
+    from slivka.conf import settings
+
     if http_socket is None:
-        http_socket = '{host}:{port}'.format(
-            host=slivka.settings.server_host,
-            port=slivka.settings.server_port
-        )
+        http_socket = settings.server.host
     workers = workers or min(2 * multiprocessing.cpu_count() + 1, 12)
     if server_type == 'devel':
         if daemon:
@@ -95,17 +93,16 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
         if pid_file:
             raise click.BadOptionUsage(
                 'pid-file', 'Cannot use pid file with development server.')
-        sys.path.append(slivka.settings.base_dir)
+        sys.path.append(settings.directory.home)
         import werkzeug
         host, port = http_socket.split(':')
-        return werkzeug.run_simple(
-            host, int(port), import_module('wsgi').application)
+        return werkzeug.run_simple(host, int(port), import_module('wsgi').app)
     if server_type == 'gunicorn':
         args = ['gunicorn',
                 '--bind', http_socket,
                 '--workers', str(workers),
                 '--name', 'slivka-http',
-                '--pythonpath', slivka.settings.base_dir]
+                '--pythonpath', settings.directory.home]
         if daemon:
             args.append('--daemon')
         if pid_file:
@@ -118,14 +115,13 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
                 '--processes', str(workers),
                 '--procname', 'slivka-http',
                 '--module', 'wsgi',
-                '--pythonpath', slivka.settings.base_dir]
+                '--pythonpath', settings.directory.home]
         if daemon:
             args.append('--daemon')
         if pid_file:
-            args.extend((['--pid', pid_file]))
+            args.extend(['--pid', pid_file])
     else:
-        raise click.exceptions.BadParameter(
-            'Invalid server type', param='server_type')
+        raise click.BadParameter('Invalid server type', param='server_type')
     os.execvp(args[0], args)
 
 
@@ -134,17 +130,16 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
 @click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
 def start_scheduler(daemon, pid_file):
     import slivka
+    from slivka.conf import settings
+    sys.path.append(settings.directory.home)
+
     if daemon:
         slivka.utils.daemonize()
-    pid_file_cm = (slivka.utils.PidFile(pid_file)
-                   if pid_file else nullcontext())
+    pid_file_cm = slivka.utils.PidFile(pid_file) if pid_file else nullcontext()
 
     import slivka.conf.logging
     import slivka.scheduler
     from slivka.scheduler.factory import runners_from_config
-    from slivka.conf import settings
-
-    sys.path.append(settings.directory.home)
     slivka.conf.logging.configure_logging()
 
     def terminate(_signum, _stack): scheduler.stop()
@@ -175,22 +170,21 @@ def start_scheduler(daemon, pid_file):
 @click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
 def start_local_queue(address, workers, daemon, pid_file):
     import slivka
+    from slivka.conf import settings
+    sys.path.append(settings.directory.home)
+
     if daemon:
         slivka.utils.daemonize()
-    pid_file_cm = (slivka.utils.PidFile(pid_file)
-                   if pid_file else nullcontext())
+    pid_file_cm = slivka.utils.PidFile(pid_file) if pid_file else nullcontext()
 
     import asyncio
     import slivka.conf.logging
-    from slivka.conf import settings
     from slivka.local_queue import LocalQueue
     slivka.conf.logging.configure_logging()
-    os.environ.setdefault('SLIVKA_SECRET', settings.secret_key)
 
     loop = asyncio.get_event_loop()
     queue = LocalQueue(
-        address=address or settings.slivka_queue_address,
-        workers=workers
+        address=address or settings.local_queue.host, workers=workers
     )
     loop.add_signal_handler(signal.SIGTERM, queue.stop)
     loop.add_signal_handler(signal.SIGINT, queue.stop)
@@ -204,20 +198,6 @@ def start_local_queue(address, workers, daemon, pid_file):
                help='Set-up slivka and start interactive python console.')
 def start_shell():
     import code
-    import slivka
-    sys.path.append(slivka.settings.base_dir)
-    code.interact()
-
-
-@start.command('services-test')
-def start_services_test():
-    import slivka.conf.logging
-    import slivka.scheduler
     from slivka.conf import settings
-
-    sys.path.append(settings.base_dir)
-    slivka.conf.logging.configure_logging()
-    scheduler = slivka.scheduler.Scheduler()
-    for service in settings.services.values():
-        scheduler.load_runners(service.name, service.command)
-    scheduler.test_runners()
+    sys.path.append(settings.directory.home)
+    code.interact()
