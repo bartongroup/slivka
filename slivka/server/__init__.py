@@ -34,16 +34,16 @@ def create_app(config: SlivkaSettings = None):
         services={srv.id: srv for srv in config.services},
         forms=form_loader
     )
-    from . import api_routes
-    app.register_blueprint(api_routes.bp, url_prefix='/api')
-    app.register_blueprint(api_routes.bp)
+    from . import api_views
+    app.register_blueprint(api_views.bp, url_prefix='/api')
+    app.register_blueprint(api_views.bp)
 
     uploads_route = config.server.uploads_path.rstrip('/') + "/<path:file_path>"
     results_route = config.server.jobs_path.rstrip('/') + "/<job_id>/<path:file_path>"
     if app.debug:
-        from . import media_routes
-        uploads_view = media_routes.serve_uploads_view
-        results_view = media_routes.serve_results_view
+        from . import media_views
+        uploads_view = media_views.serve_uploads_view
+        results_view = media_views.serve_results_view
     else:
         uploads_view = results_view = lambda **kw: flask.abort(404)
     app.add_url_rule(uploads_route, 'media.uploads', uploads_view)
