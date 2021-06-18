@@ -34,12 +34,6 @@ __all__ = [
 ]
 
 
-def _load_schema(filename):
-    return json.loads(
-        pkg_resources.resource_string("slivka.conf", filename).decode()
-    )
-
-
 class BaseField:
     """ Base class for form fields providing validation and conversion
 
@@ -74,9 +68,6 @@ class BaseField:
         self.condition = (None if condition is None
                           else expression_parser.Expression(condition))
         self._widget = None
-
-    schema = class_property(lambda cls: _load_schema('any-field-schema.json'))
-    """Json schema for the field item in the config file."""
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
         """
@@ -253,8 +244,6 @@ class IntegerField(BaseField):
             self.__validators.append(partial(_min_value_validator, min))
         self._check_default()
 
-    schema = class_property(lambda cls: _load_schema('int-field-schema.json'))
-
     @property
     def widget(self):
         if self._widget is None:
@@ -326,8 +315,6 @@ class DecimalField(BaseField):
             self.__validators.append(partial(validator, min))
         self._check_default()
 
-    schema = class_property(lambda cls: _load_schema('decimal-field-schema.json'))
-
     @property
     def widget(self):
         if self._widget is None:
@@ -394,8 +381,6 @@ class TextField(BaseField):
             ))
         self._check_default()
 
-    schema = class_property(lambda cls: _load_schema('text-field-schema.json'))
-
     @property
     def widget(self):
         if self._widget is None:
@@ -439,8 +424,6 @@ class BooleanField(BaseField):
     def __init__(self, id, **kwargs):
         super().__init__(id, **kwargs)
         self._check_default()
-
-    schema = class_property(lambda cls: _load_schema('boolean-field-schema.json'))
 
     @property
     def widget(self):
@@ -499,8 +482,6 @@ class ChoiceField(BaseField):
             list(itertools.chain(self.choices.keys(), self.choices.values()))
         ))
         self._check_default()
-
-    schema = class_property(lambda cls: _load_schema('choice-field-schema.json'))
 
     @property
     def widget(self):
@@ -573,8 +554,6 @@ class FileField(BaseField):
             self.__validators.append(partial(
                 _media_type_validator, media_type
             ))
-
-    schema = class_property(lambda cls: _load_schema('file-field-schema.json'))
 
     def fetch_value(self, data: MultiDict, files: MultiDict):
         return files.get(self.id) or data.get(self.id)

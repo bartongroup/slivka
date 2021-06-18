@@ -5,7 +5,6 @@ import re
 import typing
 from collections.abc import Sequence
 from distutils.version import StrictVersion
-from importlib import import_module
 from typing import List, Dict
 
 try:
@@ -199,44 +198,6 @@ class SlivkaSettings:
     local_queue = attrib(type=LocalQueue)
     mongodb = attrib(type=MongoDB)
     services = attrib(type=List[ServiceConfig])
-
-
-def _form_validator(_obj, _attr, val):
-    from slivka.server.forms import fields
-    classes = {
-        "int": fields.IntegerField,
-        "integer": fields.IntegerField,
-        "float": fields.DecimalField,
-        "decimal": fields.DecimalField,
-        "text": fields.TextField,
-        "string": fields.TextField,
-        "boolean": fields.BooleanField,
-        "flag": fields.FlagField,
-        "choice": fields.ChoiceField,
-        "file": fields.FileField,
-    }
-    for field_name, field in val.items():
-        try:
-            jsonschema.validate(field, fields.BaseField.schema)
-        except jsonschema.ValidationError as e:
-            raise ServiceSyntaxException(
-                e.message, ['form', field_name, *e.path])
-        field_type = field['value']['type']
-        cls = classes.get(field_type)
-        if cls is None:
-            try:
-                mod, attrib = field_type.rsplit('.', 1)
-                cls = getattr(import_module(mod), attrib)
-            except (ValueError, AttributeError):
-                raise ServiceSyntaxException(
-                    "Invalid field type '%s'" % field_type,
-                    ['form', field_name, 'value', 'type']
-                ) from None
-        try:
-            jsonschema.validate(field, cls.schema)
-        except jsonschema.ValidationError as e:
-            raise ServiceSyntaxException(
-                e.message, ['form', field_name, *e.path])
 
 
 class ServiceSyntaxException(Exception):
