@@ -82,6 +82,7 @@ def start(home):
 @click.option('--http-socket', '-s')
 def start_server(server_type, daemon, pid_file, workers, http_socket):
     from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
 
     if http_socket is None:
         http_socket = settings.server.host
@@ -94,6 +95,7 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
             raise click.BadOptionUsage(
                 'pid-file', 'Cannot use pid file with development server.')
         sys.path.append(settings.directory.home)
+        os.environ.setdefault('FLASK_DEBUG', "1")
         import werkzeug
         host, port = http_socket.split(':')
         return werkzeug.run_simple(host, int(port), import_module('wsgi').app)
@@ -131,6 +133,7 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
 def start_scheduler(daemon, pid_file):
     import slivka
     from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
 
     if daemon:
@@ -171,6 +174,7 @@ def start_scheduler(daemon, pid_file):
 def start_local_queue(address, workers, daemon, pid_file):
     import slivka
     from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
 
     if daemon:
@@ -199,5 +203,6 @@ def start_local_queue(address, workers, daemon, pid_file):
 def start_shell():
     import code
     from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
     code.interact()
