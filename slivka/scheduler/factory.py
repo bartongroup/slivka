@@ -4,7 +4,7 @@ from typing import Type, Tuple, Callable, List
 import slivka.scheduler.runners
 from slivka.conf import ServiceConfig
 from slivka.scheduler.runners import RunnerID, Runner
-from slivka.scheduler.scheduler import LimiterMeta, Limiter
+from slivka.scheduler.scheduler import SelectorMeta, BaseSelector
 
 
 def runners_from_config(config: ServiceConfig) -> Tuple[Callable, List[Runner]]:
@@ -12,10 +12,10 @@ def runners_from_config(config: ServiceConfig) -> Tuple[Callable, List[Runner]]:
     if selector_cp is not None:
         mod, attr = selector_cp.rsplit('.', 1)
         selector = getattr(import_module(mod), attr)
-        if isinstance(selector, LimiterMeta):
+        if isinstance(selector, SelectorMeta):
             selector = selector()
     else:
-        selector = Limiter.default
+        selector = BaseSelector.default
     runners = []
     for runner_conf in config.execution.runners.values():
         if '.' in runner_conf.type:

@@ -9,7 +9,7 @@ from slivka import JobStatus
 from slivka.db.documents import JobRequest, CancelRequest, JobMetadata
 from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Scheduler
-from . import LimiterStub, MockRunner
+from . import BaseSelectorStub, MockRunner
 
 
 def setup_module():
@@ -35,7 +35,7 @@ class TestJobCancelling:
     def setup(self):
         self.scheduler = scheduler = Scheduler(self._tempdir.name)
         scheduler.add_runner(MockRunner('stub', 'runner1'))
-        scheduler.selectors['stub'] = LimiterStub()
+        scheduler.selectors['stub'] = BaseSelectorStub()
         self.request = JobRequest(service='stub', inputs={'runner': 1})
         insert_one(slivka.db.database, self.request)
 

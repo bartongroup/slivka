@@ -1,2 +1,2 @@
 from .runners.runner import Runner
-from .scheduler import Scheduler, Limiter
+from .scheduler import Scheduler, BaseSelector

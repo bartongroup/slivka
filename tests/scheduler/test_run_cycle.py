@@ -9,7 +9,7 @@ from slivka.db.documents import JobRequest
 from slivka.db.helpers import insert_many, pull_many
 from slivka.scheduler import Scheduler
 from slivka.utils import JobStatus
-from . import LimiterStub, MockRunner
+from . import BaseSelectorStub, MockRunner
 
 
 def setup_module():
@@ -35,7 +35,7 @@ class TestJobSubmission:
         self.scheduler = Scheduler(self._tempdir.name)
         self.runner = MockRunner('stub', 'runner1')
         self.scheduler.add_runner(self.runner)
-        self.scheduler.selectors['stub'] = LimiterStub()
+        self.scheduler.selectors['stub'] = BaseSelectorStub()
         self.requests = [
             JobRequest(service='stub', inputs={'runner': 1}),
             JobRequest(service='stub', inputs={'runner': 1})

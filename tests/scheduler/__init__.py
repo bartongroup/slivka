@@ -2,11 +2,11 @@ import itertools
 from typing import List
 
 from slivka import JobStatus
-from slivka.scheduler import Limiter, Runner
+from slivka.scheduler import BaseSelector, Runner
 from slivka.scheduler.runners.runner import RunnerID, Command, Job
 
 
-class LimiterStub(Limiter):
+class BaseSelectorStub(BaseSelector):
     def limit_runner1(self, inputs): return inputs.get('runner') == 1
     def limit_runner2(self, inputs): return inputs.get('runner') == 2
     def limit_default(self, inputs): return inputs.get('use_default', False)

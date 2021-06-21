@@ -100,7 +100,7 @@ class Scheduler:
         self._finished = threading.Event()
         self.jobs_directory = jobs_directory or slivka.conf.settings.directory.jobs
         self.runners: Dict[RunnerID, Runner] = {}
-        self.selectors: Dict[str, Callable] = defaultdict(lambda: Limiter.default)
+        self.selectors: Dict[str, Callable] = defaultdict(lambda: BaseSelector.default)
         self._backoff_counters: DefaultDict[Any, BackoffCounter] = \
             defaultdict(partial(BackoffCounter, max_tries=10))
         self._service_states = _ServiceStateHelper()
@@ -397,7 +397,7 @@ class IntervalThread(threading.Thread):
             del self._target, self._args, self._kwargs
 
 
-class LimiterMeta(type):
+class SelectorMeta(type):
     @classmethod
     def __prepare__(mcs, name, bases):
         return OrderedDict()
@@ -413,7 +413,7 @@ class LimiterMeta(type):
         return cls
 
 
-class Limiter(metaclass=LimiterMeta):
+class BaseSelector(metaclass=SelectorMeta):
     """ The helper class that allows defining limits as methods.
 
     Extending classes can specify limits by declaring methods

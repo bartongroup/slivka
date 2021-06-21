@@ -11,7 +11,7 @@ from slivka.db.documents import JobRequest
 from slivka.scheduler import Scheduler
 from slivka.scheduler.runners import Job
 from slivka.scheduler.scheduler import REJECTED, ERROR
-from . import LimiterStub, MockRunner
+from . import BaseSelectorStub, MockRunner
 
 _tempdir = ...  # type: tempfile.TemporaryDirectory
 
@@ -35,7 +35,7 @@ def test_grouping():
     runner2 = MockRunner('stub', 'runner2')
     scheduler.add_runner(runner1)
     scheduler.add_runner(runner2)
-    scheduler.selectors['stub'] = LimiterStub()
+    scheduler.selectors['stub'] = BaseSelectorStub()
 
     requests = [
         JobRequest(service='stub', inputs={'runner': 1}),
