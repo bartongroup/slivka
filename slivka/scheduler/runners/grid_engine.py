@@ -72,6 +72,8 @@ class GridEngineRunner(Runner):
 
     def __init__(self, *args, qargs=(), **kwargs):
         super().__init__(*args, **kwargs)
+        if isinstance(qargs, str):
+            qargs = shlex.split(qargs)
         self.qsub_args = qargs
         self.env.update(
             (env, os.getenv(env)) for env in os.environ
