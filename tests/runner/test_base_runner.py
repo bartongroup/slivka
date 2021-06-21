@@ -175,3 +175,9 @@ class TestBuildArgs:
     def test_joined_array_input(self):
         runner = RunnerStub(args=[Argument('array', "-m=$(value)", join=",")])
         yield self._check_args, runner, {'array': ["a", "b", "c"]}, ["-m=a,b,c"]
+
+    def test_space_joined_array(self):
+        runner = RunnerStub(args=[Argument('array', "-m $(value)", join=" ")])
+        yield (self._check_args, runner,
+               {'array': ["a", "b", "c"]},
+               ["-m", "a", "b", "c"])
