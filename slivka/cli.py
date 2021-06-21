@@ -47,6 +47,8 @@ def init_project(base_dir):
             )
             shutil.copyfileobj(stream, f)
 
+    click.echo("Creating project directory.")
+    click.echo("Copying files.")
     copy_project_file("manage.py")
     os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
     copy_project_file("settings.yaml", "config.yaml")
@@ -55,6 +57,7 @@ def init_project(base_dir):
     copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
     os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
+    click.echo("Done.")
 
 
 @main.group('start')
