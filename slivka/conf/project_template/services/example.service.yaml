@@ -2,120 +2,141 @@
 # Services are specified in the <name>.service.yaml files
 # which are automatically detected by slivka when placed
 # in the services directory.
-# More information can be found here http://warownia1.github.io/Slivka/
 
 ---
-# label is how the service is presented to the front-end users
-label: Example Service
-# classifiers help users and software categorise services
-# they can be chosen arbitrarily
+slivka-version: "0.8"
+name: Example Service
+description: The service description that can even span
+  multiple lines. It should provide all necessary details
+  about the service and its purpose.
+author: Author name
+version: "1.3"
+license: Apache 2.0
 classifiers:
-  - 'Example'
-  - 'Service configuration template'
+  - Topic=Example
+  - Category=Tutorials
+  - Show=False
 
-form:
-  # JSON file input example.
+parameters:
   input-file:
-    label: JSON input file.
-    description: File which will be printed to stdout.
-    value:
-      required: no
-      type: file
-      media-type: application/json
+    type: file
+    name: Input file
+    description: File whose first line is copied to the output file.
+    required: no
 
-  # Text type input example
-  msg:
-    label: Message
-    description: Message printed to the output file
-    value:
-      required: yes
-      type: text
-      min-length: 3
-      max-length: 15
+  opt:
+    type: text
+    name: Text
+    description: Some optional text.
+    required: no
+    # different parameter types have unique properties such as
+    # max-length limit for text type
+    max-length: 24
 
-  # Integer type input example
-  repeat:
-    label: Repeat output
-    description: Number of times the output file is repeated
-    value:
-      required: yes
-      type: int
-      default: 1
-      min: 0
-      max: 5
+  rep:
+    # arrays can be specified using square brackets
+    type: text[]
+    name: Repeatable
+    description: Option that can take multiple comma-separated values.
+      A file rep.N.txt is created for each value.
+    required: yes
 
-  # Decimal type input example
-  sleep:
-    label: Time to wait
-    description: Stop the process for the specified number of seconds
-    value:
-      required: no
-      type: decimal
-      default: 0
+  delay:
+    type: integer
+    name: Sleep time
+    description: Duration the program pauses for.
+    required: no
+    default: 0
+    # integer parameter type allow to define min and max bounds
+    min: 0
+    max: 10
 
-  # Flag input example
+  flag:
+    type: flag
+    name: Flag
+    description: Flag parameter that can be toggled on.
+    # usually, you want flags to be non-required, otherwise the value
+    # must be true to pass the validation
+    required: no
+
+  arg:
+    type: text
+    name: Text argument
+    description: Required command line argument
+    required: yes
+
+# run the script with python; environment variables are supported
+command: python ${SLIVKA_HOME}/scripts/example.py
+
+args:
+  # create a symlink and pass its name instead of the real path
+  input-file:
+    arg: --infile $(value)
+    symlink: input.txt
+
+  opt:
+    arg: --opt $(value)
+
+  # join provided values with comma
+  rep:
+    arg: --rep $(value)
+    join: ","
+
+  delay:
+    arg: --delay $(value)
+
+  # the value is either "true" or None and shouldn't be included in the argument
+  flag:
+    arg: --flag
+
+  # add arguments which is not present in inputs
+  # with dummy default value, so that it's not skipped
+  _separator:
+    arg: --
+    default: present
+
+  # use the value as an argument directly
+  arg:
+    arg: $(value)
+
+env:
+  # customize environment variables
+  # only variables defined here plus PATH and SLIVKA_HOME are available
+  # during command execution
+  PYTHON: /usr/bin/env python
+  PATH: ${SLIVKA_HOME}/bin:${PATH}
+
+outputs:
   log:
-    label: Enable log
-    value:
-      required: no
-      type: flag
+    # standard output and error streams are automatically redirected
+    # to stdout and stderr files respectively
+    path: stdout
+    name: Standard Log
+    media-type: text/plain
+  error-log:
+    path: stderr
+    name: Error Log
+    media-type: text/plain
+  output:
+    path: output.txt
+    name: Output file
+    media-type: text/plain
+  rep-output:
+    # you can use glob pattern to match multiple files
+    path: rep.?.txt
+    name: Rep parameter output
+    media-type: text/plain
 
-command:
-  # base command that will be executed
-  baseCommand: python ${SLIVKA_HOME}/scripts/example.py
-
-  # mapping of form input values to command line parameters
-  inputs:
-    input-file:
-      arg: --infile $(value)
-      type: file
-      symlink: input.txt
-    msg:
-      arg: -t $(value)
-    repeat:
-      arg: -r $(value)
-      type: number
-    sleep:
-      arg: -w $(value)
-      type: number
-    log:
-      arg: --log
-      type: flag
-    _verbose:
-      arg: -v
-      type: flag
-      value: true
-
-  # additional arguments added after inputs
-  arguments:
-    - output.txt
-
-  # environment variables set for the  process
-  env:
-    PATH: ${HOME}/bin:${PATH}
-
-  # list of output files created by the program
-  outputs:
-    message:
-      # name of the output file
-      path: output.txt
-      # media type of the file
-      media-type: text/plain
-    content:
-      path: stdout
-      media-type: text/plain
-    log:
-      path: stderr
-      media-type: text/plain
-    extra:
-      # glob patterns are also supported
-      path: extra-output.*.json
-      media-type: application/json
-
-# list of runners and configurations used to start jobs
-runners:
-  # Runner named "default" is used by default
-  default:
-    # A simple runner using slivka local queue
-    class: SlivkaQueueRunner
+execution:
+  runners:
+    local-queue:
+      type: SlivkaQueueRunner
+    grid-engine:
+      type: GridEngineRunner
+      parameters:
+        qargs: -P webservice -q debug -l ram=2048M
+    default:
+      type: SlivkaQueueRunner
+  # if no selector is given, the runner with id "default" is used
+  selector: scripts.selectors.example_selector
 ...

@@ -1,19 +1,55 @@
-VERSION: "1.1"
-UPLOADS_DIR: ./media/uploads
-JOBS_DIR: ./media/jobs
-LOG_DIR: ./logs
-SERVICES: ./services
+---
+version: "0.3"
 
-UPLOADS_URL_PATH: /media/uploads
-JOBS_URL_PATH: /media/jobs
+## Directories;
+# relative paths are resolved with respect to the SLIVKA_HOME
+# which is the directory containing this configuration file.
 
-ACCEPTED_MEDIA_TYPES:
-  - text/plain
+directory.uploads: ./media/uploads
+directory.jobs: ./media/jobs
+directory.logs: ./log
+directory.services: ./services
 
-SERVER_HOST: 127.0.0.1
-SERVER_PORT: 8000
 
-SLIVKA_QUEUE_ADDR: 127.0.0.1:3397
-SECRET_KEY: $secret_key
+## REST server
 
-MONGODB_ADDR: 127.0.0.1:27017/slivka
+# The address the REST server is bound to; default is 127.0.0.1:14040.
+# It's highly recommended to serve slivka behind a proxy server
+# which can properly handle heavy loads; in such case use the address
+# of the proxy server (usually 127.0.0.1 if running on the same machine);
+# if you don't expect large traffic, set it to 0.0.0.0 to accept
+# connections from everywhere.
+server.host: 127.0.0.1:4040
+
+# The paths where the media files (uploaded and job results) are
+# served by the proxy server at; slivka will not attempt to serve
+# those files unless running in a debug mode
+server.uploads-path: /media/uploads
+server.jobs-path: /media/jobs
+
+# Uncomment to add a prefix to all url paths; it allows to resolve
+# urls properly when your proxy server hosts the application
+# under a path other than root.
+# server.prefix: /slivka
+
+
+## Local queue
+
+# Address the local queue is bound to; default is 127.0.0.1:14041.
+# DO NOT ALLOW UNTRUSTED CONNECTIONS TO THAT SERVER
+# as it allows to send and execute any arbitrary code on your machine;
+# ideally, use localhost or a named socket that only trusted users
+# (i.e. slivka) can access. For unix sockets use unix:// schema.
+local-queue.host: tcp://127.0.0.1:4041
+
+
+## Mongo database
+
+# Exactly one of an ip address or a named socket should be used.
+mongodb.host: 127.0.0.1:27017
+# mongodb.socket: /var/mongod/mongo.sock
+
+# mongodb.username: <username>
+# mongodb.password: <password>
+mongodb.database: slivka
+...

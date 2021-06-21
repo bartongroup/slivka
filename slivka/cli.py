@@ -35,8 +35,6 @@ def init(path):
 def init_project(base_dir):
     import shutil
     import stat
-    import string
-    from base64 import b64encode
     import pkg_resources
 
     def copy_project_file(src, dst=None):
@@ -51,19 +49,12 @@ def init_project(base_dir):
 
     copy_project_file("manage.py")
     os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
+    copy_project_file("settings.yaml", "config.yaml")
     copy_project_file("wsgi.py")
     copy_project_file("services/example.service.yaml")
+    copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
     os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
-
-    # create settings.yml
-    tpl = pkg_resources.resource_string(
-        'slivka.conf', 'project_template/settings.yaml'
-    )
-    with open(os.path.join(base_dir, 'settings.yaml'), 'w') as f:
-        f.write(string.Template(tpl.decode()).substitute(
-            secret_key=b64encode(os.urandom(24)).decode()
-        ))
 
 
 @main.group('start')

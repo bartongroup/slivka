@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
 
+# usage: example.py [--infile FILE] [--opt TEXT]
+#   [--rep REP[,REP,...]] [--delay SECONDS] [--flag] -- arg
+
+import argparse
 import sys
 import time
-from argparse import ArgumentParser
 
-parser = ArgumentParser()
-parser.add_argument('-v', action='store_true')
-parser.add_argument('--infile')
-parser.add_argument('-t', '--text')
-parser.add_argument('-r', '--repeat', type=int, default=0)
-parser.add_argument('-w', '--sleep', type=float, default=0)
-parser.add_argument('--log', action='store_true')
-parser.add_argument('outfile')
+parser = argparse.ArgumentParser()
+parser.add_argument('--infile', metavar='FILE')
+parser.add_argument('--opt', metavar='TEXT')
+parser.add_argument('--rep', )
+parser.add_argument('--delay', metavar='SECONDS', type=int, default=0)
+parser.add_argument('--flag', action='store_true')
+parser.add_argument('arg')
 args = parser.parse_args()
 
-if args.v: print('I\'m verbose\n')
+line = "\n"
+if args.infile:
+    print(f"reading from file {args.infile}")
+    try:
+        line = next(open(args.infile))
+    except StopIteration:
+        print("Input file is empty", file=sys.stderr)
+with open('output.txt', 'w') as f:
+    f.write(line)
 
-try:
-    with open(args.infile or '.') as f:
-        print(f.read())
-except OSError:
-    print('Could not open input file', file=sys.stderr)
-
-with open(args.outfile, 'w') as f:
-    print(args.text, file=f)
-
-if args.log: print('Some log', file=sys.stderr)
-
-for i in range(1, args.repeat + 1):
-    with open('extra-output.%d.json' % i, 'w') as f:
-        print('{"hello": "world"}', file=f)
-
-time.sleep(args.sleep)
+if args.opt:
+    print(f"opt is {args.opt}")
+rep = args.rep.split(',') if args.rep else []
+print(f"rep is repeated {len(rep)} times.")
+for i, val in enumerate(rep):
+    with open(f"rep.{i}.txt", 'w') as f:
+        f.write(f"{val}\n")
+print(f"flag is {'present' if args.flag else 'absent'}")
+print(f"last argument is {args.arg}")
+if args.delay > 0:
+    time.sleep(args.delay)
