@@ -2,7 +2,9 @@ import asyncio
 import itertools
 import logging
 import os
+import re
 import time
+import urllib.parse
 from functools import partial
 from typing import Dict
 
@@ -50,10 +52,12 @@ class LocalQueue:
 
     def __init__(self, address, workers=1, secret=None):
         self.logger = logging.getLogger(__name__)
-        if address.startswith('unix://'):
-            self.address = str.replace(address, 'unix', 'ipc', 1)
-        else:
-            self.address = 'tcp://' + address
+        if not re.match(r'(\w*:)?//', address):
+            # if only host given, assume tcp://
+            address = "tcp://" + address
+        elif address.startswith('unix://'):
+            address = str.replace(address, 'unix', 'ipc', 1)
+        self.address = urllib.parse.urlsplit(address, scheme="tcp").geturl()
         self.num_workers = workers
         self.secret = secret
         if not secret:

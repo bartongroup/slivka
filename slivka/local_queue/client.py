@@ -1,4 +1,6 @@
 import atexit
+import re
+import urllib.parse
 from collections import namedtuple
 
 import zmq
@@ -11,10 +13,12 @@ class LocalQueueClient:
     JobStatusResponse = namedtuple("JobStatus", 'id, state, returncode')
 
     def __init__(self, address, secret=None):
-        if address.startswith('unix://'):
-            self.address = str.replace(address, 'unix', 'ipc', 1)
-        else:
-            self.address = 'tcp://' + address
+        if not re.match(r'(\w*:)?//', address):
+            # if only host given, assume tcp://
+            address = "tcp://" + address
+        elif address.startswith('unix://'):
+            address = str.replace(address, 'unix', 'ipc', 1)
+        self.address = urllib.parse.urlsplit(address, scheme="tcp").geturl()
         self.secret = secret
         self.socket = zmq_ctx.socket(zmq.REQ)
         self.socket.setsockopt(zmq.RCVTIMEO, 100)
