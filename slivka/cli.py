@@ -43,7 +43,7 @@ def init_project(base_dir):
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         with open(dst, 'wb') as f:
             stream = pkg_resources.resource_stream(
-                'slivka.conf', 'project_template/' + src
+                'slivka', 'project_template/' + src
             )
             shutil.copyfileobj(stream, f)
 

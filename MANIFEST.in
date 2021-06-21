@@ -6,7 +6,7 @@ include environment.yml
 
 graft slivka/data
 include slivka/conf/*.json
-graft slivka/conf/project_template
+graft slivka/project_template
 include slivka/scheduler/runners/runner.sh.tpl
 
 global-exclude *.py[co]
