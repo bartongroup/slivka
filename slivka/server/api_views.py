@@ -153,6 +153,7 @@ def job_files_view(job_id):
         {
             '@url': url_for('.job_file', job_id=job_id, file_path=path),
             '@content': url_for('media.jobs', job_id=job_id, file_path=path),
+            'id': f"{job_id}/{path}",
             'jobId': job_id,
             'path': path,
             'label': output.name,
@@ -183,6 +184,7 @@ def job_file_view(job_id, file_path):
     response = jsonify({
         '@url': location,
         '@content': url_for('media.jobs', job_id=job_id, file_path=file_path),
+        'id': f"{job_id}/{file_path}",
         'jobId': job_id,
         'path': file_path,
         'label': output_file.name,
@@ -211,6 +213,7 @@ def files_view():
     response = jsonify({
         '@url': location,
         '@content': url_for('media.uploads', file_path=filename),
+        'id': filename,
         'jobId': None,
         'path': filename,
         'label': 'uploaded',
@@ -230,6 +233,7 @@ def file_view(file_id):
     response = jsonify({
         '@url': location,
         '@content': url_for('media.uploads', file_path=file_id),
+        'id': file_id,
         'jobId': None,
         'path': file_id,
         'label': 'uploaded',

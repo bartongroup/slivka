@@ -427,6 +427,10 @@ components:
           type: string
           format: uri
           description: Location of the file content.
+        id:
+          type: string
+          description: Unique file identifier. The format is 16-bytes string
+            for uploaded files or job-id/file-path for job results.
         jobId:
           type: string
         path:
