@@ -1,7 +1,9 @@
 import base64
+import contextlib
 import datetime
 import fnmatch
 import os.path
+import pathlib
 from operator import attrgetter
 from typing import Type
 
@@ -127,11 +129,22 @@ def job_view(job_id, service_id=None):
 
 
 def _job_resource(job_request: JobRequest):
+    parameters = dict(job_request.inputs)
+    for key, val in parameters.items():
+        if val and os.path.isabs(val):
+            val = pathlib.Path(val)
+            base_path = flask.current_app.config['uploads_dir']
+            try:
+                parameters[key] = val.relative_to(base_path).as_posix()
+            except ValueError:
+                base_path = flask.current_app.config['jobs_dir']
+                with contextlib.suppress(ValueError):
+                    parameters[key] = val.relative_to(base_path).as_posix()
     return {
         '@url': url_for('.job', job_id=job_request.uuid),
         'id': job_request.uuid,
         'service': job_request.service,
-        'parameters': job_request.inputs,  # fixme: file id instead of path
+        'parameters': parameters,
         'submissionTime': job_request.submission_time,
         'completionTime': job_request.completion_time,
         'status': job_request.status.name
