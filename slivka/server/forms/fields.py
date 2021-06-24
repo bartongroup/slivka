@@ -132,7 +132,9 @@ class BaseField:
             try:
                 self.run_validation(self.default)
             except ValidationError as e:
-                raise RuntimeError("Invalid default value") from e
+                raise ValidationError(
+                    "Invalid default value for field %s" % self.name
+                ) from e
 
     def test_condition(self, values):
         if self.condition:
@@ -208,11 +210,17 @@ class ArrayFieldMixin(BaseField, ABC):
     def _check_default(self):
         """ Checks the default value which is an array. """
         if self.default is not None:
-            try:
-                for val in self.default:
-                    self.run_validation(val)
-            except (ValidationError, TypeError) as e:
-                raise RuntimeError("Invalid default value") from e
+            if isinstance(self.default, list):
+                try:
+                    for val in self.default:
+                        self.run_validation(val)
+                except ValidationError as e:
+                    raise ValidationError(
+                        "Invalid default value for field '%s'." % self.name
+                    ) from e
+            else:
+                super()._check_default()
+
 
     @property
     def is_array(self):
@@ -710,6 +718,6 @@ class ValidationError(Exception):
     """ Exception raised in value validation fails. """
 
     def __init__(self, message, code=None):
-        super().__init__(message, code)
+        super().__init__(message)
         self.message = message
         self.code = code
