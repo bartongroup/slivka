@@ -310,6 +310,11 @@ components:
                 description: Human-readable parameter name.
               description:
                 type: string
+              type:
+                type: string
+                description: Type of the parameter. Built-in types include
+                  "integer", "decimal", "text", "flag", "choice", "file"
+                  and "undefined".
               required:
                 type: boolean
               array:
