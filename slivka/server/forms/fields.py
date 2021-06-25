@@ -454,7 +454,7 @@ class BooleanField(BaseField):
 
     def __json__(self):
         j = super().__json__()
-        j['type'] = 'boolean'
+        j['type'] = 'flag'
         return j
 
 
