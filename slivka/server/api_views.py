@@ -22,6 +22,8 @@ from .forms.form import BaseForm
 
 bp = flask.Blueprint('api', __name__, url_prefix='/api/v1.1')
 
+_DATETIME_STRF = "%Y-%m-%dT%H:%M:%S"
+
 
 @bp.route('/version', endpoint='version', methods=['GET'])
 def version_view():
@@ -55,13 +57,13 @@ def _service_resource(service: ServiceConfig):
         status = {
             'status': status.status.name,
             'errorMessage': status.message,
-            'timestamp': status.timestamp
+            'timestamp': status.timestamp.strftime(_DATETIME_STRF)
         }
     else:
         status = {
             'status': 'UNKNOWN',
             'errorMessage': "",
-            'timestamp': datetime.datetime.now()
+            'timestamp': datetime.datetime.now().strftime(_DATETIME_STRF)
         }
     form: Type[BaseForm] = flask.current_app.config['forms'][service.id]
     return {
@@ -145,8 +147,8 @@ def _job_resource(job_request: JobRequest):
         'id': job_request.uuid,
         'service': job_request.service,
         'parameters': parameters,
-        'submissionTime': job_request.submission_time,
-        'completionTime': job_request.completion_time,
+        'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
+        'completionTime': job_request.completion_time.strftime(_DATETIME_STRF),
         'status': job_request.status.name
     }
 
