@@ -164,9 +164,12 @@ def _job_resource(job_request: JobRequest):
 
 @bp.route('/jobs/<job_id>/files', endpoint='job_files', methods=['GET'])
 def job_files_view(job_id):
+    req = JobRequest.find_one(slivka.db.database, uuid=job_id)
+    if req is None:
+        flask.abort(404)
     job = JobMetadata.find_one(slivka.db.database, uuid=job_id)
     if job is None:
-        flask.abort(404)
+        return jsonify(files=[])
     service: ServiceConfig = flask.current_app.config['services'][job.service]
     dir_list = [
         os.path.relpath(os.path.join(base, fn), job.cwd)
