@@ -1,5 +1,4 @@
 import base64
-import contextlib
 import datetime
 import fnmatch
 import os.path
@@ -131,24 +130,34 @@ def job_view(job_id, service_id=None):
 
 
 def _job_resource(job_request: JobRequest):
-    parameters = dict(job_request.inputs)
-    for key, val in parameters.items():
-        if val and os.path.isabs(val):
-            val = pathlib.Path(val)
+    def convert_path(value):
+        if not value:
+            return value
+        if isinstance(value, list):
+            return list(map(convert_path, value))
+        if os.path.isabs(value):
+            value = pathlib.Path(value)
             base_path = flask.current_app.config['uploads_dir']
             try:
-                parameters[key] = val.relative_to(base_path).as_posix()
+                return value.relative_to(base_path).as_posix()
             except ValueError:
                 base_path = flask.current_app.config['jobs_dir']
-                with contextlib.suppress(ValueError):
-                    parameters[key] = val.relative_to(base_path).as_posix()
+                try:
+                    return value.relative_to(base_path).as_posix()
+                except ValueError:
+                    return value
+
+    parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
     return {
         '@url': url_for('.job', job_id=job_request.uuid),
         'id': job_request.uuid,
         'service': job_request.service,
         'parameters': parameters,
         'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
-        'completionTime': job_request.completion_time.strftime(_DATETIME_STRF),
+        'completionTime': (
+            job_request.completion_time and
+            job_request.completion_time.strftime(_DATETIME_STRF)
+        ),
         'status': job_request.status.name
     }
 
