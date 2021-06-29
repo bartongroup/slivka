@@ -219,7 +219,12 @@ class FormLoader(collections.Mapping):
     def read_config(self, service: ServiceConfig) -> Type[BaseForm]:
         attrs = OrderedDict(_service=service.id)
         for key, val in service.parameters.items():
-            attrs[key] = self._build_field(key, val)
+            try:
+                attrs[key] = self._build_field(key, val)
+            except ValidationError as e:
+                raise RuntimeError(
+                    f"Failed to load service {service.name}. {e} {e.__cause__}"
+                )
         self._forms[service.id] = cls = DeclarativeFormMetaclass(
             service.id.capitalize() + "Form", (BaseForm,), attrs
         )
@@ -228,7 +233,12 @@ class FormLoader(collections.Mapping):
     def read_dict(self, service_id: str, params: Mapping) -> Type[BaseForm]:
         attrs = OrderedDict(_service=service_id)
         for key, val in params.items():
-            attrs[key] = self._build_field(key, val)
+            try:
+                attrs[key] = self._build_field(key, val)
+            except ValidationError as e:
+                raise RuntimeError(
+                    f"Failed to load service. {e} {e.__cause__}"
+                )
         self._forms[service_id] = cls = DeclarativeFormMetaclass(
             service_id.capitalize() + "Form", (BaseForm,), attrs
         )

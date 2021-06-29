@@ -33,9 +33,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ServiceResource'
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceResource'
 
   /api/services/{service}:
     parameters:
@@ -310,6 +313,11 @@ components:
                 description: Human-readable parameter name.
               description:
                 type: string
+              type:
+                type: string
+                description: Type of the parameter. Built-in types include
+                  "integer", "decimal", "text", "flag", "choice", "file"
+                  and "undefined".
               required:
                 type: boolean
               array:
@@ -427,6 +435,10 @@ components:
           type: string
           format: uri
           description: Location of the file content.
+        id:
+          type: string
+          description: Unique file identifier. The format is 16-bytes string
+            for uploaded files or job-id/file-path for job results.
         jobId:
           type: string
         path:

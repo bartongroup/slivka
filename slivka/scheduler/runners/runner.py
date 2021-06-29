@@ -1,5 +1,6 @@
 import contextlib
 import copy
+import filecmp
 import itertools
 import logging
 import os
@@ -182,11 +183,11 @@ class Runner:
                         if not os.path.isfile(src):
                             raise FileNotFoundError("file '%s' does not exist")
                         dst = self._symlink_name(argument.symlink, i)
-                        mklink(src, os.path.join(cwd, dst))
+                        _mklink(src, os.path.join(cwd, dst))
                 elif isinstance(val, str):
                     if not os.path.isfile(val):
                         raise FileNotFoundError("file '%s' does not exist")
-                    mklink(val, os.path.join(cwd, argument.symlink))
+                    _mklink(val, os.path.join(cwd, argument.symlink))
                 # None is also an option here and should be ignored
 
     def start(self, inputs: dict, cwd: str) -> Job:
@@ -314,11 +315,18 @@ class Runner:
         return '%s(%s, %s)' % (self.__class__.__name__, self.service_name, self.name)
 
 
-def mklink(src, dst):
+def _mklink(src, dst):
     try:
         os.symlink(src, dst)
+    except FileExistsError as e:
+        if not filecmp.cmp(src, dst):
+            raise e
     except OSError:
         try:
             os.link(src, dst)
+        except FileExistsError as e:
+            if not filecmp.cmp(src, dst):
+                raise e
         except OSError:
-            shutil.copyfile(src, dst)
+            with contextlib.suppress(shutil.SameFileError):
+                shutil.copyfile(src, dst)

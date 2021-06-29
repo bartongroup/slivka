@@ -2,6 +2,7 @@ import base64
 import datetime
 import fnmatch
 import os.path
+import pathlib
 from operator import attrgetter
 from typing import Type
 
@@ -19,6 +20,8 @@ from slivka.db.helpers import insert_one
 from .forms.form import BaseForm
 
 bp = flask.Blueprint('api', __name__, url_prefix='/api/v1.1')
+
+_DATETIME_STRF = "%Y-%m-%dT%H:%M:%S"
 
 
 @bp.route('/version', endpoint='version', methods=['GET'])
@@ -53,13 +56,13 @@ def _service_resource(service: ServiceConfig):
         status = {
             'status': status.status.name,
             'errorMessage': status.message,
-            'timestamp': status.timestamp
+            'timestamp': status.timestamp.strftime(_DATETIME_STRF)
         }
     else:
         status = {
             'status': 'UNKNOWN',
             'errorMessage': "",
-            'timestamp': datetime.datetime.now()
+            'timestamp': datetime.datetime.now().strftime(_DATETIME_STRF)
         }
     form: Type[BaseForm] = flask.current_app.config['forms'][service.id]
     return {
@@ -127,22 +130,46 @@ def job_view(job_id, service_id=None):
 
 
 def _job_resource(job_request: JobRequest):
+    def convert_path(value):
+        if not value:
+            return value
+        if isinstance(value, list):
+            return list(map(convert_path, value))
+        if os.path.isabs(value):
+            value = pathlib.Path(value)
+            base_path = flask.current_app.config['uploads_dir']
+            try:
+                return value.relative_to(base_path).as_posix()
+            except ValueError:
+                base_path = flask.current_app.config['jobs_dir']
+                try:
+                    return value.relative_to(base_path).as_posix()
+                except ValueError:
+                    return value
+
+    parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
     return {
         '@url': url_for('.job', job_id=job_request.uuid),
         'id': job_request.uuid,
         'service': job_request.service,
-        'parameters': job_request.inputs,  # fixme: file id instead of path
-        'submissionTime': job_request.submission_time,
-        'completionTime': job_request.completion_time,
+        'parameters': parameters,
+        'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
+        'completionTime': (
+            job_request.completion_time and
+            job_request.completion_time.strftime(_DATETIME_STRF)
+        ),
         'status': job_request.status.name
     }
 
 
 @bp.route('/jobs/<job_id>/files', endpoint='job_files', methods=['GET'])
 def job_files_view(job_id):
+    req = JobRequest.find_one(slivka.db.database, uuid=job_id)
+    if req is None:
+        flask.abort(404)
     job = JobMetadata.find_one(slivka.db.database, uuid=job_id)
     if job is None:
-        flask.abort(404)
+        return jsonify(files=[])
     service: ServiceConfig = flask.current_app.config['services'][job.service]
     dir_list = [
         os.path.relpath(os.path.join(base, fn), job.cwd)
@@ -153,6 +180,7 @@ def job_files_view(job_id):
         {
             '@url': url_for('.job_file', job_id=job_id, file_path=path),
             '@content': url_for('media.jobs', job_id=job_id, file_path=path),
+            'id': f"{job_id}/{path}",
             'jobId': job_id,
             'path': path,
             'label': output.name,
@@ -183,6 +211,7 @@ def job_file_view(job_id, file_path):
     response = jsonify({
         '@url': location,
         '@content': url_for('media.jobs', job_id=job_id, file_path=file_path),
+        'id': f"{job_id}/{file_path}",
         'jobId': job_id,
         'path': file_path,
         'label': output_file.name,
@@ -211,6 +240,7 @@ def files_view():
     response = jsonify({
         '@url': location,
         '@content': url_for('media.uploads', file_path=filename),
+        'id': filename,
         'jobId': None,
         'path': filename,
         'label': 'uploaded',
@@ -230,6 +260,7 @@ def file_view(file_id):
     response = jsonify({
         '@url': location,
         '@content': url_for('media.uploads', file_path=file_id),
+        'id': file_id,
         'jobId': None,
         'path': file_id,
         'label': 'uploaded',
