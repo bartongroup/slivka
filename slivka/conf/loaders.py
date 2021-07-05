@@ -145,7 +145,7 @@ class ServiceConfig:
             parameters = attr.ib(type=dict, factory=dict)
 
         runners = attr.ib(type=Dict[str, Runner])
-        selector = attr.ib(type=str)
+        selector = attr.ib(type=str, default=None)
 
     id = attrib(type=str)
     slivka_version = attr.ib(converter=StrictVersion)
