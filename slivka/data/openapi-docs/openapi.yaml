@@ -110,7 +110,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobResource'
-        '400':
+        '422':
           description: 
             Your job request contains invalid values.
             Check job parameters and provided values.

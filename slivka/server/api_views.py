@@ -104,7 +104,7 @@ def service_jobs_view(service_id):
             }
             for field, error in form.errors.items()
         ])
-        response.status_code = 400
+        response.status_code = 422
     return response
 
 
