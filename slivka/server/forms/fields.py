@@ -713,8 +713,8 @@ def _media_type_validator(media_type, file: FileProxy):
         )
 
 
-class ValidationError(Exception):
-    """ Exception raised in value validation fails. """
+class ValidationError(ValueError):
+    """ Exception raised when value validation fails. """
 
     def __init__(self, message, code=None):
         super().__init__(message)
