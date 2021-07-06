@@ -146,6 +146,7 @@ def _job_resource(job_request: JobRequest):
                     return value.relative_to(base_path).as_posix()
                 except ValueError:
                     return value
+        return value
 
     parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
     return {
