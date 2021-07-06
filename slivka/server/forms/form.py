@@ -222,9 +222,10 @@ class FormLoader(collections.Mapping):
             try:
                 attrs[key] = self._build_field(key, val)
             except ValidationError as e:
-                raise RuntimeError(
-                    f"Failed to load service {service.name}. {e} {e.__cause__}"
-                )
+                msg = f"Failed to load service {service.name}. {e}"
+                if e.__cause__ is not None:
+                    msg += " %s" % e.__cause__
+                raise RuntimeError(msg)
         self._forms[service.id] = cls = DeclarativeFormMetaclass(
             service.id.capitalize() + "Form", (BaseForm,), attrs
         )
