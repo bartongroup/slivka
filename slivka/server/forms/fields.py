@@ -216,11 +216,10 @@ class ArrayFieldMixin(BaseField, ABC):
                         self.run_validation(val)
                 except ValidationError as e:
                     raise ValidationError(
-                        "Invalid default value for field '%s'." % self.name
+                        "Invalid default value for '%s'." % self.name
                     ) from e
             else:
-                super()._check_default()
-
+                raise ValidationError("Default value for '%s' must be an array.")
 
     @property
     def is_array(self):
@@ -714,8 +713,8 @@ def _media_type_validator(media_type, file: FileProxy):
         )
 
 
-class ValidationError(Exception):
-    """ Exception raised in value validation fails. """
+class ValidationError(ValueError):
+    """ Exception raised when value validation fails. """
 
     def __init__(self, message, code=None):
         super().__init__(message)
