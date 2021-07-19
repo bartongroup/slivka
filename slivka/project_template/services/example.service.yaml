@@ -51,6 +51,20 @@ parameters:
     min: 0
     max: 10
 
+  letter:
+    type: choice
+    name: Pick letter
+    description: Select a letter from the available choices.
+      A word will be converter to a letter.
+    required: no
+    # keys are presented as available choices and are converted
+    # to their corresponding value.
+    choices:
+      alpha: A
+      bravo: B
+      charlie: C
+      delta: D
+
   flag:
     type: flag
     name: Flag
@@ -84,6 +98,9 @@ args:
 
   delay:
     arg: --delay $(value)
+
+  letter:
+    arg: --letter $(value)
 
   # the value is either "true" or None and shouldn't be included in the argument
   flag:
