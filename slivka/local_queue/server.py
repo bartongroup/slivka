@@ -4,14 +4,12 @@ import logging
 import os
 import re
 import time
-import urllib.parse
 from functools import partial
 from typing import Dict
 
 import attr
 import zmq
 import zmq.asyncio as aiozmq
-
 from slivka import JobStatus
 from slivka.utils import LimitedSizeDict
 
@@ -57,7 +55,7 @@ class LocalQueue:
             address = "tcp://" + address
         elif address.startswith('unix://'):
             address = str.replace(address, 'unix', 'ipc', 1)
-        self.address = urllib.parse.urlsplit(address, scheme="tcp").geturl()
+        self.address = address
         self.num_workers = workers
         self.secret = secret
         if not secret:

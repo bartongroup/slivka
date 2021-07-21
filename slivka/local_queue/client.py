@@ -1,6 +1,5 @@
 import atexit
 import re
-import urllib.parse
 from collections import namedtuple
 
 import zmq
@@ -18,7 +17,7 @@ class LocalQueueClient:
             address = "tcp://" + address
         elif address.startswith('unix://'):
             address = str.replace(address, 'unix', 'ipc', 1)
-        self.address = urllib.parse.urlsplit(address, scheme="tcp").geturl()
+        self.address = address
         self.secret = secret
         self.socket = zmq_ctx.socket(zmq.REQ)
         self.socket.setsockopt(zmq.RCVTIMEO, 100)
