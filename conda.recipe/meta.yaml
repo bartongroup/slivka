@@ -1,4 +1,4 @@
-{% set version="0.8b13" %}
+{% set version="0.8b14" %}
 
 package:
   name: slivka
@@ -10,7 +10,7 @@ source:
 
 build:
   noarch: python
-  number: 2
+  number: 1
   script: "{{ PYTHON }} -m pip install -vv --no-deps ."
   entry_points:
     - slivka=slivka.cli:main
