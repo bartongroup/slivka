@@ -159,6 +159,7 @@ def _job_resource(job_request: JobRequest):
             job_request.completion_time and
             job_request.completion_time.strftime(_DATETIME_STRF)
         ),
+        'finished': job_request.status.is_finished(),
         'status': job_request.status.name
     }
 
