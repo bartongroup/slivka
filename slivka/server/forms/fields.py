@@ -1,5 +1,4 @@
 import itertools
-import json
 import os
 import typing
 from abc import ABC
@@ -8,7 +7,6 @@ from collections import OrderedDict
 from functools import partial
 from typing import Union, List
 
-import pkg_resources
 import pymongo.database
 from bson import ObjectId
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -17,7 +15,7 @@ import slivka
 import slivka.db
 from slivka.db.documents import UploadedFile
 from slivka.db.helpers import insert_one
-from slivka.utils import class_property, expression_parser, media_types
+from slivka.utils import expression_parser, media_types
 from .file_proxy import FileProxy
 from .widgets import *
 
@@ -254,7 +252,7 @@ class IntegerField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            widget = NumberInputWidget(self.name)
+            widget = NumberInputWidget(self.id)
             widget['min'] = self.min
             widget['max'] = self.max
             widget['step'] = 1
@@ -325,7 +323,7 @@ class DecimalField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            widget = NumberInputWidget(self.name)
+            widget = NumberInputWidget(self.id)
             widget['min'] = self.min
             widget['max'] = self.max
             widget['step'] = 'any'
@@ -391,7 +389,7 @@ class TextField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            self._widget = TextInputWidget(self.name)
+            self._widget = TextInputWidget(self.id)
             self._widget['value'] = self.default
             self._widget['required'] = self.required
         return self._widget
@@ -435,7 +433,7 @@ class BooleanField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            self._widget = CheckboxInputWidget(self.name, value='true')
+            self._widget = CheckboxInputWidget(self.id, value='true')
             self._widget['checked'] = bool(self.default)
             self._widget['required'] = self.required
         return self._widget
@@ -493,7 +491,7 @@ class ChoiceField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            self._widget = SelectWidget(self.name, options=self.choices)
+            self._widget = SelectWidget(self.id, options=self.choices)
             self._widget['required'] = self.required
             self._widget['multiple'] = isinstance(self, ArrayFieldMixin)
         return self._widget
@@ -568,7 +566,7 @@ class FileField(BaseField):
     @property
     def widget(self):
         if self._widget is None:
-            widget = FileInputWidget(self.name)
+            widget = FileInputWidget(self.id)
             widget['accept'] = str.join(
                 ',', ('.%s' % ext for ext in self.extensions)
             )
