@@ -185,7 +185,7 @@ def job_files_view(job_id):
             'id': f"{job_id}/{path}",
             'jobId': job_id,
             'path': path,
-            'label': output.name,
+            'label': output.name or output.id,
             'mediaType': output.media_type
         }
         for output in service.outputs
@@ -216,7 +216,7 @@ def job_file_view(job_id, file_path):
         'id': f"{job_id}/{file_path}",
         'jobId': job_id,
         'path': file_path,
-        'label': output_file.name,
+        'label': output_file.name or output_file.id,
         'mediaType': output_file.media_type
     })
     response.headers['Location'] = location
