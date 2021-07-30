@@ -60,7 +60,7 @@ author = 'Mateusz Maciej Warowny'
 import slivka.__about__
 import re
 # The full version, including alpha/beta/rc tags.
-release = "0.6b5"
+release = "0.8.0b13"
 # The short X.Y version.
 version = re.match(r'\d+\.\d+', release).group()
 
