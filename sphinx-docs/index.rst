@@ -28,7 +28,8 @@ Table of contents
    getting_started
    specification
    advanced_usage
-   python_client
+
+.. python_client
 
 
 ------------------
