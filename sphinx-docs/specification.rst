@@ -6,23 +6,38 @@ Specification
 Project Structure
 =================
 
-Each newly created project contains three files and 
-a *services* directory with an example service by default.
+The collection of configuration files used be slivka is referred to
+as a slivka project. The root directory housing other configuration
+files is referred to as a slivka home directory. On startup, slivka
+also creates an environment variable ``SLIVKA_HOME`` pointing to that
+directory, which can be used throughout the configuration files and
+scripts.
 
-:manage.py:
-  Legacy executable script which loads all configuration files and starts
-  slivka processes. Replaced by *slivka* executable.
-:settings.yaml:
-  Settings file containing project-wide constants.
-  Refer to `settings file`_ section for more information about available
-  parameters.
+Each project contains few files essential for the proper operation
+of slivka. Those are:
+
+:config.yaml:
+  Main configuration file of the slivka project, required for its 
+  proper functionality.
+  Typically, slivka recognises the project directory as
+  the one containing this file. Alternatively, it can be named
+  *settings.yaml* and either *.yaml* or *.yml* extension is allowed.
+  The detailed information about the file syntax and parameters is
+  provided in the `configuration file`_ section.
 :wsgi.py:
-  Module containing a wsgi-compatible application as specified in 
-  `PEP-3333`_ used by the dedicated wsgi middleware.
+  A python module file containing a wsgi-compatible application as specified in 
+  `PEP-3333`_. This file is used by wsgi middleware to serve slivka
+  http endpoints. You may want to use this file if you plan to use
+  an unsupported middleware or have more control over execution parameters.
+:manage.py:
+  A legacy executable script that may be used to load configuration 
+  files and start slivka processes. It's functionality is fully replaced
+  by the newer *slivka* executable.
 :services:
-  Directory containing configuration files for services.
-  Refer to `services`_ section for more
-  information on creating web services.
+  A default directory containing service configuration files. Each file
+  in the directory whose name ends with *.service.yaml* is considered
+  a slivka service file. The directory can be changed in the main
+  configuration file. 
 
 .. _`PEP-3333`: https://www.python.org/dev/peps/pep-3333/
 
@@ -34,143 +49,139 @@ any JSON document is a valid YAML document as well.
 It's not advisable to edit *manage.py* and *wsgi.py* scripts unless
 you are an advanced user and you know what you are doing.
 
-=============
-Settings file
-=============
+==================
+Configuration file
+==================
 
-``settings.yaml`` stores values used across the application.
+*config.yaml* is the main configuration file of the project and
+stores values used across the application.
+The properties in the file can be structured as a tree or a flat mapping
+as shown in the following snippets respectively. Both forms are equivalent.
 
-When slivka is started, a ``SLIVKA_HOME`` environment variable pointing
-to the directory containing this settings file is set if not already set.
-This variable is used whenever relative paths are begin resolved.
+.. code:: yaml
 
-Here is the list of settings parameters that must be specified in the file
-(the parameters are case sensitive and should use capital letters only):
+  directory.uploads: media/uploads
+  directory.jobs: media/jobs
 
-:``VERSION``:
-  Version of the settings syntax used. The current version is ``"1.1"``.
+.. code:: yaml
 
-:``UPLOADS_DIR``:
-  Directory where the user-uploaded files will be saved to.
-  It can be either an absolute path or a path relative to the ``SLIVKA_HOME``
-  directory.
+  directory:
+    uploads: media/uploads
+    jobs: media/jobs
 
-  Default: ``./media/uploads``
+Here is the list of parameters that can be defined in the file.
+All of them are required unless stated otherwise.
+
+:*version*:
+  Version of the configuration file syntax used to check for project
+  compatibility. For the current slivka version this must be set to ``"0.3"``.
+
+..
+
+:*directory.uploads*:
+  Path to a directory where the files uploaded by the users will be stored.
+  A relative path is resolved with respect to the project
+  directory. It's recommended to set the proxy server to serve
+  those files directly, i.e. under */uploads* path (configurable
+  by changing ``server.uploads-path``).
+  Default is ``"./media/uploads"``.
+
+:*directory.jobs*:
+  Path to a directory where the job sub-directories will be created.
+  For each job, slivka creates a sub-directory there and sets it as a
+  current working directory.
+  A relative path is resolved with respect to the project directory.
+  It's recommended to set the proxy server to serve those files
+  directly, i.e. under */jobs* path (configurable by changing
+  ``server.jobs-path``).
+  Default is ``"./media/jobs"``
+
+:*directory.logs*:
+  Path to the directory where the log files will be stored.
+  Default is ``"./logs"``
+
+:*directory.services*:
+  Path to the directory containing service definition files.
+  Slivka automatically detects files under this directory whose
+  names end with ``.service.yaml`` as services and loads them on startup.
+  Default is ``"./services"``
+
+..
+
+:*server.host*:
+  Address and port under which slivka application is hosted.
+  It's highly recommended to run slivka behind a HTTP proxy server
+  such as `nginx`_, `Apache HTTP Server`_ or `lighttpd`_ ,
+  so no external traffic connects to the wsgi server directly.
+  Set the value to the address where the proxy server connect from or
+  ``0.0.0.0`` to accept connections from anywhere (not recommended).
+  Default is ``127.0.0.1:4040``.
+
+:*server.uploads-path*:
+  Path where the uploaded files are served at. It should be set to
+  the same path that the proxy server uses to serve files from the
+  uploads directory (set in *directory.uploads* parameter).
+  Default is ``"/media/uploads"``.
+
+:*server.jobs-path*:
+  Path where the job results are server at. It should be set to the
+  same path that the proxy server uses to server files from the
+  jobs directory (set in *directory.jobs* parameter).
+  Default is ``"/media/jobs"``.
+
+:*server.prefix*:
+  *(optional)* Url path that the proxy server serves the application
+  under if other then root. This is needed for the urls and redirects
+  to work properly. For example, if you configured your proxy
+  server to redirect all requests starting with */slivka* to the
+  wsgi application, then set the prefix value to ``/slivka``.
 
   .. note::
-    If slivka is served behind a reverse proxy, it's recommended to configure
-    the proxy server to send files directly from this directory to reduce
-    the load put on the python application.
 
-:``JOBS_DIR``:
-  Directory where working directories for jobs are created and output files 
-  are stored. Can be either an absolute path or path relative to the
-  ``SLIVKA_HOME`` directory.
+    Configure your proxy rewrite rule to **not** remove the prefix
+    from the url.
 
-  Default: ``./media/jobs``
+.. _nginx: https://nginx.org/
+.. _Apache HTTP Server: https://httpd.apache.org/
+.. _lighttpd: https://www.lighttpd.net/
 
-  .. note::
-    If slivka is served behind a reverse proxy, it's recommended to configure
-    the proxy server to send files directly from this directory to reduce
-    the load put on the python application.
+:*local-queue.host*:
+  Host and port where the local queue server will listen to commands on.
+  Use localhost address or a named socket that only trusted users
+  (i.e. slivka) can write to.
+  You may specify the protocol ``tcp://`` for tcp connections.
+  The ``ipc://`` or ``unix://`` protocol must be specified when using
+  named sockets.
+  Default is ``tcp://127.0.0.1:4041``.
 
-:``LOG_DIR``:
-  Directory location of the log files. Can be either an absolute path or a 
-  path relative to the ``SLIVKA_HOME`` directory.
-
-  Default: ``./logs``
-
-:``SERVICES``:
-  Directory containing service definition files. Can be either an
-  absolute path or a path relative to the ``SLIVKA_HOME`` directory.
-
-  Default: ``./services``
-
-:``UPLOADS_URL_PATH``:
-  The URL path where the uploaded files will be available from.
-  Configure the path so that the files can be served by a proxy server
-  e.g. Apache or Nginx directly. Serving media files through
-  the python application is not recommended due to the limited number 
-  of simultaneous connections.
-
-  Default: ``/media/uploads``
-
-:``JOBS_URL_PATH``:
-  The URL path where the tasks output files will be available from.
-  Configure the path so that the files can be served by a proxy server
-  e.g. Apache or Nginx directly. Serving media files through
-  the python application is not recommended due to the limited number
-  of simultaneous connections.
-
-  Default: ``/media/jobs``
-
-:``ACCEPTED_MEDIA_TYPES``:
-  The list of media types that will be accepted by the server.
-  Files having media types not specified in this list could not be 
-  uploaded to the server.
-
-  Example:
-
-  .. code-block:: yaml
-
-    ACCEPTED_MEDIA_TYPES:
-      - text/plain
-      - application/json
-
-:``SECRET_KEY``:
-  Randomly generated key used for authentication. Not used currently 
-  and might be removed in the future.
-
-:``SERVER_HOST``:
-  The hostname which the server will be available at. Setting it to 0.0.0.0
-  makes the application accept any incoming connection.
-  If the slivka server is running behind a proxy, it's recommended to accept
-  the connections from the proxy server only e.g. 127.0.0.1.
-
-:``SERVER_PORT``:
-  Port used for listening to the HTTP requests. Note that using
-  port number lower than 1024 may not be allowed on your system.
-
-:``URL_PREFIX``:
-  *(optional)* Prefix prepended to all API urls. Should be used in
-  case you wish Slivka to be accessible at the location other than 
-  the root path. e.g. ``/slivka``.
-
-:``SLIVKA_QUEUE_ADDR``:
-  The listening socket used by the slivka queue. 
-  Can be either an ip address or unix domain socket.
-  
   .. warning::
-  
-    Accepting external connections is a serious security issue.
-    Use *localhost* or unix domain socket with proper access permissions only.
 
-  Example:
+    NEVER ALLOW UNTRUSTED CONNECTIONS TO THAT ADDRESS since arbitrary
+    code may be sent to and executed by the queue.
 
-  .. code-block:: yaml
+..
 
-    SLIVKA_QUEUE_ADDR: 127.0.0.1:3397
+:*mongodb.host*:
+  *(optional)* Address and port of the mongo database that slivka will connect to.
+  Either one of this or *mongodb.socket* parameter must be present.
+  Default is ``127.0.0.1:27017``.
 
-    SLIVKA_QUEUE_ADDR: /home/slivka/local-queue.sock
+:*mongodb.socket*:
+  *(optional)* Named socket where mongo database accepts connections at.
+  Either one of this or *mongodb.host* parameter must be present.
 
-:``MONGODB``:
-  The connection address to the mongo database.
-  It should be a full `mongodb URI`_ e.g. ``mongodb://mongodb.example.com:27017/database``
-  or a simple hostname e.g. ``127.0.0.1:27017/database``.
-  Alternatively, a mapping containing keys: ``host`` or ``socket`` and ``database``
-  and optionally ``username`` and ``password`` can be used instead.
+:*mongodb.username*:
+  *(optional)* Username that the application will use to log in to the
+  database. A default user will be used if not provided.
+  Default is unset.
 
-  .. code-block:: yaml
+:*mongodb.password*:
+  *(optional)* Password used to authenticate the user when connecting
+  to the database. Default is unset.
 
-    MONGODB: mongodb://user:pass@127.0.0.1:27017/myDB
-
-    MONGODB:
-      username: user
-      password: pass
-      host: 127.0.0.1:27017
-      database: myDB
-
-.. _mongodb URI: https://docs.mongodb.com/manual/reference/connection-string/
+:*mongodb.database*:
+  Database that will be used by slivka application to store data.
+  Default is ``slivka``
 
 ========
 Services
@@ -264,7 +275,7 @@ Example of the form accepting two fields: *input* and *filename* is shown below:
     value:
       type: text
 
-.. _value-object-spec:
+.. _parameter-specification:
 
 Value object
 ============
@@ -420,14 +431,14 @@ file type
     - Description
   * - media-type
     - string
-    - Accepted media type e.g. text/plain.
+    - Accepted media type (e.g. text/plain, application/json).
   * - media-type-parameters
     - map[str, any]
     - Auxiliary media type information/constraints.
   * - max-size
     - string
-    - The maximum file size in bytes. Decimal unit prefixes are allowed.
-      e.g. 1024B, 500KB or 10MB
+    - The maximum file size in bytes. Decimal unit prefixes are allowed
+      (e.g. 1024B, 500KB or 10MB).
 
 Example:
 
@@ -793,7 +804,7 @@ A full command line specification is:
 If you want to have more control or decided to use different wsgi
 application to run the server, you can use *wsgi.py* script provided
 in the project directory which contains a wsgi-compatible application
-(see `PEP 3333`_).
+(see `PEP-3333`_).
 Here is an alternative way of starting slivka server using gunicorn
 (for details how to run the wsgi application with other servers
 refer to their respective documentations).
