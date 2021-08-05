@@ -787,6 +787,7 @@ The full command line specification:
 .. code-block:: sh
 
   slivka start [--home SLIVKA_HOME] local-queue \
+    [--address ADDR] [--workers WORKERS] \
     [--daemon/--no-daemon] [--pid-file PIDFILE]
 
 .. list-table::
@@ -799,6 +800,11 @@ The full command line specification:
     - Path to the configurations directory.
       Alternatively a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
+  * - ``ADDR``
+    - Address the queue server will bind to. Overrides the value
+      from the configuration file.
+  * - ``WORKERS``
+    - Maximum number of workers that will handle jobs simultaneously.
   * - ``--daemon/--no-daemon``
     - Whether the process should run as a daemon.
   * - ``PIDFILE``
