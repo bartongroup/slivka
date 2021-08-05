@@ -1,5 +1,5 @@
 *************
-Specification
+Configuration
 *************
 
 =================
@@ -17,7 +17,7 @@ Each project contains few files essential for the proper operation
 of slivka. Those are:
 
 :config.yaml:
-  Main configuration file of the slivka project, required for its 
+  Main configuration file of the slivka project, required for its
   proper functionality.
   Typically, slivka recognises the project directory as
   the one containing this file. Alternatively, it can be named
@@ -25,23 +25,23 @@ of slivka. Those are:
   The detailed information about the file syntax and parameters is
   provided in the `configuration file`_ section.
 :wsgi.py:
-  A python module file containing a wsgi-compatible application as specified in 
+  A python module file containing a wsgi-compatible application as specified in
   `PEP-3333`_. This file is used by wsgi middleware to serve slivka
   http endpoints. You may want to use this file if you plan to use
   an unsupported middleware or have more control over execution parameters.
 :manage.py:
-  A legacy executable script that may be used to load configuration 
+  A legacy executable script that may be used to load configuration
   files and start slivka processes. It's functionality is fully replaced
   by the newer *slivka* executable.
 :services:
   A default directory containing service configuration files. Each file
   in the directory whose name ends with *.service.yaml* is considered
   a slivka service file. The directory can be changed in the main
-  configuration file. 
+  configuration file.
 
 .. _`PEP-3333`: https://www.python.org/dev/peps/pep-3333/
 
-All the configuration files are using `YAML <https://yaml.org/>`_ syntax 
+All the configuration files are using `YAML <https://yaml.org/>`_ syntax
 and can be edited with any text editor.
 If you are not familiar with YAML structure you can use JSON instead since
 any JSON document is a valid YAML document as well.
@@ -183,574 +183,503 @@ All of them are required unless stated otherwise.
   Database that will be used by slivka application to store data.
   Default is ``slivka``
 
-========
-Services
-========
+=====================
+Service configuration
+=====================
 
-Slivka creates the services using the service definition files located in the
-directory specified in the *settings.yaml* file (*services/* by default).
-Each service definition is stored in its unique file named *<name>.service.yaml*
-where the service name should be substituted for *<name>*.
-The filename (without the extension) should contain alphanumeric characters, 
-dashes and underscores only and will be used as a unique service identifier.
-Using lowercase letters is recommended but not required.
-There is no limit on the number of services that can be created.
-
-----------------
-Service Metadata
-----------------
-
-The first thing that should be included in the service definition file is
-its metadata.
-
-First, specify a ``label`` that will be shown to the users.
-Therefore, it should be short and descriptive.
-
-Next, there are service ``classifiers`` - a list of tags that allow to categorise
-the service based on inputs/outputs or performed operation.
-There are no rules imposed on classifiers but ideally they should be both human and
-machine readable.
-
-Example:
-
-.. code-block:: yaml
-
-  label: MyService
-  classifiers:
-    - Purpose=Example
-    - Type=Tutorial
-
-----
-Form
-----
-
-Forms in slivka serve similar purpose to the web forms -- they are collections of
-fields representing input parameters that can be provided by the users.
-The form defines which service parameters are exposed through
-the web API and hence modifiable by the users. Those values are later
-passed to the program in the command line building process.
-
-The form is defined under the ``form`` key. It consists of the mapping
-of field names to `field object`_.
-Each unique name should contain alphanumeric characters (preferably lowercase),
-dashes and underscores only. They will be used by slivka to identify fields
-and used in HTTP requests.
-
-Field object
-============
-
-Each element of the form definition consists of the key-value pair
-where key is the field name and the value is the *field object*
-having the following properties:
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - label
-    - string
-    - **Required.** A human readable field name.
-  * - description
-    - string
-    - Detailed information about the field / Help text
-  * - value
-    - `Value Object`_
-    - **Required.** Accepted value metadata: type and constraints
+Web services can be added to the project by creating service definition
+files in the services directory specified in the configuration file
+(*services/* by default).
+Each service definition is stored in its unique file named
+*<service-id>.service.yaml* where the service identifier should be
+substituted for the *<service-id>*.
+The filename (without the extension) should contain alphanumeric
+characters, dashes and underscores only (avoid using spaces) and
+will be used as a unique service identifier.
+Using lowercase letters is strongly recommended but not required.
+Those files store service information, command line
+program that will be run, the list of arguments to
+that program as well as the additional constraints on those input
+parameters.
 
 
-Example of the form accepting two fields: *input* and *filename* is shown below:
-
-.. code-block:: yaml
-
-  input:
-    label: Input file
-    description: JSON, YAML or XML file containing input data.
-    value:
-      type: file
-  filename:
-    label: Filename
-    value:
-      type: text
-
-.. _parameter-specification:
-
-Value object
-============
-
-The value object contains the metadata defining the accepted value type and
-constraints. Those parameters are used to validate the user-provided input.
-The available constraints differ depending on the field type; however,
-properties: ``type``, ``required``, ``default`` and ``multiple`` are
-available for all field types.
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - type
-    - string
-    - **Required.** Type of the field, must be either one of the built-in
-      types: int, decimal, text, flag, choice or file; or the path to the
-      custom field class.
-  * - required
-    - boolean
-    - Whether the field value must be provided by the user. Default: yes
-  * - default
-    - any
-    - Default value used if no value is provided by the user. The default
-      value must also meet all value constraints.
-  * - multiple
-    - boolean
-    - Whether the field accepts multiple values. Default: no
-
-Note that specifying the default value automatically makes the field not
-required since the default value is used when the field is left empty.
-
-All other parameter listed below are optional and are specific to
-their respective field types.
-
-int type
+--------
+Metadata
 --------
 
-===== ========= =========================
- Key   Type      Description
-===== ========= =========================
-min   integer   Minimum value, unbound if not provided.
-max   integer   Maximum value, unbound if not provided.
-===== ========= =========================
+On top of the file there are service metadata, that is, all information
+about the service which are not instructions for slivka.
+Even though the order in which the keys are defined in the file does
+not matter, it's a good practise to place general service information
+on top.
+Additionally, you can accompany the data with comments (lines starting
+with ``#``), although comments are ignored by the program.
 
-Example:
+Here is the full list of metadata parameters that can be set in the file.
 
-.. code-block:: yaml
+:*slivka-version*:
+  The version of slivka this service was written for. It helps
+  slivka detect any compatibility issues related to syntax changes.
+  For the current version use ``"0.8"``.
 
-  type: int
-  required: true
-  min: 0
-  max: 10
-  default: 5
+:*name*:
+  Service name should be concise and self-explanatory. For example,
+  indicating the name of the program that it runs.
 
+:*description*:
+  *(optional)* Long text which provides additional information about
+  the service. It might provide an explanation what the service does
+  and how it works.
 
-decimal type
-------------
+:*author*:
+  *(optional)* One or more authors of the command line program used.
 
-============== ======= =======================================
- Key            Type    Description
-============== ======= =======================================
-min            float   Minimum value, unbound if not provided.
-max            float   Maximum value, unbound if not provided.
-min-exclusive  boolean Whether the minimum should be excluded.
-max-exclusive  boolean Whether the maximum should be excluded.
-============== ======= =======================================
+:*version*:
+  *(optional)* Version of the command line program. Specifying it
+  might prove useful when multiple versions of the same software is
+  served. Remember to quote the version number so it's interpreted
+  as a string.
 
-Example:
+:*license*:
+  *(optional)* License under which the service or the underlying
+  program is used and distributed.
 
-.. code-block:: yaml
+:*classifiers*:
+  *(optional)* List of tags that helps users and client software group and
+  identify services. The classifiers can be chosen arbitrarily, but
+  some client software may rely on those to function properly.
 
-  type: decimal
-  min: -4.0
-  min-exclusive: false
-  max: 4.5
-  max-exclusive: true
-  default: 0
-
-text type
----------
-
-=========== ======== ===============================
- Key         Type     Description
-=========== ======== ===============================
-min-length  integer  The minimum length of the text.
-max-length  integer  The maximum length of the text.
-=========== ======== ===============================
-
-Example:
-
-.. code-block:: yaml
-
-  type: text
-  min-length: 1
-  max-length: 8
-
-flag type
----------
-
-===== ========= =========================
- Key  Type      Description
-===== ========= =========================
- *(no additional properties)*
-=========================================
-
-Example:
-
-.. code-block:: yaml
-
-  type: flag
-  default: false
-
-choice type
------------
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - choices
-    - map[str, str]
-    - Mapping of available choices where the user choses one of the keys
-      which is then converted to the value on the server side
-
-Example:
-
-.. code-block:: yaml
-
-  type: choice
-  choices:
-    Alpha: --alpha
-    Beta: --no-alpha
-    Gamma: --third-option
-  default: Alpha
-
-file type
----------
-
-.. list-table::
-  :header-rows: 1
-  :widths: auto
-
-  * - Key
-    - Type
-    - Description
-  * - media-type
-    - string
-    - Accepted media type (e.g. text/plain, application/json).
-  * - media-type-parameters
-    - map[str, any]
-    - Auxiliary media type information/constraints.
-  * - max-size
-    - string
-    - The maximum file size in bytes. Decimal unit prefixes are allowed
-      (e.g. 1024B, 500KB or 10MB).
-
-Example:
-
-.. code-block:: yaml
-
-  type: file
-  media-type: text/plain
-  media-type-parameters:
-    max-lines: 100
-  max-size: 1KB
-
-
-------------------
-Command definition
-------------------
-
-Command configuration tells Slivka how to construct the command line parameters
-for the program and what environment variables should be set.
-The command definition appears under ``command`` key in the service file.
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - baseCommand
-    - str or array[str]
-    - **Required.** A list of command line arguments appearing before any
-      other parameters.
-  * - inputs
-    - map[str, `Input Object`_]
-    - **Required.** The instructions how the form inputs are mapped to
-      the command line arguments.
-  * - env
-    - map[str, str]
-    - Environment variables that will be set for the process.
-  * - arguments
-    - array[str]
-    - Additional arguments added after the input parameters.
-  * - outputs
-    - map[str, `Output Object`_]
-    - **Required.** Output files produced by the command line program.
-
-
-Input Object
-============
-Each key (field name) specified in the inputs is linked to the 
-corresponding field in the form definition.
-The value provided by the user will be used to construct each command
-line parameter.
-If you want to add an argument which is not mapped to the
-form field it is recommended to indicate it by prepending the name with
-an underscore ``_`` to distinguish it from arguments taken from the input form.
-Note that the value of this parameter will always be empty and will be skipped
-unless a default value is provided.
-
-Each input object corresponds to a single command line parameter passed
-to the executable. They will be inserted in the order they appear in the
-file skipping those having empty values.
-
-.. list-table::
-  :header-rows: 1
-  :widths: auto
-
-  * - Key
-    - Type
-    - Description
-  * - arg
-    - string
-    - **Required.** Command line parameter template. Use ``$(value)``
-      as the placeholder for the input value.
-  * - type
-    - string
-    - Parameter type ensuring proper type conversion.
-      One of: ``string``, ``number``, ``flag``, ``file`` or ``array``.
-      Defaults to string if not specified.
-  * - value
-    - any
-    - Default value used if no value was provided in the form.
-  * - symlink
-    - string
-    - Name of the symlink created in the job's working directory
-      pointing to the input file. Applicable with file type only.
-  * - join
-    - string
-    - A delimiter used to join multiple values. The parameter will be
-      repeated for multiple values if not specified.
-      Applicable with array type only.
-
-Each argument object have one required property ``arg`` which is a command
-line argument template. Use ``$(value)`` placeholder to refer to the 
-value supplied by the user in the form. You can also use environment variables 
-using ``${VARIABLE}`` syntax. Additionally, a special environment variable
-``SLIVKA_HOME`` pointing to the slivka project directory is available. 
-
-If the type of the parameter is other than string, you must specify 
-``type`` parameter to ensure proper value conversion. Optionally you 
-may add ``value`` property if you need to specify a default value.
-This value will be used if the field was not given in the form. 
-It's especially useful when defining constant command line arguments.
-
-Here is an example configuration of the command line program
-*json-converter* taking two options ``--in-format`` and ``--out-format``
-and input file argument, with the corresponding form 
-having ``file``, ``inputformat`` and ``outputformat`` fields:
-
-.. code-block:: yaml
-
-  baseCommand:
-  - json-converter
-
-  inputs:
-    inputformat:
-      arg: --in-format=$(value)
-      type: string
-    outputformat:
-      arg: --out-format=$(value)
-      type: array
-      join: ","
-    file:
-      arg: $(value)
-      type: file
-      symlink: input.txt
-
-
-For the following input parameters:
-
-- file = ``/home/slivka/media/input.json``
-- inputformat =  ``xml``
-- outputformat =  ``[yaml, json]``
-
-The constructed command line is
-
-.. code-block:: sh
-
-  json-converter --in-format=xml --out-format=yaml,json input.txt
-
-and */home/slivka/media/input.json* is automatically symlinked to
-*/job/working/directory/input.txt*
-
-.. warning::
-  **Never** write a service which executes code received from an 
-  untrusted source. One example is to run user provided text as
-  a shell command:
+  Example from the clustalw2 service definition:
 
   .. code-block:: yaml
 
-    baseCommand: sh
-    inputs:
-      command:
-        arg: -c $(value)
-  
+    classifiers:
+    - "Topic : Sequence analysis"
+    - "Operation : Multiple sequence alignment"
 
-Output Object
-=============
 
-Output objects describe individual files or groups of files created by the
-command line program. Each output object have the following properties:
+-------
+Command
+-------
 
-============ ====== =======================================================
- Field Name   Type   Description
-============ ====== =======================================================
-path         string **Required.** Path to the output file relative to the
-                    job's working directory. Glob patterns are supported.
-media-type   string Media (mime) type of the file.
-============ ====== =======================================================
+The rest of the service file contains instructions for slivka how
+to run the command line program and what parameters the web service
+part should expose to the users.
+Let us start with defining the command line program and its arguments
+followed by listing the output files.
+Then, we use the command arguments to build the parameters for the
+web services.
+Lastly, we briefly mention available execution methods for job processes.
 
-The standard output and standard error are redirected to *stdout* and
-*stderr* respectively so these names may be used to fetch the content of
-the standard output and error streams respectively.
-The paths are evaluated lazily whenever the output files are requested and match
-as many files as possible. Every defined result file is treated as optional
-and its absence on job completion does not raise any error.
+Base Command
+============
 
-Example:
+The base command (i.e. the program to be run) is specified under the
+*command* property. In simple cases this will contain an executable
+to be run such as ``clustalw2`` or ``mafft``; however, it is also
+possible to name multiple arguments or even insert environment
+variables e.g. ``python -m ${HOME}/lib/my-library``. This part will
+make the base of our program call and additional arguments will be
+appended to that.
+
+If you are concerned about special characters and whitespace and
+want to make sure that the command is read properly, you can enumerate
+the arguments using a list as shown in the following examples.
 
 .. code-block:: yaml
 
-  outputs:
-    output:
-      path: outputfile.xml
-      media-type: application/xml
-    auxiliary:
-      path: "*_aux.json"
-      media-type: application/json
-    log:
-      path: stdout
-      media-type: text/plain
-    error-log:
-      path: stderr
-      media-type: text/plain
-
-
-.. warning::
-  Patterns starting with a special characters must be quoted.
-
-.. _runners-spec:
-
--------
-Runners
--------
-
-So far, the configuration regarded the construction of command line arguments.
-The ``runners`` define how these commands are executed on the system.
-Each key in the runners section is the name of the runner and the value
-is an object having following fields:
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - class
-    - string
-    - **Required.** A name of a built-in runner type or a path to the class
-      extending the ``slivka.scheduler.Runner`` interface.
-      Currently available runners are ``SlivkaQueueRunner`` and
-      ``GridEngineRunner``
-  * - parameters
-    - map[str, any]
-    - Additional parameters passed to the runner. Available parameters
-      depend on the runner constructor.
-
-Example:
+  command: clustalw2
 
 .. code-block:: yaml
 
-  runners:
-    default:
-      class: SlivkaQueueRunner
-    grid_engine:
-      class: GridEngineRunner
-      parameters:
-        qsub_args:
-        - -P
-        - webservices
-        - -q
-        - 64bit-pri.q
-        - -l
-        - ram=3400M
+  command: python -m ${HOME}/lib/my-library
 
+.. code-block:: yaml
 
-For non-advanced users it's recommended to set the default runner to
-``SlivkaQueueRunner`` which takes no additional parameters.
-``GridEngineRunner`` takes one parameter -- ``qsub_args`` -- containing
-the list of arguments passed directly to the qsub command.
-
-Limiter
-=======
-
-Limiter allows controlling the selection of the runner based on the input
-parameters. The value should be a path to the class extending
-``slivka.scheduler.Limiter``. The usage of limiters is covered in
-the `advanced usage`_
-
-.. _`advanced usage`: advanced_usage.html#limiters
-
-Presets
-=======
-
-It is possible to pre-define commonly used sets of parameters to provide users
-with frequently used parameters combinations using ``presets`` property
-containing the list of preset objects defined below.
-
-.. list-table::
-  :widths: auto
-  :header-rows: 1
-
-  * - Key
-    - Type
-    - Description
-  * - id
-    - string
-    - **Required.** Unique preset identifier.
-  * - name
-    - string
-    - **Required.** Short name of the preset.
-  * - description
-    - string
-    - More detailed description of the parameters set.
-  * - values
-    - map[str, any]
-    - **Required.** Pre-configured form values.
-
+  command:
+  - bash
+  - -rx
+  - ${SLIVKA_HOME}/bin/my-script.sh
 
 .. note::
-  The presets serve as a hint for the users only and the use of the
-  pre-defined values is not enforced or checked in any way.
+
+  Subprocesses are not executed in the same working directory as slivka,
+  so if A program is not accessible from the ``PATH`` an absolute
+  path to is must be given. A special ``SLIVKA_HOME`` variable may be
+  used to refer to the root directory of the slivka project.
+
+.. warning::
+
+  Never use commands that execute code coming from the users which
+  allow script injections. One example is using ``bash -c``.
+
+Arguments
+=========
+
+Once the base command is set up, we can move on to enumerating the command
+line arguments for the program. Those are placed under the ``args``
+property in the service configuration file. It contains an ordered
+mapping where each key is a parameter id (we'll need it later)
+and values are argument objects with following attributes
+
+:*arg*:
+  The argument template which will be inserted into the command.
+  Whenever the value for the parameter is not empty, that argument
+  is appended to the list of arguments with the actual value
+  substituted for the ``$(value)`` placeholder.
+  Example: ``--type=$(value)``
+
+  Using environment variables in the argument value is supported.
+
+:*default*:
+  *(optional)*
+  Value that will be used when no other value was provided for the
+  argument. One use is to provide constant values for parameters
+  hidden from the front-end users.
+
+:*join*:
+  *(optional)*
+  Delimiter used to join multiple values for the argument.
+  Only applicable to parameters that can take multiple values.
+  If *join* is not specified then the argument is repeated multiple
+  times for each value. For example, for two values ``alpha``, ``bravo``
+
+  .. code-block:: yaml
+
+    arg: -p $(value)
+
+  will result in command arguments ``-p alpha -p bravo``, but
+
+  .. code-block:: yaml
+
+    arg: -p $(value)
+    join: ","
+
+  will result in ``-p alpha,bravo``.
+
+  .. note:: Since arguments splitting happens before interpolation,
+    using space as the delimiter produces single argument.
+    In the example above, it would result in ``-p "alpha bravo"``
+    not ``-p alpha bravo``.
+
+:*symlink*:
+  *(optional)*
+  Instructs slivka to create symbolic link to the file in the process'
+  working directory. Only applicable to parameters that take files
+  as an input. When *symlink* is present, the value of the parameter
+  will be replaced by the symlink name pointing to the original path.
 
 
-=====================
-Launching the Project
-=====================
+---------------------
+Environment variables
+---------------------
 
-Slivka consists of three components: RESTful HTTP server, job 
+If the program you wrap needs specific environment variables or
+you need to adjust existing variables they can be specified under
+the *env* property. It should contain a mapping where each key
+is a variable name that will be set to its corresponding value
+when starting the command. The value can contain current environment
+variables which are included using ``${VARIABLE}`` syntax. Although
+any system variable can be used, references to other variables
+defined in this mapping will not work.
+
+Slivka executes each program in a new environment removing all
+variables other than ``PATH`` and ``SLIVKA_HOME`` and setting new
+variables from *env*. If you want any system variable to be passed
+to the new process, you need to re-define it here.
+
+Example:
+
+.. code-block:: yaml
+
+  env:
+    PATH: ${HOME}/bin:${PATH}  # extend the existing PATH
+    PYTHON: /usr/bin/python3.8  # define new variable
+    PYTHONPATH: ${PYTHONPATH}  # pass the existing variable
+
+
+.. _parameters specification:
+
+----------------
+Input parameters
+----------------
+
+The input parameters defined under *parameters* property list all
+the variables that the users will be able to adjust when submitting
+their jobs. Those are closely linked to the command line arguments,
+in fact, they are the bridge between the front-end users and the
+command line arguments.
+
+Input *parameters* is a mapping just like command *args* where
+each key is the parameter id and value is an object describing the
+parameter. The ids of the parameters should match those of the
+command line arguments defined in the previous section. The values
+passed to the parameters by the user will be validated and passed to their
+corresponding arguments.Not every argument has to have corresponding
+input parameter; in such case the value for the argument will always
+be empty and the argument will be skipped unless a default (constant)
+is set. However, every input parameter needs to have corresponding
+command line argument.
+
+As mentioned before, input parameters is a mapping under the *parameters*
+property where each key is the parameter identifier and each value is
+an object defining the parameter having the following attributes
+(which are optional unless stated otherwise):
+
+:*name*:
+  *(required)*
+  Name of the parameter. Should be concise and self-explanatory.
+
+:*description*:
+  Longer description of the parameter containing details about
+  its function.
+
+:*type*:
+  *(required)*
+  Type of the parameter, determines validation functions used on
+  the value and additional constraints that may be imposed.
+  Built-in types include ``integer``, ``decimal``, ``text``,
+  ``flag``, ``choice`` and ``file``; however, a path to the custom
+  implementation of the type can be used as well (defining custom types
+  will be covered in advanced usage tutorial).
+  Type name can be immediately followed by a pair of square brackets
+  to convert in into an array variant e.g. ``text[]``.
+
+:*default*:
+  Value that will be used when user leaves the parameter empty.
+  Default value must meet all the type constraints and must be
+  an array for array types.
+
+:*required*:
+  Determines whether the value for this parameter is required.
+  Allowed values are ``yes`` and ``no``.
+  All parameters are required by default but specifying default value
+  nullifies the requirement.
+
+:*condition*:
+  Mathematical/logical expression involving other parameters
+  that allows to conditionally disable the parameter or restrict
+  allowed values. Usage, syntax and limitations will be covered in
+  the advanced usage tutorial.
+
+Those properties are always present regardless of the parameter
+type. However, individual types allow extra attributes and value constraints.
+The additional constraints are identical for the array type and are
+evaluated for each value individually.
+
+Integer type
+============
+
+:*min*:
+  Integer. Minimum allowed value (inclusive), unbound if not present.
+
+:*max*:
+  Integer. Maximum allowed value (inclusive), unbound if not present.
+
+Decimal type
+============
+
+:*min*:
+  Float. Minimum value, unbound if not present.
+
+:*min-exclusive*:
+  Boolean. Whether the minimum is exclusive (inclusive by default).
+
+:*max*:
+  Float. Maximum value, unbound if not present.
+
+:*max-exclusive*:
+  Boolean. Whether the maximum is exclusive (inclusive by default).
+
+Text type
+=========
+
+:*min-length*:
+  Integer. Minimum length of the text.
+
+:*max-length*:
+  Integer. Maximum length of the text.
+
+Choice type
+===========
+
+:*choices*:
+  Mapping of string to string. Contains the available choices -- keys
+  and the values they are mapped to. The mapping allows to hide the
+  actual command line arguments and display more meaningful names
+  for the choices.
+
+File type
+=========
+
+:*media-type*:
+  String. Checks the file content to be of the specified type. Media type
+  format follows `RFC 2045`_. Currently supported types include
+  plain text, json, yaml and bioinformatic data types which require
+  biopython to be installed.
+
+:*media-type-parameters*:
+  Array of strings. Additional hints following the base media type.
+  Those are not used for value validation and serve solely as hints
+  for the users and client applications.
+
+:*default*:
+  Default value is not currently allowed for the file type and setting
+  it will result in an error.
+
+.. _RFC 2045: https://datatracker.ietf.org/doc/html/rfc2045
+
+-------
+Outputs
+-------
+
+Once the process completes and creates the output files, users
+need to be able to retrieve them. For that, they need to be listed
+under the *outputs* property of the file. This, again, is a mapping
+where each key is an item identifier and values are objects that
+define output files shown to the users. Each output file object
+has following properties:
+
+:*path*:
+  *(required)* String.
+  Path or a glob_ pattern that will be used to match files
+  in the directory where the process was run. No files outside
+  the working directory will be matched.
+  Glob pattern can be particularly useful if the program produces
+  multiple files that can be grouped together.
+  Additionally, standard output and error streams are automatically
+  redirected to the ``stdout`` and ``stderr`` files.
+
+  .. note:: Patterns starting with a special characters must be quoted.
+
+:*media-type*:
+  *(optional)* String.
+  Media type of the output file using `RFC 2045`_ format.
+  Serves informative purpose only.
+
+.. _glob: https://en.wikipedia.org/wiki/Glob_(programming)
+
+Example: 
+
+.. code-block:: yaml
+    
+  log:
+    path: stdout
+  output:
+    path: output.txt
+    media-type: text/plain
+  auxiliary:
+    path: aux_*.json
+    media-type: application/json
+
+    
+.. _execution management:
+
+--------------------
+Execution management
+--------------------
+
+So far, we instructed slivka how to construct the command line arguments
+for the program and what input parameters the web service wrapper should 
+present to the users.
+The remaining piece is execution of the command on the operating system.
+This role is fulfilled by the Runners which are configured under
+the *execution* property of the service file.
+
+Runners in slivka are classes that implement methods for starting the
+command on the system and watching the completion of the process.
+They are links between the abstract job and
+the actual process running on the system.
+Currently, there are three runner types that realise process execution
+in three distinct ways.
+
+- ``ShellRunner`` the simplest of all three. Runs the command as
+  a subprocess in the current shell. Doesn't require any prior setup
+  but is only suitable for a very small workloads since spawning many
+  computationally-heavy processes can easily clog the operating system.
+  We do no recommend using it in production.
+
+- ``SlivkaQueueRunner`` is an improvement of the shell runner which delegates
+  process execution to a separate slivka queue. The queue is better
+  suited for handling multiple jobs and can limit the number of simultaneous
+  workers to preserve system resources. It requires running local-queue
+  process to work.
+
+  Parameters:
+
+  :*address*:
+    The address of the queue server if different than the one listed in the
+    main configuration file.
+
+- ``GridEngineRunner`` uses a third-party Altair Grid Engine
+  (formerly Univa Grid Engine) to run the jobs using ``qsub`` command.
+  It allows for much more sophisticated resource management capable
+  of serving thousands of jobs. It requires the Grid engine to be
+  available on your system, however.
+
+  Parameters:
+  
+  :*qargs*:
+    List of arguments that will be placed directly after ``qsub`` command.
+    The runner provides ``-V -cwd -o stdout -e stderr`` arguments implicitly
+    and those should not be overridden.
+    The arguments can be a string or an array of strings.
+
+The *execution* property can have two sub-properties under it:
+*runners* and *selector*.
+
+Runners
+=======
+
+Similarly to other values in this configuration file, *runners* contains
+a mapping of runner ids to runner objects. You can specify multiple
+runners, however, if the selector is not set, the one named ``default``
+will be always used. Each runner object has following properties:
+
+:*type*:
+  Type of the runner which is either a class name of one of the
+  built-in runners or a path to the custom class implementing Runner
+  interface. Creating custom runners will be covered in advanced usage
+  guide. Available Built-in runners are: ``ShellRunner``,``SlivkaQueueRunner``
+  and ``GridEngineRunner``.
+
+:*parameters*:
+  Extra parameters that will be passed to the runner's constructor
+  as keyword arguments.
+
+Selector
+========
+
+The main idea behind having multiple runners is that depending on
+the size of the job, we can decide how much resources we want to allocate
+to execute it.
+Selector is a Python function which, given the input parameters,
+can decide and return the identifier of the runner suitable for
+this job. It can also decide the job to be rejected based on the
+parameters.
+You can choose your own selector by setting the value of *selector*
+property to the path to the python function.
+The default selector (if unset) always chooses the *"default"* runner.
+
+
+======================
+Command line interface
+======================
+
+Slivka consists of three components: RESTful HTTP server, job
 scheduler (dispatcher) and a simple worker queue running jobs
 on the local machine.
 The separation allows to run those parts independently of each other.
 In situations when the scheduler is down, the server keeps collecting
 the requests stashing them in the database, so when the scheduler is working
 again it can catch up with the server and dispatch all pending requests.
-Similarly, when the server is down, the currently submitted jobs 
+Similarly, when the server is down, the currently submitted jobs
 are unaffected and can still be processed.
 
 Each component can be started using ``slivka`` executable created during
 Slivka package installation.
 
-.. warning:: 
+.. warning::
   Before you start, make sure that you have access to the running mongodb
   server which is required but is not part of slivka package.
 
@@ -758,7 +687,7 @@ Slivka package installation.
 HTTP Server
 -----------
 
-Slivka server can be started from the directory containing settings file with: 
+Slivka server can be started from the directory containing configuration file with:
 
 .. code-block::
 
@@ -778,7 +707,7 @@ A full command line specification is:
 .. list-table::
   :header-rows: 1
   :widths: auto
-  
+
   * - Parameter
     - Description
   * - ``SLIVKA_HOME``
@@ -833,7 +762,7 @@ The full command line specification is:
 .. list-table::
   :header-rows: 1
   :widths: auto
-  
+
   * - Parameter
     - Description
   * - ``SLIVKA_HOME``
@@ -859,11 +788,11 @@ The full command line specification:
 
   slivka start [--home SLIVKA_HOME] local-queue \
     [--daemon/--no-daemon] [--pid-file PIDFILE]
- 
+
 .. list-table::
   :header-rows: 1
   :widths: auto
-  
+
   * - Parameter
     - Description
   * - ``SLIVKA_HOME``
