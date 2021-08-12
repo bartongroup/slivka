@@ -2,99 +2,59 @@
 Advanced Usage
 ==============
 
---------
-Limiters
---------
+This page describes advanced features of slivka which involve extending
+its current functionality. Most of those features require you to
+write Python scripts or classes, therefore
+a good knowledge of Python programming (or programming in general)
+is required.
 
-The job of limiter is to select one of the runners based on the input data.
-It can filter-out long jobs and redirect them to the dedicated
-queuing system while running small jobs locally.
-The value of the parameter should contain the path to the Python
-:ref:`limiter class <creating-limiter-class>` which analyses the input data and
-chooses the appropriate runner for that job. The path must point to the class located
-in the module importable for the current python interpreter.
-The format of the path follows *package[.subpackage].classname* pattern.
-The directory containing Python script file must be a valid python package
-meaning that the directory and all its parent directories must contain a
-*__init__.py* file and should be listed in the PYTHONPATH environment variable
-if not available from the current working directory.
+---------
+Selectors
+---------
 
-.. _creating-limiter-class:
+Selector is a Python function which chooses a runner based on the
+command parameters. As a quick recap of :ref:`execution management`,
+each service has one or more runners which are responsible for
+starting and watching jobs running on the system.
+If there is more than one runner available, a selector function
+is used to choose the most appropriate one for the job.
+Since runners may have different configurations, it is possible
+to make different amount of resources available to them and then
+dispatch the jobs depending on their size and needs.
 
-Creating limiter class
-======================
-
-In your project you may create one or more Python modules
-containing limiter classes. Each class should contain methods for
-each runner defined in the configuration file allowing to
-pick one configuration based on the values
-provided by the user.
-
-The limiter class must extend ``slivka.scheduler.Limiter`` and,
-for each configuration named ``<name>``, it needs to define a method with signature
-
-.. code-block:: python
-
-  def limit_<name>(self, values: Mapping[str, Any]) -> bool
-
-Parameter ``values`` passed to the function contains the dictionary of unprocessed input values.
-The method must return ``True`` or ``False`` depending on whether this
-runner can be used with this particular set of input values.
-The configurations are tested in the order of method definitions and
-the first one whose limit method returns ``True`` will be used.
-
-Additionally, you can define ``setup(self, values: Dict)`` method which will be
-run before all tests. It can be used to perform long operations and prepare and
-store parameters as object properties for further use in limit methods.
+The selector is a Python function which takes one argument,
+the mapping of input parameter names to their values, and returns
+the identifier of the runner or ``None`` to reject the job.
+The keys of the mapping consist of the ids of the input parameters
+as defined in the service configuration. They are mapped to the values
+provided by the user after being converted to the command
+line parameters. Each value can be either of a string type or
+a list of strings in case of multiple parameters.
 
 Example:
 
 .. code-block:: python
 
-  import os
+  def my_selector(values: Mapping) -> str:
+    # set up all variables e.g. read files or do calculations
+    # return runner id depending on the conditions
+    if cond1:
+      return "runner1"
+    elif cond2:
+      return "runner2"
+    else:
+      return None
 
-  from slivka.scheduler import Limiter
-
-  class MyLimits(Limiter):
-      def setup(self, values):
-          """
-          Setup is run before all tests. It can perform lengthy
-          file operations or data parsing.
-          """
-          input_file = values['input']
-          statinfo = os.stat(input_file)
-          self.input_file_size = statinfo.st_size
-
-      def limit_fast(self, values):
-          """
-          The "fast" configuration test method.
-          It accepts the input only if format is json and file is less than
-          100 bytes long or xml and less than 20 bytes.
-          """
-          if values['format'] == 'json' and self.input_file_size < 100:
-              return True
-          if values['format'] == 'yaml' and self.input_file_size < 20:
-              return True
-          return False
-
-      def limit_long(self, values):
-          """
-          The "long" configuration test method. Tried if "fast" test fails.
-          It accepts any input file less than 1000 bytes,
-          otherwise, the job will be rejected.
-          """
-          if self.input_file_size < 1000:
-              return True
-          else:
-              return False
-
-First, the ``setup`` method retrieves input file path from input data , checks its size
-in bytes and stores the value in the ``input_file_size`` property.
-Next, the criteria for the first configuration, less than 100B
-json file or less than 20B yaml file, are tested.
-If they are not met, the program continues to the second configuration
-which is executed if the file size does not exceed 1000B.
-Otherwise, the scheduler will refuse to start the job altogether.
+The selector is provided in the service configuration file alongside
+runners using *selector* property.
+The value of the parameter should contain a Python-like path
+to the function in ``package[.subpackage].function`` format.
+The module containing the function must be importable from the current
+interpreter.
+If the file is located in a sub-directory, that directory must be a valid
+Python package i.e. contain an *__init__.py* file and should be listed
+in the ``PYTHONPATH`` environment variable if not directly accessible
+from the project's root directory.
 
 --------------
 Custom Runners
