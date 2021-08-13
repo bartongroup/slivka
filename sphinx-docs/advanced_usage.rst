@@ -60,47 +60,318 @@ from the project's root directory.
 Custom Runners
 --------------
 
-Sometimes there is a need for a custom submission method e.g. when using a different queuing system
-which is not natively supported by Slivka. Custom runner may be as simple as a script executing
-a new subprocess or may involve data exchange between multiple machines.
+Although slivka is still expanding, currently existing runners may
+not be sufficient for some use cases. Custom runners may be as simple
+as a script running a program or may involve complex data exchange
+between multiple machines. We made it possible to dynamically
+add new runners to the application without the need to modify the
+existing slivka package.
+The only requirement is to create a class extending ``slivka.scheduler.Runner``
+interface, implementing all of its unimplemented methods and put it in
+a Python module file (preferably in an easily accessible
+location such as the project directory).
 
-Basic functionality
-===================
-
-A minimal runner is limited to two operations:
-
-- start new jobs
-- check job status
-
-Every class implementing abstract runner must define two methods responsible for those two operations.
-
-.. code-block:: python
-
-  def submit(self, cmd: List[str], cwd: str) -> Any
-
-The ``submit`` method is invoked once to start/submit the job to the queuing engine.
-The ``cmd`` parameter is the list of command line arguments similar to those
-passed to POSIX `execv function`_. The ``cwd`` parameter is an absolute path to the designated
-directory where the command should be executed. The directory is already created when
-the method is called. Additionally, you may access a read-only dictionary of environment variables
-stored in ``self.env`` object property. New jobs should use these variables rather than
-global variables accessible form ``os.environ``.
-The method should return a job identifier which will be further used to monitor the job status.
-The only restriction imposed on the job identifier is it must be json-serializable
-i.e. it may only consist of (possibly nested) dictionaries, lists, strings, booleans, numbers and nulls.
-The job id should contain all the data needed to check the job status.
-If this method raises an exception, the job status is set to ``JobStatus.ERROR`` automatically.
-
-.. _`execv function`: https://linux.die.net/man/3/execv
+The minimal set of operations that the runner must implement is
+starting/submitting the job, checking its status and cancelling it.
+Here is the basic template for the custom runner class
 
 .. code-block:: python
 
-  @classmethod
-  def check_status(cls, job_id: Any, cwd: str) -> JobStatus
+  from slivka.scheduler.runners import Runner, Job, Command
+  from slivka import JobStatus
 
-The ``check_status`` class method is invoked periodically for each running job to monitor the changes
-of their status. The ``job_id`` parameter is the json-object previously returned by ``submit``
-and ``cwd`` is the path to the current working directory of that job.
-The method should return ``slivka.JobStatus`` corresponding to the current status of the job.
-Once the value corresponding to the finished job is returned, the status of that job will not be checked anymore.
-If this method raises an exception, the job status is set to ``JobStatus.ERROR`` automatically.
+  class MyRunner(Runner):
+    def __init__(self, *args, my_parameter=None, **kwargs):
+      super().__init__(*args, **kwargs)
+      # initialize your runner
+
+    def submit(self, command: Command) -> Job:
+      # start the job using given command
+      # return Job object
+
+    def check_status(self, job: Job) -> JobStatus:
+      # perform status check of the job
+      # return appropriate status
+
+    def cancel(self, job: Job):
+      # interrupt the job
+
+
+Starting from the top of the class definition we have an :py:meth:`__init__`
+method where object initialization takes place. Defining own initializer
+is optional but, if it is used, it has to call the superclass'
+:py:meth:`~Runner.__init__`. If your runner needs to take parameters, the easiest
+way is to capture all positional arguments, then define your parameters
+as keyword arguments and capture the rest. Then you can
+easily pass all captured parameters to :py:meth:`Runner.__init__` without
+listing them individually. However, if you decide to customize the
+arguments passed, you can find a signature of the initializer below.
+
+Next on the list is the :py:meth:`submit` method, which takes a single
+:py:class:`Command` argument and returns a :py:class:`Job` tuple.
+:py:class:`Command` is a namedtuple having two attributes
+:py:attr:`~Command.args` - the list of arguments and
+:py:attr:`~Command.cwd` - the working directory, in that order.
+The ``args`` list already contains the base command and its arguments with
+all values inserted, therefore no additional
+processing is needed before running the command. The ``cwd`` is
+an absolute path to the designated directory where process should be
+started. It's the responsibility of the runner to start sub-processes
+in the correct directory as they are different to the current working directory.
+The directory should have been created already when the method
+is called. Additionally, the :py:class:`Runner` object itself exposes
+a :py:attr:`~Runner.env` attribute (accessible through ``self.env``)
+containing a read-only dictionary of environment variables.
+Those variables should be used in favour
+of the system environment variables for job processes.
+
+.. py:class:: Command
+
+  Represents the command to be started by the runner. Provided to the
+  :py:meth:`submit` method by the scheduler.
+
+  .. py:attribute:: args
+    :type: list[str]
+
+    List of command line arguments. The arguments include the base
+    command as well the arguments.
+
+  .. py:attribute:: cwd
+    :type: str
+
+    Working directory where the process should be started.
+
+The return value of the method is a :py:class:`Job`
+namedtuple having two fields :py:attr:`~Job.id` - a job identifier,
+and :py:attr:`~Job.cwd` - a working directory.
+The identifier must be json-serializable, preferably a string or
+an integer which allows the runner to uniquely identify the job
+that has just been started. Working directory is, again, a directory
+where the process is running. It should be the same value that
+was passed to the function in the command parameter. The returned
+job object is the same that will later be used in :py:meth:`check_status`
+and :py:meth:`cancel` methods.
+
+.. py:class:: Job
+
+  Represents a running job containing the identifier and working directory.
+  Object returned by :py:meth:`submit` method and later used as an
+  argument to :py:meth:`check_status` and :py:meth:`cancel`.
+
+  .. py:attribute:: id
+    :type: Any
+
+    Job id that allows its runner identify the job.
+    Must be JSON serializable.
+
+  .. py:attribute:: cwd
+    :type: str
+
+    Path to the working directory of the job.
+
+
+The :py:meth:`check_status` method takes one argument, the job returned
+earlier by the :py:meth:`submit` method, and returns the current status of
+the job. The status must be one of the :py:class:`slivka.JobStatus` enum values.
+
+.. py:class:: slivka.JobStatus
+
+  .. py:attribute:: PENDING
+
+    Job request awaits processing. Used internally by slivka.
+
+  .. py:attribute:: REJECTED
+
+    Job request was rejected. Used internally by slivka.
+
+  .. py:attribute:: ACCEPTED
+
+    Job request was accepted fur submission. Used internally by slivka.
+
+  .. py:attribute:: QUEUED
+
+    Job has beed submitted for execution but not started by the
+    underlying queuing system (if any) yet.
+
+  .. py:attribute:: RUNNING
+
+    Process has been started and is currently running.
+
+  .. py:attribute:: COMPLETED
+
+    Job finished successfully and the results are ready.
+
+  .. py:attribute:: CANCELLING
+
+    Cancel request was issues and job is in process of being stopped.
+
+  .. py:attribute:: INTERRUPTED
+
+    Job was interrupted during it's execution by the user and is not running.
+
+  .. py:attribute:: DELETED
+
+    Job has been deleted from the queuing system.
+
+  .. py:attribute:: FAILED
+
+    Job execution failed due to invalid input or errors during the execution.
+
+  .. py:attribute:: ERROR
+
+    Job execution failed due to misconfigured or faulty queuing system.
+
+  .. py:attribute:: UNKNOWN
+
+    Job status cannot be determined.
+
+Finally, the :py:meth:`cancel` method takes the job and is responsible
+for cancelling it. It should only send a cancel request to the underlying
+execution system and not wait for the job to be actually stopped.
+
+If any irrecoverable error occurs during job submission, status check
+or cancellation, caused by the Runner or its underlying execution
+system malfunction, the methods should raise an exception. This will
+put jobs being processed in an error state and indicate a problem with the runner.
+The exception should not be raised for jobs that run properly but
+did not complete successfully due to invalid input.
+
+Additionally, each of those methods has a batch counterpart,
+:py:meth:`~Runner.batch_submit`, :py:meth:`~Runner.batch_check_status`,
+:py:meth:`~Runner.batch_cancel` respectively. They are supposed to
+provide performance benefit by performing an action on multiple jobs
+at once. Each of those methods takes a list of the objects as a single
+argument and returns a list. The objects in the list have the same meaning
+and types as in the single-job methods. Default implementations
+call their single-job variants multiple times.
+
+.. py:class:: Runner
+
+  .. py:method:: __init__(self, runner_id, command, args, outputs, env)
+
+    :param runner_id: pair of service and runner ids
+    :type runner_id: RunnerID
+    :param command: command passed as a shell command or a list of arguments
+    :type command: str | List[str]
+    :param args: argument definitions
+    :type args: List[Argument]
+    :param outputs: output file definitions
+    :type outputs: List[OutputFile]
+    :param env: custom environment variables for this service
+    :type env: Map[str, str]
+
+  .. py:attribute:: id
+  
+    Full runner identifier which is a tuple of service id and runner id.
+  
+  .. py:attribute:: command
+
+    Base command converted to the list of arguments. The base command
+    is already included in the command line parameters passed to the
+    :py:meth:`.submit` method.
+
+  .. py:attribute:: arguments
+
+    List of arguments definitions. Those are used internally to construct
+    the command line arguments passed to the :py:meth:`.submit`
+    method.
+
+  .. py:attribute:: outputs
+
+    Output files definitions. Used internally to search the directory
+    for the results.
+
+  .. py:attribute:: env
+
+    Environment variables defined for this service that should be
+    used for new jobs. This dictionary should not be modified outside
+    of the :py:meth:`.__init__` method.
+
+  .. py:method:: start(inputs, cwd)
+
+    Used internally by the scheduler to start a new job. Performs all preparations
+    needed for the new job and calls :py:meth:`.submit`.
+
+  .. py:method:: batch_start(inputs, cwds)
+
+    Used internally by the scheduler to start a batch of jobs. Performs all
+    preparations needed for the new jobs and calls :py:meth:`.batch_submit`
+
+  .. py:method:: submit(command)
+    :abstractmethod:
+
+    Submits the command to the underlying execution system and returns
+    the job wrapper. If an error resulting from the system malfunction
+    prevents job from being properly started, an appropriate exception
+    should be raised.
+
+    :param command: A command containing arguments and working directory.
+    :type command: :py:class:`Command`
+    :return: A wrapper object containing job id and working directory
+    :rtype: Job
+
+  .. py:method:: check_status(job)
+    :abstractmethod:
+
+    Checks and returns the current status of the job using one of the
+    :py:class:`slivka.JobStatus` values. The argument
+    is the same job object as returned by the :py:meth:`.submit`
+    method. If the status could not be checked due to an error, an
+    appropriate exception should be raised.
+
+    :param job: Job object as returned by :py:meth:`.submit`
+    :type job: Job
+    :return: Current job status.
+    :rtype: slivka.JobStatus
+
+  .. py:method:: cancel(job)
+    :abstractmethod:
+
+    Cancels currently running job. Does nothing if the job is not
+    running. It should only send cancel request to the underlying
+    execution system without waiting until the job is actually stopped.
+    After successful cancel, consecutive status checks should result in
+    ``CANCELLING`` status and then ``INTERRUPTED`` or ``DELETED``
+    once the job is stopped.
+
+    :param job: Job object as returned by :py:meth:`.submit`
+    :type job: Job
+
+  .. py:method:: batch_submit(commands)
+
+    A batch variant of the :py:meth:`.submit` method used to submit
+    multiple jobs at once. Sub-classes should re-implement this method
+    if there is a way to start multiple jobs at once which offers performance
+    benefits. Default implementation makes multiple calls to its single-job
+    counterpart.
+
+    :param commands: List of command tuples containing arguments and working directories.
+    :type commands: List[Command]
+    :return: List of jobs for each provided command.
+    :rtype: List[Job]
+
+  .. py:method:: batch_check_status(jobs)
+
+    Batch variant of the :py:meth:`.check_status` method used to check
+    statuses of multiple jobs at once. Takes a list of jobs and returns
+    a list of statuses in the same order. Sub-classes should re-implement
+    this method if checking status in batches provides performance
+    improvement. Default implementation makes multiple calls to its
+    single-job counterpart.
+
+    :param jobs: List of jobs to check the status for.
+    :type jobs: List[Job]
+    :return: List of statuses for each passed job.
+    :rtype: List[JobStatus]
+
+  .. py:method:: batch_cancel(jobs)
+
+    Batch variant of the :py:meth:`.cancel` method. Takes a list of
+    jobs and cancels them all.
+    Sub-classes should re-implement this method if cancelling jobs
+    in batches is more efficient than doing it individually.
+    Default implementation makes multiple calls to its single-job
+    counterpart.
+
+    :param jobs: List of jobs to be cancelled.
+    :type jobs: List[Job]
