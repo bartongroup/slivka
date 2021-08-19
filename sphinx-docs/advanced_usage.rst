@@ -8,6 +8,126 @@ write Python scripts or classes, therefore
 a good knowledge of Python programming (or programming in general)
 is required.
 
+--------------------
+Parameter conditions
+--------------------
+
+As we mentioned in the :ref:`parameters specification`, you can specify
+a logical expression in the *condition* property to impose constraints
+on the value that depend on other parameters. This feature is currently
+experimental and must be used with care as invalid expressions may
+not be properly detected and cause runtime errors. Additionally,
+expressions involving arrays or files are not supported and can result
+in errors when evaluated.
+
+The conditional expressions are evaluated after the basic validation
+of the input values passes successfully. If the expression of the
+parameter evaluates to *false*, its value is assumed to be invalid,
+unless a default value was used. In such case the value is changed
+to *null* and the validation is run again raising validation error
+if the expression still yields *false*.
+
+A valid expression consists of a constant value, an identifier
+or an operator acting on other expressions e.g.
+
+- ``my_param`` - a single identifier,
+- ``1`` - a constant,
+- ``my_param < 5`` - an operator joining two expressions into a compound
+  expression.
+- ``param1 > 4 and (param2 == "sometext" or param3)`` - a more complex
+  expression.
+
+Here is the list of allowed
+expressions starting with simple values followed by operators in the
+precedence order (highest priority first).
+
+:identifier:
+  Identifiers are used to refer to other parameters by their id.
+  The value of the referenced parameter will be substituted in place
+  of the identifier during evaluation. Referencing a file type is not
+  supported and results in an unexpected behaviour.
+  Referencing an array type will use an entire array
+  not its values and only a length operator (``#``) can be used on it.
+
+:null:
+  ``null`` keyword is equal to an empty value.
+  It can only be used with equality and logical operators and
+  it's logical value is ``false``.
+
+:number:
+  An integer or a floating point number optionally preceded by a minus
+  sign. Engineering notation is also supported. A valid number has to
+  start with a digit or a minus sign immediately followed by a digit.
+  They can be used with equality, inequality and logical operators with
+  0 being equal to ``false`` and any other value equal to ``true``.
+
+  Examples: ``15``, ``0.21``, ``-4.41``, ``2e-4``, ``-8.22E19``.
+
+  Invalid: ``e5``, ``.5``.
+
+:text:
+  String literals can be defined by specifying text inside double quotes
+  (``"``). If the text needs to include double quote or backslash character
+  they need to be escaped with a backslash character.
+  Text can be used with equality, inequality (alphabetical order test)
+  and ``+`` (concatenation) operators.
+
+  Examples: ``"slivka"``, ``"\"quoted\" text"``, ``"3.14"``, ``"\\"``.
+
+  Invalid: ``""quoted" text"``, ``"\"``, ``"\text"``.
+
+:parentheses:
+  ``(<expr>)`` Groups together expressions to force their evaluation before
+  other operations.
+
+:unary minus:
+  ``- <expr>`` Must be followed by a number expression and
+  returns it's negative value.
+
+:logical not:
+  ``not <expr>`` Evaluates and converts the expression following it
+  to a truth value and returns its opposite. Every value is equivalent
+  to *true* except ``0``, empty text ``""``, ``null`` and an empty array
+  which are converted to *false*.
+
+:length:
+  ``# <expr>`` Must be followed by a string or array expression and
+  returns its length as an integer.
+
+:multiplication:
+  ``<expr> * <expr>`` or ``<expr> / <expr>`` Performs multiplication
+  or division of two numbers.
+
+:addition:
+  ``<expr> + <expr>`` or ``<expr> - <expr>`` Performs addition or
+  subtractions of two numbers. Addition can also act on strings
+  concatenating them.
+
+:inequality:
+  ``<expr> < <expr>``, ``<expr> > <expr>``, ``<expr> <= <expr>`` or
+  ``<expr> <= <expr>``. Tests two numbers for inequality and returns
+  a truth value. Comparing two strings tests them for alphabetical
+  order.
+
+:equality:
+  ``<expr> == <expr>`` or ``<expr> != <expr>`` Tests two values for
+  being equal or non-equal and returns a truth value.
+
+:logical and:
+  ``<expr> and <expr>`` Performs logical *and* of two expressions converting
+  them to truth values first.
+
+:logical xor:
+  ``<expr> xor <expr>`` Performs logical *xor* of two expressions converting
+  them to truth values first.
+
+:logical or:
+  ``<expr> or <expr>`` Performs logical *or* of two expressions converting
+  them to truth values first.
+
+.. warning:: No type or syntax checks are performed on the expressions.
+  Any syntax and value errors may cause uncaught errors in the application.
+
 ---------
 Selectors
 ---------
@@ -261,9 +381,9 @@ call their single-job variants multiple times.
     :type env: Map[str, str]
 
   .. py:attribute:: id
-  
+
     Full runner identifier which is a tuple of service id and runner id.
-  
+
   .. py:attribute:: command
 
     Base command converted to the list of arguments. The base command
