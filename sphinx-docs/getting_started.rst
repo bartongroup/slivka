@@ -614,10 +614,14 @@ runner. We won't go into details here as they are available in the
 Selector
 ========
 
-The last bit that remains to be explained is the selector.
+The last bit that remains to be explained is the *selector*.
 In some cases you may need to have a fine grained control over
 which runner is used depending on job parameters. One of the examples
 is allocating different amount of memory depending on the data size.
+If there is more than one runner defined then the python function
+which the *selector* path is pointing to is called with command
+line parameters as an argument. The function then needs to return
+an identifier of the runner that will be used to run the command.
 This is an advanced functionality which is beyond the introductory
 tutorial, but it's noteworthy. If you want to use one runner only
 name it ``"default"`` and remove *selector* line from the file.
