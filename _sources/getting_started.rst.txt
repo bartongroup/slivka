@@ -6,9 +6,9 @@ Getting Started
 Overview
 ========
 
-Slivka is a free software which provides easy and convenient means
+Slivka is a free software which provides easy and convenient means 
 for creating web services on your local computer, server or cluster.
-It is written in Python and is available as a source code or from anaconda.
+It is written in Python and is available both as a source code or from anaconda.
 
 The core of the system is the scheduler which manages jobs execution,
 parses command line arguments and delegates tasks to runners that
@@ -62,7 +62,7 @@ and retrieving output files.
 Runners
 -------
 
-While talking about the scheduler, we mentioned that it passes jobs to 
+While talking about the scheduler, we mentioned that it passes jobs to
 the runners for execution. Runners are internal parts of the slivka system
 (custom Runners can be created though) providing an interface
 between the scheduler and the software available on the operating system.
@@ -74,9 +74,11 @@ this allows you to write plug-ins that run your programs in new ways.
 Config files
 ------------
 
-Configuration files live outside of the slivka module and provide
-system settings and service information. As a system
-administrator, you are responsible for creating and maintaining
+Configuration files contain parameters controlling the behaviour of slivka
+and also serve as description of services (programs) that can be run with it.
+The configuration files are situated outside of the slivka package to
+guarantee portability and better isolation from the slivka internals.
+As a system administrator, you are responsible for creating and maintaining
 those configuration files, so the rest of this tutorial will be mostly
 dedicated to them.
 
@@ -84,7 +86,7 @@ dedicated to them.
 Installation
 ============
 
-Slivka is provided as a source code and an Anaconda package. Using
+Slivka is provided as a source code and as an Anaconda package. Using
 conda is strongly recommended, but it can also be installed with pip
 or setuptools once the source code is obtained. Make sure that the
 programs you intend to run are accessible from where the slivka is
@@ -92,22 +94,8 @@ installed (machine or VM). They don't have to be in the same virtual
 python/conda environment though.
 
 Installation requires Python 3.5+ (version 3.7 recommended).
-Additional requirements that will be downloaded and installed 
-automatically, include:
-
-- attrs (>=19)
-- click (>=7.0)
-- Flask (>=1.0)
-- frozendict (>=1.2)
-- gunicorn (>=19.9) (optional)
-- jsonschema (>=2.5.1)
-- MarkupSafe (>=1.0)
-- pymongo (>=3.7)
-- PyYAML (>=3.11)
-- pyzmq (>=17.0)
-- simplejson (>=3.16)
-- uwsgi (>=2.0) (optional)
-- Werkzeug (>=0.15)
+Additional requirements will be downloaded and installed
+automatically during slivka installation.
 
 
 ---------------------
@@ -115,16 +103,18 @@ Installing with conda
 ---------------------
 
 Conda installation is recommended due to its simplicity. If you want
-to use a dedicated virtual environment create it and install slivka with:
+to use a dedicated virtual environment create it and install slivka
+into it with the following commands:
 
-.. code:: 
+.. code::
 
   conda create -n <env> python=3.7
   conda install -n <env> -c slivka -c conda-forge slivka
   conda activate <env>
 
 substituting the environment name (e.g. slivka) for ``<env>``.
-More information can be found in `conda documentation`_.
+More information on how to use conda can be found in
+`conda documentation`_.
 
 .. _`conda documentation`: https://conda.io/en/latest/
 
@@ -173,18 +163,21 @@ Running slivka
 Creating new project
 --------------------
 
-A slivka project is a single instance of slivka with its own settings
-and collection of services. You can create as many instances as you want
-each running in a separate directory.
+A slivka project is a collection of files (configuration files,
+scripts, binaries) that, together, can be interpreted by slivka
+to run a collection of programs as web services.
+One slivka installation can be used to create and run multiple
+projects independently, as long as they are in separate directories.
 
-During installation, a ``slivka`` executable was created and added to
-your path. It can be used to initialize new projects and run slivka.
+During the installation, a ``slivka`` executable was created and added to
+the path. It is the main entry point which can be used to initialize
+new projects and run the existing ones.
 
-Let us start with initializing an empty project. To do this, run ::
+Let us start with creating an empty project. To do this, run ::
 
    slivka init <name>
 
-replacing ``<name>`` with the name of the directory where the configuration 
+replacing ``<name>`` with the name of the directory where the configuration
 files will be stored in.
 Use ``.`` if you wish to set-up the project in the current directory.
 
@@ -195,16 +188,18 @@ Use ``.`` if you wish to set-up the project in the current directory.
 
      python -m slivka [args...]
 
-The newly created directory will contain default setting files and 
-an example service. In the following sections we will walk through the 
+The newly created directory will contain default configuration files and
+an example service. In the following sections we will walk through the
 process of creating and configuring new services.
 
 -----------
 Starting up
 -----------
 
-At this point you are ready to launch a newly created slivka project.
-Navigate to the project directory and start three processes ::
+At this point you are ready to launch a newly created slivka project
+which already contains a dummy example service.
+Navigate to the project directory and start those three processes
+(make sure the mongo database is available first) ::
 
   slivka start server &
   slivka start scheduler &
@@ -217,87 +212,101 @@ It launches a HTTP server, a scheduler and a simple worker queue locally
 
   If your mongo database is listening on port other than the default
   or any of the ports used by slivka is already in use you can
-  change them in the *settings.yaml* file.
+  change them in the *config.yaml* file.
 
 --------------
 Submitting job
 --------------
 
-Now, you can send a GET request or navigate with your web browser to
-`<http://127.0.0.1:8000/api/services>`_ to see the list of currently
-available services, or one "Example Service" to be specific.
+In this subsection we will take a look at the data exchanged in
+the  client-server communication and submit
+our first job using a terminal. This knowledge is not crucial to manage
+and use slivka services, so feel free to skip to the next section
+if it gets too technical.
 
-Moving on to */api/services/example* will show you the details of 
-the service along with the list of form fields a.k.a. input parameters
-of that service. Don't worry if the details doesn't make much sense
-yet. For now, notice one field named *msg* which we are going to use.
-
-.. code:: json
-
-  {
-    "type": "text",
-    "name": "msg",
-    "label": "Message",
-    "description": "Message printed to the output file",
-    "required": true,
-    "multiple": false,
-    "default": null,
-    "minLength": 3,
-    "maxLength": 15
-  }
-
-This tells us that one of the parameters the example service accepts
-is named "msg", it is a required parameter of a text type and its length should be
-between 3 and 15 characters. In order to submit a new job, send a POST
-request to that endpoint providing a value for the *msg* parameter. 
-In our examples we are Using curl, a command line tool for transferring
-data over network protocols. More information can be found on the
-`cURL website`_.
+In the following examples we use curl, a command line tool for transferring
+data over network protocols, to send and receive data from the server.
+More information can be found on the `cURL website`_.
 
 .. _`cURL website`: https://curl.se/
 
+Once the slivka server is up, you can send a GET request (or open the
+url in the web browser) to `<http://127.0.0.1:4040/api/services>`_
+in order to list currently available services.
+
 .. code:: sh
 
-  curl -d"msg=hello world" http://localhost:8000/api/services/example
+  curl http://127.0.0.1:4040/api/services
 
-Congratulations, you've just submitted the first job to your slivka
-instance. You should have received the id of the newly created job and
-slivka should have started working on it. The server response will look
-like this:
-
-.. code:: json
-
-  {
-    "statuscode": 202,
-    "uuid": "<job uuid>",
-    "URI": "/api/tasks/<job uuid>"
-  }
-
-You can follow the *URI* to see the current job status and get another URI
-pointing to the output files.
+The response will show a JSON formatted list of services, or one
+"Example Service" to be more specific. Information about this one
+service can also be requested from `/api/services/example`_.
+The response contains the information
+about the service including the list of input parameters
+for that service. Each parameter needs to have a value supplied when
+the new job is submitted. Seeing all those parameters and their
+properties may be a bit daunting, so we focus on and break
+down the last one for now.
 
 .. code:: json
 
   {
-    "statuscode": 200,
-    "status": "COMPLETED",
-    "ready": true,
-    "filesURI": "/api/tasks/<job uuid>/files"
+    "array": false,
+    "default": null,
+    "description": "Required command line argument",
+    "id": "arg",
+    "name": "Text argument",
+    "required": true,
+    "type": "text"
   }
+
+The most important property is parameter's *id*. It is used to
+reference the parameter, especially when providing a value for it.
+Second most important property is parameter *type* which dictates
+what values will be accepted (text, number, file, etc). *Array* tells
+us whether this parameter takes multiple values which is false in this
+case, and *required* tells whether the value must be provided for the
+new job to be started as some parameters may be optional.
+*Default* indicates what value will be used if no other value is supplied.
+Finally, *name* and *description* contain human-friendly name of
+the parameter accompanied by a longer commentary.
+
+In order to create a new job, we send a POST request to the
+`/api/services/example/jobs`_ endpoint providing values for the
+parameters in the request body using either urlencoded or multipart form.
+
+
+.. _/api/services/example: http://127.0.0.1:4040/api/services/example
+.. _/api/services/example/jobs: http://127.0.0.1:4040/api/services/example/jobs
+
+.. code:: sh
+
+  curl -d"rep=v1&rep=v2&arg=val3" http://localhost:4040/api/services/example/jobs
+
+If you followed these instructions, then you've just submitted your
+first job to slivka.
+If everything went correctly, the server response should contain
+the id of the new job along with other data such as its status,
+submission time and parameters used.
+
+You can follow the url specified in the *@url* property to view the
+job resource along with the current progress status.
 
 ====================
 Configuring services
 ====================
 
-Until now, we've only seen slivka using the existing example
-service. In this section we will take a closer look into the configuration
+In this section we will take a closer look into the configuration
 file of the example service and learn how to create our own services.
 
 First, navigate to the *services* folder in your slivka project directory.
-It contains a single *example.service.yaml* file which contains the
-service information. In fact, any file in this directory, whose name
+There is a single *example.service.yaml* file there which contains the
+service configuration. Any file in this directory, whose name
 ends with *service.yaml*, is automatically recognised as a service
-definition. In this part we will go through each section of the file.
+definition. The identifier of the service is taken from the file name.
+In the following sections we will go through each part of the file
+one by one.
+
 The configuration files are written in yaml_, so make sure you are
 familiar with the yaml syntax before continuing.
 
@@ -307,191 +316,327 @@ familiar with the yaml syntax before continuing.
 Service metadata
 ----------------
 
-First of all, lines starting with ``#`` are comments and are ignored
-by the program so they can be used for making notes.
-The first couple of lines is a good place to write a few comments 
+Before we start, note that the lines starting with ``#`` are ignored
+by the program, so they can be used for making comments.
+The first few lines is a good place to write a few notes
 briefly describing the service including information for
-anyone who is going to maintain those files.
+anyone who is going to maintain those files in the future.
 
-Next comes the label of the service. This is a human-readable name of the
-service which will be displayed to users (the internal service name
-is derived from the file name). Use meaningful labels which
-allow to recognise what program the service is running.
+The topmost properties contain service metadata. They serve
+an informative purpose for the users of the service.
+Starting from the top we have *slivka-version* which tells the slivka
+version this service was written for and compatible with.
+Then, *name* and *description* contain a brief service name
+(not to be confused with an identifier) and a description with more
+detailed information respectively. After that, you can optionally add an
+*author*, *version* of the software, software *license*, and
+*classifiers* which is a list of tags that may help users or software
+categorise and recognise the service.
 
-After that you can see a list of classifiers. This element is optional
-and can be used to tag and categorise the services. One use case is to
-provide additional information to client applications.
+----------
+Parameters
+----------
 
-----
-Form
-----
+The *parameters* property usually makes the biggest part of the configuration file.
+This is the place where the input parameters for the service are listed
+which are further mapped to the command line arguments.
+If you followed the job submission guide, you may recognise those
+parameters are the same that are presented to the front-end user.
 
-This section usually makes the most of the configuration file. This is
-the place where the input parameters for the service are defined.
-Slivka uses those to construct input forms which you already saw when
-going through the job submission process. Each key represents a unique
-field name which serves as an identifier and is used as a parameter
-name in a HTTP request. Preferably, it should contain lowercase letters
-dashes and underscores only.
+Each key in the *parameters* mapping is a unique parameter id;
+it can only contain letters, digits, dashes and underscores.
+The object under each key defines the parameter. in order to get
+you started, we are going to explain how to add/remove and define
+service parameters based on the example service . The more detailed technical
+information can be found in the :ref:`parameters specification<parameters specification>`.
 
-There are three values nested under each field: *label*, *description*
-and *value*. *Label* is a full name of the field which client applications
-are going to display to the users. Just like with the service labels,
-field labels should be relatively short and meaningful to the users.
-Next, there is a *description* parameter containing detailed help text
-for the field. It should contain all the information about the parameter
-such as allowed values or effects it has on the program execution.
-The last parameter -- *value* -- describes constraints imposed on the
-field value. Specifying the parameter type is required. Additionally,
-you can set whether the field is required (default is yes) and specify
-a default value used when no value is given by the user. Allowed types
-and type specific parameters are described in the 
-:ref:`value object <value-object-spec>` specification.
+First of all, each parameter must have a *name* and a *type* specified.
+The name differs from the identifier (key) in that it doesn't have any
+character restrictions and is for the human use only. Keep it concise and
+self explanatory, so users know what that parameter is controlling.
+If you need to disclose more information and details, you can add it
+in a *description* which can contain longer text.
+
+The parameter *type*, as the name suggests, tells users what kind
+of value is expected. There are several built-in types which should
+cover the majority of what command line programs need; these are:
+``integer``, ``decimal``, ``text``, ``flag``, ``choice`` and ``file``.
+You can immediately follow the type with a pair of square brackets to
+convert it into an array so that multiple values can be provided for
+that single parameter e.g. ``text[]``.
+
+Two properties which are frequently used, but are not required,
+include: *default* that specify the value which will be used if it
+is not supplied by the user (skip it if you don't want to use
+a default value) and *required* which allows to set whether
+the value for that parameter must be provided for the job to be started
+(default is ``true``). Note that settings a default value makes the
+parameter automatically optional.
+
+There are also additional properties which depend on the parameter type.
+The notable ones are *min* and *max* value that can be specified for
+numeric types, the *min-length* and *max-length* applicable to
+texts and *choices* which must be listed for a choice type.
+*Choices* require a bit of explanation since it doesn't contain
+a list of choices, as would be expected, but a mapping. The keys of the
+mapping is what is presented to the user, but the values are later used
+in the command. This way you can hide the actual
+command-line parameters and provide meaningful names for them.
 
 -------
 Command
 -------
 
-The *command* section is a complementary part to the *form*. It contains
-information on how to run the command line program, connects form
-parameters to the command line arguments and specify output files.
-Our example service runs an *example.py* service located in the *scripts*
-directory under the project directory. The command has the following syntax
+The *command* property contains the command that will be used to start
+the program on the computer. It can either be a text as you would type
+it into the shell or an array of arguments (similar to what you
+pass to ``execl`` function). The latter might be particularly useful
+if your command contains special characters and you want to be
+sure it'll be split into arguments correctly.
+
+Environment variables can be inserted using either ``$VARIABLE``
+or ``${VARIABLE}`` syntax. A literal "$" character can be obtained
+by escaping it with another dollar character like this: ``$$``.
+Both, current environment variables and those defined in this file
+(more on customising process' environment later) can be used.
+Also, a special ``SLIVKA_HOME`` variable pointing to the project
+directory can be used here as well.
+
+In the example we run python binary to which we provide an *example.py*
+located in the *scripts* folder under the project directory.
+
+.. warning::
+
+  If your program or script is not directly available from the
+  *PATH* you **must** give an absolute path to it. Failing to do so
+  will result in all jobs failing with "file not found" error.
+  This is where ``SLIVKA_HOME`` comes in handy as it contains an
+  absolute path to the project root directory.
+
+---------
+Arguments
+---------
+
+Once we have service parameters and command specified, we need to
+tell slivka how to translate each parameter value to the command line
+argument. Before we dive into details, we need to take a look at the
+python script that will be executed. It is a dummy program, that
+takes several parameters as command line arguments and produces some
+text. Its usage can be summarised as follows
 
 .. code:: sh
 
-  example.py --infile <input> -t <message> -r <repeat> -w <sleep> --log -v <output>
+  example.py [--infile FILE] [--opt TEXT] [--rep REP[,REP,...]] \
+    [--delay SECONDS] [--letter LETTER] [--flag] -- ARG
 
-Base
-====
+Here, optional parts are enclosed in brackets. As we can see, the
+script takes a few optional arguments (one of which takes multiple,
+comma-separated values) followed by a double dash and
+a single required argument.
 
-First, the configuration file defines a *baseCommand* which is a base
-executable that other arguments are appended to. In this case we want to
-run the example script with current python interpreter. ::
+As you might have already noticed, those arguments match the
+parameters and arguments specified in the service definition file.
+For each argument in the command, we have an entry in the *args*
+mapping. The entry value is an object which must at least have
+*arg* property that contains a template for the command line argument.
+For each of those entries, slivka tries to find a parameter with
+a matching id and, if found, it replaces a user-provided value for the
+``$(value)`` placeholder.
 
-  python ${SLIVKA_HOME}/scripts/example.py
+We'll now explain all the arguments in the service file one-by-one.
+Let us skip the first entry for now and move on to the *opt* item.
+It is a simple optional text parameter
+passed to the command as ``--opt $(value)``. When users submit new jobs,
+whatever value they provide as *opt* will be inserted in place of
+the placeholder. You should not worry about special characters and
+spaces as slivka will automatically quote and escape any of them.
+It is also possible to use environment variables here. The rules for
+using environment variables are the same as for `command`_.
 
-You are free to include environment variables using standard bash syntax.
-In this case, we uses *SLIVKA_HOME* which is a variable set on slivka
-startup that points to the project directory.
+Next one is *rep*, similar to the *opt* parameter, this one is a
+text parameter, however, it can take multiple values as well.
+In addition to *arg* it also has *join* property which tells what
+character should be used to join multiple values into one argument.
+As a result, the output will be ``--rep valA,valB,valC```.
+If *join* is not specified, then the whole argument is repeated
+multiple times. This would result in ``--rep valA --rep valB --rep valC``.
 
-Inputs
-======
+The *delay* parameter is a numeric type, but since all values are
+converted to strings implicitly it doesn't require any special treatment.
 
-The following part called *inputs* is, not coincidentally, similar to the form
-section. It specifies how each value from the form is translated to the
-command line argument. Each form field is connected to it's corresponding
-field in the input parameters list which in turn corresponds to the command
-line parameters (see the example command above).
+The *letter* parameter behaves similar to a plain text parameter,
+however, it's important to remember that values are converted
+according to the *choices* mapping in the parameter definition prior
+to being passed to the command line.
 
-Our *example.py* command takes an input file ``--input <input>`` as the
-first parameter. Therefore, we specify *input-file* parameter which will
-take the file from the *input-file* form field. Then, we define how
-the argument shall look like in the command, that is ``--input $(value)``.
-Slivka uses ``$(value)`` (notice round brackets) as a placeholder
-for the actual value that will be set later.
-Next comes the type of the argument; in this case it's
-a *file*, but other possibilities are: *string* (default), *number*,
-*flag* and *array*. File type allows to specify additional *symlink* parameter
-which, if present, makes slivka create a symlink to the input file inside the
-process' working directory and pass relative path to the symlink as
-a value instead of the full path to the file. This is particularly useful
-for programs that require all input files to be present in the
-current working directory.
+Moving on, *flag* (flag/boolean type) is a bit unusual as it doesn't
+use a value and instead operates in the present/absent fashion.
+Under the hood, flags do actually have a value which is either ``"true"``
+string literal if enabled or no value if disabled which results in
+the parameter being skipped.
 
-Remaining parameters follow the same syntax as the first one mapping
-form fields to the consecutive parameters of the example script.
-The only exception is the last parameter *_verbose* which doesn't
-have a matching field. It demonstrates that you can add parameters which
-are not present in the form but you must provide their *value* explicitly.
-We suggest using names starting with an underscore for those detached
-arguments.
+After the list of optional parameters we need to place ``--`` before
+the final argument. In order to place a constant in the command line
+we can specify it like any other argument. Since it does not have
+a corresponding input parameter, we need to specify a dummy default
+value or the argument will be skipped due to the missing value.
+For distinction, you can give it an id starting with an underscore.
 
-Slivka preserves parameters order when parsing the file, so the
-arguments are passed to the command line program in the same order
-they are defined here.
+The last parameter is passed to the command as is, without additional
+prefixes, hence the value of *arg* contains ``$(value)`` only.
 
-Arguments
-=========
+Last but not least, we explain the *input-file* argument. The file-type
+parameters are converted to filesystem paths prior to being passed
+to the command line and, for all intends and purposes, can be treated
+as any other string.
+Those paths are absolute and are not pointing to the
+working directory where the program is run, which well-behaved
+programs should have no problems with. However, in case the program you use
+requires the input file to be present in it's working directory, the
+solution is to add a *symlink* property to the argument definition.
+This will make slivka create a symbolic link to the file inside the
+program's working directory and insert
+a relative path to the symlink in place of the original value.
 
-The *arguments* part contains the list of constant arguments that will be appended
-to each command. It might be convenient to define them in cases when the program takes
-modifiable options followed by constant parameters. In many cases, however,
-this part can be skipped as detached input parameters provide the same
-functionality.
+The last thing to mention is that slivka constructs the command line
+arguments in the same order as they appear in the *args* which does
+not need to be the same order as in the *parameters*.
+Also, any argument whose value is missing or is null is dropped from
+the command.
 
+---------------------
 Environment variables
-=====================
+---------------------
 
-If your program requires a special set of environment variables, they
-should be specified in the *env* part as a mapping of variable name to
-its new value. 
-You are free to use current system environment variables in the value
-but cross-references and recursive definitions are not supported.
+If your program requires special environment variables to be set, or
+you want to create a convenient alias for a value you can do it
+in the *env* property. It contains a mapping of environment variable
+names to their values that will be set when starting the command.
+You can use system environment variables here as well (you can't make
+references to other variables defined here though).
+
+In our example, we have an alias for ``/usr/bin/env python`` stored
+in ``PYTHON`` variable. We could have then used the aliased line
+in the command by simply typing ``$PYTHON``.
+We also re-define ``PATH`` to contain the *bin* folder from the
+project directory followed by the original value of ``PATH``.
+
+Slivka runs every command in a modified environment with all system
+variables except ``PATH`` removed. If you need any variable
+to be visible, you need to re-define it in *env*. e.g.
 
 .. code:: yaml
 
   env:
-    PATH: ${HOME}/bin:${PATH}
+    VARIABLE: ${VARIABLE}
 
-Here, we set *PATH* variable to the current *PATH* with *~/bin*
-prepended.
-
-.. warning::
-
-  Slivka runs each program in a new environment passing only *PATH* and
-  *SLIVKA_HOME* variables in addition to those provided in *env*.
-  All other variables are stripped off.
-
+-------
 Outputs
-=======
+-------
 
-Last but not least, the *outputs* part defines output files created
-by the program. Each file (or group of files) is given by the name-key
-under which you specify the *path* to the file (relative to the process'
-working directory). Path can be a file name or a glob_ pattern.
-Standard output and error streams are directed to the *stdout* and *stderr*
-files respectively, use those names if you want to include them.
-Additionally, you can provide a *media-type* to help
-web browsers and clients recognise the file type.
+The course of action following the successful (or not) execution of the
+program is collecting the results it produced. They usually come in
+the form of the output files and/or the text written to the output
+and error streams.
 
+The *outputs* property enumerates all output files that will be
+presented to the users. Each key represents an id of the result
+which may be one, or a collection of files. The only required
+property of the result object is *path* containing a relative path
+or a glob_ pattern that will be used to identify the file.
+The standard output and error streams are written to *stdout* and
+*stderr* files respectively and can be referred to as such.
+
+Additionally, you can provide additional metadata such as a
+human-readable *name* or *media-type* (as discussed in `RFC 2045`_)
+to help software recognise the content they are dealing with.
+
+.. _RFC 2045: https://datatracker.ietf.org/doc/html/rfc2045
 .. _glob: https://en.wikipedia.org/wiki/Glob_(programming)
 
--------
-Runners
--------
+-----------------
+Execution manager
+-----------------
 
-Once the program details are specified, it's  time to define runners that
-will be used to execute the job. In the *runners* sections, specify
-the *default* runner setting its *class* to either ``SlivkaQueueRunner``
-so it will be run with the slivka worker queue, or ``GridEngineRunner``
-to use ``qsub`` to start the jobs. GridEngineRunner also allows additional
-parameter named *qsub_args* containing a list of arguments passed
-directly to ``qsub``. Example:
+Once the program's inputs and output are all worked out, it's finally
+time to instruct slivka how to run the program. If your programs
+doesn't put heavy loads on the machine and you have tiny user base,
+you might get away with running them in a current shell. But, you
+risk using up all the resources really quick if more using start
+running more intensive programs. This is where runners comes into play.
 
-.. code:: yaml
+Runners overview
+================
 
-  default:
-    class: GridEngineRunner
-    parameters:
-      qsub_args:
-        - -P
-        - webservices
-        - -q
-        - 64bit-pri.q
+The runner is a simple Python snippet that can take your carefully
+prepared command and execute it in whatever way it was written to
+do it. Currently, slivka has three built-in runners: ``ShellRunner``,
+``SlivkaQueueRunner`` and ``GridEngineRunner``. This list will definitely
+expand in the future as slivka will grow.
 
-More detailed information regarding runner definition can be found in
-the :ref:`runner <runners-spec>` specification.
+Starting with the simplest one, ``ShellRunner`` just spawns each job
+as a new process in the current shell, nothing more. It's sufficient
+if you are dealing with very low number of jobs as it doesn't require
+any prior setup to work. Although, since there is no control
+or limit on the number of simultaneous processes, it can easily
+clog your system if one user decides to start hundred jobs at once.
+
+A next improvement step is ``SlivkaQueueRunner``. It sends the jobs
+to the separate process (that must be started first with
+``slivka start local-queue``) that in turn runs them in the shell.
+It may look just like running jobs in the current shell with extra step
+in between but this step actually gives some advantages. First of all,
+the queue may run on a different node or machine, so if the jobs start
+to take too many resources, they won't clog the rest of the system.
+Also, slivka queue keeps track of the number of running processes
+and puts new job in the queue if their number exceeds a set limit.
+It's far from being the proper system resources management system,
+but it's intended to be lightweight and simple.
+
+The last one, ``GridEngineRunner`` utilizes a third-party queuing
+system to manage job execution. It dispatches received jobs to
+the Grid Engine using ``qsub`` command and lets it do all the
+resource management. You can tweak the execution parameters by
+adding additional parameters that will be passed to ``qsub``.
+This is certainly most advanced solution suitable
+for very large systems that have Grid Engine set up.
+
+Specifying runners
+==================
+
+Runners available for the service are listed under *runners* inside
+the *execution* property. Under each key, which is runner id,
+you need to specify runner *type* from one of the available types.
+You can additionally provide additional *parameters* depending on the
+runner. We won't go into details here as they are available in the
+:ref:`execution management` section.
+
+Selector
+========
+
+The last bit that remains to be explained is the *selector*.
+In some cases you may need to have a fine grained control over
+which runner is used depending on job parameters. One of the examples
+is allocating different amount of memory depending on the data size.
+If there is more than one runner defined then the python function
+which the *selector* path is pointing to is called with command
+line parameters as an argument. The function then needs to return
+an identifier of the runner that will be used to run the command.
+This is an advanced functionality which is beyond the introductory
+tutorial, but it's noteworthy. If you want to use one runner only
+name it ``"default"`` and remove *selector* line from the file.
 
 ------------------
 Build your service
 ------------------
 
-At this point you should have enough information to create your own services.
-As an exercise, try creating a *greeter* service which takes a name
-from the user and uses ``echo`` command to output "Hello <name>.
-Have a nice day." Try using as much elements as you can such as
-environment variables, detached parameters and arguments list.
+This is all for the basic tutorial. At this point you should
+be able to modify and create simple web services with slivka.
+Let us finish it with an exercise.
+Try creating a *greeter* service which takes a name
+from the user with a single input parameter and uses ``echo``
+command to output "Hello <name>. Have a nice day." to the standard
+output stream.
 
 After that, start slivka and try submitting the job to your service and
 retrieve the result.

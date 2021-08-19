@@ -1,24 +1,23 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Advanced Usage &#8212; slivka 0.7b2 documentation</title>
-    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <title>Advanced Usage &#8212; slivka 0.8.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
     
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Client applications" href="python_client.html" />
-    <link rel="prev" title="Specification" href="specification.html" /> 
+    <link rel="prev" title="Configuration" href="specification.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -27,12 +26,10 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="python_client.html" title="Client applications"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="specification.html" title="Specification"
+          <a href="specification.html" title="Configuration"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Advanced Usage</a></li> 
       </ul>
     </div>  
 
@@ -43,131 +40,572 @@
             
   <section id="advanced-usage">
 <h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permalink to this headline">¶</a></h1>
-<section id="limiters">
-<h2>Limiters<a class="headerlink" href="#limiters" title="Permalink to this headline">¶</a></h2>
-<p>The job of limiter is to select one of the runners based on the input data.
-It can filter-out long jobs and redirect them to the dedicated
-queuing system while running small jobs locally.
-The value of the parameter should contain the path to the Python
-<a class="reference internal" href="#creating-limiter-class"><span class="std std-ref">limiter class</span></a> which analyses the input data and
-chooses the appropriate runner for that job. The path must point to the class located
-in the module importable for the current python interpreter.
-The format of the path follows <em>package[.subpackage].classname</em> pattern.
-The directory containing Python script file must be a valid python package
-meaning that the directory and all its parent directories must contain a
-<em>__init__.py</em> file and should be listed in the PYTHONPATH environment variable
-if not available from the current working directory.</p>
-<section id="creating-limiter-class">
-<span id="id1"></span><h3>Creating limiter class<a class="headerlink" href="#creating-limiter-class" title="Permalink to this headline">¶</a></h3>
-<p>In your project you may create one or more Python modules
-containing limiter classes. Each class should contain methods for
-each runner defined in the configuration file allowing to
-pick one configuration based on the values
-provided by the user.</p>
-<p>The limiter class must extend <code class="docutils literal notranslate"><span class="pre">slivka.scheduler.Limiter</span></code> and,
-for each configuration named <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, it needs to define a method with signature</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">limit_</span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
-</pre></div>
+<p>This page describes advanced features of slivka which involve extending
+its current functionality. Most of those features require you to
+write Python scripts or classes, therefore
+a good knowledge of Python programming (or programming in general)
+is required.</p>
+<section id="parameter-conditions">
+<h2>Parameter conditions<a class="headerlink" href="#parameter-conditions" title="Permalink to this headline">¶</a></h2>
+<p>As we mentioned in the <a class="reference internal" href="specification.html#parameters-specification"><span class="std std-ref">Input parameters</span></a>, you can specify
+a logical expression in the <em>condition</em> property to impose constraints
+on the value that depend on other parameters. This feature is currently
+experimental and must be used with care as invalid expressions may
+not be properly detected and cause runtime errors. Additionally,
+expressions involving arrays or files are not supported and can result
+in errors when evaluated.</p>
+<p>The conditional expressions are evaluated after the basic validation
+of the input values passes successfully. If the expression of the
+parameter evaluates to <em>false</em>, its value is assumed to be invalid,
+unless a default value was used. In such case the value is changed
+to <em>null</em> and the validation is run again raising validation error
+if the expression still yields <em>false</em>.</p>
+<p>A valid expression consists of a constant value, an identifier
+or an operator acting on other expressions e.g.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">my_param</span></code> - a single identifier,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">1</span></code> - a constant,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">my_param</span> <span class="pre">&lt;</span> <span class="pre">5</span></code> - an operator joining two expressions into a compound
+expression.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">param1</span> <span class="pre">&gt;</span> <span class="pre">4</span> <span class="pre">and</span> <span class="pre">(param2</span> <span class="pre">==</span> <span class="pre">&quot;sometext&quot;</span> <span class="pre">or</span> <span class="pre">param3)</span></code> - a more complex
+expression.</p></li>
+</ul>
+<p>Here is the list of allowed
+expressions starting with simple values followed by operators in the
+precedence order (highest priority first).</p>
+<dl class="field-list">
+<dt class="field-odd">identifier</dt>
+<dd class="field-odd"><p>Identifiers are used to refer to other parameters by their id.
+The value of the referenced parameter will be substituted in place
+of the identifier during evaluation. Referencing a file type is not
+supported and results in an unexpected behaviour.
+Referencing an array type will use an entire array
+not its values and only a length operator (<code class="docutils literal notranslate"><span class="pre">#</span></code>) can be used on it.</p>
+</dd>
+<dt class="field-even">null</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">null</span></code> keyword is equal to an empty value.
+It can only be used with equality and logical operators and
+it’s logical value is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+</dd>
+<dt class="field-odd">number</dt>
+<dd class="field-odd"><p>An integer or a floating point number optionally preceded by a minus
+sign. Engineering notation is also supported. A valid number has to
+start with a digit or a minus sign immediately followed by a digit.
+They can be used with equality, inequality and logical operators with
+0 being equal to <code class="docutils literal notranslate"><span class="pre">false</span></code> and any other value equal to <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
+<p>Examples: <code class="docutils literal notranslate"><span class="pre">15</span></code>, <code class="docutils literal notranslate"><span class="pre">0.21</span></code>, <code class="docutils literal notranslate"><span class="pre">-4.41</span></code>, <code class="docutils literal notranslate"><span class="pre">2e-4</span></code>, <code class="docutils literal notranslate"><span class="pre">-8.22E19</span></code>.</p>
+<p>Invalid: <code class="docutils literal notranslate"><span class="pre">e5</span></code>, <code class="docutils literal notranslate"><span class="pre">.5</span></code>.</p>
+</dd>
+<dt class="field-even">text</dt>
+<dd class="field-even"><p>String literals can be defined by specifying text inside double quotes
+(<code class="docutils literal notranslate"><span class="pre">&quot;</span></code>). If the text needs to include double quote or backslash character
+they need to be escaped with a backslash character.
+Text can be used with equality, inequality (alphabetical order test)
+and <code class="docutils literal notranslate"><span class="pre">+</span></code> (concatenation) operators.</p>
+<p>Examples: <code class="docutils literal notranslate"><span class="pre">&quot;slivka&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\&quot;quoted\&quot;</span> <span class="pre">text&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;3.14&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\\&quot;</span></code>.</p>
+<p>Invalid: <code class="docutils literal notranslate"><span class="pre">&quot;&quot;quoted&quot;</span> <span class="pre">text&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\text&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">parentheses</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(&lt;expr&gt;)</span></code> Groups together expressions to force their evaluation before
+other operations.</p>
+</dd>
+<dt class="field-even">unary minus</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">-</span> <span class="pre">&lt;expr&gt;</span></code> Must be followed by a number expression and
+returns it’s negative value.</p>
+</dd>
+<dt class="field-odd">logical not</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">&lt;expr&gt;</span></code> Evaluates and converts the expression following it
+to a truth value and returns its opposite. Every value is equivalent
+to <em>true</em> except <code class="docutils literal notranslate"><span class="pre">0</span></code>, empty text <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">null</span></code> and an empty array
+which are converted to <em>false</em>.</p>
+</dd>
+<dt class="field-even">length</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">&lt;expr&gt;</span></code> Must be followed by a string or array expression and
+returns its length as an integer.</p>
+</dd>
+<dt class="field-odd">multiplication</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">*</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">/</span> <span class="pre">&lt;expr&gt;</span></code> Performs multiplication
+or division of two numbers.</p>
+</dd>
+<dt class="field-even">addition</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">+</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">-</span> <span class="pre">&lt;expr&gt;</span></code> Performs addition or
+subtractions of two numbers. Addition can also act on strings
+concatenating them.</p>
+</dd>
+<dt class="field-odd">inequality</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;</span> <span class="pre">&lt;expr&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&gt;</span> <span class="pre">&lt;expr&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;=</span> <span class="pre">&lt;expr&gt;</span></code> or
+<code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;=</span> <span class="pre">&lt;expr&gt;</span></code>. Tests two numbers for inequality and returns
+a truth value. Comparing two strings tests them for alphabetical
+order.</p>
+</dd>
+<dt class="field-even">equality</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">==</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">!=</span> <span class="pre">&lt;expr&gt;</span></code> Tests two values for
+being equal or non-equal and returns a truth value.</p>
+</dd>
+<dt class="field-odd">logical and</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">and</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>and</em> of two expressions converting
+them to truth values first.</p>
+</dd>
+<dt class="field-even">logical xor</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">xor</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>xor</em> of two expressions converting
+them to truth values first.</p>
+</dd>
+<dt class="field-odd">logical or</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">or</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>or</em> of two expressions converting
+them to truth values first.</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>No type or syntax checks are performed on the expressions.
+Any syntax and value errors may cause uncaught errors in the application.</p>
 </div>
-<p>Parameter <code class="docutils literal notranslate"><span class="pre">values</span></code> passed to the function contains the dictionary of unprocessed input values.
-The method must return <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> depending on whether this
-runner can be used with this particular set of input values.
-The configurations are tested in the order of method definitions and
-the first one whose limit method returns <code class="docutils literal notranslate"><span class="pre">True</span></code> will be used.</p>
-<p>Additionally, you can define <code class="docutils literal notranslate"><span class="pre">setup(self,</span> <span class="pre">values:</span> <span class="pre">Dict)</span></code> method which will be
-run before all tests. It can be used to perform long operations and prepare and
-store parameters as object properties for further use in limit methods.</p>
-<p>Example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-
-<span class="kn">from</span> <span class="nn">slivka.scheduler</span> <span class="kn">import</span> <span class="n">Limiter</span>
-
-<span class="k">class</span> <span class="nc">MyLimits</span><span class="p">(</span><span class="n">Limiter</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Setup is run before all tests. It can perform lengthy</span>
-<span class="sd">        file operations or data parsing.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">input_file</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">]</span>
-        <span class="n">statinfo</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">=</span> <span class="n">statinfo</span><span class="o">.</span><span class="n">st_size</span>
-
-    <span class="k">def</span> <span class="nf">limit_fast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The &quot;fast&quot; configuration test method.</span>
-<span class="sd">        It accepts the input only if format is json and file is less than</span>
-<span class="sd">        100 bytes long or xml and less than 20 bytes.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;json&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;format&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yaml&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">return</span> <span class="kc">False</span>
-
-    <span class="k">def</span> <span class="nf">limit_long</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The &quot;long&quot; configuration test method. Tried if &quot;fast&quot; test fails.</span>
-<span class="sd">        It accepts any input file less than 1000 bytes,</span>
-<span class="sd">        otherwise, the job will be rejected.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file_size</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span>
-</pre></div>
-</div>
-<p>First, the <code class="docutils literal notranslate"><span class="pre">setup</span></code> method retrieves input file path from input data , checks its size
-in bytes and stores the value in the <code class="docutils literal notranslate"><span class="pre">input_file_size</span></code> property.
-Next, the criteria for the first configuration, less than 100B
-json file or less than 20B yaml file, are tested.
-If they are not met, the program continues to the second configuration
-which is executed if the file size does not exceed 1000B.
-Otherwise, the scheduler will refuse to start the job altogether.</p>
 </section>
+<section id="selectors">
+<h2>Selectors<a class="headerlink" href="#selectors" title="Permalink to this headline">¶</a></h2>
+<p>Selector is a Python function which chooses a runner based on the
+command parameters. As a quick recap of <a class="reference internal" href="specification.html#execution-management"><span class="std std-ref">Execution management</span></a>,
+each service has one or more runners which are responsible for
+starting and watching jobs running on the system.
+If there is more than one runner available, a selector function
+is used to choose the most appropriate one for the job.
+Since runners may have different configurations, it is possible
+to make different amount of resources available to them and then
+dispatch the jobs depending on their size and needs.</p>
+<p>The selector is a Python function which takes one argument,
+the mapping of input parameter names to their values, and returns
+the identifier of the runner or <code class="docutils literal notranslate"><span class="pre">None</span></code> to reject the job.
+The keys of the mapping consist of the ids of the input parameters
+as defined in the service configuration. They are mapped to the values
+provided by the user after being converted to the command
+line parameters. Each value can be either of a string type or
+a list of strings in case of multiple parameters.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_selector</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+  <span class="c1"># set up all variables e.g. read files or do calculations</span>
+  <span class="c1"># return runner id depending on the conditions</span>
+  <span class="k">if</span> <span class="n">cond1</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s2">&quot;runner1&quot;</span>
+  <span class="k">elif</span> <span class="n">cond2</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s2">&quot;runner2&quot;</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>The selector is provided in the service configuration file alongside
+runners using <em>selector</em> property.
+The value of the parameter should contain a Python-like path
+to the function in <code class="docutils literal notranslate"><span class="pre">package[.subpackage].function</span></code> format.
+The module containing the function must be importable from the current
+interpreter.
+If the file is located in a sub-directory, that directory must be a valid
+Python package i.e. contain an <em>__init__.py</em> file and should be listed
+in the <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> environment variable if not directly accessible
+from the project’s root directory.</p>
 </section>
 <section id="custom-runners">
 <h2>Custom Runners<a class="headerlink" href="#custom-runners" title="Permalink to this headline">¶</a></h2>
-<p>Sometimes there is a need for a custom submission method e.g. when using a different queuing system
-which is not natively supported by Slivka. Custom runner may be as simple as a script executing
-a new subprocess or may involve data exchange between multiple machines.</p>
-<section id="basic-functionality">
-<h3>Basic functionality<a class="headerlink" href="#basic-functionality" title="Permalink to this headline">¶</a></h3>
-<p>A minimal runner is limited to two operations:</p>
-<ul class="simple">
-<li><p>start new jobs</p></li>
-<li><p>check job status</p></li>
+<p>Although slivka is still expanding, currently existing runners may
+not be sufficient for some use cases. Custom runners may be as simple
+as a script running a program or may involve complex data exchange
+between multiple machines. We made it possible to dynamically
+add new runners to the application without the need to modify the
+existing slivka package.
+The only requirement is to create a class extending <code class="docutils literal notranslate"><span class="pre">slivka.scheduler.Runner</span></code>
+interface, implementing all of its unimplemented methods and put it in
+a Python module file (preferably in an easily accessible
+location such as the project directory).</p>
+<p>The minimal set of operations that the runner must implement is
+starting/submitting the job, checking its status and cancelling it.
+Here is the basic template for the custom runner class</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">slivka.scheduler.runners</span> <span class="kn">import</span> <span class="n">Runner</span><span class="p">,</span> <span class="n">Job</span><span class="p">,</span> <span class="n">Command</span>
+<span class="kn">from</span> <span class="nn">slivka</span> <span class="kn">import</span> <span class="n">JobStatus</span>
+
+<span class="k">class</span> <span class="nc">MyRunner</span><span class="p">(</span><span class="n">Runner</span><span class="p">):</span>
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">my_parameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c1"># initialize your runner</span>
+
+  <span class="k">def</span> <span class="nf">submit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="n">Command</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Job</span><span class="p">:</span>
+    <span class="c1"># start the job using given command</span>
+    <span class="c1"># return Job object</span>
+
+  <span class="k">def</span> <span class="nf">check_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">:</span> <span class="n">Job</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JobStatus</span><span class="p">:</span>
+    <span class="c1"># perform status check of the job</span>
+    <span class="c1"># return appropriate status</span>
+
+  <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">:</span> <span class="n">Job</span><span class="p">):</span>
+    <span class="c1"># interrupt the job</span>
+</pre></div>
+</div>
+<p>Starting from the top of the class definition we have an <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>
+method where object initialization takes place. Defining own initializer
+is optional but, if it is used, it has to call the superclass’
+<a class="reference internal" href="#Runner.__init__" title="Runner.__init__"><code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code></a>. If your runner needs to take parameters, the easiest
+way is to capture all positional arguments, then define your parameters
+as keyword arguments and capture the rest. Then you can
+easily pass all captured parameters to <a class="reference internal" href="#Runner.__init__" title="Runner.__init__"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Runner.__init__()</span></code></a> without
+listing them individually. However, if you decide to customize the
+arguments passed, you can find a signature of the initializer below.</p>
+<p>Next on the list is the <code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method, which takes a single
+<a class="reference internal" href="#Command" title="Command"><code class="xref py py-class docutils literal notranslate"><span class="pre">Command</span></code></a> argument and returns a <a class="reference internal" href="#Job" title="Job"><code class="xref py py-class docutils literal notranslate"><span class="pre">Job</span></code></a> tuple.
+<a class="reference internal" href="#Command" title="Command"><code class="xref py py-class docutils literal notranslate"><span class="pre">Command</span></code></a> is a namedtuple having two attributes
+<a class="reference internal" href="#Command.args" title="Command.args"><code class="xref py py-attr docutils literal notranslate"><span class="pre">args</span></code></a> - the list of arguments and
+<a class="reference internal" href="#Command.cwd" title="Command.cwd"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cwd</span></code></a> - the working directory, in that order.
+The <code class="docutils literal notranslate"><span class="pre">args</span></code> list already contains the base command and its arguments with
+all values inserted, therefore no additional
+processing is needed before running the command. The <code class="docutils literal notranslate"><span class="pre">cwd</span></code> is
+an absolute path to the designated directory where process should be
+started. It’s the responsibility of the runner to start sub-processes
+in the correct directory as they are different to the current working directory.
+The directory should have been created already when the method
+is called. Additionally, the <a class="reference internal" href="#Runner" title="Runner"><code class="xref py py-class docutils literal notranslate"><span class="pre">Runner</span></code></a> object itself exposes
+a <a class="reference internal" href="#Runner.env" title="Runner.env"><code class="xref py py-attr docutils literal notranslate"><span class="pre">env</span></code></a> attribute (accessible through <code class="docutils literal notranslate"><span class="pre">self.env</span></code>)
+containing a read-only dictionary of environment variables.
+Those variables should be used in favour
+of the system environment variables for job processes.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="Command">
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Command</span></span><a class="headerlink" href="#Command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents the command to be started by the runner. Provided to the
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method by the scheduler.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Command.args">
+<span class="sig-name descname"><span class="pre">args</span></span><em class="property"><span class="pre">:</span> <span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#Command.args" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of command line arguments. The arguments include the base
+command as well the arguments.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Command.cwd">
+<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#Command.cwd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Working directory where the process should be started.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The return value of the method is a <a class="reference internal" href="#Job" title="Job"><code class="xref py py-class docutils literal notranslate"><span class="pre">Job</span></code></a>
+namedtuple having two fields <a class="reference internal" href="#Job.id" title="Job.id"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id</span></code></a> - a job identifier,
+and <a class="reference internal" href="#Job.cwd" title="Job.cwd"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cwd</span></code></a> - a working directory.
+The identifier must be json-serializable, preferably a string or
+an integer which allows the runner to uniquely identify the job
+that has just been started. Working directory is, again, a directory
+where the process is running. It should be the same value that
+was passed to the function in the command parameter. The returned
+job object is the same that will later be used in <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_status()</span></code>
+and <code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code> methods.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="Job">
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Job</span></span><a class="headerlink" href="#Job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a running job containing the identifier and working directory.
+Object returned by <code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method and later used as an
+argument to <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_status()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Job.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="pre">:</span> <span class="pre">Any</span></em><a class="headerlink" href="#Job.id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job id that allows its runner identify the job.
+Must be JSON serializable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Job.cwd">
+<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#Job.cwd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to the working directory of the job.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_status()</span></code> method takes one argument, the job returned
+earlier by the <code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method, and returns the current status of
+the job. The status must be one of the <a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code></a> enum values.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="slivka.JobStatus">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">slivka.</span></span><span class="sig-name descname"><span class="pre">JobStatus</span></span><a class="headerlink" href="#slivka.JobStatus" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.PENDING">
+<span class="sig-name descname"><span class="pre">PENDING</span></span><a class="headerlink" href="#slivka.JobStatus.PENDING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job request awaits processing. Used internally by slivka.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.REJECTED">
+<span class="sig-name descname"><span class="pre">REJECTED</span></span><a class="headerlink" href="#slivka.JobStatus.REJECTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job request was rejected. Used internally by slivka.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.ACCEPTED">
+<span class="sig-name descname"><span class="pre">ACCEPTED</span></span><a class="headerlink" href="#slivka.JobStatus.ACCEPTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job request was accepted fur submission. Used internally by slivka.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.QUEUED">
+<span class="sig-name descname"><span class="pre">QUEUED</span></span><a class="headerlink" href="#slivka.JobStatus.QUEUED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job has beed submitted for execution but not started by the
+underlying queuing system (if any) yet.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.RUNNING">
+<span class="sig-name descname"><span class="pre">RUNNING</span></span><a class="headerlink" href="#slivka.JobStatus.RUNNING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process has been started and is currently running.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.COMPLETED">
+<span class="sig-name descname"><span class="pre">COMPLETED</span></span><a class="headerlink" href="#slivka.JobStatus.COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job finished successfully and the results are ready.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.CANCELLING">
+<span class="sig-name descname"><span class="pre">CANCELLING</span></span><a class="headerlink" href="#slivka.JobStatus.CANCELLING" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel request was issues and job is in process of being stopped.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.INTERRUPTED">
+<span class="sig-name descname"><span class="pre">INTERRUPTED</span></span><a class="headerlink" href="#slivka.JobStatus.INTERRUPTED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job was interrupted during it’s execution by the user and is not running.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.DELETED">
+<span class="sig-name descname"><span class="pre">DELETED</span></span><a class="headerlink" href="#slivka.JobStatus.DELETED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job has been deleted from the queuing system.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.FAILED">
+<span class="sig-name descname"><span class="pre">FAILED</span></span><a class="headerlink" href="#slivka.JobStatus.FAILED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job execution failed due to invalid input or errors during the execution.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.ERROR">
+<span class="sig-name descname"><span class="pre">ERROR</span></span><a class="headerlink" href="#slivka.JobStatus.ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job execution failed due to misconfigured or faulty queuing system.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="slivka.JobStatus.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><a class="headerlink" href="#slivka.JobStatus.UNKNOWN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Job status cannot be determined.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Finally, the <code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code> method takes the job and is responsible
+for cancelling it. It should only send a cancel request to the underlying
+execution system and not wait for the job to be actually stopped.</p>
+<p>If any irrecoverable error occurs during job submission, status check
+or cancellation, caused by the Runner or its underlying execution
+system malfunction, the methods should raise an exception. This will
+put jobs being processed in an error state and indicate a problem with the runner.
+The exception should not be raised for jobs that run properly but
+did not complete successfully due to invalid input.</p>
+<p>Additionally, each of those methods has a batch counterpart,
+<a class="reference internal" href="#Runner.batch_submit" title="Runner.batch_submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">batch_submit()</span></code></a>, <a class="reference internal" href="#Runner.batch_check_status" title="Runner.batch_check_status"><code class="xref py py-meth docutils literal notranslate"><span class="pre">batch_check_status()</span></code></a>,
+<a class="reference internal" href="#Runner.batch_cancel" title="Runner.batch_cancel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">batch_cancel()</span></code></a> respectively. They are supposed to
+provide performance benefit by performing an action on multiple jobs
+at once. Each of those methods takes a list of the objects as a single
+argument and returns a list. The objects in the list have the same meaning
+and types as in the single-job methods. Default implementations
+call their single-job variants multiple times.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="Runner">
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Runner</span></span><a class="headerlink" href="#Runner" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="Runner.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runner_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>runner_id</strong> (<em>RunnerID</em>) – pair of service and runner ids</p></li>
+<li><p><strong>command</strong> (<em>str | List</em><em>[</em><em>str</em><em>]</em>) – command passed as a shell command or a list of arguments</p></li>
+<li><p><strong>args</strong> (<em>List</em><em>[</em><em>Argument</em><em>]</em>) – argument definitions</p></li>
+<li><p><strong>outputs</strong> (<em>List</em><em>[</em><em>OutputFile</em><em>]</em>) – output file definitions</p></li>
+<li><p><strong>env</strong> (<em>Map</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – custom environment variables for this service</p></li>
 </ul>
-<p>Every class implementing abstract runner must define two methods responsible for those two operations.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">submit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span>
-</pre></div>
-</div>
-<p>The <code class="docutils literal notranslate"><span class="pre">submit</span></code> method is invoked once to start/submit the job to the queuing engine.
-The <code class="docutils literal notranslate"><span class="pre">cmd</span></code> parameter is the list of command line arguments similar to those
-passed to POSIX <a class="reference external" href="https://linux.die.net/man/3/execv">execv function</a>. The <code class="docutils literal notranslate"><span class="pre">cwd</span></code> parameter is an absolute path to the designated
-directory where the command should be executed. The directory is already created when
-the method is called. Additionally, you may access a read-only dictionary of environment variables
-stored in <code class="docutils literal notranslate"><span class="pre">self.env</span></code> object property. New jobs should use these variables rather than
-global variables accessible form <code class="docutils literal notranslate"><span class="pre">os.environ</span></code>.
-The method should return a job identifier which will be further used to monitor the job status.
-The only restriction imposed on the job identifier is it must be json-serializable
-i.e. it may only consist of (possibly nested) dictionaries, lists, strings, booleans, numbers and nulls.
-The job id should contain all the data needed to check the job status.
-If this method raises an exception, the job status is set to <code class="docutils literal notranslate"><span class="pre">JobStatus.ERROR</span></code> automatically.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@classmethod</span>
-<span class="k">def</span> <span class="nf">check_status</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JobStatus</span>
-</pre></div>
-</div>
-<p>The <code class="docutils literal notranslate"><span class="pre">check_status</span></code> class method is invoked periodically for each running job to monitor the changes
-of their status. The <code class="docutils literal notranslate"><span class="pre">job_id</span></code> parameter is the json-object previously returned by <code class="docutils literal notranslate"><span class="pre">submit</span></code>
-and <code class="docutils literal notranslate"><span class="pre">cwd</span></code> is the path to the current working directory of that job.
-The method should return <code class="docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code> corresponding to the current status of the job.
-Once the value corresponding to the finished job is returned, the status of that job will not be checked anymore.
-If this method raises an exception, the job status is set to <code class="docutils literal notranslate"><span class="pre">JobStatus.ERROR</span></code> automatically.</p>
-</section>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Runner.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#Runner.id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Full runner identifier which is a tuple of service id and runner id.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Runner.command">
+<span class="sig-name descname"><span class="pre">command</span></span><a class="headerlink" href="#Runner.command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base command converted to the list of arguments. The base command
+is already included in the command line parameters passed to the
+<a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a> method.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Runner.arguments">
+<span class="sig-name descname"><span class="pre">arguments</span></span><a class="headerlink" href="#Runner.arguments" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of arguments definitions. Those are used internally to construct
+the command line arguments passed to the <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a>
+method.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Runner.outputs">
+<span class="sig-name descname"><span class="pre">outputs</span></span><a class="headerlink" href="#Runner.outputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output files definitions. Used internally to search the directory
+for the results.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="Runner.env">
+<span class="sig-name descname"><span class="pre">env</span></span><a class="headerlink" href="#Runner.env" title="Permalink to this definition">¶</a></dt>
+<dd><p>Environment variables defined for this service that should be
+used for new jobs. This dictionary should not be modified outside
+of the <a class="reference internal" href="#Runner.__init__" title="Runner.__init__"><code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code></a> method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cwd</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used internally by the scheduler to start a new job. Performs all preparations
+needed for the new job and calls <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.batch_start">
+<span class="sig-name descname"><span class="pre">batch_start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.batch_start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used internally by the scheduler to start a batch of jobs. Performs all
+preparations needed for the new jobs and calls <a class="reference internal" href="#Runner.batch_submit" title="Runner.batch_submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">batch_submit()</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.submit">
+<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">submit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.submit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submits the command to the underlying execution system and returns
+the job wrapper. If an error resulting from the system malfunction
+prevents job from being properly started, an appropriate exception
+should be raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>command</strong> (<a class="reference internal" href="#Command" title="Command"><code class="xref py py-class docutils literal notranslate"><span class="pre">Command</span></code></a>) – A command containing arguments and working directory.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A wrapper object containing job id and working directory</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#Job" title="Job">Job</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.check_status">
+<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">check_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.check_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks and returns the current status of the job using one of the
+<a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code></a> values. The argument
+is the same job object as returned by the <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a>
+method. If the status could not be checked due to an error, an
+appropriate exception should be raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>job</strong> (<a class="reference internal" href="#Job" title="Job"><em>Job</em></a>) – Job object as returned by <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Current job status.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus">slivka.JobStatus</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.cancel">
+<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">cancel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancels currently running job. Does nothing if the job is not
+running. It should only send cancel request to the underlying
+execution system without waiting until the job is actually stopped.
+After successful cancel, consecutive status checks should result in
+<code class="docutils literal notranslate"><span class="pre">CANCELLING</span></code> status and then <code class="docutils literal notranslate"><span class="pre">INTERRUPTED</span></code> or <code class="docutils literal notranslate"><span class="pre">DELETED</span></code>
+once the job is stopped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>job</strong> (<a class="reference internal" href="#Job" title="Job"><em>Job</em></a>) – Job object as returned by <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.batch_submit">
+<span class="sig-name descname"><span class="pre">batch_submit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">commands</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.batch_submit" title="Permalink to this definition">¶</a></dt>
+<dd><p>A batch variant of the <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a> method used to submit
+multiple jobs at once. Sub-classes should re-implement this method
+if there is a way to start multiple jobs at once which offers performance
+benefits. Default implementation makes multiple calls to its single-job
+counterpart.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>commands</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Command" title="Command"><em>Command</em></a><em>]</em>) – List of command tuples containing arguments and working directories.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of jobs for each provided command.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#Job" title="Job">Job</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.batch_check_status">
+<span class="sig-name descname"><span class="pre">batch_check_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jobs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.batch_check_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Batch variant of the <a class="reference internal" href="#Runner.check_status" title="Runner.check_status"><code class="xref py py-meth docutils literal notranslate"><span class="pre">check_status()</span></code></a> method used to check
+statuses of multiple jobs at once. Takes a list of jobs and returns
+a list of statuses in the same order. Sub-classes should re-implement
+this method if checking status in batches provides performance
+improvement. Default implementation makes multiple calls to its
+single-job counterpart.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>jobs</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Job" title="Job"><em>Job</em></a><em>]</em>) – List of jobs to check the status for.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of statuses for each passed job.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus">JobStatus</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Runner.batch_cancel">
+<span class="sig-name descname"><span class="pre">batch_cancel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jobs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.batch_cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Batch variant of the <a class="reference internal" href="#Runner.cancel" title="Runner.cancel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code></a> method. Takes a list of
+jobs and cancels them all.
+Sub-classes should re-implement this method if cancelling jobs
+in batches is more efficient than doing it individually.
+Default implementation makes multiple calls to its single-job
+counterpart.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>jobs</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Job" title="Job"><em>Job</em></a><em>]</em>) – List of jobs to be cancelled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -176,24 +614,16 @@ If this method raises an exception, the job status is set to <code class="docuti
   <h3><a href="index.html">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Advanced Usage</a><ul>
-<li><a class="reference internal" href="#limiters">Limiters</a><ul>
-<li><a class="reference internal" href="#creating-limiter-class">Creating limiter class</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#custom-runners">Custom Runners</a><ul>
-<li><a class="reference internal" href="#basic-functionality">Basic functionality</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#parameter-conditions">Parameter conditions</a></li>
+<li><a class="reference internal" href="#selectors">Selectors</a></li>
+<li><a class="reference internal" href="#custom-runners">Custom Runners</a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="specification.html"
-                        title="previous chapter">Specification</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="python_client.html"
-                        title="next chapter">Client applications</a></p>
+                        title="previous chapter">Configuration</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -222,17 +652,15 @@ If this method raises an exception, the job status is set to <code class="docuti
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="python_client.html" title="Client applications"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="specification.html" title="Specification"
+          <a href="specification.html" title="Configuration"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Advanced Usage</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021, Mateusz Maciej Warowny.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.0.2.
     </div>
   </body>
 </html>

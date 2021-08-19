@@ -1,24 +1,24 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Getting Started &#8212; slivka 0.7b2 documentation</title>
-    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <title>Getting Started &#8212; slivka 0.8.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
     
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Specification" href="specification.html" />
-    <link rel="prev" title="Welcome to Slivka’s documentation!" href="index.html" /> 
+    <link rel="next" title="Configuration" href="specification.html" />
+    <link rel="prev" title="Welcome to slivka’s documentation!" href="index.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -27,12 +27,13 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="specification.html" title="Specification"
+          <a href="specification.html" title="Configuration"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to Slivka’s documentation!"
+          <a href="index.html" title="Welcome to slivka’s documentation!"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Getting Started</a></li> 
       </ul>
     </div>  
 
@@ -47,19 +48,19 @@
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
 <p>Slivka is a free software which provides easy and convenient means
 for creating web services on your local computer, server or cluster.
-It is written in Python and is available as a source code or from anaconda.</p>
+It is written in Python and is available both as a source code or from anaconda.</p>
 <p>The core of the system is the scheduler which manages jobs execution,
 parses command line arguments and delegates tasks to runners that
 start new processes. It uses mongo database to store and exchange data
 with the REST server which communicates with client applications –
 takes their requests and provides information about running jobs.</p>
-<figure class="align-default" id="id4">
+<figure class="align-default" id="id3">
 <img alt="_images/overview.svg" src="_images/overview.svg" /><figcaption>
 <p><span class="caption-text">Diagram of interactions between slivka system components.
 The REST server pushes new requests to the database where
 the scheduler picks them from and dispatches to the correct
 runner. The instructions how to create web services and run
-command line programs are taken from the config files.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
+command line programs are taken from the config files.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <section id="scheduler">
@@ -104,50 +105,39 @@ this allows you to write plug-ins that run your programs in new ways.</p>
 </section>
 <section id="config-files">
 <h3>Config files<a class="headerlink" href="#config-files" title="Permalink to this headline">¶</a></h3>
-<p>Configuration files live outside of the slivka module and provide
-system settings and service information. As a system
-administrator, you are responsible for creating and maintaining
+<p>Configuration files contain parameters controlling the behaviour of slivka
+and also serve as description of services (programs) that can be run with it.
+The configuration files are situated outside of the slivka package to
+guarantee portability and better isolation from the slivka internals.
+As a system administrator, you are responsible for creating and maintaining
 those configuration files, so the rest of this tutorial will be mostly
 dedicated to them.</p>
 </section>
 </section>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>Slivka is provided as a source code and an Anaconda package. Using
+<p>Slivka is provided as a source code and as an Anaconda package. Using
 conda is strongly recommended, but it can also be installed with pip
 or setuptools once the source code is obtained. Make sure that the
 programs you intend to run are accessible from where the slivka is
 installed (machine or VM). They don’t have to be in the same virtual
 python/conda environment though.</p>
 <p>Installation requires Python 3.5+ (version 3.7 recommended).
-Additional requirements that will be downloaded and installed
-automatically, include:</p>
-<ul class="simple">
-<li><p>attrs (&gt;=19)</p></li>
-<li><p>click (&gt;=7.0)</p></li>
-<li><p>Flask (&gt;=1.0)</p></li>
-<li><p>frozendict (&gt;=1.2)</p></li>
-<li><p>gunicorn (&gt;=19.9) (optional)</p></li>
-<li><p>jsonschema (&gt;=2.5.1)</p></li>
-<li><p>MarkupSafe (&gt;=1.0)</p></li>
-<li><p>pymongo (&gt;=3.7)</p></li>
-<li><p>PyYAML (&gt;=3.11)</p></li>
-<li><p>pyzmq (&gt;=17.0)</p></li>
-<li><p>simplejson (&gt;=3.16)</p></li>
-<li><p>uwsgi (&gt;=2.0) (optional)</p></li>
-<li><p>Werkzeug (&gt;=0.15)</p></li>
-</ul>
+Additional requirements will be downloaded and installed
+automatically during slivka installation.</p>
 <section id="installing-with-conda">
 <h3>Installing with conda<a class="headerlink" href="#installing-with-conda" title="Permalink to this headline">¶</a></h3>
 <p>Conda installation is recommended due to its simplicity. If you want
-to use a dedicated virtual environment create it and install slivka with:</p>
+to use a dedicated virtual environment create it and install slivka
+into it with the following commands:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.7</span>
 <span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">c</span> <span class="n">slivka</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">slivka</span>
 <span class="n">conda</span> <span class="n">activate</span> <span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p>substituting the environment name (e.g. slivka) for <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code>.
-More information can be found in <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a>.</p>
+More information on how to use conda can be found in
+<a class="reference external" href="https://conda.io/en/latest/">conda documentation</a>.</p>
 </section>
 <section id="installing-from-sources">
 <h3>Installing from sources<a class="headerlink" href="#installing-from-sources" title="Permalink to this headline">¶</a></h3>
@@ -181,12 +171,15 @@ to install it system-wide.</p>
 <h2>Running slivka<a class="headerlink" href="#running-slivka" title="Permalink to this headline">¶</a></h2>
 <section id="creating-new-project">
 <h3>Creating new project<a class="headerlink" href="#creating-new-project" title="Permalink to this headline">¶</a></h3>
-<p>A slivka project is a single instance of slivka with its own settings
-and collection of services. You can create as many instances as you want
-each running in a separate directory.</p>
-<p>During installation, a <code class="docutils literal notranslate"><span class="pre">slivka</span></code> executable was created and added to
-your path. It can be used to initialize new projects and run slivka.</p>
-<p>Let us start with initializing an empty project. To do this, run</p>
+<p>A slivka project is a collection of files (configuration files,
+scripts, binaries) that, together, can be interpreted by slivka
+to run a collection of programs as web services.
+One slivka installation can be used to create and run multiple
+projects independently, as long as they are in separate directories.</p>
+<p>During the installation, a <code class="docutils literal notranslate"><span class="pre">slivka</span></code> executable was created and added to
+the path. It is the main entry point which can be used to initialize
+new projects and run the existing ones.</p>
+<p>Let us start with creating an empty project. To do this, run</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span> <span class="n">init</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
 </pre></div>
 </div>
@@ -201,14 +194,16 @@ run as a python module</p>
 </pre></div>
 </div>
 </div>
-<p>The newly created directory will contain default setting files and
+<p>The newly created directory will contain default configuration files and
 an example service. In the following sections we will walk through the
 process of creating and configuring new services.</p>
 </section>
 <section id="starting-up">
 <h3>Starting up<a class="headerlink" href="#starting-up" title="Permalink to this headline">¶</a></h3>
-<p>At this point you are ready to launch a newly created slivka project.
-Navigate to the project directory and start three processes</p>
+<p>At this point you are ready to launch a newly created slivka project
+which already contains a dummy example service.
+Navigate to the project directory and start those three processes
+(make sure the mongo database is available first)</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">slivka</span> <span class="n">start</span> <span class="n">server</span> <span class="o">&amp;</span>
 <span class="n">slivka</span> <span class="n">start</span> <span class="n">scheduler</span> <span class="o">&amp;</span>
 <span class="n">slivka</span> <span class="n">start</span> <span class="n">local</span><span class="o">-</span><span class="n">queue</span> <span class="o">&amp;</span>
@@ -220,237 +215,358 @@ Navigate to the project directory and start three processes</p>
 <p class="admonition-title">Note</p>
 <p>If your mongo database is listening on port other than the default
 or any of the ports used by slivka is already in use you can
-change them in the <em>settings.yaml</em> file.</p>
+change them in the <em>config.yaml</em> file.</p>
 </div>
 </section>
 <section id="submitting-job">
 <h3>Submitting job<a class="headerlink" href="#submitting-job" title="Permalink to this headline">¶</a></h3>
-<p>Now, you can send a GET request or navigate with your web browser to
-<a class="reference external" href="http://127.0.0.1:8000/api/services">http://127.0.0.1:8000/api/services</a> to see the list of currently
-available services, or one “Example Service” to be specific.</p>
-<p>Moving on to <em>/api/services/example</em> will show you the details of
-the service along with the list of form fields a.k.a. input parameters
-of that service. Don’t worry if the details doesn’t make much sense
-yet. For now, notice one field named <em>msg</em> which we are going to use.</p>
+<p>In this subsection we will take a look at the data exchanged in
+the  client-server communication and submit
+our first job using a terminal. This knowledge is not crucial to manage
+and use slivka services, so feel free to skip to the next section
+if it gets too technical.</p>
+<p>In the following examples we use curl, a command line tool for transferring
+data over network protocols, to send and receive data from the server.
+More information can be found on the <a class="reference external" href="https://curl.se/">cURL website</a>.</p>
+<p>Once the slivka server is up, you can send a GET request (or open the
+url in the web browser) to <a class="reference external" href="http://127.0.0.1:4040/api/services">http://127.0.0.1:4040/api/services</a>
+in order to list currently available services.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>curl http://127.0.0.1:4040/api/services
+</pre></div>
+</div>
+<p>The response will show a JSON formatted list of services, or one
+“Example Service” to be more specific. Information about this one
+service can also be requested from <a class="reference external" href="http://127.0.0.1:4040/api/services/example">/api/services/example</a>.
+The response contains the information
+about the service including the list of input parameters
+for that service. Each parameter needs to have a value supplied when
+the new job is submitted. Seeing all those parameters and their
+properties may be a bit daunting, so we focus on and break
+down the last one for now.</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-  <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;msg&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Message&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Message printed to the output file&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-  <span class="nt">&quot;multiple&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+  <span class="nt">&quot;array&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
   <span class="nt">&quot;default&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>
-  <span class="nt">&quot;minLength&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-  <span class="nt">&quot;maxLength&quot;</span><span class="p">:</span> <span class="mi">15</span>
+  <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Required command line argument&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;arg&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Text argument&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+  <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>This tells us that one of the parameters the example service accepts
-is named “msg”, it is a required parameter of a text type and its length should be
-between 3 and 15 characters. In order to submit a new job, send a POST
-request to that endpoint providing a value for the <em>msg</em> parameter.
-In our examples we are Using curl, a command line tool for transferring
-data over network protocols. More information can be found on the
-<a class="reference external" href="https://curl.se/">cURL website</a>.</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>curl -d<span class="s2">&quot;msg=hello world&quot;</span> http://localhost:8000/api/services/example
+<p>The most important property is parameter’s <em>id</em>. It is used to
+reference the parameter, especially when providing a value for it.
+Second most important property is parameter <em>type</em> which dictates
+what values will be accepted (text, number, file, etc). <em>Array</em> tells
+us whether this parameter takes multiple values which is false in this
+case, and <em>required</em> tells whether the value must be provided for the
+new job to be started as some parameters may be optional.
+<em>Default</em> indicates what value will be used if no other value is supplied.
+Finally, <em>name</em> and <em>description</em> contain human-friendly name of
+the parameter accompanied by a longer commentary.</p>
+<p>In order to create a new job, we send a POST request to the
+<a class="reference external" href="http://127.0.0.1:4040/api/services/example/jobs">/api/services/example/jobs</a> endpoint providing values for the
+parameters in the request body using either urlencoded or multipart form.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>curl -d<span class="s2">&quot;rep=v1&amp;rep=v2&amp;arg=val3&quot;</span> http://localhost:4040/api/services/example/jobs
 </pre></div>
 </div>
-<p>Congratulations, you’ve just submitted the first job to your slivka
-instance. You should have received the id of the newly created job and
-slivka should have started working on it. The server response will look
-like this:</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-  <span class="nt">&quot;statuscode&quot;</span><span class="p">:</span> <span class="mi">202</span><span class="p">,</span>
-  <span class="nt">&quot;uuid&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;job uuid&gt;&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;URI&quot;</span><span class="p">:</span> <span class="s2">&quot;/api/tasks/&lt;job uuid&gt;&quot;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>You can follow the <em>URI</em> to see the current job status and get another URI
-pointing to the output files.</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-  <span class="nt">&quot;statuscode&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
-  <span class="nt">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;COMPLETED&quot;</span><span class="p">,</span>
-  <span class="nt">&quot;ready&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-  <span class="nt">&quot;filesURI&quot;</span><span class="p">:</span> <span class="s2">&quot;/api/tasks/&lt;job uuid&gt;/files&quot;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
+<p>If you followed these instructions, then you’ve just submitted your
+first job to slivka.
+If everything went correctly, the server response should contain
+the id of the new job along with other data such as its status,
+submission time and parameters used.</p>
+<p>You can follow the url specified in the <em>&#64;url</em> property to view the
+job resource along with the current progress status.</p>
 </section>
 </section>
 <section id="configuring-services">
 <h2>Configuring services<a class="headerlink" href="#configuring-services" title="Permalink to this headline">¶</a></h2>
-<p>Until now, we’ve only seen slivka using the existing example
-service. In this section we will take a closer look into the configuration
+<p>In this section we will take a closer look into the configuration
 file of the example service and learn how to create our own services.</p>
 <p>First, navigate to the <em>services</em> folder in your slivka project directory.
-It contains a single <em>example.service.yaml</em> file which contains the
-service information. In fact, any file in this directory, whose name
+There is a single <em>example.service.yaml</em> file there which contains the
+service configuration. Any file in this directory, whose name
 ends with <em>service.yaml</em>, is automatically recognised as a service
-definition. In this part we will go through each section of the file.
-The configuration files are written in <a class="reference external" href="https://yaml.org/">yaml</a>, so make sure you are
+definition. The identifier of the service is taken from the file name.
+In the following sections we will go through each part of the file
+one by one.</p>
+<p>The configuration files are written in <a class="reference external" href="https://yaml.org/">yaml</a>, so make sure you are
 familiar with the yaml syntax before continuing.</p>
 <section id="service-metadata">
 <h3>Service metadata<a class="headerlink" href="#service-metadata" title="Permalink to this headline">¶</a></h3>
-<p>First of all, lines starting with <code class="docutils literal notranslate"><span class="pre">#</span></code> are comments and are ignored
-by the program so they can be used for making notes.
-The first couple of lines is a good place to write a few comments
+<p>Before we start, note that the lines starting with <code class="docutils literal notranslate"><span class="pre">#</span></code> are ignored
+by the program, so they can be used for making comments.
+The first few lines is a good place to write a few notes
 briefly describing the service including information for
-anyone who is going to maintain those files.</p>
-<p>Next comes the label of the service. This is a human-readable name of the
-service which will be displayed to users (the internal service name
-is derived from the file name). Use meaningful labels which
-allow to recognise what program the service is running.</p>
-<p>After that you can see a list of classifiers. This element is optional
-and can be used to tag and categorise the services. One use case is to
-provide additional information to client applications.</p>
+anyone who is going to maintain those files in the future.</p>
+<p>The topmost properties contain service metadata. They serve
+an informative purpose for the users of the service.
+Starting from the top we have <em>slivka-version</em> which tells the slivka
+version this service was written for and compatible with.
+Then, <em>name</em> and <em>description</em> contain a brief service name
+(not to be confused with an identifier) and a description with more
+detailed information respectively. After that, you can optionally add an
+<em>author</em>, <em>version</em> of the software, software <em>license</em>, and
+<em>classifiers</em> which is a list of tags that may help users or software
+categorise and recognise the service.</p>
 </section>
-<section id="form">
-<h3>Form<a class="headerlink" href="#form" title="Permalink to this headline">¶</a></h3>
-<p>This section usually makes the most of the configuration file. This is
-the place where the input parameters for the service are defined.
-Slivka uses those to construct input forms which you already saw when
-going through the job submission process. Each key represents a unique
-field name which serves as an identifier and is used as a parameter
-name in a HTTP request. Preferably, it should contain lowercase letters
-dashes and underscores only.</p>
-<p>There are three values nested under each field: <em>label</em>, <em>description</em>
-and <em>value</em>. <em>Label</em> is a full name of the field which client applications
-are going to display to the users. Just like with the service labels,
-field labels should be relatively short and meaningful to the users.
-Next, there is a <em>description</em> parameter containing detailed help text
-for the field. It should contain all the information about the parameter
-such as allowed values or effects it has on the program execution.
-The last parameter – <em>value</em> – describes constraints imposed on the
-field value. Specifying the parameter type is required. Additionally,
-you can set whether the field is required (default is yes) and specify
-a default value used when no value is given by the user. Allowed types
-and type specific parameters are described in the
-<a class="reference internal" href="specification.html#value-object-spec"><span class="std std-ref">value object</span></a> specification.</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h3>
+<p>The <em>parameters</em> property usually makes the biggest part of the configuration file.
+This is the place where the input parameters for the service are listed
+which are further mapped to the command line arguments.
+If you followed the job submission guide, you may recognise those
+parameters are the same that are presented to the front-end user.</p>
+<p>Each key in the <em>parameters</em> mapping is a unique parameter id;
+it can only contain letters, digits, dashes and underscores.
+The object under each key defines the parameter. in order to get
+you started, we are going to explain how to add/remove and define
+service parameters based on the example service . The more detailed technical
+information can be found in the <a class="reference internal" href="specification.html#parameters-specification"><span class="std std-ref">parameters specification</span></a>.</p>
+<p>First of all, each parameter must have a <em>name</em> and a <em>type</em> specified.
+The name differs from the identifier (key) in that it doesn’t have any
+character restrictions and is for the human use only. Keep it concise and
+self explanatory, so users know what that parameter is controlling.
+If you need to disclose more information and details, you can add it
+in a <em>description</em> which can contain longer text.</p>
+<p>The parameter <em>type</em>, as the name suggests, tells users what kind
+of value is expected. There are several built-in types which should
+cover the majority of what command line programs need; these are:
+<code class="docutils literal notranslate"><span class="pre">integer</span></code>, <code class="docutils literal notranslate"><span class="pre">decimal</span></code>, <code class="docutils literal notranslate"><span class="pre">text</span></code>, <code class="docutils literal notranslate"><span class="pre">flag</span></code>, <code class="docutils literal notranslate"><span class="pre">choice</span></code> and <code class="docutils literal notranslate"><span class="pre">file</span></code>.
+You can immediately follow the type with a pair of square brackets to
+convert it into an array so that multiple values can be provided for
+that single parameter e.g. <code class="docutils literal notranslate"><span class="pre">text[]</span></code>.</p>
+<p>Two properties which are frequently used, but are not required,
+include: <em>default</em> that specify the value which will be used if it
+is not supplied by the user (skip it if you don’t want to use
+a default value) and <em>required</em> which allows to set whether
+the value for that parameter must be provided for the job to be started
+(default is <code class="docutils literal notranslate"><span class="pre">true</span></code>). Note that settings a default value makes the
+parameter automatically optional.</p>
+<p>There are also additional properties which depend on the parameter type.
+The notable ones are <em>min</em> and <em>max</em> value that can be specified for
+numeric types, the <em>min-length</em> and <em>max-length</em> applicable to
+texts and <em>choices</em> which must be listed for a choice type.
+<em>Choices</em> require a bit of explanation since it doesn’t contain
+a list of choices, as would be expected, but a mapping. The keys of the
+mapping is what is presented to the user, but the values are later used
+in the command. This way you can hide the actual
+command-line parameters and provide meaningful names for them.</p>
 </section>
 <section id="command">
 <h3>Command<a class="headerlink" href="#command" title="Permalink to this headline">¶</a></h3>
-<p>The <em>command</em> section is a complementary part to the <em>form</em>. It contains
-information on how to run the command line program, connects form
-parameters to the command line arguments and specify output files.
-Our example service runs an <em>example.py</em> service located in the <em>scripts</em>
-directory under the project directory. The command has the following syntax</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>example.py --infile &lt;input&gt; -t &lt;message&gt; -r &lt;repeat&gt; -w &lt;sleep&gt; --log -v &lt;output&gt;
-</pre></div>
-</div>
-<section id="base">
-<h4>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h4>
-<p>First, the configuration file defines a <em>baseCommand</em> which is a base
-executable that other arguments are appended to. In this case we want to
-run the example script with current python interpreter.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>python ${SLIVKA_HOME}/scripts/example.py
-</pre></div>
-</div>
-<p>You are free to include environment variables using standard bash syntax.
-In this case, we uses <em>SLIVKA_HOME</em> which is a variable set on slivka
-startup that points to the project directory.</p>
-</section>
-<section id="inputs">
-<h4>Inputs<a class="headerlink" href="#inputs" title="Permalink to this headline">¶</a></h4>
-<p>The following part called <em>inputs</em> is, not coincidentally, similar to the form
-section. It specifies how each value from the form is translated to the
-command line argument. Each form field is connected to it’s corresponding
-field in the input parameters list which in turn corresponds to the command
-line parameters (see the example command above).</p>
-<p>Our <em>example.py</em> command takes an input file <code class="docutils literal notranslate"><span class="pre">--input</span> <span class="pre">&lt;input&gt;</span></code> as the
-first parameter. Therefore, we specify <em>input-file</em> parameter which will
-take the file from the <em>input-file</em> form field. Then, we define how
-the argument shall look like in the command, that is <code class="docutils literal notranslate"><span class="pre">--input</span> <span class="pre">$(value)</span></code>.
-Slivka uses <code class="docutils literal notranslate"><span class="pre">$(value)</span></code> (notice round brackets) as a placeholder
-for the actual value that will be set later.
-Next comes the type of the argument; in this case it’s
-a <em>file</em>, but other possibilities are: <em>string</em> (default), <em>number</em>,
-<em>flag</em> and <em>array</em>. File type allows to specify additional <em>symlink</em> parameter
-which, if present, makes slivka create a symlink to the input file inside the
-process’ working directory and pass relative path to the symlink as
-a value instead of the full path to the file. This is particularly useful
-for programs that require all input files to be present in the
-current working directory.</p>
-<p>Remaining parameters follow the same syntax as the first one mapping
-form fields to the consecutive parameters of the example script.
-The only exception is the last parameter <em>_verbose</em> which doesn’t
-have a matching field. It demonstrates that you can add parameters which
-are not present in the form but you must provide their <em>value</em> explicitly.
-We suggest using names starting with an underscore for those detached
-arguments.</p>
-<p>Slivka preserves parameters order when parsing the file, so the
-arguments are passed to the command line program in the same order
-they are defined here.</p>
-</section>
-<section id="arguments">
-<h4>Arguments<a class="headerlink" href="#arguments" title="Permalink to this headline">¶</a></h4>
-<p>The <em>arguments</em> part contains the list of constant arguments that will be appended
-to each command. It might be convenient to define them in cases when the program takes
-modifiable options followed by constant parameters. In many cases, however,
-this part can be skipped as detached input parameters provide the same
-functionality.</p>
-</section>
-<section id="environment-variables">
-<h4>Environment variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h4>
-<p>If your program requires a special set of environment variables, they
-should be specified in the <em>env</em> part as a mapping of variable name to
-its new value.
-You are free to use current system environment variables in the value
-but cross-references and recursive definitions are not supported.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">env</span><span class="p">:</span>
-  <span class="nt">PATH</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">${HOME}/bin:${PATH}</span>
-</pre></div>
-</div>
-<p>Here, we set <em>PATH</em> variable to the current <em>PATH</em> with <em>~/bin</em>
-prepended.</p>
+<p>The <em>command</em> property contains the command that will be used to start
+the program on the computer. It can either be a text as you would type
+it into the shell or an array of arguments (similar to what you
+pass to <code class="docutils literal notranslate"><span class="pre">execl</span></code> function). The latter might be particularly useful
+if your command contains special characters and you want to be
+sure it’ll be split into arguments correctly.</p>
+<p>Environment variables can be inserted using either <code class="docutils literal notranslate"><span class="pre">$VARIABLE</span></code>
+or <code class="docutils literal notranslate"><span class="pre">${VARIABLE}</span></code> syntax. A literal “$” character can be obtained
+by escaping it with another dollar character like this: <code class="docutils literal notranslate"><span class="pre">$$</span></code>.
+Both, current environment variables and those defined in this file
+(more on customising process’ environment later) can be used.
+Also, a special <code class="docutils literal notranslate"><span class="pre">SLIVKA_HOME</span></code> variable pointing to the project
+directory can be used here as well.</p>
+<p>In the example we run python binary to which we provide an <em>example.py</em>
+located in the <em>scripts</em> folder under the project directory.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Slivka runs each program in a new environment passing only <em>PATH</em> and
-<em>SLIVKA_HOME</em> variables in addition to those provided in <em>env</em>.
-All other variables are stripped off.</p>
+<p>If your program or script is not directly available from the
+<em>PATH</em> you <strong>must</strong> give an absolute path to it. Failing to do so
+will result in all jobs failing with “file not found” error.
+This is where <code class="docutils literal notranslate"><span class="pre">SLIVKA_HOME</span></code> comes in handy as it contains an
+absolute path to the project root directory.</p>
+</div>
+</section>
+<section id="arguments">
+<h3>Arguments<a class="headerlink" href="#arguments" title="Permalink to this headline">¶</a></h3>
+<p>Once we have service parameters and command specified, we need to
+tell slivka how to translate each parameter value to the command line
+argument. Before we dive into details, we need to take a look at the
+python script that will be executed. It is a dummy program, that
+takes several parameters as command line arguments and produces some
+text. Its usage can be summarised as follows</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>example.py <span class="o">[</span>--infile FILE<span class="o">]</span> <span class="o">[</span>--opt TEXT<span class="o">]</span> <span class="o">[</span>--rep REP<span class="o">[</span>,REP,...<span class="o">]]</span> <span class="se">\</span>
+  <span class="o">[</span>--delay SECONDS<span class="o">]</span> <span class="o">[</span>--letter LETTER<span class="o">]</span> <span class="o">[</span>--flag<span class="o">]</span> -- ARG
+</pre></div>
+</div>
+<p>Here, optional parts are enclosed in brackets. As we can see, the
+script takes a few optional arguments (one of which takes multiple,
+comma-separated values) followed by a double dash and
+a single required argument.</p>
+<p>As you might have already noticed, those arguments match the
+parameters and arguments specified in the service definition file.
+For each argument in the command, we have an entry in the <em>args</em>
+mapping. The entry value is an object which must at least have
+<em>arg</em> property that contains a template for the command line argument.
+For each of those entries, slivka tries to find a parameter with
+a matching id and, if found, it replaces a user-provided value for the
+<code class="docutils literal notranslate"><span class="pre">$(value)</span></code> placeholder.</p>
+<p>We’ll now explain all the arguments in the service file one-by-one.
+Let us skip the first entry for now and move on to the <em>opt</em> item.
+It is a simple optional text parameter
+passed to the command as <code class="docutils literal notranslate"><span class="pre">--opt</span> <span class="pre">$(value)</span></code>. When users submit new jobs,
+whatever value they provide as <em>opt</em> will be inserted in place of
+the placeholder. You should not worry about special characters and
+spaces as slivka will automatically quote and escape any of them.
+It is also possible to use environment variables here. The rules for
+using environment variables are the same as for <a class="reference internal" href="#command">command</a>.</p>
+<p>Next one is <em>rep</em>, similar to the <em>opt</em> parameter, this one is a
+text parameter, however, it can take multiple values as well.
+In addition to <em>arg</em> it also has <em>join</em> property which tells what
+character should be used to join multiple values into one argument.
+As a result, the output will be <code class="docutils literal notranslate"><span class="pre">--rep</span> <span class="pre">valA,valB,valC`</span></code>.
+If <em>join</em> is not specified, then the whole argument is repeated
+multiple times. This would result in <code class="docutils literal notranslate"><span class="pre">--rep</span> <span class="pre">valA</span> <span class="pre">--rep</span> <span class="pre">valB</span> <span class="pre">--rep</span> <span class="pre">valC</span></code>.</p>
+<p>The <em>delay</em> parameter is a numeric type, but since all values are
+converted to strings implicitly it doesn’t require any special treatment.</p>
+<p>The <em>letter</em> parameter behaves similar to a plain text parameter,
+however, it’s important to remember that values are converted
+according to the <em>choices</em> mapping in the parameter definition prior
+to being passed to the command line.</p>
+<p>Moving on, <em>flag</em> (flag/boolean type) is a bit unusual as it doesn’t
+use a value and instead operates in the present/absent fashion.
+Under the hood, flags do actually have a value which is either <code class="docutils literal notranslate"><span class="pre">&quot;true&quot;</span></code>
+string literal if enabled or no value if disabled which results in
+the parameter being skipped.</p>
+<p>After the list of optional parameters we need to place <code class="docutils literal notranslate"><span class="pre">--</span></code> before
+the final argument. In order to place a constant in the command line
+we can specify it like any other argument. Since it does not have
+a corresponding input parameter, we need to specify a dummy default
+value or the argument will be skipped due to the missing value.
+For distinction, you can give it an id starting with an underscore.</p>
+<p>The last parameter is passed to the command as is, without additional
+prefixes, hence the value of <em>arg</em> contains <code class="docutils literal notranslate"><span class="pre">$(value)</span></code> only.</p>
+<p>Last but not least, we explain the <em>input-file</em> argument. The file-type
+parameters are converted to filesystem paths prior to being passed
+to the command line and, for all intends and purposes, can be treated
+as any other string.
+Those paths are absolute and are not pointing to the
+working directory where the program is run, which well-behaved
+programs should have no problems with. However, in case the program you use
+requires the input file to be present in it’s working directory, the
+solution is to add a <em>symlink</em> property to the argument definition.
+This will make slivka create a symbolic link to the file inside the
+program’s working directory and insert
+a relative path to the symlink in place of the original value.</p>
+<p>The last thing to mention is that slivka constructs the command line
+arguments in the same order as they appear in the <em>args</em> which does
+not need to be the same order as in the <em>parameters</em>.
+Also, any argument whose value is missing or is null is dropped from
+the command.</p>
+</section>
+<section id="environment-variables">
+<h3>Environment variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h3>
+<p>If your program requires special environment variables to be set, or
+you want to create a convenient alias for a value you can do it
+in the <em>env</em> property. It contains a mapping of environment variable
+names to their values that will be set when starting the command.
+You can use system environment variables here as well (you can’t make
+references to other variables defined here though).</p>
+<p>In our example, we have an alias for <code class="docutils literal notranslate"><span class="pre">/usr/bin/env</span> <span class="pre">python</span></code> stored
+in <code class="docutils literal notranslate"><span class="pre">PYTHON</span></code> variable. We could have then used the aliased line
+in the command by simply typing <code class="docutils literal notranslate"><span class="pre">$PYTHON</span></code>.
+We also re-define <code class="docutils literal notranslate"><span class="pre">PATH</span></code> to contain the <em>bin</em> folder from the
+project directory followed by the original value of <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p>
+<p>Slivka runs every command in a modified environment with all system
+variables except <code class="docutils literal notranslate"><span class="pre">PATH</span></code> removed. If you need any variable
+to be visible, you need to re-define it in <em>env</em>. e.g.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">env</span><span class="p">:</span>
+  <span class="nt">VARIABLE</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">${VARIABLE}</span>
+</pre></div>
 </div>
 </section>
 <section id="outputs">
-<h4>Outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h4>
-<p>Last but not least, the <em>outputs</em> part defines output files created
-by the program. Each file (or group of files) is given by the name-key
-under which you specify the <em>path</em> to the file (relative to the process’
-working directory). Path can be a file name or a <a class="reference external" href="https://en.wikipedia.org/wiki/Glob_(programming)">glob</a> pattern.
-Standard output and error streams are directed to the <em>stdout</em> and <em>stderr</em>
-files respectively, use those names if you want to include them.
-Additionally, you can provide a <em>media-type</em> to help
-web browsers and clients recognise the file type.</p>
+<h3>Outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h3>
+<p>The course of action following the successful (or not) execution of the
+program is collecting the results it produced. They usually come in
+the form of the output files and/or the text written to the output
+and error streams.</p>
+<p>The <em>outputs</em> property enumerates all output files that will be
+presented to the users. Each key represents an id of the result
+which may be one, or a collection of files. The only required
+property of the result object is <em>path</em> containing a relative path
+or a <a class="reference external" href="https://en.wikipedia.org/wiki/Glob_(programming)">glob</a> pattern that will be used to identify the file.
+The standard output and error streams are written to <em>stdout</em> and
+<em>stderr</em> files respectively and can be referred to as such.</p>
+<p>Additionally, you can provide additional metadata such as a
+human-readable <em>name</em> or <em>media-type</em> (as discussed in <a class="reference external" href="https://datatracker.ietf.org/doc/html/rfc2045">RFC 2045</a>)
+to help software recognise the content they are dealing with.</p>
 </section>
+<section id="execution-manager">
+<h3>Execution manager<a class="headerlink" href="#execution-manager" title="Permalink to this headline">¶</a></h3>
+<p>Once the program’s inputs and output are all worked out, it’s finally
+time to instruct slivka how to run the program. If your programs
+doesn’t put heavy loads on the machine and you have tiny user base,
+you might get away with running them in a current shell. But, you
+risk using up all the resources really quick if more using start
+running more intensive programs. This is where runners comes into play.</p>
+<section id="runners-overview">
+<h4>Runners overview<a class="headerlink" href="#runners-overview" title="Permalink to this headline">¶</a></h4>
+<p>The runner is a simple Python snippet that can take your carefully
+prepared command and execute it in whatever way it was written to
+do it. Currently, slivka has three built-in runners: <code class="docutils literal notranslate"><span class="pre">ShellRunner</span></code>,
+<code class="docutils literal notranslate"><span class="pre">SlivkaQueueRunner</span></code> and <code class="docutils literal notranslate"><span class="pre">GridEngineRunner</span></code>. This list will definitely
+expand in the future as slivka will grow.</p>
+<p>Starting with the simplest one, <code class="docutils literal notranslate"><span class="pre">ShellRunner</span></code> just spawns each job
+as a new process in the current shell, nothing more. It’s sufficient
+if you are dealing with very low number of jobs as it doesn’t require
+any prior setup to work. Although, since there is no control
+or limit on the number of simultaneous processes, it can easily
+clog your system if one user decides to start hundred jobs at once.</p>
+<p>A next improvement step is <code class="docutils literal notranslate"><span class="pre">SlivkaQueueRunner</span></code>. It sends the jobs
+to the separate process (that must be started first with
+<code class="docutils literal notranslate"><span class="pre">slivka</span> <span class="pre">start</span> <span class="pre">local-queue</span></code>) that in turn runs them in the shell.
+It may look just like running jobs in the current shell with extra step
+in between but this step actually gives some advantages. First of all,
+the queue may run on a different node or machine, so if the jobs start
+to take too many resources, they won’t clog the rest of the system.
+Also, slivka queue keeps track of the number of running processes
+and puts new job in the queue if their number exceeds a set limit.
+It’s far from being the proper system resources management system,
+but it’s intended to be lightweight and simple.</p>
+<p>The last one, <code class="docutils literal notranslate"><span class="pre">GridEngineRunner</span></code> utilizes a third-party queuing
+system to manage job execution. It dispatches received jobs to
+the Grid Engine using <code class="docutils literal notranslate"><span class="pre">qsub</span></code> command and lets it do all the
+resource management. You can tweak the execution parameters by
+adding additional parameters that will be passed to <code class="docutils literal notranslate"><span class="pre">qsub</span></code>.
+This is certainly most advanced solution suitable
+for very large systems that have Grid Engine set up.</p>
 </section>
-<section id="id3">
-<h3>Runners<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
-<p>Once the program details are specified, it’s  time to define runners that
-will be used to execute the job. In the <em>runners</em> sections, specify
-the <em>default</em> runner setting its <em>class</em> to either <code class="docutils literal notranslate"><span class="pre">SlivkaQueueRunner</span></code>
-so it will be run with the slivka worker queue, or <code class="docutils literal notranslate"><span class="pre">GridEngineRunner</span></code>
-to use <code class="docutils literal notranslate"><span class="pre">qsub</span></code> to start the jobs. GridEngineRunner also allows additional
-parameter named <em>qsub_args</em> containing a list of arguments passed
-directly to <code class="docutils literal notranslate"><span class="pre">qsub</span></code>. Example:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">default</span><span class="p">:</span>
-  <span class="nt">class</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">GridEngineRunner</span>
-  <span class="nt">parameters</span><span class="p">:</span>
-    <span class="nt">qsub_args</span><span class="p">:</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">-P</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">webservices</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">-q</span>
-      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">64bit-pri.q</span>
-</pre></div>
-</div>
-<p>More detailed information regarding runner definition can be found in
-the <a class="reference internal" href="specification.html#runners-spec"><span class="std std-ref">runner</span></a> specification.</p>
+<section id="specifying-runners">
+<h4>Specifying runners<a class="headerlink" href="#specifying-runners" title="Permalink to this headline">¶</a></h4>
+<p>Runners available for the service are listed under <em>runners</em> inside
+the <em>execution</em> property. Under each key, which is runner id,
+you need to specify runner <em>type</em> from one of the available types.
+You can additionally provide additional <em>parameters</em> depending on the
+runner. We won’t go into details here as they are available in the
+<a class="reference internal" href="specification.html#execution-management"><span class="std std-ref">Execution management</span></a> section.</p>
+</section>
+<section id="selector">
+<h4>Selector<a class="headerlink" href="#selector" title="Permalink to this headline">¶</a></h4>
+<p>The last bit that remains to be explained is the <em>selector</em>.
+In some cases you may need to have a fine grained control over
+which runner is used depending on job parameters. One of the examples
+is allocating different amount of memory depending on the data size.
+If there is more than one runner defined then the python function
+which the <em>selector</em> path is pointing to is called with command
+line parameters as an argument. The function then needs to return
+an identifier of the runner that will be used to run the command.
+This is an advanced functionality which is beyond the introductory
+tutorial, but it’s noteworthy. If you want to use one runner only
+name it <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> and remove <em>selector</em> line from the file.</p>
+</section>
 </section>
 <section id="build-your-service">
 <h3>Build your service<a class="headerlink" href="#build-your-service" title="Permalink to this headline">¶</a></h3>
-<p>At this point you should have enough information to create your own services.
-As an exercise, try creating a <em>greeter</em> service which takes a name
-from the user and uses <code class="docutils literal notranslate"><span class="pre">echo</span></code> command to output “Hello &lt;name&gt;.
-Have a nice day.” Try using as much elements as you can such as
-environment variables, detached parameters and arguments list.</p>
+<p>This is all for the basic tutorial. At this point you should
+be able to modify and create simple web services with slivka.
+Let us finish it with an exercise.
+Try creating a <em>greeter</em> service which takes a name
+from the user with a single input parameter and uses <code class="docutils literal notranslate"><span class="pre">echo</span></code>
+command to output “Hello &lt;name&gt;. Have a nice day.” to the standard
+output stream.</p>
 <p>After that, start slivka and try submitting the job to your service and
 retrieve the result.</p>
 </section>
@@ -458,6 +574,7 @@ retrieve the result.</p>
 </section>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -487,16 +604,17 @@ retrieve the result.</p>
 </li>
 <li><a class="reference internal" href="#configuring-services">Configuring services</a><ul>
 <li><a class="reference internal" href="#service-metadata">Service metadata</a></li>
-<li><a class="reference internal" href="#form">Form</a></li>
-<li><a class="reference internal" href="#command">Command</a><ul>
-<li><a class="reference internal" href="#base">Base</a></li>
-<li><a class="reference internal" href="#inputs">Inputs</a></li>
+<li><a class="reference internal" href="#parameters">Parameters</a></li>
+<li><a class="reference internal" href="#command">Command</a></li>
 <li><a class="reference internal" href="#arguments">Arguments</a></li>
 <li><a class="reference internal" href="#environment-variables">Environment variables</a></li>
 <li><a class="reference internal" href="#outputs">Outputs</a></li>
+<li><a class="reference internal" href="#execution-manager">Execution manager</a><ul>
+<li><a class="reference internal" href="#runners-overview">Runners overview</a></li>
+<li><a class="reference internal" href="#specifying-runners">Specifying runners</a></li>
+<li><a class="reference internal" href="#selector">Selector</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id3">Runners</a></li>
 <li><a class="reference internal" href="#build-your-service">Build your service</a></li>
 </ul>
 </li>
@@ -506,10 +624,10 @@ retrieve the result.</p>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to Slivka’s documentation!</a></p>
+                        title="previous chapter">Welcome to slivka’s documentation!</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="specification.html"
-                        title="next chapter">Specification</a></p>
+                        title="next chapter">Configuration</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -538,17 +656,18 @@ retrieve the result.</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="specification.html" title="Specification"
+          <a href="specification.html" title="Configuration"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to Slivka’s documentation!"
+          <a href="index.html" title="Welcome to slivka’s documentation!"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Getting Started</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021, Mateusz Maciej Warowny.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.0.2.
     </div>
   </body>
 </html>

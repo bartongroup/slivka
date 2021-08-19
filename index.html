@@ -1,19 +1,19 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Welcome to Slivka’s documentation! &#8212; slivka 0.7b2 documentation</title>
-    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <title>Welcome to slivka’s documentation! &#8212; slivka 0.8.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
     
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -28,7 +28,8 @@
         <li class="right" >
           <a href="getting_started.html" title="Getting Started"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to slivka’s documentation!</a></li> 
       </ul>
     </div>  
 
@@ -38,15 +39,14 @@
           <div class="body" role="main">
             
   <section id="welcome-to-slivka-s-documentation">
-<h1>Welcome to Slivka’s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
+<h1>Welcome to slivka’s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>Slivka is a server application for Python, intended for easy and flexible
 configuration of REST API for various web services. The server is based on the
 <a class="reference external" href="https://github.com/pallets/flask">Flask</a> microframework. The scheduler makes use of the <a class="reference external" href="https://www.mongodb.com/">mongoDB</a> as a storage and request broker.</p>
-<section id="table-of-contents">
-<h2>Table of contents<a class="headerlink" href="#table-of-contents" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 </div>
 <div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#overview">Overview</a></li>
@@ -55,37 +55,33 @@ configuration of REST API for various web services. The server is based on the
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#configuring-services">Configuring services</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="specification.html">Specification</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="specification.html">Configuration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="specification.html#project-structure">Project Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="specification.html#settings-file">Settings file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="specification.html#services">Services</a></li>
-<li class="toctree-l2"><a class="reference internal" href="specification.html#launching-the-project">Launching the Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="specification.html#configuration-file">Configuration file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="specification.html#service-configuration">Service configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="specification.html#command-line-interface">Command line interface</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#limiters">Limiters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#parameter-conditions">Parameter conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#selectors">Selectors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_usage.html#custom-runners">Custom Runners</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="python_client.html">Client applications</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="python_client.html#rest-api">REST API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_client.html#python">Python</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </section>
 <section id="indices-and-tables">
-<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
 <li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
 </ul>
 </section>
-</section>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -93,13 +89,10 @@ configuration of REST API for various web services. The server is based on the
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to Slivka’s documentation!</a><ul>
-<li><a class="reference internal" href="#table-of-contents">Table of contents</a><ul>
+<li><a class="reference internal" href="#">Welcome to slivka’s documentation!</a><ul>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
-</ul>
-</li>
 </ul>
 
   <h4>Next topic</h4>
@@ -135,12 +128,13 @@ configuration of REST API for various web services. The server is based on the
         <li class="right" >
           <a href="getting_started.html" title="Getting Started"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">slivka 0.7b2 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to slivka’s documentation!</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021, Mateusz Maciej Warowny.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.0.2.
     </div>
   </body>
 </html>
