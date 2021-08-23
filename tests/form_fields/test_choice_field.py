@@ -16,7 +16,7 @@ CHOICES = [
 
 
 # default value
-@nose.tools.raises(RuntimeError)
+@nose.tools.raises(ValueError)
 def test_invalid_default():
     ChoiceField('name', choices=CHOICES, default='qux')
 

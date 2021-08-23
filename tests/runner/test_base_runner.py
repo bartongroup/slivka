@@ -180,4 +180,4 @@ class TestBuildArgs:
         runner = RunnerStub(args=[Argument('array', "-m $(value)", join=" ")])
         yield (self._check_args, runner,
                {'array': ["a", "b", "c"]},
-               ["-m", "a", "b", "c"])
+               ["-m", "a b c"])
