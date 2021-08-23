@@ -1,4 +1,5 @@
 import contextlib
+from datetime import datetime
 import logging
 import operator
 import os
@@ -251,6 +252,7 @@ class Scheduler:
         for item in cursor:
             _id = item['_id']
             jobs = [JobMetadata(**kw) for kw in item['jobs']]
+            ts = datetime.now()
             try:
                 runner = self.runners[_id['service'], _id['runner']]
             except KeyError:
@@ -262,12 +264,13 @@ class Scheduler:
             if not updated:
                 continue
             JobRequest.collection(database).bulk_write([
-                UpdateOne({'uuid': job.uuid}, {'$set': {'status': state}})
-                for (job, state) in updated
+                UpdateOne({'uuid': job.uuid},
+                          {'$set': {'status': status, 'completion_time': ts}})
+                for (job, status) in updated
             ], ordered=False)
             JobMetadata.collection(database).bulk_write([
-                UpdateOne({'_id': job.id}, {'$set': {'status': state}})
-                for (job, state) in updated
+                UpdateOne({'_id': job.id}, {'$set': {'status': status}})
+                for (job, status) in updated
             ], ordered=False)
 
     def group_requests(self, requests: Iterable[JobRequest]) \

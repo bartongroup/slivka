@@ -156,8 +156,9 @@ def _job_resource(job_request: JobRequest):
         'parameters': parameters,
         'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
         'completionTime': (
+            job_request.status.is_finished() and
             job_request.completion_time and
-            job_request.completion_time.strftime(_DATETIME_STRF)
+            job_request.completion_time.strftime(_DATETIME_STRF) or None
         ),
         'finished': job_request.status.is_finished(),
         'status': job_request.status.name
