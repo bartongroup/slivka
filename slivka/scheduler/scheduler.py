@@ -1,11 +1,12 @@
 import contextlib
-from datetime import datetime
 import logging
 import operator
 import os
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
+from datetime import datetime
 from functools import partial
+from operator import itemgetter
 from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable)
 
@@ -27,11 +28,6 @@ def _fetch_pending_requests(database) -> Iterable[JobRequest]:
                 .collection(database)
                 .find({'status': JobStatus.PENDING}))
     return (JobRequest(**kwargs) for kwargs in requests)
-
-
-def _fetch_cancel_requests(database) -> List[str]:
-    requests = CancelRequest.collection(database).find()
-    return [kwargs['uuid'] for kwargs in requests]
 
 
 def get_classpath(cls):
@@ -173,20 +169,20 @@ class Scheduler:
 
         # Fetch cancel requests and update cancelled job states to
         # DELETED if they were PENDING or ACCEPTED; or CANCELLING if QUEUED or RUNNING
-        cancel_requests = _fetch_cancel_requests(database)
+        cancel_requests = CancelRequest.find(database)
         if cancel_requests:
+            job_ids = [cr.job_id for cr in cancel_requests]
             JobRequest.collection(database).update_many(
-                {'uuid': {'$in': cancel_requests},
+                {'_id': {'$in': job_ids},
                  'status': {'$in': [JobStatus.PENDING, JobStatus.ACCEPTED]}},
                 {'$set': {'status': JobStatus.DELETED}}
             )
             JobRequest.collection(database).update_many(
-                {'uuid': {'$in': cancel_requests},
+                {'_id': {'$in': job_ids},
                  'status': {'$in': [JobStatus.QUEUED, JobStatus.RUNNING]}},
                 {'$set': {'status': JobStatus.CANCELLING}}
             )
-            cancelled_jobs = JobMetadata.find(
-                database, {'uuid': {'$in': cancel_requests}})
+            cancelled_jobs = JobMetadata.find(database, {'_id': {'$in': job_ids}})
             for job in cancelled_jobs:
                 # fixme: do not blindly trust data from the database
                 #        the runner may not exist
@@ -194,7 +190,7 @@ class Scheduler:
                 with contextlib.suppress(OSError):
                     runner.cancel(JobTuple(job.job_id, job.cwd))
             CancelRequest.collection(database).delete_many(
-                {'uuid': {'$in': cancel_requests}})
+                {'_id': {'$in': list(map(itemgetter('_id'), cancel_requests))}})
 
         # starting ACCEPTED requests
         cursor = JobRequest.collection(database).aggregate([
@@ -219,7 +215,7 @@ class Scheduler:
                 for request, job in started:
                     queued.append(request)
                     new_jobs.append(JobMetadata(
-                        uuid=request.uuid,
+                        _id=request.id,
                         service=request.service,
                         runner=runner.name,
                         job_id=job.id,
@@ -264,7 +260,7 @@ class Scheduler:
             if not updated:
                 continue
             JobRequest.collection(database).bulk_write([
-                UpdateOne({'uuid': job.uuid},
+                UpdateOne({'_id': job.id},
                           {'$set': {'status': status, 'completion_time': ts}})
                 for (job, status) in updated
             ], ordered=False)
@@ -314,7 +310,7 @@ class Scheduler:
         try:
             jobs = runner.batch_start(
                 [req.inputs for req in requests],
-                [os.path.join(self.jobs_directory, req.uuid) for req in requests]
+                [os.path.join(self.jobs_directory, req.b64id) for req in requests]
             )
             self._service_states.update_state(
                 runner.service_name, runner.name, 'start', ServiceState.OK, 'OK'

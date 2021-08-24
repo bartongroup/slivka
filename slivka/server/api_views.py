@@ -124,7 +124,7 @@ def job_view(job_id, service_id=None):
         response.headers['Location'] = content['@url']
         return response
     if flask.request.method == 'DELETE':
-        cancel_req = CancelRequest(uuid=job_id)
+        cancel_req = CancelRequest(job_id=job_request.id)
         insert_one(slivka.db.database, cancel_req)
         return flask.Response(status=204)
 
@@ -150,8 +150,8 @@ def _job_resource(job_request: JobRequest):
 
     parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
     return {
-        '@url': url_for('.job', job_id=job_request.uuid),
-        'id': job_request.uuid,
+        '@url': url_for('.job', job_id=job_request.b64id),
+        'id': job_request.b64id,
         'service': job_request.service,
         'parameters': parameters,
         'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
@@ -167,10 +167,10 @@ def _job_resource(job_request: JobRequest):
 
 @bp.route('/jobs/<job_id>/files', endpoint='job_files', methods=['GET'])
 def job_files_view(job_id):
-    req = JobRequest.find_one(slivka.db.database, uuid=job_id)
+    req = JobRequest.find_one(slivka.db.database, id=job_id)
     if req is None:
         flask.abort(404)
-    job = JobMetadata.find_one(slivka.db.database, uuid=job_id)
+    job = JobMetadata.find_one(slivka.db.database, id=job_id)
     if job is None:
         return jsonify(files=[])
     service: ServiceConfig = flask.current_app.config['services'][job.service]
@@ -198,7 +198,7 @@ def job_files_view(job_id):
 @bp.route('/jobs/<job_id>/files/<path:file_path>', 
           endpoint='job_file', methods=['GET'])
 def job_file_view(job_id, file_path):
-    job = JobMetadata.find_one(slivka.db.database, uuid=job_id)
+    job = JobMetadata.find_one(slivka.db.database, id=job_id)
     if job is None:
         flask.abort(404)
     service: ServiceConfig = flask.current_app.config['services'][job.service]

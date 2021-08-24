@@ -40,14 +40,14 @@ class TestJobCancelling:
         insert_one(slivka.db.database, self.request)
 
     def test_deleted(self):
-        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
+        insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
         self.scheduler.main_loop()
         pull_one(slivka.db.database, self.request)
         assert_equal(self.request.state, JobStatus.DELETED)
 
     def test_cancelling(self):
         self.scheduler.main_loop()
-        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
+        insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
         self.scheduler.main_loop()
         pull_one(slivka.db.database, self.request)
         assert_equal(self.request.state, JobStatus.CANCELLING)
@@ -55,8 +55,8 @@ class TestJobCancelling:
     def test_cancel_called(self):
         runner = self.scheduler.runners['stub', 'runner1']
         self.scheduler.main_loop()
-        insert_one(slivka.db.database, CancelRequest(uuid=self.request.uuid))
-        job = JobMetadata.find_one(slivka.db.database, uuid=self.request.uuid)
+        insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
+        job = JobMetadata.find_one(slivka.db.database, _id=self.request.id)
         with mock.patch.object(runner, 'cancel') as mock_cancel:
             self.scheduler.main_loop()
             mock_cancel.assert_called_once_with((job.job_id, job.cwd))
