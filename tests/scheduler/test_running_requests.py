@@ -3,6 +3,7 @@ import tempfile
 from functools import partial
 from unittest import mock
 
+import bson
 import mongomock
 from nose.tools import assert_list_equal, assert_sequence_equal
 
@@ -54,8 +55,8 @@ def test_successful_running():
     scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
-        JobRequest(service='stub', inputs=mock.sentinel.inputs),
-        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs)
     ]
     with mock.patch.object(runner, "batch_start", return_value=range(len(requests))):
         started, deferred, failed = scheduler.run_requests(runner, requests)
@@ -66,13 +67,13 @@ def test_returned_jobs():
     scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
-        JobRequest(service='stub', inputs=mock.sentinel.inputs),
-        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs)
     ]
     started, deferred, failed = scheduler.run_requests(runner, requests)
     expected = [
-        Job(id=0, cwd=os.path.join(_tempdir.name, requests[0].uuid)),
-        Job(id=1, cwd=os.path.join(_tempdir.name, requests[1].uuid))
+        Job(id=0, cwd=os.path.join(_tempdir.name, requests[0].b64id)),
+        Job(id=1, cwd=os.path.join(_tempdir.name, requests[1].b64id))
     ]
     assert_sequence_equal([job for _, job in started], expected)
 
@@ -81,11 +82,11 @@ def test_batch_run_called():
     scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
-        JobRequest(service='stub', inputs=mock.sentinel.inputs),
-        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs)
     ]
     expected_dirs = [
-        os.path.join(_tempdir.name, req.uuid) for req in requests
+        os.path.join(_tempdir.name, req.b64id) for req in requests
     ]
     with mock.patch.object(
             runner, "batch_start",
@@ -101,8 +102,8 @@ def test_deferred_running():
     scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
-        JobRequest(service='stub', inputs=mock.sentinel.inputs),
-        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs)
     ]
     with mock.patch.object(runner, "batch_start", side_effect=OSError):
         started, deferred, failed = scheduler.run_requests(runner, requests)
@@ -113,8 +114,8 @@ def test_failed_running():
     scheduler = Scheduler(_tempdir.name)
     runner = MockRunner('stub', 'runner')
     requests = [
-        JobRequest(service='stub', inputs=mock.sentinel.inputs),
-        JobRequest(service='stub', inputs=mock.sentinel.inputs)
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs),
+        JobRequest(_id=bson.ObjectId(), service='stub', inputs=mock.sentinel.inputs)
     ]
     scheduler.set_failure_limit(0)
     with mock.patch.object(runner, 'batch_start', side_effect=OSError):
