@@ -42,7 +42,7 @@ def test_save_form():
         ('dec', '12.05'), ('choice', 'a'), ('flag', 'yes')
     ]))
     request = form.save(database)
-    job = database[request.__collection__].find_one({'uuid': request.uuid})
+    job = database[request.__collection__].find_one({'_id': request.id})
     assert job
 
 
@@ -53,7 +53,7 @@ def test_saved_form_data():
         ('dec', '12.05'), ('choice', 'a'), ('flag', 'yes')
     ]))
     request = form.save(database)
-    job = database[request.__collection__].find_one({'uuid': request.uuid})
+    job = database[request.__collection__].find_one({'_id': request.id})
     expected = {
         'ints': ['19', '20', '21'],
         'dec': '12.05',

@@ -106,8 +106,8 @@ args:
   flag:
     arg: --flag
 
-  # add arguments which is not present in inputs
-  # with dummy default value, so that it's not skipped
+  # to add a fixed argument which is not present in the inputs
+  # give it a dummy default value, so that it's not skipped
   _separator:
     arg: --
     default: present

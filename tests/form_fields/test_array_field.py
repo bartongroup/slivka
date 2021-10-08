@@ -59,11 +59,11 @@ class TestArrayMixinDefault:
         assert_list_equal(field.default, [1, 2, 3])
 
     def test_invalid_value(self):
-        with assert_raises(RuntimeError):
+        with assert_raises(ValueError):
             IntegerArrayField('name', default=[0, 1], min=1)
 
     def test_not_array(self):
-        with assert_raises(RuntimeError):
+        with assert_raises(ValueError):
             IntegerArrayField('name', default=1)
 
     def test_unset(self):

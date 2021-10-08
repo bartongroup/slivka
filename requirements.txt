@@ -11,5 +11,5 @@ PyYAML~=5.4
 pyzmq~=19.0
 setuptools~=46.0.0
 simplejson~=3.16
-Sphinx~=2.4
+Sphinx~=4.0
 Werkzeug~=1.0

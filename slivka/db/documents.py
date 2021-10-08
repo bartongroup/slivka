@@ -1,8 +1,7 @@
 import enum
 import os
-from base64 import urlsafe_b64encode as b64encode
+from base64 import urlsafe_b64encode, urlsafe_b64decode
 from datetime import datetime
-from uuid import uuid4
 
 import pymongo
 from bson import ObjectId
@@ -11,15 +10,15 @@ from slivka import JobStatus
 from slivka.utils import deprecated
 
 
-def b64_uuid4():
-    return b64encode(uuid4().bytes).rstrip(b'=').decode()
-
-
 class MongoDocument(dict):
     __collection__ = None
 
     def _get_id(self) -> ObjectId: return self.get('_id')
     id = property(fget=_get_id)
+
+    def _get_b64id(self) -> str:
+        return urlsafe_b64encode(self._get_id().binary).decode()
+    b64id = property(_get_b64id)
 
     @classmethod
     def get_collection(cls, database) -> pymongo.collection.Collection:
@@ -28,6 +27,13 @@ class MongoDocument(dict):
 
     @classmethod
     def find_one(cls, database, **kwargs):
+        _id = kwargs.pop('id', None)
+        if isinstance(_id, ObjectId):
+            kwargs['_id'] = _id
+        elif isinstance(_id, (str, bytes)):
+            if len(_id) == 16:  # b64 encoded
+                _id = urlsafe_b64decode(_id)
+            kwargs['_id'] = ObjectId(_id)
         item = database[cls.__collection__].find_one(kwargs)
         return cls(**item) if item is not None else None
 
@@ -66,7 +72,6 @@ class JobRequest(MongoDocument):
     def __init__(self, *,
                  service,
                  inputs,
-                 uuid=None,
                  timestamp=None,
                  completion_time=None,
                  status=None,
@@ -75,7 +80,6 @@ class JobRequest(MongoDocument):
         super().__init__(
             service=service,
             inputs=inputs,
-            uuid=uuid if uuid is not None else b64_uuid4(),
             timestamp=timestamp if timestamp is not None else datetime.now(),
             completion_time=completion_time,
             status=status if status is not None else JobStatus.PENDING,
@@ -85,7 +89,6 @@ class JobRequest(MongoDocument):
 
     service = property(lambda self: self['service'])
     inputs = property(lambda self: self['inputs'])
-    uuid = property(lambda self: self['uuid'])
     timestamp = property(lambda self: self['timestamp'])
     submission_time = property(lambda self: self['timestamp'])
     completion_time = property(lambda self: self['completion_time'])
@@ -103,17 +106,16 @@ class JobRequest(MongoDocument):
 class CancelRequest(MongoDocument):
     __collection__ = 'cancelrequest'
 
-    def __init__(self, uuid, **kwargs):
-        super().__init__(uuid=uuid, **kwargs)
+    def __init__(self, job_id, **kwargs):
+        super().__init__(job_id=job_id, **kwargs)
 
-    uuid = property(lambda self: self['uuid'])
+    job_id = property(lambda self: self['job_id'])
 
 
 class JobMetadata(MongoDocument):
     __collection__ = 'jobs'
 
     def __init__(self, *,
-                 uuid,
                  service,
                  runner,
                  work_dir,
@@ -121,7 +123,6 @@ class JobMetadata(MongoDocument):
                  status,
                  **kwargs):
         super().__init__(
-            uuid=uuid,
             service=service,
             runner=runner,
             work_dir=work_dir,
@@ -130,7 +131,6 @@ class JobMetadata(MongoDocument):
             **kwargs
         )
 
-    uuid = property(lambda self: self['uuid'])
     service = property(lambda self: self['service'])
     runner = property(lambda self: self['runner'])
     work_dir = property(lambda self: self['work_dir'])
@@ -163,10 +163,6 @@ class UploadedFile(MongoDocument):
     def uuid(self):
         return self.b64id
 
-    def _get_b64id(self):
-        return b64encode(self._get_id().binary).decode()
-
-    b64id = property(_get_b64id)
     title = property(lambda self: self['title'])
     media_type = property(lambda self: self['media_type'])
     path = property(lambda self: self['path'])
