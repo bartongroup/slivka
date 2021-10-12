@@ -1,5 +1,4 @@
 import enum
-import fcntl
 import functools
 import itertools
 import math
@@ -11,7 +10,13 @@ from collections import OrderedDict, defaultdict
 
 import yaml.resolver
 
+from .retry import retry_call
 
+try:
+    import fcntl
+except ImportError:
+    # Windows doesn't have fncntl
+    warnings.warn("platform does not support fcntl.")
 try:
     import simplejson as json
 except ImportError:

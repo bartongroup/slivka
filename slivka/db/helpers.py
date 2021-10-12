@@ -1,3 +1,4 @@
+from operator import itemgetter
 from typing import List
 
 import pymongo.database
@@ -52,3 +53,13 @@ def pull_many(database: pymongo.database.Database, items: List[MongoDocument]):
 def push_many(database: pymongo.database.Database, items: List[MongoDocument]):
     operations = [ReplaceOne({'_id': it.id}, it) for it in items]
     database[items[0].__collection__].bulk_write(operations, ordered=False)
+
+
+def delete_one(database: pymongo.database.Database, item: MongoDocument):
+    return database[item.__collection__].delete_one({'_id': item.id})
+
+
+def delete_many(database: pymongo.database.Database, items: List[MongoDocument]):
+    return database[items[0].__collection__].delete_many(
+        {'_id': {'$in': list(map(itemgetter('_id'), items))}}
+    )
