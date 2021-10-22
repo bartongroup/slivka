@@ -300,9 +300,12 @@ class Scheduler:
                 [req.inputs for req in requests],
                 [os.path.join(self.jobs_directory, req.b64id) for req in requests]
             )
-            self._service_states.update_state(
-                runner.service_name, runner.name, 'start', ServiceState.OK, 'OK'
+            update_call = partial(
+                self._service_states.update_state, runner.service_name,
+                runner.name, 'start', ServiceState.OK, 'OK'
             )
+            retry_call(update_call, pymongo.errors.AutoReconnect,
+                       handler=self._auto_reconnect_handler)
             return RunResult(
                 started=zip(requests, jobs), deferred=(), failed=()
             )
@@ -315,9 +318,12 @@ class Scheduler:
             else:
                 state = ServiceState.State.WARNING
                 result = RunResult(started=(), deferred=requests, failed=())
-            self._service_states.update_state(
+            update_call = partial(
+                self._service_states.update_state,
                 runner.service_name, runner.name, 'start', state, str(e)
             )
+            retry_call(update_call, pymongo.errors.AutoReconnect,
+                       handler=self._auto_reconnect_handler)
             return result
 
     def _update_running(self, database):
@@ -395,10 +401,12 @@ class Scheduler:
                 results = ()
                 service_state = ServiceState.WARNING
             service_message = str(e)
-        self._service_states.update_state(
-            runner.service_name, runner.name, 'state', service_state,
-            service_message
+        update_call = partial(
+            self._service_states.update_state, runner.service_name,
+            runner.name, 'state', service_state, service_message
         )
+        retry_call(update_call, pymongo.errors.AutoReconnect,
+                   handler=self._auto_reconnect_handler)
         return results
 
 
