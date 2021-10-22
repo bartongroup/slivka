@@ -6,7 +6,6 @@ import threading
 from collections import defaultdict, namedtuple, OrderedDict
 from datetime import datetime
 from functools import partial
-from operator import itemgetter
 from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable)
 
@@ -14,15 +13,14 @@ import pymongo.errors
 from bson import ObjectId
 from pymongo import UpdateOne
 
-from db.helpers import delete_many
-from slivka.utils import retry_call
-
 import slivka.conf
 import slivka.db
+from db.helpers import delete_many
 from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
                                  ServiceState)
 from slivka.db.helpers import insert_many, push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
+from slivka.utils import retry_call
 from .runners import Job as JobTuple
 from .runners.runner import RunnerID, Runner
 
@@ -98,6 +96,7 @@ class Scheduler:
         self._backoff_counters: DefaultDict[Any, BackoffCounter] = \
             defaultdict(partial(BackoffCounter, max_tries=10))
         self._service_states = _ServiceStateHelper()
+        self._auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
 
     @property
     def is_running(self):
@@ -158,8 +157,7 @@ class Scheduler:
         For each pending request in the database, uses selector
         to find the appropriate runner or gives a REJECTED or ERROR status
         """
-        log = self.log
-        auto_reconnect_handler = partial(_auto_reconnect_handler, log)
+        auto_reconnect_handler = self._auto_reconnect_handler
         new_requests = retry_call(
             partial(_fetch_pending_requests, database),
             pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
@@ -205,7 +203,7 @@ class Scheduler:
         return grouped
 
     def _stop_cancelled(self, database):
-        auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
+        auto_reconnect_handler = self._auto_reconnect_handler
         cancel_requests = retry_call(
             partial(_fetch_cancel_requests, database),
             exceptions=pymongo.errors.AutoReconnect,
@@ -239,7 +237,7 @@ class Scheduler:
             )
 
     def _run_accepted(self, database):
-        auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
+        auto_reconnect_handler = self._auto_reconnect_handler
         items = retry_call(
             partial(_fetch_accepted_requests, database),
             pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
@@ -323,7 +321,7 @@ class Scheduler:
             return result
 
     def _update_running(self, database):
-        auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
+        auto_reconnect_handler = self._auto_reconnect_handler
         items = retry_call(
             partial(_fetch_running_jobs, database),
             pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
