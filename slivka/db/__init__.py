@@ -37,7 +37,7 @@ class _DBModule(types.ModuleType):
             host=cfg.host, socket=cfg.socket,
             username=cfg.username, password=cfg.password
         )
-        return pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=2)
+        return pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
 
     @cached_property
     def database(self):
