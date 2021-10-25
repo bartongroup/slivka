@@ -5,7 +5,7 @@ from base64 import urlsafe_b64decode
 
 from bson import ObjectId
 
-from slivka.db.documents import UploadedFile, JobMetadata
+from slivka.db.documents import UploadedFile, JobRequest
 
 
 class FileProxy:
@@ -40,9 +40,9 @@ class FileProxy:
         else:
             # job output file
             job_uuid, filename = tokens
-            job = JobMetadata.find_one(database, uuid=job_uuid)
-            if job is not None:
-                path = os.path.join(job.work_dir, filename)
+            request = JobRequest.find_one(database, id=job_uuid)
+            if request is not None:
+                path = os.path.join(request.job.cwd, filename)
                 if os.path.isfile(path):
                     return FileProxy(path=path)
             return None

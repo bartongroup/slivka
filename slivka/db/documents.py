@@ -69,6 +69,20 @@ class MongoDocument(dict):
 class JobRequest(MongoDocument):
     __collection__ = 'requests'
 
+    class Job(dict):
+        def __init__(self, *,
+                     work_dir,
+                     job_id):
+            dict.__init__(
+                self,
+                work_dir=work_dir,
+                job_id=job_id
+            )
+
+        work_dir = property(lambda self: self['work_dir'])
+        cwd = work_dir
+        job_id = property(lambda self: self['job_id'])
+
     def __init__(self, *,
                  service,
                  inputs,
@@ -76,6 +90,7 @@ class JobRequest(MongoDocument):
                  completion_time=None,
                  status=None,
                  runner=None,
+                 job=None,
                  **kwargs):
         super().__init__(
             service=service,
@@ -84,6 +99,7 @@ class JobRequest(MongoDocument):
             completion_time=completion_time,
             status=status if status is not None else JobStatus.PENDING,
             runner=runner,
+            job=self.Job(**job) if job else None,
             **kwargs
         )
 
@@ -91,16 +107,23 @@ class JobRequest(MongoDocument):
     inputs = property(lambda self: self['inputs'])
     timestamp = property(lambda self: self['timestamp'])
     submission_time = property(lambda self: self['timestamp'])
-    completion_time = property(lambda self: self['completion_time'])
 
-    def _get_state(self): return JobStatus(self['status'])
-    def _set_state(self, val): self['status'] = val
-    state = property(_get_state, _set_state)
-    status = property(_get_state, _set_state)
+    def _get_completion_time(self): return self['completion_time']
+    def _set_completion_time(self, val): self['completion_time'] = val
+    completion_time = property(_get_completion_time, _set_completion_time)
+
+    def _get_status(self): return JobStatus(self['status'])
+    def _set_status(self, val): self['status'] = val
+    state = property(_get_status, _set_status)
+    status = property(_get_status, _set_status)
 
     def _get_runner(self): return self['runner']
     def _set_runner(self, val): self['runner'] = val
     runner = property(_get_runner, _set_runner)
+
+    def _get_job(self): return JobRequest.Job(**self['job'])
+    def _set_job(self, val): self['job'] = val
+    job = property(_get_job, _set_job)
 
 
 class CancelRequest(MongoDocument):
@@ -110,37 +133,6 @@ class CancelRequest(MongoDocument):
         super().__init__(job_id=job_id, **kwargs)
 
     job_id = property(lambda self: self['job_id'])
-
-
-class JobMetadata(MongoDocument):
-    __collection__ = 'jobs'
-
-    def __init__(self, *,
-                 service,
-                 runner,
-                 work_dir,
-                 job_id,
-                 status,
-                 **kwargs):
-        super().__init__(
-            service=service,
-            runner=runner,
-            work_dir=work_dir,
-            job_id=job_id,
-            status=status,
-            **kwargs
-        )
-
-    service = property(lambda self: self['service'])
-    runner = property(lambda self: self['runner'])
-    work_dir = property(lambda self: self['work_dir'])
-    cwd = work_dir
-    job_id = property(lambda self: self['job_id'])
-
-    def _get_state(self): return JobStatus(self['status'])
-    def _set_state(self, val): self['status'] = val
-    state = property(_get_state, _set_state)
-    status = property(_get_state, _set_state)
 
 
 class UploadedFile(MongoDocument):

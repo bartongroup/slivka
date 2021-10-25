@@ -6,7 +6,7 @@ from nose.tools import assert_equal
 
 import slivka.db
 from slivka import JobStatus
-from slivka.db.documents import JobRequest, CancelRequest, JobMetadata
+from slivka.db.documents import JobRequest, CancelRequest
 from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Scheduler
 from . import BaseSelectorStub, MockRunner
@@ -56,7 +56,8 @@ class TestJobCancelling:
         runner = self.scheduler.runners['stub', 'runner1']
         self.scheduler.main_loop()
         insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
-        job = JobMetadata.find_one(slivka.db.database, _id=self.request.id)
+        pull_one(slivka.db.database, self.request)
+        job = self.request.job
         with mock.patch.object(runner, 'cancel') as mock_cancel:
             self.scheduler.main_loop()
             mock_cancel.assert_called_once_with((job.job_id, job.cwd))

@@ -6,19 +6,17 @@ import threading
 from collections import defaultdict, namedtuple, OrderedDict
 from datetime import datetime
 from functools import partial
-from typing import (Iterable, Tuple, Dict, List, Any, Union, DefaultDict,
+from typing import (Iterable, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable)
 
 import pymongo.errors
 from bson import ObjectId
-from pymongo import UpdateOne
 
 import slivka.conf
 import slivka.db
-from db.helpers import delete_many
-from slivka.db.documents import (JobRequest, JobMetadata, CancelRequest,
-                                 ServiceState)
-from slivka.db.helpers import insert_many, push_one, insert_one
+from db.helpers import delete_many, push_many
+from slivka.db.documents import JobRequest, CancelRequest, ServiceState
+from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
 from .runners import Job as JobTuple
@@ -212,25 +210,29 @@ class Scheduler:
         if cancel_requests:
             job_ids = [cr.job_id for cr in cancel_requests]
             fn = partial(_bulk_set_status_filter_by_status, database, job_ids,
-                         [JobStatus.PENDING, JobStatus.ACCEPTED], JobStatus.DELETED)
+                         (JobStatus.PENDING, JobStatus.ACCEPTED), JobStatus.DELETED)
             retry_call(
                 fn, pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
             )
             fn = partial(_bulk_set_status_filter_by_status, database, job_ids,
-                         [JobStatus.QUEUED, JobStatus.RUNNING], JobStatus.CANCELLING)
+                         (JobStatus.QUEUED, JobStatus.RUNNING), JobStatus.CANCELLING)
             retry_call(
                 fn, pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
             )
-            cancelled_jobs = retry_call(
-                partial(_fetch_job_metadatas, database, job_ids),
-                pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
+            cursor = JobRequest.find(database, status=JobStatus.CANCELLING)
+            cancelling = retry_call(
+                partial(list, cursor), pymongo.errors.AutoReconnect,
+                handler=auto_reconnect_handler
             )
-            for job in cancelled_jobs:
+            for request in cancelling:
+                assert request.runner is not None
                 # fixme: do not blindly trust data from the database
                 #        the runner may not exist
-                runner = self.runners[job.service, job.runner]
+                runner = self.runners[request.service, request.runner]
+                job = request.job
+                assert job is not None
                 with contextlib.suppress(OSError):
-                    runner.cancel(JobTuple(job.job_id, job.cwd))
+                    runner.cancel(JobTuple(job.job_id, job.work_dir))
             retry_call(
                 partial(delete_many, database, cancel_requests),
                 pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
@@ -239,7 +241,7 @@ class Scheduler:
     def _run_accepted(self, database):
         auto_reconnect_handler = self._auto_reconnect_handler
         items = retry_call(
-            partial(_fetch_accepted_requests, database),
+            partial(_fetch_requests_for_status, database, filter=JobStatus.ACCEPTED),
             pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
         )
         for item in items:
@@ -251,25 +253,17 @@ class Scheduler:
                 failed = requests
             else:
                 started, deferred, failed = self.run_requests(runner, requests)
-                new_jobs = []
                 queued = []
                 for request, job in started:
                     queued.append(request)
-                    new_jobs.append(JobMetadata(
-                        _id=request.id,
-                        service=request.service,
-                        runner=runner.name,
+                    request.job = JobRequest.Job(
                         job_id=job.id,
-                        work_dir=job.cwd,
-                        status=JobStatus.QUEUED
-                    ))
-                if new_jobs:
-                    retry_call(
-                        partial(insert_many, database, new_jobs),
-                        pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
+                        work_dir=job.cwd
                     )
+                    request.status = JobStatus.QUEUED
+                if queued:
                     retry_call(
-                        partial(_bulk_set_status, database, queued, JobStatus.QUEUED),
+                        partial(push_many, database, queued),
                         pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
                     )
             if failed:
@@ -329,60 +323,53 @@ class Scheduler:
     def _update_running(self, database):
         auto_reconnect_handler = self._auto_reconnect_handler
         items = retry_call(
-            partial(_fetch_running_jobs, database),
+            partial(_fetch_requests_for_status, database,
+                    filter={'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}),
             pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
         )
         for item in items:
             _id = RunnerID(**item['_id'])
-            jobs = [JobMetadata(**kw) for kw in item['jobs']]
+            requests = [JobRequest(**kw) for kw in item['requests']]
             ts = datetime.now()
             try:
                 runner = self.runners[_id]
             except KeyError:
                 self.log.exception("Runner (%s, %s) does not exist",
                                    _id.service, _id.runner)
-                updated = [(job, JobStatus.ERROR) for job in jobs]
+                for req in requests:
+                    req.status = JobStatus.ERROR
+                updated = requests
             else:
-                updated = self.monitor_jobs(runner, jobs)
+                updated = self.monitor_jobs(runner, requests)
             if not updated:
                 continue
-            while True:
-                try:
-                    JobRequest.collection(database).bulk_write([
-                        UpdateOne({'_id': job.id},
-                                  {'$set': {'status': status, 'completion_time': ts}})
-                        for (job, status) in updated
-                    ], ordered=False)
-                except pymongo.errors.AutoReconnect as e:
-                    auto_reconnect_handler(e)
-                else:
-                    break
-            while True:
-                try:
-                    JobMetadata.collection(database).bulk_write([
-                        UpdateOne({'_id': job.id}, {'$set': {'status': status}})
-                        for (job, status) in updated
-                    ], ordered=False)
-                except pymongo.errors.AutoReconnect as e:
-                    auto_reconnect_handler(e)
-                else:
-                    break
+            for request in updated:
+                if request.status.is_finished():
+                    request.completion_time = ts
+            retry_call(
+                partial(push_many, database, updated),
+                pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
+            )
 
-    def monitor_jobs(self, runner: Runner, jobs: List[JobMetadata]) \
-            -> Sequence[Tuple[JobMetadata, JobStatus]]:
+    def monitor_jobs(self, runner: Runner, requests: List[JobRequest]) \
+            -> Sequence[JobRequest]:
         """ Checks status of jobs.
 
-        Checks status of jobs using the provided runner or runner class
-        and returns a list of those, whose status have changed.
+        Checks and updates status of requests using the provided runner
+        or runner class and returns a list of those, whose status have changed.
         """
         counter = self._backoff_counters[runner.check_status]
-        if not jobs or next(counter) > 0:
+        if not requests or next(counter) > 0:
             return ()
+        updated = []
         try:
-            statuses = runner.batch_check_status([JobTuple(j.job_id, j.cwd) for j in jobs])
-            results = [(job, status) for (job, status)
-                       in zip(jobs, statuses) if job.status != status]
-            if results and all(v[1] == JobStatus.ERROR for v in results):
+            statuses = runner.batch_check_status(
+                [JobTuple(r.job.job_id, r.job.cwd) for r in requests])
+            for request, status in zip(requests, statuses):
+                if request.status != status:
+                    request.status = status
+                    updated.append(request)
+            if updated and all(r.status == JobStatus.ERROR for r in updated):
                 self.log.exception(
                     "Jobs of %s exited with error state", runner)
                 counter.failure()
@@ -395,10 +382,11 @@ class Scheduler:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
-                results = [(job, JobStatus.ERROR) for job in jobs]
+                for request in requests:
+                    request.status = JobStatus.ERROR
+                updated.extend(requests)
                 service_state = ServiceState.DOWN
             else:
-                results = ()
                 service_state = ServiceState.WARNING
             service_message = str(e)
         update_call = partial(
@@ -407,7 +395,7 @@ class Scheduler:
         )
         retry_call(update_call, pymongo.errors.AutoReconnect,
                    handler=self._auto_reconnect_handler)
-        return results
+        return updated
 
 
 def _auto_reconnect_handler(log, exception):
@@ -439,10 +427,6 @@ def _bulk_set_accepted(database, requests, runner):
     )
 
 
-def _fetch_job_metadatas(database, job_ids):
-    return list(JobMetadata.find(database, {'_id': {'$in': job_ids}}))
-
-
 def _fetch_cancel_requests(database) -> List[CancelRequest]:
     return list(CancelRequest.find(database))
 
@@ -455,26 +439,13 @@ def _bulk_set_status_filter_by_status(database, job_ids, from_statuses, to_statu
     )
 
 
-def _fetch_accepted_requests(database):
+def _fetch_requests_for_status(database, filter):
     return list(JobRequest.collection(database).aggregate([
-        {'$match': {'status': JobStatus.ACCEPTED}},
+        {'$match': {'status': filter}},
         {'$group': {
             '_id': {'service': '$service',
                     'runner': '$runner'},
             'requests': {'$push': '$$CURRENT'}
-        }}
-    ]))
-
-
-def _fetch_running_jobs(database):
-    return list(JobMetadata.collection(database).aggregate([
-        {'$match': {
-            'status': {'$in': (JobStatus.QUEUED, JobStatus.RUNNING)}
-        }},
-        {'$group': {
-            '_id': {'service': '$service',
-                    'runner': '$runner'},
-            'jobs': {'$push': '$$CURRENT'}
         }}
     ]))
 
