@@ -7,7 +7,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 from datetime import datetime
 from functools import partial
 from typing import (Iterable, Dict, List, Any, Union, DefaultDict,
-                    Sequence, Callable)
+                    Sequence, Callable, Tuple)
 
 import pymongo.errors
 from bson import ObjectId
@@ -247,12 +247,13 @@ class Scheduler:
         for item in items:
             requests = [JobRequest(**kw) for kw in item['requests']]
             try:
-                runner = self.runners[RunnerID(**item['_id'])]
-            except KeyError:
-                self.log.exception("Runner not found.")
-                failed = requests
-            else:
-                started, deferred, failed = self.run_requests(runner, requests)
+                try:
+                    runner = self.runners[RunnerID(**item['_id'])]
+                except KeyError:
+                    self.log.exception("Runner does not exist.")
+                    raise ExecutionFailed(None)
+                self.log.debug("Starting jobs with %s.", runner)
+                started = self._start_requests(runner, requests)
                 queued = []
                 for request, job in started:
                     queued.append(request)
@@ -266,29 +267,29 @@ class Scheduler:
                         partial(push_many, database, queued),
                         pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
                     )
-            if failed:
+            except ExecutionDeferred as e:
+                self.log.debug("Runner %s did not start jobs. Retrying.",
+                               e.runner)
+            except ExecutionFailed:
                 retry_call(
-                    partial(_bulk_set_status, database, failed, JobStatus.ERROR),
+                    partial(_bulk_set_status, database, requests, JobStatus.ERROR),
                     pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
                 )
+                self.log.exception("Starting jobs failed.")
 
-    def run_requests(self, runner: Runner, requests: List[JobRequest]) \
-            -> RunResult:
-        """ Run all requests with the runner provided.
+    def _start_requests(self, runner: Runner, requests: List[JobRequest]) \
+            -> Iterable[Tuple[JobRequest, JobTuple]]:
+        """ Run all requests with the supplied runner.
 
-        Runs all the job requests using the supplied implementation
-        of :py:class:`Runner` and returns a three-element tuple
-        containing three groups of requests: started, deferred and failed.
-        The "started" group contains an iterable of :py:class:`JobRequest`
-        and :py:class:`RunInfo` pairs corresponding to the successfully
-        started jobs. The "deferred" group contains requests delayed due
-        to failure. The "failed" group contains requests that failed
-        multiple run attempts and should not be repeated.
+        Runs all the job requests using the provided runner implementing
+        :py:class:`Runner` and returns an iterable of request-job pairs.
+        If jobs fail to start, either :py:class:`ExecutionDeferred` or
+        :py:class:`ExecutionFailed` is raised to indicate whether the
+        batch execution was deferred or failed and should not be retried.
         """
-        # FIXME: this method should have cleaner implementation
         counter = self._backoff_counters[runner.start]
         if not requests or next(counter) > 0:
-            return RunResult(started=(), deferred=requests, failed=())
+            raise ExecutionDeferred(runner)
         try:
             jobs = runner.batch_start(
                 [req.inputs for req in requests],
@@ -300,25 +301,23 @@ class Scheduler:
             )
             retry_call(update_call, pymongo.errors.AutoReconnect,
                        handler=self._auto_reconnect_handler)
-            return RunResult(
-                started=zip(requests, jobs), deferred=(), failed=()
-            )
+            return zip(requests, jobs)
         except OSError as e:
-            self.log.exception("Running %s requests failed.", runner)
+            self.log.exception("Starting jobs with %s failed.", runner)
             counter.failure()
             if counter.give_up:
                 state = ServiceState.State.DOWN
-                result = RunResult(started=(), deferred=(), failed=requests)
+                exc = ExecutionFailed(runner)
             else:
                 state = ServiceState.State.WARNING
-                result = RunResult(started=(), deferred=requests, failed=())
+                exc = ExecutionDeferred(runner)
             update_call = partial(
                 self._service_states.update_state,
                 runner.service_name, runner.name, 'start', state, str(e)
             )
             retry_call(update_call, pymongo.errors.AutoReconnect,
                        handler=self._auto_reconnect_handler)
-            return result
+            raise exc from e
 
     def _update_running(self, database):
         auto_reconnect_handler = self._auto_reconnect_handler
@@ -516,3 +515,13 @@ class BaseSelector(metaclass=SelectorMeta):
     @staticmethod
     def default(_inputs):
         return "default"
+
+
+class ExecutionDeferred(Exception):
+    def __init__(self, runner):
+        super().__init__(runner)
+        self.runner = runner
+
+
+class ExecutionFailed(Exception):
+    pass
