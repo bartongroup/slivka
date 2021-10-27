@@ -63,6 +63,14 @@ class EnvTest:
     def test_command_interpolation_defined(self):
         assert_sequence_equal(self.runner.command, ["/bin/foobar"])
 
+    @staticmethod
+    def test_command_double_interpolation():
+        runner = RunnerStub(
+            command="${BIN_PATH}/example",
+            env={'BIN_PATH': "${SLIVKA_HOME}/bin"}
+        )
+        assert_sequence_equal(runner.command, ["/tmp/slivkahome/bin/example"])
+
     def test_env_var_injection(self):
         assert_sequence_equal(
             self.runner.build_args({'value': '$EXAMPLE'}), ["$EXAMPLE"]

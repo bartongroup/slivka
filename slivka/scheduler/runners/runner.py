@@ -109,7 +109,7 @@ class Runner:
         for key, val in self.env.items():
             self.env[key] = _var_regex.sub(replace, val)
 
-        replace = partial(_replace_vars, ChainMap(env, os.environ))
+        replace = partial(_replace_vars, ChainMap(self.env, os.environ))
         if isinstance(command, str):
             command = shlex.split(command)
         self.command = [
