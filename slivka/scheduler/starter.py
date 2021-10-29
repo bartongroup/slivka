@@ -9,7 +9,8 @@ import shlex
 import shutil
 from collections import namedtuple, ChainMap
 from functools import partial
-from typing import Match, Optional, Union, List, Dict, Tuple, Sequence
+from typing import Match, Optional, Union, List, Dict, Tuple, Sequence, \
+    Iterable
 
 from frozendict import frozendict
 
@@ -160,7 +161,7 @@ class CommandStarter:
                     _mklink(val, os.path.join(cwd, argument.symlink))
                 # None is also an option here and should be ignored
 
-    def start(self, requests: Sequence[Tuple[dict, str]]) -> Sequence[Job]:
+    def start(self, requests: Iterable[Tuple[dict, str]]) -> Sequence[Job]:
         """ Runs commands with the executor.
 
         Prepares the command for execution by creating working

@@ -8,15 +8,9 @@ from nose.tools import assert_equal, assert_dict_equal, assert_list_equal, \
 
 from conf import ServiceConfig
 from scheduler.runner import Command, Job
-from scheduler.starter import CommandStarter
+from . import make_starter
 
 Argument = ServiceConfig.Argument
-
-
-def make_starter(base_command="", args=None, outputs=None, env=None):
-    return CommandStarter(
-        None, base_command, args or [], outputs or [], env or {}
-    )
 
 
 class TestEnvironmentVariables:

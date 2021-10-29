@@ -1,9 +1,6 @@
-import itertools
-from typing import List
-
-from slivka import JobStatus
+from scheduler.starter import CommandStarter, RunnerID
 from slivka.scheduler import BaseSelector, Runner
-from slivka.scheduler.runners.runner import RunnerID, Command, Job
+from slivka.scheduler.runner import Command, Job
 
 
 class BaseSelectorStub(BaseSelector):
@@ -14,24 +11,11 @@ class BaseSelectorStub(BaseSelector):
     def limit_bar(self, inputs): return inputs.get('use_bar', False)
 
 
-class MockRunner(Runner):
-
-    def __init__(self, service, name):
-        super().__init__(
-            runner_id=RunnerID(service=service, runner=name),
-            command=[], args=[], outputs=[], env={}
-        )
-        self.next_job_id = itertools.count(0).__next__
-
-    def batch_start(self, inputs: List[dict], cwds: List[str]) -> List[Job]:
-        return [self.submit(Command([], cwd)) for cwd in cwds]
-
-    def submit(self, command: Command) -> Job:
-        job_id = self.next_job_id()
-        return Job(job_id, command.cwd)
-
-    def check_status(self, job: Job) -> JobStatus:
-        return JobStatus.QUEUED
-
-    def cancel(self, job: Job):
-        pass
+def make_starter(service=None, runner=None, base_command="", args=None,
+                 outputs=None, env=None):
+    service_id = None
+    if service and runner:
+        service_id = RunnerID(service, runner)
+    return CommandStarter(
+        service_id, base_command, args or [], outputs or [], env or {}
+    )

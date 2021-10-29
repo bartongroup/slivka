@@ -9,7 +9,8 @@ from slivka import JobStatus
 from slivka.db.documents import JobRequest, CancelRequest
 from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Scheduler
-from . import BaseSelectorStub, MockRunner
+from slivka.scheduler.runner import Job
+from . import BaseSelectorStub, make_starter
 
 
 def setup_module():
@@ -22,7 +23,13 @@ def teardown_module():
     del slivka.db.mongo
 
 
+def mock_job_start(commands):
+    return [Job(f"job{i:02d}", command.cwd)
+            for i, command in enumerate(commands)]
+
+
 class TestJobCancelling:
+    _tempdir: tempfile.TemporaryDirectory
 
     @classmethod
     def setup_class(cls):
@@ -34,7 +41,10 @@ class TestJobCancelling:
 
     def setup(self):
         self.scheduler = scheduler = Scheduler(self._tempdir.name)
-        scheduler.add_runner(MockRunner('stub', 'runner1'))
+        self.starter = make_starter('stub', 'runner1')
+        self.starter.runner = mock.MagicMock()
+        self.starter.runner.start.side_effect = mock_job_start
+        scheduler.add_runner(self.starter)
         scheduler.selectors['stub'] = BaseSelectorStub()
         self.request = JobRequest(service='stub', inputs={'runner': 1})
         insert_one(slivka.db.database, self.request)
@@ -53,11 +63,12 @@ class TestJobCancelling:
         assert_equal(self.request.state, JobStatus.CANCELLING)
 
     def test_cancel_called(self):
-        runner = self.scheduler.runners['stub', 'runner1']
         self.scheduler.main_loop()
-        insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
         pull_one(slivka.db.database, self.request)
         job = self.request.job
-        with mock.patch.object(runner, 'cancel') as mock_cancel:
-            self.scheduler.main_loop()
-            mock_cancel.assert_called_once_with((job.job_id, job.cwd))
+        insert_one(slivka.db.database, CancelRequest(job_id=self.request.id))
+        self.scheduler.main_loop()
+        assert_equal(
+            self.starter.runner.cancel.call_args,
+            mock.call([Job(job['job_id'], job['work_dir'])])
+        )
