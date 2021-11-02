@@ -1,5 +1,8 @@
+from typing import List
+
 from scheduler.starter import CommandStarter, RunnerID
-from slivka.scheduler import BaseSelector, Runner
+from slivka import JobStatus
+from slivka.scheduler import BaseSelector, Runner, BaseCommandRunner
 from slivka.scheduler.runner import Command, Job
 
 
@@ -12,10 +15,25 @@ class BaseSelectorStub(BaseSelector):
 
 
 def make_starter(service=None, runner=None, base_command="", args=None,
-                 outputs=None, env=None):
+                 env=None):
     service_id = None
     if service and runner:
         service_id = RunnerID(service, runner)
     return CommandStarter(
-        service_id, base_command, args or [], outputs or [], env or {}
+        service_id, base_command, args or [], env or {}
     )
+
+
+class StubRunner(BaseCommandRunner):
+    def __init__(self, **kwargs):
+        self.init_kwargs = kwargs
+
+    def start(self, commands: List[Command]) -> List[Job]:
+        return [Job(f"job{i:02d}", command.cwd)
+                for i, command in enumerate(commands)]
+
+    def status(self, jobs: List[Job]) -> List[JobStatus]:
+        return [JobStatus.RUNNING for _ in jobs]
+
+    def cancel(self, jobs: List[Job]):
+        pass
