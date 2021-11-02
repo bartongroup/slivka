@@ -64,10 +64,8 @@ class CommandStarter:
                  runner_id: Optional[RunnerID],
                  base_command: Union[str, List[str]],
                  args: List[ServiceConfig.Argument],
-                 outputs: List[ServiceConfig.OutputFile],
                  env: Dict[str, str]):
         self.id: RunnerID = runner_id or self._next_id()
-        self.outputs = outputs
 
         self.env = {
             "PATH": os.getenv("PATH"),
