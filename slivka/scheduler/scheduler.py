@@ -19,9 +19,8 @@ from slivka.db.documents import JobRequest, CancelRequest, ServiceState
 from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
-from .runners import Job as JobTuple
-from .runners.runner import RunnerID, Runner
-from .starter import CommandStarter
+from .runner import BaseCommandRunner, Job as JobTuple
+from .starter import CommandStarter, RunnerID
 
 
 def get_classpath(cls):
@@ -181,7 +180,7 @@ class Scheduler:
             )
 
     def group_requests(self, requests: Iterable[JobRequest]) \
-            -> Dict[Union[Runner, object], List[JobRequest]]:
+            -> Dict[Union[BaseCommandRunner, object], List[JobRequest]]:
         """Group requests to their corresponding runners or reject."""
         grouped = defaultdict(list)
         for request in requests:

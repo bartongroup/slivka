@@ -1,12 +1,12 @@
 import functools
 import logging
 import shlex
+from typing import List
 
 import slivka.conf
 from slivka import JobStatus
 from slivka.local_queue import LocalQueueClient
-from . import Command
-from .runner import Runner, Job
+from ..runner import BaseCommandRunner, Job, Command
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -16,7 +16,7 @@ def _get_client(address):
     return LocalQueueClient(address)
 
 
-class SlivkaQueueRunner(Runner):
+class SlivkaQueueRunner(BaseCommandRunner):
     """ Implementation of the :py:class:`Runner` for Slivka workers.
 
     This runner delegates the job execution the the slivka's
@@ -31,17 +31,27 @@ class SlivkaQueueRunner(Runner):
             address = slivka.conf.settings.local_queue.host
         self.client = _get_client(address)
 
-    def submit(self, command: Command) -> Job:
+    def start_one(self, command: Command) -> Job:
         response = self.client.submit_job(
             cmd=str.join(' ', map(shlex.quote, command.args)),
             cwd=command.cwd,
-            env=self.env
+            env=command.env
         )
         return Job(response.id, command.cwd)
 
-    def check_status(self, job: Job) -> JobStatus:
+    def start(self, commands: List[Command]) -> List[Job]:
+        return list(map(self.start_one, commands))
+
+    def status_one(self, job: Job) -> JobStatus:
         response = self.client.get_job_status(job.id)
         return JobStatus(response.state)
 
-    def cancel(self, job: Job):
+    def status(self, jobs: List[Job]) -> List[JobStatus]:
+        return list(map(self.status_one, jobs))
+
+    def cancel_one(self, job: Job):
         self.client.cancel_job(job.id)
+
+    def cancel(self, jobs: List[Job]):
+        for job in jobs:
+            self.cancel_one(job)

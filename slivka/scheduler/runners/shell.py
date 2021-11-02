@@ -2,14 +2,15 @@ import contextlib
 import logging
 import os
 import subprocess
+from typing import List
 
 from slivka import JobStatus
-from .runner import Runner, Command, Job
+from ..runner import Command, Job, BaseCommandRunner
 
 log = logging.getLogger('slivka.scheduler')
 
 
-class ShellRunner(Runner):
+class ShellRunner(BaseCommandRunner):
     """ Implementation of the :py:class:`Runner` for shell.
 
     This is the most primitive approach that runs the job
@@ -24,20 +25,23 @@ class ShellRunner(Runner):
     """
     procs = {}
 
-    def submit(self, command: Command) -> Job:
+    def start_one(self, command: Command) -> Job:
         """ Starts the job as a subprocess. """
         proc = subprocess.Popen(
             command.args,
             stdout=open(os.path.join(command.cwd, 'stdout'), 'wb'),
             stderr=open(os.path.join(command.cwd, 'stderr'), 'wb'),
             cwd=command.cwd,
-            env=self.env,
+            env=command.env,
             shell=True
         )
         self.procs[proc.pid] = proc
         return Job(proc.pid, command.cwd)
 
-    def check_status(self, job: Job) -> JobStatus:
+    def start(self, commands: List[Command]) -> List[Job]:
+        return list(map(self.start_one, commands))
+
+    def status_one(self, job: Job) -> JobStatus:
         try:
             return_code = self.procs[job.id].poll()
         except KeyError:
@@ -53,6 +57,13 @@ class ShellRunner(Runner):
         if return_code < 0:
             return JobStatus.INTERRUPTED
 
-    def cancel(self, job: Job):
+    def status(self, jobs: List[Job]) -> List[JobStatus]:
+        return list(map(self.status_one, jobs))
+
+    def cancel_one(self, job: Job):
         with contextlib.suppress(OSError, KeyError):
             self.procs[job.id].terminate()
+
+    def cancel(self, jobs: List[Job]):
+        for job in jobs:
+            self.cancel_one(job)
