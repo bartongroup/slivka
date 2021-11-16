@@ -2,7 +2,7 @@ from typing import List
 
 from scheduler.starter import CommandStarter, RunnerID
 from slivka import JobStatus
-from slivka.scheduler import BaseSelector, Runner, BaseCommandRunner
+from slivka.scheduler import BaseSelector, BaseCommandRunner
 from slivka.scheduler.runner import Command, Job
 
 
