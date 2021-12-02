@@ -14,8 +14,8 @@ from typing import Match, Optional, Union, List, Dict, Tuple, Sequence, \
 
 from frozendict import frozendict
 
-from conf import ServiceConfig
 from slivka import JobStatus
+from slivka.conf import ServiceConfig
 from .runner import Job, Command, BaseCommandRunner
 
 log = logging.getLogger('slivka.scheduler')

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 from nose.tools import assert_equal, assert_dict_equal, assert_list_equal, \
     assert_true
 
-from conf import ServiceConfig
-from scheduler.runner import Command, Job
+from slivka.conf import ServiceConfig
+from slivka.scheduler.runner import Command, Job
 from . import make_starter
 
 Argument = ServiceConfig.Argument

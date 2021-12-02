@@ -1,9 +1,9 @@
 from typing import List
 
-from scheduler.starter import CommandStarter, RunnerID
 from slivka import JobStatus
 from slivka.scheduler import BaseSelector, BaseCommandRunner
 from slivka.scheduler.runner import Command, Job
+from slivka.scheduler.starter import CommandStarter, RunnerID
 
 
 class BaseSelectorStub(BaseSelector):

@@ -14,8 +14,8 @@ from bson import ObjectId
 
 import slivka.conf
 import slivka.db
-from slivka.db.helpers import delete_many, push_many
 from slivka.db.documents import JobRequest, CancelRequest, ServiceState
+from slivka.db.helpers import delete_many, push_many
 from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
@@ -499,6 +499,7 @@ class BaseSelector(metaclass=SelectorMeta):
     and the first one to return True is selected. Otherwise,
     the job is rejected.
     """
+
     def __call__(self, inputs):
         try:
             self.setup(inputs)

@@ -5,8 +5,8 @@ from nose.tools import assert_equal, assert_list_equal, assert_is_instance, \
     assert_dict_equal
 
 import slivka.conf.loaders
-from scheduler.factory import runners_from_config
-from utils import ConfigYamlLoader
+from slivka.scheduler.factory import runners_from_config
+from slivka.utils import ConfigYamlLoader
 from . import StubRunner
 
 Argument = slivka.conf.loaders.ServiceConfig.Argument

@@ -3,10 +3,10 @@ from importlib import import_module
 from typing import Type, Tuple, Callable, List
 
 import slivka.scheduler.runners
-from scheduler import BaseCommandRunner
-from scheduler.starter import CommandStarter, RunnerID
 from slivka.conf import ServiceConfig
+from slivka.scheduler import BaseCommandRunner
 from slivka.scheduler.scheduler import SelectorMeta, BaseSelector
+from slivka.scheduler.starter import CommandStarter, RunnerID
 
 
 def runners_from_config(config: ServiceConfig) -> Tuple[Callable, List[CommandStarter]]:

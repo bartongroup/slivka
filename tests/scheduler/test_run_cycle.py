@@ -6,10 +6,10 @@ import mongomock
 from nose.tools import assert_equal
 
 import slivka.db
-from conf import ServiceConfig
-from db.helpers import insert_one, pull_one
+from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest
 from slivka.db.helpers import insert_many, pull_many
+from slivka.db.helpers import insert_one, pull_one
 from slivka.scheduler import Scheduler
 from slivka.scheduler.runner import Job, Command
 from slivka.utils import JobStatus
