@@ -1,3 +1,4 @@
+import itertools
 import multiprocessing
 import os
 import signal
@@ -158,6 +159,8 @@ def start_scheduler(daemon, pid_file):
             scheduler.add_selector(service_config.id, selector)
             for runner in runners:
                 scheduler.add_runner(runner)
+            for runner, test in itertools.product(runners, service_config.tests):
+                scheduler.add_test(runner, test)
         scheduler.run_forever()
 
 

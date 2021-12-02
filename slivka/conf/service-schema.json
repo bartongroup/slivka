@@ -179,6 +179,27 @@
         "runners"
       ],
       "additionalProperties": false
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[A-Za-z0-9\\-_]+$"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timeout": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "required": [

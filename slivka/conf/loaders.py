@@ -156,6 +156,11 @@ class ServiceConfig:
         runners = attr.ib(type=Dict[str, Runner])
         selector = attr.ib(type=str, default=None)
 
+    @attrs
+    class ServiceTest:
+        parameters = attrib(type=Dict[str, str])
+        timeout = attrib(type=int)
+
     id = attrib(type=str)
     slivka_version = attr.ib(converter=StrictVersion)
     name = attrib(type=str)
@@ -170,6 +175,7 @@ class ServiceConfig:
     env = attrib(type=Dict[str, str], converter=frozendict, factory=dict)
     outputs = attrib(type=List[OutputFile])
     execution = attrib(type=Execution)
+    tests = attrib(type=List[ServiceTest], factory=list)
 
 
 @attrs(kw_only=True)

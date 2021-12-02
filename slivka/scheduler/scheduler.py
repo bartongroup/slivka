@@ -2,9 +2,10 @@ import contextlib
 import logging
 import operator
 import os
+import shutil
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from typing import (Iterable, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable, Tuple)
@@ -14,6 +15,7 @@ from bson import ObjectId
 
 import slivka.conf
 import slivka.db
+from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest, CancelRequest, ServiceState
 from slivka.db.helpers import delete_many, push_many
 from slivka.db.helpers import push_one, insert_one
@@ -70,6 +72,78 @@ class _ServiceStateHelper:
         return state.id
 
 
+class _ServiceTesterThread(threading.Thread):
+    def __init__(self, states_manager: _ServiceStateHelper, directory=None,
+                 interval=600):
+        super().__init__(daemon=True)
+        self.log = logging.getLogger(__name__)
+        self._tests = []
+        self._states_manager = states_manager
+        self._directory = directory or slivka.conf.settings.directory.jobs
+        self._interval = interval
+        self._finished = threading.Event()
+
+    def add_test(self, runner: CommandStarter, test: ServiceConfig.ServiceTest):
+        self._tests.append((runner, test))
+
+    def run(self) -> None:
+        while not self._finished.wait(self._interval):
+            for runner, test in self._tests:
+                try:
+                    self.log.debug("Starting automated test for %s, %s", runner, test)
+                    self.run_test(runner, test)
+                except pymongo.errors.AutoReconnect:
+                    break
+                except Exception as e:
+                    self.log.exception(
+                        "Uncaught exception occurred during test. " +
+                        "Runner %s, test %s", runner, test, exc_info=e)
+                    self._states_manager.update_state(
+                        runner.service_name, runner.name, 'implementation',
+                        ServiceState.DOWN, str(e)
+                    )
+
+    def run_test(self, runner: CommandStarter, test: ServiceConfig.ServiceTest):
+        dir_name = "test_%s_%s" % (runner.service_name, runner.name)
+        directory = os.path.join(self._directory, dir_name)
+        update_state = partial(
+            self._states_manager.update_state, runner.service_name, runner.name
+        )
+        if os.path.isdir(directory):
+            shutil.rmtree(directory)
+        try:
+            job, = runner.start([(test.parameters, directory)])
+        except OSError as e:
+            update_state('start', ServiceState.DOWN, str(e))
+            return
+        else:
+            update_state('start', ServiceState.OK, "OK")
+        interrupt_time = datetime.now() + timedelta(seconds=test.timeout)
+        while True:
+            try:
+                status, = runner.status([job])
+            except OSError as e:
+                update_state('state', ServiceState.DOWN, str(e))
+                break
+            if status.is_finished():
+                if status == JobStatus.COMPLETED:
+                    update_state('state', ServiceState.OK, "OK")
+                elif status == JobStatus.INTERRUPTED or status == JobStatus.DELETED:
+                    update_state('state', ServiceState.WARNING,
+                                 "Test job has been deleted")
+                elif status == JobStatus.FAILED or status == JobStatus.ERROR:
+                    update_state('state', ServiceState.DOWN, "Test job failed")
+                break
+            if datetime.now() > interrupt_time:
+                update_state('state', ServiceState.WARNING, "Test job timed out")
+                break
+            if not self._finished.wait(1):
+                break
+
+    def stop(self):
+        self._finished.set()
+
+
 class Scheduler:
     """
     Scheduler is a central hub of the slivka system. It runs in it's
@@ -95,6 +169,8 @@ class Scheduler:
             defaultdict(partial(BackoffCounter, max_tries=10))
         self._service_states = _ServiceStateHelper()
         self._auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
+        self._service_tester = _ServiceTesterThread(
+            self._service_states, self.jobs_directory)
 
     @property
     def is_running(self):
@@ -114,6 +190,9 @@ class Scheduler:
     def add_selector(self, service: str, selector: Callable):
         self.selectors[service] = selector
 
+    def add_test(self, runner: CommandStarter, test: ServiceConfig.ServiceTest):
+        self._service_tester.add_test(runner, test)
+
     def stop(self):
         self._finished.set()
 
@@ -128,10 +207,13 @@ class Scheduler:
             raise RuntimeError("scheduler can only be started once")
         self.log.info('scheduler started')
         try:
+            self._service_tester.start()
             while not self._finished.wait(1):
                 self.main_loop()
         except KeyboardInterrupt:
             self.stop()
+        finally:
+            self._service_tester.stop()
 
     def main_loop(self):
         database = slivka.db.database
