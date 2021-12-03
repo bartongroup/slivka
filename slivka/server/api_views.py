@@ -112,7 +112,7 @@ def service_jobs_view(service_id):
           endpoint="service_job", methods=['GET', 'DELETE'])
 @bp.route('/jobs/<job_id>', endpoint="job", methods=['GET', 'DELETE'])
 def job_view(job_id, service_id=None):
-    query = {'uuid': job_id}
+    query = {'id': job_id}
     if service_id is not None:
         query['service'] = service_id
     job_request = JobRequest.find_one(slivka.db.database, **query)
