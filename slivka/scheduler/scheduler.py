@@ -87,7 +87,7 @@ class _ServiceTesterThread(threading.Thread):
         self._tests.append((runner, test))
 
     def run(self) -> None:
-        while not self._finished.wait(self._interval):
+        while True:
             for runner, test in self._tests:
                 try:
                     self.log.debug("Starting automated test for %s, %s", runner, test)
@@ -102,6 +102,8 @@ class _ServiceTesterThread(threading.Thread):
                         runner.service_name, runner.name, 'implementation',
                         ServiceState.DOWN, str(e)
                     )
+            if self._finished.wait(self._interval):
+                break
 
     def run_test(self, runner: CommandStarter, test: ServiceConfig.ServiceTest):
         dir_name = "test_%s_%s" % (runner.service_name, runner.name)
