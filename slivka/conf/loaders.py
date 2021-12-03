@@ -64,7 +64,7 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
         except jsonschema.ValidationError as e:
             raise ImproperlyConfigured(
                 'Error in file "{file}" at \'{path}\'. {reason}'.format(
-                    file=fn, path='/'.join(e.path), reason=e.message
+                    file=fn, path='/'.join(map(str, e.path)), reason=e.message
                 )
             )
         srvc_conf['id'] = fnmatch.group(1)
