@@ -1,12 +1,12 @@
-import os
-import shlex
-from datetime import datetime, timedelta
 import logging
+import os
+import pwd
 import re
+import shlex
 import subprocess
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import Sequence
-import pwd
 
 import pkg_resources
 
@@ -14,7 +14,6 @@ from slivka import JobStatus
 from slivka.utils import ttl_cache
 from .grid_engine import _StatusLetterDict
 from .runner import Runner, Job, Command
-
 
 log = logging.getLogger("slivka.scheduler")
 
@@ -60,7 +59,7 @@ def _job_stat():
     )
     return {
         jid: _status_letters[letter]
-        for jid, letter in re.findall(rb'^(\w+) ([A-Z]+)$', stdout, re.MULTILINE)
+        for jid, letter in re.findall(r'^(\w+) ([A-Z]+)$', stdout, re.MULTILINE)
     }
 
 
