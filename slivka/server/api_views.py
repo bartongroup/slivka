@@ -14,8 +14,8 @@ from werkzeug.datastructures import FileStorage
 
 import slivka.conf
 from slivka.conf import ServiceConfig
-from slivka.db.documents import (ServiceState, JobRequest, CancelRequest,
-                                 JobMetadata, UploadedFile)
+from slivka.db.documents import ServiceState, JobRequest, CancelRequest, \
+    UploadedFile
 from slivka.db.helpers import insert_one
 from .forms.form import BaseForm
 
@@ -170,10 +170,10 @@ def job_files_view(job_id):
     req = JobRequest.find_one(slivka.db.database, id=job_id)
     if req is None:
         flask.abort(404)
-    job = JobMetadata.find_one(slivka.db.database, id=job_id)
+    job = req.job
     if job is None:
         return jsonify(files=[])
-    service: ServiceConfig = flask.current_app.config['services'][job.service]
+    service: ServiceConfig = flask.current_app.config['services'][req.service]
     dir_list = [
         os.path.relpath(os.path.join(base, fn), job.cwd)
         for base, _dir_names, file_names in os.walk(job.cwd)
@@ -198,10 +198,13 @@ def job_files_view(job_id):
 @bp.route('/jobs/<job_id>/files/<path:file_path>', 
           endpoint='job_file', methods=['GET'])
 def job_file_view(job_id, file_path):
-    job = JobMetadata.find_one(slivka.db.database, id=job_id)
+    req = JobRequest.find_one(slivka.db.database, id=job_id)
+    if req is None:
+        flask.abort(404)
+    job = req.job
     if job is None:
         flask.abort(404)
-    service: ServiceConfig = flask.current_app.config['services'][job.service]
+    service: ServiceConfig = flask.current_app.config['services'][req.service]
     if not os.path.isfile(os.path.join(job.cwd, file_path)):
         flask.abort(404)
     output_file = next(
