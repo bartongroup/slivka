@@ -14,7 +14,7 @@ from bson import ObjectId
 
 import slivka.conf
 import slivka.db
-from db.helpers import delete_many, push_many
+from slivka.db.helpers import delete_many, push_many
 from slivka.db.documents import JobRequest, CancelRequest, ServiceState
 from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
