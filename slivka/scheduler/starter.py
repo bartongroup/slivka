@@ -12,8 +12,6 @@ from functools import partial
 from typing import Match, Optional, Union, List, Dict, Tuple, Sequence, \
     Iterable
 
-from frozendict import frozendict
-
 from slivka import JobStatus
 from slivka.conf import ServiceConfig
 from .runner import Job, Command, BaseCommandRunner
@@ -76,7 +74,6 @@ class CommandStarter:
         replace_fn = partial(_replace_vars, os.environ)
         for key, val in self.env.items():
             self.env[key] = _var_regex.sub(replace_fn, val)
-        self.env = frozendict(self.env)
 
         if isinstance(base_command, str):
             base_command = shlex.split(base_command)
