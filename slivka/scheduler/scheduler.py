@@ -116,30 +116,36 @@ class _ServiceTesterThread(threading.Thread):
         try:
             job, = runner.start([(test.parameters, directory)])
         except OSError as e:
+            self.log.exception("Failed to start test job.")
             update_state('start', ServiceState.DOWN, str(e))
             return
         else:
             update_state('start', ServiceState.OK, "OK")
+        self.log.debug("Test job started successfully.")
         interrupt_time = datetime.now() + timedelta(seconds=test.timeout)
         while True:
             try:
                 status, = runner.status([job])
             except OSError as e:
+                self.log.exception("Failed to poll test job status.")
                 update_state('state', ServiceState.DOWN, str(e))
                 break
             if status.is_finished():
                 if status == JobStatus.COMPLETED:
+                    self.log.debug("Test job completed.")
                     update_state('state', ServiceState.OK, "OK")
                 elif status == JobStatus.INTERRUPTED or status == JobStatus.DELETED:
-                    update_state('state', ServiceState.WARNING,
-                                 "Test job has been deleted")
+                    self.log.warning("Test job interrupted.")
+                    update_state('state', ServiceState.WARNING, "Test deleted")
                 elif status == JobStatus.FAILED or status == JobStatus.ERROR:
-                    update_state('state', ServiceState.DOWN, "Test job failed")
+                    self.log.error("Test job failed.")
+                    update_state('state', ServiceState.DOWN, "Test failed")
                 break
             if datetime.now() > interrupt_time:
-                update_state('state', ServiceState.WARNING, "Test job timed out")
+                self.log.warning("Test job timed out.")
+                update_state('state', ServiceState.WARNING, "Test timed out")
                 break
-            if not self._finished.wait(1):
+            if self._finished.wait(1):
                 break
 
     def stop(self):

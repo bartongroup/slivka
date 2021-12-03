@@ -76,7 +76,7 @@ class TestServiceTestThread:
             self.mock_states_manager.mock_calls[1],
             mock.call.update_state(
                 "service_stub", "runner_stub", "state", ServiceState.DOWN,
-                "Test job failed"
+                "Test failed"
             )
         )
 
@@ -89,7 +89,7 @@ class TestServiceTestThread:
             self.mock_states_manager.mock_calls[1],
             mock.call.update_state(
                 "service_stub", "runner_stub", "state", ServiceState.WARNING,
-                "Test job has been deleted"
+                "Test deleted"
             )
         )
 
@@ -102,6 +102,6 @@ class TestServiceTestThread:
             self.mock_states_manager.mock_calls[1],
             mock.call.update_state(
                 "service_stub", "runner_stub", "state", ServiceState.WARNING,
-                "Test job timed out"
+                "Test timed out"
             )
         )
