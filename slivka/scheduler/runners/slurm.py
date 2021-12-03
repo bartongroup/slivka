@@ -77,7 +77,7 @@ class SlurmRunner(Runner):
         cmd = str.join(' ', map(shlex.quote, command.args))
         input_script = _runner_sh_tpl.format(cmd=cmd)
         proc = subprocess.run(
-            ['sbatch', '--output==stdout', '--error=stderr', '--parsable'],
+            ['sbatch', '--output=stdout', '--error=stderr', '--parsable'],
             input=input_script,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
