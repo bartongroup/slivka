@@ -14,13 +14,13 @@ from bson import ObjectId
 
 import slivka.conf
 import slivka.db
-from slivka.db.helpers import delete_many, push_many
 from slivka.db.documents import JobRequest, CancelRequest, ServiceState
+from slivka.db.helpers import delete_many, push_many
 from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
-from .runners import Job as JobTuple
-from .runners.runner import RunnerID, Runner
+from .runner import BaseCommandRunner, Job as JobTuple
+from .starter import CommandStarter, RunnerID
 
 
 def get_classpath(cls):
@@ -89,7 +89,7 @@ class Scheduler:
         self.log = logging.getLogger(__name__)
         self._finished = threading.Event()
         self.jobs_directory = jobs_directory or slivka.conf.settings.directory.jobs
-        self.runners: Dict[RunnerID, Runner] = {}
+        self.runners: Dict[RunnerID, CommandStarter] = {}
         self.selectors: Dict[str, Callable] = defaultdict(lambda: BaseSelector.default)
         self._backoff_counters: DefaultDict[Any, BackoffCounter] = \
             defaultdict(partial(BackoffCounter, max_tries=10))
@@ -108,7 +108,7 @@ class Scheduler:
         for counter in self._backoff_counters.values():
             counter.max_tries = limit
 
-    def add_runner(self, runner: Runner):
+    def add_runner(self, runner: CommandStarter):
         self.runners[runner.id] = runner
 
     def add_selector(self, service: str, selector: Callable):
@@ -180,7 +180,7 @@ class Scheduler:
             )
 
     def group_requests(self, requests: Iterable[JobRequest]) \
-            -> Dict[Union[Runner, object], List[JobRequest]]:
+            -> Dict[Union[BaseCommandRunner, object], List[JobRequest]]:
         """Group requests to their corresponding runners or reject."""
         grouped = defaultdict(list)
         for request in requests:
@@ -232,7 +232,7 @@ class Scheduler:
                 job = request.job
                 assert job is not None
                 with contextlib.suppress(OSError):
-                    runner.cancel(JobTuple(job.job_id, job.work_dir))
+                    runner.cancel([JobTuple(job.job_id, job.work_dir)])
             retry_call(
                 partial(delete_many, database, cancel_requests),
                 pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
@@ -277,7 +277,7 @@ class Scheduler:
                 )
                 self.log.exception("Starting jobs failed.")
 
-    def _start_requests(self, runner: Runner, requests: List[JobRequest]) \
+    def _start_requests(self, runner: CommandStarter, requests: List[JobRequest]) \
             -> Iterable[Tuple[JobRequest, JobTuple]]:
         """ Run all requests with the supplied runner.
 
@@ -291,9 +291,9 @@ class Scheduler:
         if not requests or next(counter) > 0:
             raise ExecutionDeferred(runner)
         try:
-            jobs = runner.batch_start(
-                [req.inputs for req in requests],
-                [os.path.join(self.jobs_directory, req.b64id) for req in requests]
+            jobs = runner.start(
+                (req.inputs, os.path.join(self.jobs_directory, req.b64id))
+                for req in requests
             )
             update_call = partial(
                 self._service_states.update_state, runner.service_name,
@@ -350,19 +350,19 @@ class Scheduler:
                 pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
             )
 
-    def monitor_jobs(self, runner: Runner, requests: List[JobRequest]) \
+    def monitor_jobs(self, runner: CommandStarter, requests: List[JobRequest]) \
             -> Sequence[JobRequest]:
         """ Checks status of jobs.
 
         Checks and updates status of requests using the provided runner
         or runner class and returns a list of those, whose status have changed.
         """
-        counter = self._backoff_counters[runner.check_status]
+        counter = self._backoff_counters[runner.status]
         if not requests or next(counter) > 0:
             return ()
         updated = []
         try:
-            statuses = runner.batch_check_status(
+            statuses = runner.status(
                 [JobTuple(r.job.job_id, r.job.cwd) for r in requests])
             for request, status in zip(requests, statuses):
                 if request.status != status:
@@ -499,6 +499,7 @@ class BaseSelector(metaclass=SelectorMeta):
     and the first one to return True is selected. Otherwise,
     the job is rejected.
     """
+
     def __call__(self, inputs):
         try:
             self.setup(inputs)

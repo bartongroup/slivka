@@ -1,0 +1,25 @@
+---
+slivka-version: "0.8"
+name: Test Service
+parameters: {}
+command: example.bin
+args:
+  option1:
+    arg: -o1 $(value)
+  option2:
+    arg: --option2=$(value)
+  param1:
+    arg: -p1 $(value)
+  param2:
+    arg: $(value)
+env:
+  EXAMPLE: SENTINEL_VALUE
+outputs: {}
+execution:
+  runners:
+    default:
+      type: tests.scheduler.StubRunner
+      parameters:
+        stub_param1: sentinel
+        stub_param2: 12
+...

@@ -3,6 +3,7 @@ import json
 import os.path
 import re
 import typing
+from collections import ChainMap
 from collections.abc import Sequence
 from distutils.version import StrictVersion
 from typing import List, Dict
@@ -117,6 +118,14 @@ def _deserialize(cls, obj):
                 val.setdefault('id', key)
         return {key: _deserialize(cls, val) for key, val in obj.items()}
     return obj
+
+
+def load_service_config(service_id: str, config: dict) -> 'ServiceConfig':
+    service_schema = json.loads(pkg_resources.resource_string(
+        "slivka.conf", "service-schema.json").decode())
+    jsonschema.validate(config, service_schema, Draft7Validator)
+    config = ChainMap(config, {'id': service_id})
+    return _deserialize(ServiceConfig, config)
 
 
 @attrs(kw_only=True)

@@ -8,13 +8,13 @@ import tempfile
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Sequence, Collection
+from typing import List
 
 import pkg_resources
 
 from slivka import JobStatus
 from slivka.utils import ttl_cache
-from .runner import Runner, Job, Command
+from ..runner import BaseCommandRunner, Command, Job
 
 log = logging.getLogger('slivka.scheduler')
 
@@ -25,7 +25,7 @@ _job_status_regex = re.compile(
     rb'^\s*(\d+)\s+\d+\.\d*\s+[\w-]+\s+[\w-]+\s+(\w+)',
     re.MULTILINE
 )
-_runner_sh_tpl = pkg_resources.resource_string(__name__, "runner.sh.tpl").decode()
+_runner_sh_tpl = pkg_resources.resource_string(__name__, "sge_runner.sh.tpl").decode()
 
 
 class _StatusLetterDict(dict):
@@ -60,7 +60,7 @@ def _job_stat():
     }
 
 
-class GridEngineRunner(Runner):
+class GridEngineRunner(BaseCommandRunner):
     """ Implementation of the :py:class:`Runner` for Univa Grid Engine.
 
     This runner submits jobs to the Univa Grid Engine using ``qsub``
@@ -70,17 +70,16 @@ class GridEngineRunner(Runner):
     """
     finished_job_timestamp = defaultdict(datetime.now)
 
-    def __init__(self, *args, qargs=(), **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, qargs=()):
         if isinstance(qargs, str):
             qargs = shlex.split(qargs)
         self.qsub_args = qargs
-        self.env.update(
-            (env, os.getenv(env)) for env in os.environ
+        self.env = {
+            env: os.getenv(env) for env in os.environ
             if env.startswith('SGE')
-        )
+        }
 
-    def submit(self, command: Command) -> Job:
+    def start_one(self, command: Command) -> Job:
         """
         Creates a temporary script file containing the command to
         execute and runs it with qsub. The output and error streams
@@ -94,34 +93,24 @@ class GridEngineRunner(Runner):
         # TODO: add -terse argument for job id only
         qsub_cmd = ['qsub', '-V', '-cwd', '-o', 'stdout', '-e', 'stderr',
                     *self.qsub_args, path]
+        env = command.env.copy()
+        env.update(self.env)
         proc = subprocess.run(
             qsub_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=command.cwd,
-            env=self.env,
+            env=env,
             universal_newlines=False
         )
         proc.check_returncode()
         match = _job_submitted_regex.match(proc.stdout)
         return Job(match.group(1), command.cwd)
 
-    def batch_submit(self, commands: Sequence[Command]) -> Sequence[Job]:
-        """
-        Batch submit is performed by repeated calls to
-        :py:meth:`submit`. The thread pool executor ensures that
-        the limit of subprocesses is not be exceeded.
+    def start(self, commands: List[Command]) -> List[Job]:
+        return list(_executor.map(self.start_one, commands))
 
-        :param commands: iterable of args list and cwd path pairs
-        :return: list of identifiers
-        """
-        return list(_executor.map(self.submit, commands))
-
-    def check_status(self, job: Job) -> JobStatus:
-        # there is no single job status check
-        return self.batch_check_status([job])[0]
-
-    def batch_check_status(self, jobs: Sequence[Job]) -> Sequence[JobStatus]:
+    def status(self, jobs: List[Job]) -> List[JobStatus]:
         states = _job_stat()
         result = []
         for job in jobs:
@@ -149,8 +138,5 @@ class GridEngineRunner(Runner):
                         result.append(JobStatus.INTERRUPTED)
         return result
 
-    def cancel(self, job: Job):
-        subprocess.run([b'qdel', job.id])
-
-    def batch_cancel(self, jobs: Collection[Job]):
+    def cancel(self, jobs: List[Job]):
         subprocess.run([b'qdel', *(job.id for job in jobs)])
