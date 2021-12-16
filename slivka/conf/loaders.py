@@ -22,7 +22,8 @@ from attr import attrs, attrib
 from frozendict import frozendict
 from jsonschema import Draft7Validator
 
-from slivka.utils import ConfigYamlLoader, flatten_mapping, unflatten_mapping
+from slivka.utils import ConfigYamlLoader, flatten_mapping, unflatten_mapping, \
+    expandvars
 
 
 class ImproperlyConfigured(Exception):
@@ -128,6 +129,21 @@ def load_service_config(service_id: str, config: dict) -> 'ServiceConfig':
     return _deserialize(ServiceConfig, config)
 
 
+def _parameters_converter(parameters: dict):
+    converted = {}
+    for key, val in parameters.items():
+        if isinstance(val, str):
+            converted[key] = expandvars(val)
+        elif isinstance(val, list):
+            converted[key] = [expandvars(v) for v in val]
+        else:
+            raise ValueError(
+                "Invalid parameter type %r. Only list or str are allowed"
+                % type(val)
+            )
+    return converted
+
+
 @attrs(kw_only=True)
 class ServiceConfig:
     @attrs
@@ -158,7 +174,7 @@ class ServiceConfig:
 
     @attrs
     class ServiceTest:
-        parameters = attrib(type=Dict[str, str])
+        parameters = attrib(type=Dict[str, str], converter=_parameters_converter)
         timeout = attrib(type=int)
 
     id = attrib(type=str)
