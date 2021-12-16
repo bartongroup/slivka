@@ -1,4 +1,4 @@
-{% set version="0.8b19" %}
+{% set version="0.8.1b0" %}
 
 package:
   name: slivka
