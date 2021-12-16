@@ -33,6 +33,10 @@ class MongoDocument(dict):
         elif isinstance(_id, (str, bytes)):
             if len(_id) == 16:  # b64 encoded
                 _id = urlsafe_b64decode(_id)
+            elif not ((len(_id) == 12 and isinstance(_id, bytes)) or
+                      (len(_id) == 24 and isinstance(_id, str))):
+                # invalid id, neither raw bytes nor hex string
+                return None
             kwargs['_id'] = ObjectId(_id)
         item = database[cls.__collection__].find_one(kwargs)
         return cls(**item) if item is not None else None
