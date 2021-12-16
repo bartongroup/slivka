@@ -63,8 +63,9 @@ def init_project(base_dir):
 @main.group('start')
 @click.option('--home', '-h', type=click.Path())
 def start(home):
-    if home is not None:
-        os.environ['SLIVKA_HOME'] = os.path.abspath(home)
+    if home is None:
+        home = os.getenv('SLIVKA_HOME', os.getcwd())
+    os.environ['SLIVKA_HOME'] = os.path.abspath(home)
 
 
 @start.command('server')
