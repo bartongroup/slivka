@@ -302,7 +302,7 @@ class Scheduler:
             retry_call(update_call, pymongo.errors.AutoReconnect,
                        handler=self._auto_reconnect_handler)
             return zip(requests, jobs)
-        except OSError as e:
+        except Exception as e:
             self.log.exception("Starting jobs with %s failed.", runner)
             counter.failure()
             if counter.give_up:
@@ -377,7 +377,7 @@ class Scheduler:
             else:
                 service_state = ServiceState.OK
                 service_message = 'OK'
-        except OSError as e:
+        except Exception as e:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
