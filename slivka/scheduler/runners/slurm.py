@@ -66,8 +66,11 @@ def _job_stat():
 class SlurmRunner(Runner):
     finished_job_timestamp = defaultdict(datetime.now)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, sbatchargs=(), **kwargs):
         super().__init__(*args, **kwargs)
+        if isinstance(sbatchargs, str):
+            sbatchargs = shlex.split(sbatchargs)
+        self.sbatch_args = sbatchargs
         self.env.update(
             (env, os.getenv(env)) for env in os.environ
             if env.startswith("SLURM")
@@ -77,7 +80,8 @@ class SlurmRunner(Runner):
         cmd = str.join(' ', map(shlex.quote, command.args))
         input_script = _runner_sh_tpl.format(cmd=cmd)
         proc = subprocess.run(
-            ['sbatch', '--output=stdout', '--error=stderr', '--parsable'],
+            ['sbatch', '--output=stdout', '--error=stderr', '--parsable',
+             *self.sbatch_args],
             input=input_script,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
