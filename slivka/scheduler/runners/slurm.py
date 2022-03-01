@@ -12,12 +12,13 @@ import pkg_resources
 
 from slivka import JobStatus
 from slivka.utils import ttl_cache
+from ._bash_lex import bash_quote
 from .grid_engine import _StatusLetterDict
 from .runner import Runner, Job, Command
 
 log = logging.getLogger("slivka.scheduler")
 
-_runner_sh_tpl = pkg_resources.resource_string(__name__, "runner.sh.tpl").decode()
+_runner_bash_tpl = pkg_resources.resource_string(__name__, "runner.bash.tpl").decode()
 
 
 _status_letters = _StatusLetterDict({
@@ -77,8 +78,8 @@ class SlurmRunner(Runner):
         )
 
     def submit(self, command: Command) -> Job:
-        cmd = str.join(' ', map(shlex.quote, command.args))
-        input_script = _runner_sh_tpl.format(cmd=cmd)
+        cmd = str.join(' ', map(bash_quote, command.args))
+        input_script = _runner_bash_tpl.format(cmd=cmd)
         proc = subprocess.run(
             ['sbatch', '--output=stdout', '--error=stderr', '--parsable',
              *self.sbatch_args],
