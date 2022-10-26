@@ -3,10 +3,12 @@ import functools
 import itertools
 import math
 import os
+import re
 import sys
 import time
 import warnings
 from collections import OrderedDict, defaultdict
+from typing import Mapping
 
 import yaml.resolver
 
@@ -44,7 +46,7 @@ class Singleton(type):
 class LimitedSizeDict(OrderedDict):
     """
     A dictionary containing a limited number of entries.
-    If more entries then specified by ``max_size`` are added,
+    If more entries than specified by ``max_size`` are added,
     the oldest ones are removed.
     """
     def __init__(self, max_size, mapping=None):
@@ -270,6 +272,39 @@ def unflatten_mapping(mapping):
 
 def get_classpath(cls):
     return cls.__module__ + '.' + cls.__name__
+
+
+# Regular expression capturing variable names $VAR or ${VAR}
+# and escaped dollar sign $$. Matches should be substituted
+# using _replace_from_env function.
+_var_regex = re.compile(
+    r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
+    re.UNICODE | re.IGNORECASE
+)
+
+
+def expandvars(string: str, environ: Mapping = None) -> str:
+    """ Interpolate variables in text using provided environ.
+
+    Variables are specified in text using bash-like syntax i.e.
+    $VARIABLE or ${VARIABLE}. Dollar sign escaped with another dollar
+    sign ``$$`` is replaced with a single one. If environ is not
+    specified, system environment variables are used.
+
+    :param string: text containing variables to be interpolated
+    :param environ: mapping used for environment variables
+    :return: interpolated text
+    """
+    if environ is None:
+        environ = os.environ
+
+    def replace_vars(match: re.Match):
+        if match.group(1):
+            return '$'
+        else:
+            return environ.get(match.group(2) or match.group(3))
+
+    return _var_regex.sub(replace_vars, string)
 
 
 class JobStatus(enum.IntEnum):

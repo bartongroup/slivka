@@ -4,51 +4,17 @@ import filecmp
 import itertools
 import logging
 import os
-import re
 import shlex
 import shutil
 from collections import namedtuple, ChainMap
-from functools import partial
-from typing import Match, Optional, Union, List, Dict, Tuple, Sequence, \
-    Iterable
+from typing import Optional, Union, List, Dict, Tuple, Sequence, Iterable
 
 from slivka import JobStatus
 from slivka.conf import ServiceConfig
+from slivka.utils import expandvars
 from .runner import Job, Command, BaseCommandRunner
 
 log = logging.getLogger('slivka.scheduler')
-
-# Regular expression capturing variable names $VAR or ${VAR}
-# and escaped dollar sign $$. Matches should be substituted
-# using _replace_from_env function.
-_var_regex = re.compile(
-    r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
-    re.UNICODE | re.IGNORECASE
-)
-
-
-def _replace_vars(env: dict, match: Match):
-    """ Replaces matches of _var_regex with variables from env
-
-    Given the match from the ``_var_regex`` returns the string
-    which should be substituted for the match. Escaped dollar
-    "$$" is substituted for a single dollar. captured variables
-    are substituted for the values from the ``env`` dictionary
-    or nothing if the value is not present.
-    This function is meant to imitate bash variable interpolation.
-
-    Usage:
-
-        _var_regex.sub(partial(_replace_from_env, env), cmd)
-
-    :param env: dictionary of variables and values to be substituted
-    :param match: the match object provided by ``re.sub``
-    :return:
-    """
-    if match.group(1):
-        return '$'
-    else:
-        return env.get(match.group(2) or match.group(3))
 
 
 RunnerID = namedtuple('RunnerID', 'service, runner')
@@ -70,22 +36,20 @@ class CommandStarter:
             "SLIVKA_HOME": os.getenv("SLIVKA_HOME", os.getcwd())
         }
         self.env.update(env)
-        # interpolate any variables using the system env vars
-        replace_fn = partial(_replace_vars, os.environ)
         for key, val in self.env.items():
-            self.env[key] = _var_regex.sub(replace_fn, val)
+            self.env[key] = expandvars(val, os.environ)
 
         if isinstance(base_command, str):
             base_command = shlex.split(base_command)
         # interpolate any variables in the command and arguments
-        replace_fn = partial(_replace_vars, ChainMap(self.env, os.environ))
+        environ = ChainMap(self.env, os.environ)
         self.base_command = [
-            _var_regex.sub(replace_fn, arg) for arg in base_command
+            expandvars(arg, environ) for arg in base_command
         ]
         # make copies so `arg` can be changed safely
         self.arguments = list(map(copy.copy, args))
         for argument in self.arguments:
-            args = _var_regex.sub(replace_fn, argument.arg)
+            args = expandvars(argument.arg, environ)
             argument.arg = shlex.split(args)
 
         self.runner: Optional[BaseCommandRunner] = None
