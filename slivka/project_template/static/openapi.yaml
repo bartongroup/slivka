@@ -1,0 +1,449 @@
+---
+openapi: 3.0.3
+info:
+  title: Slivka Web API
+  version: '1.1'
+paths:
+  /api/version:
+    get:
+      summary: Show slivka version.
+      responses:
+        '200':
+          description: 
+            Version of the slivka instance running on the server
+            and its corresponding REST API.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slivkaVersion:
+                    description: Slivka version.
+                    type: string
+                  APIVersion:
+                    description: REST API version
+                    type: string
+
+  /api/services:
+    get:
+      summary: Show list of all services.
+      responses:
+        '200':
+          description: List of all available web services.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceResource'
+
+  /api/services/{service}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        description: Service id
+        schema:
+          type: string
+
+    get:
+      summary: Show service information.
+      responses:
+        '200':
+          description:
+            Detailed description of the service. To start a new
+            job, send a POST request providing values for the listed
+            parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResource'
+        '404':
+          description: Requested service not found.
+
+  /api/services/{service}/jobs:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        description: Service id
+        schema:
+          type: string
+
+    post:
+      summary: Submit new job request.
+      requestBody:
+        description:
+          The request content can be either an URLencoded or a multipart
+          form data containing the service parameter ids and
+          their corresponding values. If a file needs to be submitted,
+          then multipart must be used.
+        content:
+          application/x-www-form-urlencoded:
+            description: URLencoded service parameters.
+            example: param1Id=value1&param2Id=value2
+          multipart/form-data:
+            description: Service parameters as multipart form data.
+          # application/json:
+          #   description: JSON object with job parameters.
+          #   schema:
+          #     type: object
+          #     additionalProperties: true
+          #   example:
+          #     param1Id: value1
+          #     param2Id: value2
+
+        required: true
+      responses:
+        '202':
+          description: New job request has been created.
+          headers:
+            Location:
+              description: Location of the new resource.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResource'
+        '422':
+          description: 
+            Your job request contains invalid values.
+            Check job parameters and provided values.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        parameter:
+                          type: string
+                          description:
+                            Parameter id for which an error occurred.
+                        errorCode:
+                          type: string
+                          description: Short code identifying error type.
+                        message:
+                          type: string
+                          description: Description of the error.
+        '404':
+          description: Service not found.
+
+  /api/jobs/{jid}:
+    parameters:
+      - name: jid
+        in: path
+        required: true
+        description: Job id
+        schema:
+          type: string
+        example: YKZFx3m3LxyfHFib
+
+    get:
+      summary: Retrieve job information.
+      description:
+        This endpoint can be used to poll for job status changes.
+      responses:
+        '200':
+          description: Job information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResource'
+        '404':
+          description: Job not found.
+
+    delete:
+      summary: Cancel running job
+      responses:
+        '202':
+          description: Job deleted successfully.
+        '404':
+          description: Job not found.
+
+  /api/jobs/{jid}/files:
+    parameters:
+      - name: jid
+        in: path
+        required: true
+        description: Job id
+        schema:
+          type: string
+        example: YKegj3m3LxQWnw7U
+
+    get:
+      summary: Show job files.
+      description:
+        The files can be fetched even if the job is not finished. 
+        In such case only currently existing files are shown and the 
+        list might be incomplete.
+      responses:
+        '200':
+          description: List of files created by the job.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileResource'
+
+  /api/job/{jid}/files/{path}:
+    parameters:
+      - name: jid
+        in: path
+        required: true
+        description: Job id
+        schema:
+          type: string
+        example: YKegj3m3LxQWnw7U
+      - name: path
+        in: path
+        required: true
+        description: Path to the file
+        schema:
+          type: string
+        example: stdout
+
+    get:
+      summary: Show file information.
+      description:
+        Displays the metadata of the file and the url where the
+        content can be downloaded from.
+      responses:
+        '200':
+          description: File information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResource'
+
+  /api/files:
+    post:
+      summary: Upload file.
+      description:
+        Uploaded files are given identifiers that can be used during
+        job submission without the need to re-upload them.
+        Upload the file first if you intent to reuse the same file
+        in multiple jobs.
+      responses:
+        '201':
+          description: New file resource created on the server.
+          headers:
+            Location:
+              description: Location of the new resource.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResource'
+
+  /api/files/{path}:
+    get:
+      summary: Show uploaded file resource.
+      responses:
+        '200':
+          description: File information.
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResource'
+        
+components:
+  schemas:
+    ServiceResource:
+      type: object
+      properties:
+        '@url':
+          type: string
+          format: uri
+          description: Location of the service resource.
+        id:
+          type: string
+          description: Unique identifier which the service is referred to by.
+        name:
+          type: string
+          description: Human-readable service name.
+        description:
+          type: string
+          description: Long description of the service.
+        author:
+          type: string
+          description: Author of the service or the software.
+        version:
+          type: string
+          description: Version of the service or the underlying software.
+        license:
+          type: string
+          description: License which the software is released under.
+        classifiers:
+          type: array
+          description:
+            List of tags that can be used to group services into categories.
+          items:
+            type: string
+        parameters:
+          type: array
+          description:
+            Parameters that can be provided for a new job submission.
+            Each object in the array defines parameter type, id, name
+            and additional constraints.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description:
+                  The parameter ids should be used as parameters of
+                  the POST request.
+              name:
+                type: string
+                description: Human-readable parameter name.
+              description:
+                type: string
+              type:
+                type: string
+                description: Type of the parameter. Built-in types include
+                  "integer", "decimal", "text", "flag", "choice", "file"
+                  and "undefined".
+              required:
+                type: boolean
+              array:
+                type: boolean
+                description: 
+                  Whether a single or multiple values are expected.
+              default: {}
+            additionalProperties:
+              description:
+                Additional properties that depend on the field type.
+        presets:
+          type: array
+          description: List of pre-defined parameter combinations.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Preset identifier.
+              name:
+                type: string
+                description: Human-readable name.
+              description:
+                type: string
+                description: Detailed description.
+              values:
+                type: object
+                additionalProperties: true
+                description: Mapping of parameter ids to values.
+        status:
+          type: object
+          description: Current operation status of the service.
+          properties:
+            status:
+              type: string
+              description:
+                Status of the service. Can be either OK, WARNING
+                indicating that some issues occurred or DOWN when
+                the service is non-operational.
+              enum:
+                - OK
+                - WARNING
+                - DOWN
+            errorMessage:
+              type: string
+              description: More detailed information about system error.
+            timestamp:
+              type: string
+              format: date-time
+              description: Date and time of this state report.
+
+    JobResource:
+      type: object
+      properties:
+        '@url':
+          type: string
+          format: uri
+          description: Location of the job resource.
+        id:
+          type: string
+          description: Unique identifier of the job.
+        service:
+          type: string
+          description: Service that this job was submitted to.
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+          description:
+            The mapping of parameters that was used to run the service.
+            The values might differ from the submitted ones as default
+            values will appear here.
+        submissionTime:
+          type: string
+          format: date-time
+          description: Job request creation time.
+        completionTime:
+          type: string
+          format: date-time
+          description: The time the job was completed.
+        status:
+          type: string
+          description:
+            Current status of the job. Each request starts at
+            the PENDING status and transitions to REJECTED or
+            ACCEPTED status once input values are processed.
+            Then it gets QUEUED in the queuing system and changes
+            to RUNNING after being started. Finally it changes to
+            COMPLETED when finished successfully or INTERRUPTED
+            if queuing system stopped the job, DELETED if it was
+            cancelled by the user, FAILED if the program didn't
+            return 0 or ERROR if system error occurred.
+          enum:
+            - PENDING
+            - REJECTED
+            - ACCEPTED
+            - QUEUED
+            - RUNNING
+            - COMPLETED
+            - INTERRUPTED
+            - CANCELLING
+            - DELETED
+            - FAILED
+            - ERROR
+            - UNKNOWN
+
+    FileResource:
+      type: object
+      properties:
+        '@url':
+          type: string
+          format: uri
+          description: Location of the file resource.
+        "@content":
+          type: string
+          format: uri
+          description: Location of the file content.
+        id:
+          type: string
+          description: Unique file identifier. The format is 16-bytes string
+            for uploaded files or job-id/file-path for job results.
+        jobId:
+          type: string
+        path:
+          type: string
+        label:
+          type: string
+        mediaType:
+          type: string

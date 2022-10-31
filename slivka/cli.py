@@ -57,6 +57,8 @@ def init_project(base_dir):
     copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
     os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
+    copy_project_file("static/openapi.yaml")
+    copy_project_file("static/redoc-index.html")
     click.echo("Done.")
 
 

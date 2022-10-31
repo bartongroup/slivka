@@ -7,7 +7,6 @@ from operator import attrgetter
 from typing import Type
 
 import flask
-import pkg_resources
 from bson import ObjectId
 from flask import request, url_for, jsonify
 from werkzeug.datastructures import FileStorage
@@ -279,19 +278,12 @@ def file_view(file_id):
 @bp.route('/')
 @bp.route('/reference')
 def api_reference_view():
-    path = pkg_resources.resource_filename('slivka', 'data/swagger-ui-dist/')
-    return flask.send_from_directory(path, 'index.html')
+    app_home = flask.current_app.config['home']
+    path = os.path.join(app_home, 'static', 'redoc-index.html')
+    return flask.send_file(path)
 
-
-@bp.route('/swagger/openapi.yaml')
-def openapi_yaml_view():
-    stream = pkg_resources.resource_stream(
-        'slivka', 'data/openapi-docs/openapi.yaml'
-    )
-    return flask.send_file(stream, 'application/yaml', as_attachment=False)
-
-
-@bp.route('/swagger/<path:filename>')
-def static_api_view(filename=None):
-    path = pkg_resources.resource_filename('slivka', 'data/swagger-ui-dist/')
-    return flask.send_from_directory(path, filename)
+@bp.route('/openapi.yaml')
+def openapi_view():
+    app_home = flask.current_app.config['home']
+    path = os.path.join(app_home, 'static', 'openapi.yaml')
+    return flask.send_file(path)

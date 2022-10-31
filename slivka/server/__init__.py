@@ -29,6 +29,7 @@ def create_app(config: SlivkaSettings = None):
         form_loader.read_config(service)
     app = flask.Flask('slivka', static_url_path='')
     app.config.update(
+        home=config.directory.home,
         jobs_dir=config.directory.jobs,
         uploads_dir=config.directory.uploads,
         services={srv.id: srv for srv in config.services},
