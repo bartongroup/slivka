@@ -7,7 +7,7 @@ import mongomock
 from nose.tools import assert_equal
 
 import slivka.db
-from db.helpers import insert_one, pull_one
+from slivka.db.helpers import insert_one, pull_one
 from slivka.db.documents import JobRequest
 from slivka.db.helpers import insert_many, pull_many
 from slivka.scheduler import Scheduler
@@ -15,25 +15,19 @@ from slivka.utils import JobStatus
 from . import BaseSelectorStub, MockRunner
 
 
-def setup_module():
-    slivka.db.mongo = mongomock.MongoClient()
-    slivka.db.database = slivka.db.mongo.slivkadb
-
-
-def teardown_module():
-    del slivka.db.mongo
-    del slivka.db.database
-
-
 class TestJobSubmission:
     _tempdir: tempfile.TemporaryDirectory
 
     @classmethod
     def setup_class(cls):
+        slivka.db.mongo = mongomock.MongoClient()
+        slivka.db.database = slivka.db.mongo.slivkadb
         cls._tempdir = tempfile.TemporaryDirectory()
 
     @classmethod
     def teardown_class(cls):
+        del slivka.db.mongo
+        del slivka.db.database
         cls._tempdir.cleanup()
 
     def setup(self):
@@ -88,10 +82,14 @@ class TestAssignRunners:
 
     @classmethod
     def setup_class(cls):
+        slivka.db.mongo = mongomock.MongoClient()
+        slivka.db.database = slivka.db.mongo.slivkadb
         cls._tempdir = tempfile.TemporaryDirectory()
 
     @classmethod
     def teardown_class(cls):
+        del slivka.db.mongo
+        del slivka.db.database
         cls._tempdir.cleanup()
 
     def setup(self):
@@ -127,10 +125,14 @@ class TestStartJobs:
 
     @classmethod
     def setup_class(cls):
+        slivka.db.mongo = mongomock.MongoClient()
+        slivka.db.database = slivka.db.mongo.slivkadb
         cls._tempdir = tempfile.TemporaryDirectory()
 
     @classmethod
     def teardown_class(cls):
+        del slivka.db.mongo
+        del slivka.db.database
         cls._tempdir.cleanup()
 
     def setup(self):
