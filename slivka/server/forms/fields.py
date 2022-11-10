@@ -266,6 +266,9 @@ class IntegerField(BaseField):
         if value is None:
             return None
         try:
+            if (isinstance(value, bool) or
+                    (isinstance(value, float) and not value.is_integer())):
+                raise TypeError
             value = int(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid integer value", 'invalid')
@@ -337,6 +340,8 @@ class DecimalField(BaseField):
         if value is None:
             return None
         try:
+            if isinstance(value, bool):
+                raise TypeError
             value = float(value)
         except (ValueError, TypeError):
             raise ValidationError("Invalid decimal number", 'invalid')
