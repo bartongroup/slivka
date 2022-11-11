@@ -354,8 +354,10 @@ class DecimalField(BaseField):
         j['type'] = 'decimal'
         if self.max is not None: j['max'] = self.max
         if self.min is not None: j['min'] = self.min
-        if self.min_exclusive is not None: j['minExclusive'] = self.min_exclusive
-        if self.max_exclusive is not None: j['maxExclusive'] = self.max_exclusive
+        if self.min_exclusive is not None and self.min:
+            j['minExclusive'] = self.min_exclusive
+        if self.max_exclusive is not None and self.max:
+            j['maxExclusive'] = self.max_exclusive
         return j
 
 

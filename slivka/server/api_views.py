@@ -9,7 +9,7 @@ from typing import Type
 import flask
 import pkg_resources
 from bson import ObjectId
-from flask import request, url_for, jsonify
+from flask import request, url_for, jsonify, current_app
 from werkzeug.datastructures import FileStorage
 
 import slivka.conf
@@ -34,13 +34,13 @@ def version_view():
 
 @bp.route('/services', endpoint='services', methods=['GET'])
 def services_view():
-    content = list(map(_service_resource, slivka.conf.settings.services))
+    content = list(map(_service_resource, current_app.config['services'].values()))
     return jsonify(services=content)
 
 
 @bp.route('/services/<service_id>', endpoint='service', methods=['GET'])
 def service_view(service_id):
-    service = next(filter(lambda srv: srv.id == service_id, slivka.conf.settings.services), None)
+    service = current_app.config['services'].get(service_id)
     if service is None:
         flask.abort(404)
     content = _service_resource(service)
@@ -90,7 +90,7 @@ def service_jobs_view(service_id):
     form = form_cls(flask.request.form, flask.request.files)
     if form.is_valid():
         job_request = form.save(
-            slivka.db.database, slivka.conf.settings.directory.uploads)
+            slivka.db.database, current_app.config['uploads_dir'])
         content = _job_resource(job_request)
         response = jsonify(content)
         response.status_code = 202
