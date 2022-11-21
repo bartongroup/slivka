@@ -6,7 +6,7 @@ package:
 
 source:
   git_url: ../
-  git_rev: dev
+  git_depth: 1
 
 build:
   noarch: python
