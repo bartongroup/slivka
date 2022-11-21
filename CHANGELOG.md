@@ -1,5 +1,13 @@
 Changelog:
 
+## [0.8.1b0]
+
+- Added: new SlurmRunner which executes jobs using Slurm workload manager.
+- Added: custom parameters can be specified for the sbatch in the
+  configuration using sbatchargs option
+- Changed: SlurmRunner uses C-ansi escaping for control characters
+  present in the command
+
 ## [0.8.0b20] - 2022-11-11
 
 - Changed: use Redoc as a default openapi documentation generator.
