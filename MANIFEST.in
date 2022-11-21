@@ -4,9 +4,9 @@ include README.rst
 include requirements.txt
 include environment.yml
 
-graft slivka/data
 include slivka/conf/*.json
 graft slivka/project_template
 include slivka/scheduler/runners/runner.sh.tpl
+include slivka/scheduler/runners/runner.bash.tpl
 
 global-exclude *.py[co]
