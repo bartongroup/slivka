@@ -7,6 +7,8 @@ Changelog:
   configuration using sbatchargs option
 - Changed: SlurmRunner uses C-ansi escaping for control characters
   present in the command
+- Fixed: use sources from the current commit for building conda package
+- Fixed: include runner.bash.tpl in the manifest file
 
 ## [0.8.0b20] - 2022-11-11
 
