@@ -14,7 +14,7 @@ class ValidatorsDict(dict):
     def __missing__(self, key):
         warnings.warn(
             "There is no validator for %s. Files of this type will not be "
-            "checked.", RuntimeWarning)
+            "checked." % key, RuntimeWarning)
         return _check_any
 
 
