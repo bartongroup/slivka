@@ -6,12 +6,14 @@
 Welcome to slivka's documentation!
 ==================================
 
-Slivka is a server application for Python, intended for easy and flexible
-configuration of REST API for various web services. The server is based on the
-Flask_ microframework. The scheduler makes use of the mongoDB_ as a storage and request broker.
-
-.. _Flask: https://github.com/pallets/flask
-.. _mongoDB: https://www.mongodb.com/
+Slivka is free software, that assists you in creating web services for
+command-line programs. You can use it to easily let others access the
+tools installed on your local computer, server or computer cluster
+over HTTP through a convenient REST interface. It also integrates with
+SLURM and Univa/Altair Grid Engine workload managers and can use them
+to execute jobs more efficiently on distributed computing systems.
+Slivka is written in Python and is available both as a source code and
+an anaconda package.
 
 .. toctree::
    :hidden:
@@ -22,6 +24,7 @@ Flask_ microframework. The scheduler makes use of the mongoDB_ as a storage and 
    :maxdepth: 2
    :caption: Contents:
 
+   installation
    getting_started
    specification
    advanced_usage
