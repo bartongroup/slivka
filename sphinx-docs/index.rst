@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to slivka's documentation!
-==================================
+Welcome to slivka documentation!
+================================
 
 Slivka is free software, that assists you in creating web services for
 command-line programs. You can use it to easily let others access the

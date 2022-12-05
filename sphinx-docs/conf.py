@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'slivka'
-copyright = '2021, Mateusz Maciej Warowny'
+copyright = '2022, Mateusz Maciej Warowny'
 author = 'Mateusz Maciej Warowny'
 
 # The full version, including alpha/beta/rc tags
-release = '0.8.0'
+release = '0.8.1'
 
 
 # -- General configuration ---------------------------------------------------

@@ -128,6 +128,8 @@ precedence order (highest priority first).
 .. warning:: No type or syntax checks are performed on the expressions.
   Any syntax and value errors may cause uncaught errors in the application.
 
+.. _advanced-usage-selectors:
+
 ---------
 Selectors
 ---------
