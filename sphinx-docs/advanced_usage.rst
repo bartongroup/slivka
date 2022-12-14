@@ -6,26 +6,28 @@ This page describes advanced features of slivka which involve extending
 its current functionality. Most of those features require you to
 write Python scripts or classes, therefore
 a good knowledge of Python programming (or programming in general)
-is required.
+is recommended.
+
+.. _advanced-usage-conditions:
 
 --------------------
 Parameter conditions
 --------------------
 
-As we mentioned in the :ref:`parameters specification`, you can specify
-a logical expression in the *condition* property to impose constraints
-on the value that depend on other parameters. This feature is currently
-experimental and must be used with care as invalid expressions may
-not be properly detected and cause runtime errors. Additionally,
-expressions involving arrays or files are not supported and can result
-in errors when evaluated.
+As we mentioned in the :ref:`parameters specification` section, you
+can provide a logical expression in the *condition* property to impose
+constraints on the value that depend on other parameters. This feature
+is currently experimental and must be used with care as invalid
+expressions may not be properly detected and cause runtime errors.
+Additionally, expressions involving array elements or files are not
+supported and can result in errors when evaluated.
 
 The conditional expressions are evaluated after the basic validation
-of the input values passes successfully. If the expression of the
-parameter evaluates to *false*, its value is assumed to be invalid,
-unless a default value was used. In such case the value is changed
-to *null* and the validation is run again raising validation error
-if the expression still yields *false*.
+of the input values passes successfully. If the expression evaluates
+to *false*, its value is assumed to be invalid, unless the default
+value was used. In such case the value is changed to *null* and the
+validation is run again raising validation error if the expression
+still yields *false*.
 
 A valid expression consists of a constant value, an identifier
 or an operator acting on other expressions e.g.
@@ -42,11 +44,11 @@ expressions starting with simple values followed by operators in the
 precedence order (highest priority first).
 
 :identifier:
-  Identifiers are used to refer to other parameters by their id.
+  Identifiers are used to refer to other parameters by their ids.
   The value of the referenced parameter will be substituted in place
   of the identifier during evaluation. Referencing a file type is not
   supported and results in an unexpected behaviour.
-  Referencing an array type will use an entire array
+  Referencing an array type will substitute the entire array
   not its values and only a length operator (``#``) can be used on it.
 
 :null:
@@ -77,8 +79,8 @@ precedence order (highest priority first).
   Invalid: ``""quoted" text"``, ``"\"``, ``"\text"``.
 
 :parentheses:
-  ``(<expr>)`` Groups together expressions to force their evaluation before
-  other operations.
+  ``(<expr>)`` Groups expressions together to force their evaluation
+  before other operations.
 
 :unary minus:
   ``- <expr>`` Must be followed by a number expression and
@@ -86,22 +88,24 @@ precedence order (highest priority first).
 
 :logical not:
   ``not <expr>`` Evaluates and converts the expression following it
-  to a truth value and returns its opposite. Every value is equivalent
-  to *true* except ``0``, empty text ``""``, ``null`` and an empty array
-  which are converted to *false*.
+  to a truth value and returns its opposite.
 
 :length:
-  ``# <expr>`` Must be followed by a string or array expression and
+  ``# <expr>`` Must be followed by a string or an array expression and
   returns its length as an integer.
 
 :multiplication:
-  ``<expr> * <expr>`` or ``<expr> / <expr>`` Performs multiplication
-  or division of two numbers.
+  ``<expr> * <expr>`` Performs multiplication of two numbers.
+
+:division:
+  ``<expr> / <expr>`` Performs division of two numbers.
 
 :addition:
-  ``<expr> + <expr>`` or ``<expr> - <expr>`` Performs addition or
-  subtractions of two numbers. Addition can also act on strings
-  concatenating them.
+  ``<expr> + <expr>`` Performs addition of two numbers or
+  concatenation of two strings.
+
+:subtraction:
+  ``<expr> - <expr>`` Performs subtraction of two numbers.
 
 :inequality:
   ``<expr> < <expr>``, ``<expr> > <expr>``, ``<expr> <= <expr>`` or
@@ -125,8 +129,10 @@ precedence order (highest priority first).
   ``<expr> or <expr>`` Performs logical *or* of two expressions converting
   them to truth values first.
 
-.. warning:: No type or syntax checks are performed on the expressions.
-  Any syntax and value errors may cause uncaught errors in the application.
+.. warning:: 
+  No type or syntax checks are performed on the expressions. Any
+  syntax and value errors may cause uncaught exceptions in the
+  application.
 
 .. _advanced-usage-selectors:
 
@@ -137,16 +143,18 @@ Selectors
 Selector is a Python function which chooses a runner based on the
 command parameters. As a quick recap of :ref:`execution management`,
 each service has one or more runners which are responsible for
-starting and watching jobs running on the system.
-If there is more than one runner available, a selector function
-is used to choose the most appropriate one for the job.
-Since runners may have different configurations, it is possible
-to make different amount of resources available to them and then
-dispatch the jobs depending on their size and needs.
+starting and watching jobs running on the system. If there is more
+than one runner available, a selector function is used to choose the
+most appropriate one for the job. It allows picking runners having
+different amounts of available resources depending of the size of the
+job.
 
 The selector is a Python function which takes one argument,
 the mapping of input parameter names to their values, and returns
 the identifier of the runner or ``None`` to reject the job.
+
+.. py:function:: selector(input: dict[str, str | list[str]]) -> str
+
 The keys of the mapping consist of the ids of the input parameters
 as defined in the service configuration. They are mapped to the values
 provided by the user after being converted to the command

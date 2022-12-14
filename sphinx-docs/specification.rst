@@ -551,10 +551,11 @@ an object defining the parameter having the following attributes
   nullifies the requirement.
 
 :*condition*:
-  Mathematical/logical expression involving other parameters
-  that allows to conditionally disable the parameter or restrict
-  allowed values. Usage, syntax and limitations will be covered in
-  the advanced usage tutorial.
+  Mathematical/logical expression involving other parameters that
+  allows to conditionally disable the parameter or restrict allowed
+  values. Usage, syntax and limitations will be covered in the
+  :ref:`advanced-usage-conditions` section in the advanced usage
+  tutorial.
 
 Those properties are always present regardless of the parameter
 type. However, individual types allow extra attributes and value constraints.
@@ -733,9 +734,7 @@ choose a runner suitable for the job. It allows you to pick
 runners allocating different amounts of resources appropriate for
 the size of the job. The *selector* property contains a path to a
 callable that accepts a mapping of parameter ids to argument values
-and returns an id of a runner. The signature is:
-
-.. py:function:: selector(input: dict[str, str | list[str]]) -> str
+and returns an id of a runner.
 
 Declaring the selector is required if you want to use more than one
 runner. A default selector (if unset) always chooses the runner named
