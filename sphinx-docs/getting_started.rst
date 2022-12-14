@@ -132,9 +132,8 @@ The variables contained in the file allow you to control the
 structure of directories used by slivka, server addresses and
 database connection.
 The structure of the configuration file is explained in detail
-on the :doc:`/specification` page.
-
-.. TODO: link to specification section
+in the :ref:`specification-config-file` section on the
+:doc:`/specification` page.
 
 New projects come with an example service which can be used as a base
 for creating other services. The command line program this service
@@ -184,6 +183,8 @@ future versions.
 
 .. versionadded:: 0.8.0b20
    API documentation files
+
+.. _getting-started-example-service:
 
 ===============
 Example Service

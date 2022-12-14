@@ -2,61 +2,95 @@
 Configuration
 *************
 
+This page provides a technical specification of the configuration
+files used by slivka. It describes the structure of the main
+configuration file and service definitions.
+
 =================
 Project Structure
 =================
 
-The collection of configuration files used be slivka is referred to
-as a slivka project. The root directory housing other configuration
-files is referred to as a slivka home directory. On startup, slivka
-also creates an environment variable ``SLIVKA_HOME`` pointing to that
-directory, which can be used throughout the configuration files and
-scripts.
+New slivka projects initialized by the :program:`slivka init` command
+start with the following directory structure::
 
-Each project contains few files essential for the proper operation
-of slivka. Those are:
+  <project-root>/
+  ├── config.yaml
+  ├── manage.py
+  ├── wsgi.py
+  ├── scripts/
+  │  ├── example.py
+  │  └── selectors.py
+  ├── services/
+  │  └── example.service.yaml
+  └── static/
+     ├── openapi.yaml
+     └── redoc-index.html
+
+The topmost directory in the structure, one containing a
+:file:`config.yaml` file is a project root or project home directory.
+The collection of configuration files in that directory used by slivka
+is referred to as a slivka project. The directory contains several
+files essential for the operation of the slivka application.
 
 :config.yaml:
-  Main configuration file of the slivka project, required for its
-  proper functionality.
-  Typically, slivka recognises the project directory as
-  the one containing this file. Alternatively, it can be named
+  The main configuration file required for the proper functioning of
+  slivka. Typically, slivka recognises the project directory as the
+  one containing this file. It can alternatively be named
   *settings.yaml* and either *.yaml* or *.yml* extension is allowed.
-  The detailed information about the file syntax and parameters is
+  Detailed information about the file syntax and parameters is
   provided in the `configuration file`_ section.
 :wsgi.py:
-  A python module file containing a wsgi-compatible application as specified in
-  `PEP-3333`_. This file is used by wsgi middleware to serve slivka
-  http endpoints. You may want to use this file if you plan to use
-  an unsupported middleware or have more control over execution parameters.
+  A python module file containing a WSGI-compatible application as
+  specified by `PEP-3333`_. This file is used by a WSGI middleware to
+  serve slivka HTTP endpoints. The WSGI servers may load this module
+  directly instead of launching the server through the
+  :program:`slivka` command.
 :manage.py:
-  A legacy executable script that may be used to load configuration
-  files and start slivka processes. It's functionality is fully replaced
-  by the newer *slivka* executable.
-:services:
-  A default directory containing service configuration files. Each file
-  in the directory whose name ends with *.service.yaml* is considered
-  a slivka service file. The directory can be changed in the main
-  configuration file.
+  A legacy executable script which was used to start slivka in this
+  project directory. Its functionality was fully replaced by the
+  :program:`slivka` command. You should not edit this file.
+:scripts/:
+  A directory containing auxiliary script files. Its presence is not
+  required and it only contains files required by the example service.
+:services/:
+  A directory containing service configuration files. Each file in
+  this directory whose name matches :file:`{service-id}.service.yaml`
+  pattern is used to load service definitions. The directory can be
+  changed in the main configuration file under the
+  ``directory.services`` property.
+  It comes with an example service in the :file:`example.service.yaml`
+  which teaches you how to construct services and can be used as a
+  template for creating new ones.
+:static/:
+  A directory containing static files used by the HTTP server.
+  Currently, it contains two files needed to render the API
+  documentation page. The :file:`openapi.yaml` file stores the
+  `OpenAPI 3.0.3`_ specification which is rendered by the Redoc_
+  documentation generator from the :file:`redoc-index.html` file. You
+  are free to edit those files according to your needs. If slivka
+  fails to find those files in the project directory, it uses default
+  versions from its package resources.
 
 .. _`PEP-3333`: https://www.python.org/dev/peps/pep-3333/
+.. _`OpenAPI 3.0.3`: https://swagger.io/specification/
+.. _Redoc: https://github.com/Redocly/redoc
 
-All the configuration files are using `YAML <https://yaml.org/>`_ syntax
-and can be edited with any text editor.
-If you are not familiar with YAML structure you can use JSON instead since
-any JSON document is a valid YAML document as well.
+All the configuration files are text files written in `YAML
+<https://yaml.org/>`_ and can be edited with any text editor.
 
 It's not advisable to edit *manage.py* and *wsgi.py* scripts unless
 you are an advanced user and you know what you are doing.
+
+.. _specification-config-file:
 
 ==================
 Configuration file
 ==================
 
-*config.yaml* is the main configuration file of the project and
-stores values used across the application.
-The properties in the file can be structured as a tree or a flat mapping
-as shown in the following snippets respectively. Both forms are equivalent.
+*config.yaml* is the main configuration file of the project that
+stores variables used across the application. The properties in the
+file can be structured as a tree or a flat mapping as shown in the
+following snippets. Both forms are equivalent.
 
 .. code:: yaml
 
@@ -73,73 +107,73 @@ Here is the list of parameters that can be defined in the file.
 All of them are required unless stated otherwise.
 
 :*version*:
-  Version of the configuration file syntax used to check for project
-  compatibility. For the current slivka version this must be set to ``"0.3"``.
+  A version of the configuration file syntax used to check for project
+  compatibility. For the current slivka version, this must be set to ``"0.3"``.
 
 ..
 
 :*directory.uploads*:
-  Path to a directory where the files uploaded by the users will be stored.
-  A relative path is resolved with respect to the project
-  directory. It's recommended to set the proxy server to serve
+  Path to a directory where the user-uploaded files will be stored.
+  Relative paths are resolved with respect to the project root
+  directory. It's recommended to set up the proxy server to serve
   those files directly, i.e. under */uploads* path (configurable
   by changing ``server.uploads-path``).
-  Default is ``"./media/uploads"``.
+  The default is ``"./media/uploads"``.
 
 :*directory.jobs*:
-  Path to a directory where the job sub-directories will be created.
-  For each job, slivka creates a sub-directory there and sets it as a
-  current working directory.
-  A relative path is resolved with respect to the project directory.
-  It's recommended to set the proxy server to serve those files
+  Path to a directory where the job directories will be created. For
+  each job, slivka creates a sub-directory in that folder and sets it
+  as a current working directory for that process. A relative path is
+  resolved with respect to the project directory. The job directories
+  contain output files which are served to the front-end users. It's
+  recommended to set up the proxy server to serve those files
   directly, i.e. under */jobs* path (configurable by changing
-  ``server.jobs-path``).
-  Default is ``"./media/jobs"``
+  ``server.jobs-path``). The default is ``"./media/jobs"``
 
 :*directory.logs*:
-  Path to the directory where the log files will be stored.
-  Default is ``"./logs"``
+  Path to a directory where the log files will be created.
+  The default is ``"./logs"``
 
 :*directory.services*:
-  Path to the directory containing service definition files.
-  Slivka automatically detects files under this directory whose
-  names end with ``.service.yaml`` as services and loads them on startup.
-  Default is ``"./services"``
+  Path to a directory containing service definition files. Slivka
+  automatically finds and loads service definitions from files under
+  this directory whose names match :file:`{service-id}.service.yaml`
+  pattern. The default is ``"./services"``
 
 ..
 
 :*server.host*:
-  Address and port under which slivka application is hosted.
-  It's highly recommended to run slivka behind a HTTP proxy server
-  such as `nginx`_, `Apache HTTP Server`_ or `lighttpd`_ ,
-  so no external traffic connects to the wsgi server directly.
-  Set the value to the address where the proxy server connect from or
+  Address and port under which a slivka application is hosted.
+  It's highly recommended to run slivka behind an HTTP proxy server
+  such as `nginx`_, `Apache HTTP Server`_ or `lighttpd`_,
+  so no external traffic connects to the WSGI server directly.
+  Set the value to the address where the proxy server connectS from or
   ``0.0.0.0`` to accept connections from anywhere (not recommended).
-  Default is ``127.0.0.1:4040``.
+  The default is ``127.0.0.1:4040``.
 
 :*server.uploads-path*:
-  Path where the uploaded files are served at. It should be set to
+  The path where the uploaded files are served at. It should be set to
   the same path that the proxy server uses to serve files from the
-  uploads directory (set in *directory.uploads* parameter).
-  Default is ``"/media/uploads"``.
+  uploads directory (set in the *directory.uploads* parameter).
+  The default is ``"/media/uploads"``.
 
 :*server.jobs-path*:
-  Path where the job results are server at. It should be set to the
-  same path that the proxy server uses to server files from the
+  The path where the job results are served at. It should be set to the
+  same path that the proxy server uses to serve files from the
   jobs directory (set in *directory.jobs* parameter).
-  Default is ``"/media/jobs"``.
+  The default is ``"/media/jobs"``.
 
 :*server.prefix*:
-  *(optional)* Url path that the proxy server serves the application
-  under if other then root. This is needed for the urls and redirects
-  to work properly. For example, if you configured your proxy
-  server to redirect all requests starting with */slivka* to the
-  wsgi application, then set the prefix value to ``/slivka``.
+  *(optional)* The URL path at which the proxy server serves the WSGI
+  application if it's other than the root. This is needed for the URLs
+  and redirects to work properly. For example, if you configured your
+  proxy server to redirect all requests starting with */slivka* to the
+  application, then set the prefix value to ``/slivka``.
 
   .. note::
 
     Configure your proxy rewrite rule to **not** remove the prefix
-    from the url.
+    from the URL.
 
 .. _nginx: https://nginx.org/
 .. _Apache HTTP Server: https://httpd.apache.org/
@@ -147,107 +181,115 @@ All of them are required unless stated otherwise.
 
 :*local-queue.host*:
   Host and port where the local queue server will listen to commands on.
-  Use localhost address or a named socket that only trusted users
+  Use a localhost address or a named socket that only trusted users
   (i.e. slivka) can write to.
-  You may specify the protocol ``tcp://`` for tcp connections.
+  You may specify the protocol ``tcp://`` explicitly for TCP connections.
   The ``ipc://`` or ``unix://`` protocol must be specified when using
   named sockets.
-  Default is ``tcp://127.0.0.1:4041``.
+  The default is ``tcp://127.0.0.1:4041``.
 
   .. warning::
 
-    NEVER ALLOW UNTRUSTED CONNECTIONS TO THAT ADDRESS since arbitrary
-    code may be sent to and executed by the queue.
+    NEVER ALLOW UNTRUSTED CONNECTIONS TO THAT ADDRESS. It allows
+    sending and executing an arbitrary code by the queue.
 
 ..
 
 :*mongodb.host*:
   *(optional)* Address and port of the mongo database that slivka will connect to.
-  Either one of this or *mongodb.socket* parameter must be present.
-  Default is ``127.0.0.1:27017``.
+  Either this or *mongodb.socket* parameter must be present.
+  The default is ``127.0.0.1:27017``.
 
 :*mongodb.socket*:
   *(optional)* Named socket where mongo database accepts connections at.
-  Either one of this or *mongodb.host* parameter must be present.
+  Either this or *mongodb.host* parameter must be present.
 
 :*mongodb.username*:
-  *(optional)* Username that the application will use to log in to the
+  *(optional)* A username that the application will use to log in to the
   database. A default user will be used if not provided.
-  Default is unset.
+  The default is unset.
 
 :*mongodb.password*:
-  *(optional)* Password used to authenticate the user when connecting
-  to the database. Default is unset.
+  *(optional)* A password used to authenticate the user when connecting
+  to the database. The default is unset.
 
 :*mongodb.database*:
-  Database that will be used by slivka application to store data.
-  Default is ``slivka``
+  Database that will be used by the slivka application to store data
+  for that project. The default is ``slivka``
 
 =====================
 Service configuration
 =====================
 
-Web services can be added to the project by creating service definition
-files in the services directory specified in the configuration file
-(*services/* by default).
-Each service definition is stored in its unique file named
-*<service-id>.service.yaml* where the service identifier should be
-substituted for the *<service-id>*.
-The filename (without the extension) should contain alphanumeric
-characters, dashes and underscores only (avoid using spaces) and
-will be used as a unique service identifier.
-Using lowercase letters is strongly recommended but not required.
-Those files store service information, command line
-program that will be run, the list of arguments to
-that program as well as the additional constraints on those input
-parameters.
+Web services can be added to the project by creating service
+definition files in the services directory specified in the
+configuration file (:file:`services/` by default). Each service
+definition must be stored in its unique file named
+:file:`{service-id}.service.yaml` where the service identifier should
+be substituted for the *service-id*. The service identifier, and hence
+the filename should contain alphanumeric characters, dashes and
+underscores only (avoid using spaces). Using lowercase letters is
+strongly recommended but not required. Slivka creates a single service
+for each service file found. A quick overview of the service
+definition file and an example service is provided in the
+:ref:`getting-started-example-service` section.
 
+The configuration file is a YAML document organised into a tree.
+Several properties are placed at the top level of the document
+tree and contain simple values. Others may contain complex objects
+making a nested document structure. The ordering of the top-level keys
+is irrelevant, but nested objects do respect the order of the keys.
 
 --------
 Metadata
 --------
 
-On top of the file there are service metadata, that is, all information
-about the service which are not instructions for slivka.
-Even though the order in which the keys are defined in the file does
-not matter, it's a good practise to place general service information
-on top.
-Additionally, you can accompany the data with comments (lines starting
-with ``#``), although comments are ignored by the program.
+Service metadata is typically placed on top of the file. It contains
+information about the service which is displayed to the front-end
+users. Even though the order of the top-level keys in the file is not
+significant, it's convenient to put service metadata first.
+Additionally, lines starting with a hash sign ``#`` are comments and
+are ignored by the program. They can be useful for adding auxiliary
+information about the configuration for maintenance purposes.
 
-Here is the full list of metadata parameters that can be set in the file.
+Here is the full list of metadata parameters that should be defined
+at the top level of the document tree.
 
 :*slivka-version*:
-  The version of slivka this service was written for. It helps
-  slivka detect any compatibility issues related to syntax changes.
-  For the current version use ``"0.8"``.
+  *(string)* The version of slivka this service was written for. It
+  helps slivka detect any compatibility issues related to syntax
+  changes. Remember to quote the version number, so it's interpreted
+  as a string and not a float. For the current version use ``"0.8"``.
 
 :*name*:
-  Service name should be concise and self-explanatory. For example,
-  indicating the name of the program that it runs.
+  *(string)* Service name as displayed to users. It should be concise
+  and self-explanatory. For example, the name of the underlying
+  program or tool run by the service.
 
 :*description*:
-  *(optional)* Long text which provides additional information about
-  the service. It might provide an explanation what the service does
-  and how it works.
+  *(string) (optional)* Long text providing users with additional
+  information about the service. It might include an explanation of
+  what the service does and how it works.
 
 :*author*:
-  *(optional)* One or more authors of the command line program used.
+  *(string) (optional)* One or more authors of the command line
+  program run by the service.
 
 :*version*:
-  *(optional)* Version of the command line program. Specifying it
-  might prove useful when multiple versions of the same software is
-  served. Remember to quote the version number so it's interpreted
-  as a string.
+  *(string) (optional)* Version of the command line program run by the
+  service. Specifying the version might be useful when multiple versions
+  of the tool are provided as web services. Remember to quote the
+  version number so it's interpreted as a string and not float.
 
 :*license*:
-  *(optional)* License under which the service or the underlying
-  program is used and distributed.
+  *(string) (optional)* The name of a license under which the service
+  or the underlying program is distributed.
 
 :*classifiers*:
-  *(optional)* List of tags that helps users and client software group and
-  identify services. The classifiers can be chosen arbitrarily, but
-  some client software may rely on those to function properly.
+  *(array[string]) (optional)* List of tags that help users and client
+  software group and identify services. The classifiers can be chosen
+  arbitrarily, but some client software may rely on those to function
+  properly.
 
   Example from the clustalw2 service definition:
 
@@ -262,28 +304,31 @@ Here is the full list of metadata parameters that can be set in the file.
 Command
 -------
 
-The rest of the service file contains instructions for slivka how
-to run the command line program and what parameters the web service
-part should expose to the users.
-Let us start with defining the command line program and its arguments
-followed by listing the output files.
-Then, we use the command arguments to build the parameters for the
-web services.
-Lastly, we briefly mention available execution methods for job processes.
+The following configuration contains instructions for slivka on how to
+build the list of arguments for the command line program. The command
+line configuration consists of four parts, the base command which
+invokes the program, the list of arguments appended to it, the
+environment variables and the list of output files produced by the
+tool.
 
 Base Command
 ============
 
 The base command (i.e. the program to be run) is specified under the
-*command* property. In simple cases this will contain an executable
-to be run such as ``clustalw2`` or ``mafft``; however, it is also
-possible to name multiple arguments or even insert environment
-variables e.g. ``python -m ${HOME}/lib/my-library``. This part will
-make the base of our program call and additional arguments will be
-appended to that.
+*command* property. A string or an array of strings are accepted
+values. In simple cases the command contains an executable to be run
+such as ``clustalw2`` or ``mafft``; however, it is also possible to
+name multiple arguments that make up the command running the program
+or even insert environment variables e.g. ``python -m
+${HOME}/lib/my-library``. This part makes the base of the program call
+and additional arguments are appended to that. If the arguments are
+given as an array, the environment variables are interpolated first
+and the result is processed in a similar way to the ``execl``
+function. If given as a string, they are split into a list of arguments
+using :py:func:`shlex.split` first.
 
-If you are concerned about special characters and whitespace and
-want to make sure that the command is read properly, you can enumerate
+If you are concerned about special characters and whitespaces and want
+to make sure that the command is parsed properly, you can enumerate
 the arguments using a list as shown in the following examples.
 
 .. code-block:: yaml
@@ -304,9 +349,9 @@ the arguments using a list as shown in the following examples.
 .. note::
 
   Subprocesses are not executed in the same working directory as slivka,
-  so if A program is not accessible from the ``PATH`` an absolute
-  path to is must be given. A special ``SLIVKA_HOME`` variable may be
-  used to refer to the root directory of the slivka project.
+  therefore if a program is not accessible from the ``PATH``, an absolute
+  path must be used. The command may include ``$SLIVKA_HOME`` variable
+  containing the absolute path to the root directory of the slivka project.
 
 .. warning::
 
@@ -316,39 +361,41 @@ the arguments using a list as shown in the following examples.
 Arguments
 =========
 
-Once the base command is set up, we can move on to enumerating the command
-line arguments for the program. Those are placed under the ``args``
+Once the base command is set up, you should enumerate the remaining command
+line arguments of the program. Those are placed under the *args*
 property in the service configuration file. It contains an ordered
 mapping where each key is a parameter id (we'll need it later)
-and values are argument objects with following attributes
+and values are argument objects with the following attributes
 
 :*arg*:
-  The argument template which will be inserted into the command.
-  Whenever the value for the parameter is not empty, that argument
-  is appended to the list of arguments with the actual value
-  substituted for the ``$(value)`` placeholder.
-  Example: ``--type=$(value)``
+  *(string)* The template for arguments that will be inserted into the
+  command. Whenever the value for the parameter is not empty, that
+  argument is appended to the list of arguments with the actual value
+  substituted for the ``$(value)`` placeholder. Example:
+  ``--type=$(value)``
 
-  Using environment variables in the argument value is supported.
+  The argument template may include system environment variables as
+  well as those defined in this file under an *env* property.
+  The variables are inserted using shell syntax ``${VARIABLE}``
+  or a short notation ``$VARIABLE``. The variables are interpolated
+  before the command is split into individual arguments.
 
 :*default*:
-  *(optional)*
-  Value that will be used when no other value was provided for the
-  argument. One use is to provide constant values for parameters
-  hidden from the front-end users.
+  *(string) (optional)* Value that will be inserted into the template
+  when no value is provided for the argument. You can use it to
+  provide constant values for parameters hidden from front-end users.
 
 :*join*:
-  *(optional)*
-  Delimiter used to join multiple values for the argument.
-  Only applicable to parameters that can take multiple values.
-  If *join* is not specified then the argument is repeated multiple
-  times for each value. For example, for two values ``alpha``, ``bravo``
+  *(string) (optional)* Delimiter used to join multiple values. Only
+  applicable to array-type parameters. If *join* is not specified,
+  then the multi-valued arguments are repeated for each value. For
+  example, for two values ``alpha`` and ``bravo``
 
   .. code-block:: yaml
 
     arg: -p $(value)
 
-  will result in command arguments ``-p alpha -p bravo``, but
+  will result in the command line arguments ``-p alpha -p bravo``, but
 
   .. code-block:: yaml
 
@@ -357,36 +404,35 @@ and values are argument objects with following attributes
 
   will result in ``-p alpha,bravo``.
 
-  .. note:: Since arguments splitting happens before interpolation,
-    using space as the delimiter produces single argument.
-    In the example above, it would result in ``-p "alpha bravo"``
-    not ``-p alpha bravo``.
+  .. note::
+    Arguments splitting happens before interpolation. Using
+    space as the delimiter produces a single argument. In the example
+    above, it would result in ``-p "alpha bravo"`` not ``-p alpha bravo``.
 
 :*symlink*:
-  *(optional)*
-  Instructs slivka to create symbolic link to the file in the process'
-  working directory. Only applicable to parameters that take files
-  as an input. When *symlink* is present, the value of the parameter
-  will be replaced by the symlink name pointing to the original path.
+  *(string) (optional)*
+  Instructs slivka to create a symbolic link to the file in the process'
+  working directory. Only applicable to file-type parameters.
+  When *symlink* is present, the value of the parameter
+  will be replaced by the symlink name.
 
-
----------------------
 Environment variables
----------------------
+=====================
 
 If the program you wrap needs specific environment variables or
-you need to adjust existing variables they can be specified under
+you need to adjust existing variables you can specify them under
 the *env* property. It should contain a mapping where each key
 is a variable name that will be set to its corresponding value
 when starting the command. The value can contain current environment
 variables which are included using ``${VARIABLE}`` syntax. Although
 any system variable can be used, references to other variables
-defined in this mapping will not work.
+defined in this mapping will not be resolved to avoid issues with
+circular variable definitions.
 
 Slivka executes each program in a new environment removing all
-variables other than ``PATH`` and ``SLIVKA_HOME`` and setting new
-variables from *env*. If you want any system variable to be passed
-to the new process, you need to re-define it here.
+variables other than ``PATH`` and ``SLIVKA_HOME`` and then adding the
+variables defined in *env*. If you want any system variable to be passed
+to the new process, you need to redefine it here.
 
 Example:
 
@@ -400,25 +446,75 @@ Example:
 
 .. _parameters specification:
 
+Outputs
+=======
+
+To make process output files retrievable by users they need
+to be listed in the configuration file under the *outputs* property.
+It contains a mapping where each key is an item identifier and values
+are objects describing service outputs. Each object has tmhe following
+properties:
+
+:*path*:
+  *(string) (required)* Path or a glob_ pattern that will be used to
+  match output files in the process' working directory. Only the
+  working directory and directories below are searched recursively. No
+  files outside the working directory will match the pattern. Glob
+  patterns can be used to capture multiple output files that can be
+  grouped together. Standard output and error streams are
+  automatically redirected to the ``stdout`` and ``stderr`` files
+  and can be referred to by those names.
+
+  .. note:: Patterns starting with a special character must be quoted.
+
+:*name*:
+  *(string) (optional)* Name of the result that will be displayed to
+  users. Serves informational purposes and doesn't have to match the
+  file name.
+
+:*media-type*:
+  *(string) (optional)*. The media type of the output file using `RFC
+  2045`_ format. Serves informational purposes only. Slivka does not
+  verify if the actual media type of the output file matches the
+  declared type.
+
+.. _glob: https://en.wikipedia.org/wiki/Glob_(programming)
+
+Example:
+
+.. code-block:: yaml
+
+  log:
+    path: stdout
+  output:
+    path: output.txt
+    media-type: text/plain
+  auxiliary:
+    path: aux_*.json
+    media-type: application/json
+
+
+.. _execution management:
+
 ----------------
 Input parameters
 ----------------
 
 The input parameters defined under *parameters* property list all
 the variables that the users will be able to adjust when submitting
-their jobs. Those are closely linked to the command line arguments,
-in fact, they are the bridge between the front-end users and the
-command line arguments.
+their jobs. Those are closely linked to the command-line arguments
+they are the bridge between the front-end users and the
+command-line arguments.
 
-Input *parameters* is a mapping just like command *args* where
+Input *parameters* key contains a mapping just like command *args* where
 each key is the parameter id and value is an object describing the
 parameter. The ids of the parameters should match those of the
 command line arguments defined in the previous section. The values
 passed to the parameters by the user will be validated and passed to their
-corresponding arguments.Not every argument has to have corresponding
-input parameter; in such case the value for the argument will always
+corresponding arguments. Not every argument has to have a corresponding
+input parameter; in such cases, the value for the argument will always
 be empty and the argument will be skipped unless a default (constant)
-is set. However, every input parameter needs to have corresponding
+is set. However, every input parameter needs to have a corresponding
 command line argument.
 
 As mentioned before, input parameters is a mapping under the *parameters*
@@ -428,32 +524,32 @@ an object defining the parameter having the following attributes
 
 :*name*:
   *(required)*
-  Name of the parameter. Should be concise and self-explanatory.
+  A name of the parameter. Should be concise and self-explanatory.
 
 :*description*:
-  Longer description of the parameter containing details about
+  A longer description of the parameter containing details about
   its function.
 
 :*type*:
   *(required)*
-  Type of the parameter, determines validation functions used on
+  The type of the parameter determines validation functions used on
   the value and additional constraints that may be imposed.
   Built-in types include ``integer``, ``decimal``, ``text``,
   ``flag``, ``choice`` and ``file``; however, a path to the custom
   implementation of the type can be used as well (defining custom types
-  will be covered in advanced usage tutorial).
+  will be covered in the advanced usage tutorial).
   Type name can be immediately followed by a pair of square brackets
-  to convert in into an array variant e.g. ``text[]``.
+  to convert it into an array variant e.g. ``text[]``.
 
 :*default*:
-  Value that will be used when user leaves the parameter empty.
-  Default value must meet all the type constraints and must be
+  A value that will be used when users leave the parameter empty.
+  The default value must meet all the type constraints and must be
   an array for array types.
 
 :*required*:
   Determines whether the value for this parameter is required.
   Allowed values are ``yes`` and ``no``.
-  All parameters are required by default but specifying default value
+  All parameters are required by default but specifying a default value
   nullifies the requirement.
 
 :*condition*:
@@ -505,84 +601,38 @@ Choice type
 
 :*choices*:
   Mapping of string to string. Contains the available choices -- keys
-  and the values they are mapped to. The mapping allows to hide the
-  actual command line arguments and display more meaningful names
+  and the values they are mapped to. The mapping allows hiding
+  actual command line arguments and displaying more meaningful names
   for the choices.
 
 File type
 =========
 
 :*media-type*:
-  String. Checks the file content to be of the specified type. Media type
+  String. Checks if the file content is of the specified type. Media type
   format follows `RFC 2045`_. Currently supported types include
   plain text, json, yaml and bioinformatic data types which require
   biopython to be installed.
 
 :*media-type-parameters*:
-  Array of strings. Additional hints following the base media type.
+  An array of strings. Additional hints following the base media type.
   Those are not used for value validation and serve solely as hints
   for the users and client applications.
 
 :*default*:
-  Default value is not currently allowed for the file type and setting
+  The default value is not currently allowed for the file type and setting
   it will result in an error.
 
 .. _RFC 2045: https://datatracker.ietf.org/doc/html/rfc2045
-
--------
-Outputs
--------
-
-Once the process completes and creates the output files, users
-need to be able to retrieve them. For that, they need to be listed
-under the *outputs* property of the file. This, again, is a mapping
-where each key is an item identifier and values are objects that
-define output files shown to the users. Each output file object
-has following properties:
-
-:*path*:
-  *(required)* String.
-  Path or a glob_ pattern that will be used to match files
-  in the directory where the process was run. No files outside
-  the working directory will be matched.
-  Glob pattern can be particularly useful if the program produces
-  multiple files that can be grouped together.
-  Additionally, standard output and error streams are automatically
-  redirected to the ``stdout`` and ``stderr`` files.
-
-  .. note:: Patterns starting with a special characters must be quoted.
-
-:*media-type*:
-  *(optional)* String.
-  Media type of the output file using `RFC 2045`_ format.
-  Serves informative purpose only.
-
-.. _glob: https://en.wikipedia.org/wiki/Glob_(programming)
-
-Example: 
-
-.. code-block:: yaml
-    
-  log:
-    path: stdout
-  output:
-    path: output.txt
-    media-type: text/plain
-  auxiliary:
-    path: aux_*.json
-    media-type: application/json
-
-    
-.. _execution management:
 
 --------------------
 Execution management
 --------------------
 
-So far, we instructed slivka how to construct the command line arguments
-for the program and what input parameters the web service wrapper should 
+So far, we instructed slivka on how to construct the command line arguments
+for the program and what input parameters the web service wrapper should
 present to the users.
-The remaining piece is execution of the command on the operating system.
+The remaining piece is the execution of the command on the operating system.
 This role is fulfilled by the Runners which are configured under
 the *execution* property of the service file.
 
@@ -590,77 +640,105 @@ Runners in slivka are classes that implement methods for starting the
 command on the system and watching the completion of the process.
 They are links between the abstract job and
 the actual process running on the system.
-Currently, there are three runner types that realise process execution
-in three distinct ways.
+Currently, four built-in runner types realise realise process execution
+in four distinct ways.
 
-- ``ShellRunner`` the simplest of all three. Runs the command as
-  a subprocess in the current shell. Doesn't require any prior setup
-  but is only suitable for a very small workloads since spawning many
-  computationally-heavy processes can easily clog the operating system.
-  We do no recommend using it in production.
-
-- ``SlivkaQueueRunner`` is an improvement of the shell runner which delegates
-  process execution to a separate slivka queue. The queue is better
-  suited for handling multiple jobs and can limit the number of simultaneous
-  workers to preserve system resources. It requires running local-queue
-  process to work.
-
-  Parameters:
-
-  :*address*:
-    The address of the queue server if different than the one listed in the
-    main configuration file.
-
-- ``GridEngineRunner`` uses a third-party Altair Grid Engine
-  (formerly Univa Grid Engine) to run the jobs using ``qsub`` command.
-  It allows for much more sophisticated resource management capable
-  of serving thousands of jobs. It requires the Grid engine to be
-  available on your system, however.
-
-  Parameters:
-  
-  :*qargs*:
-    List of arguments that will be placed directly after ``qsub`` command.
-    The runner provides ``-V -cwd -o stdout -e stderr`` arguments implicitly
-    and those should not be overridden.
-    The arguments can be a string or an array of strings.
-
-The *execution* property can have two sub-properties under it:
-*runners* and *selector*.
+The *execution* property contains two sub-properties: *runners* and
+*selector*. The *runners* property defines a list of runners available
+to run jobs for this service. The *selector* property contains a path
+to a special selector function which chooses the runner based on the
+input parameters.
 
 Runners
 =======
 
-Similarly to other values in this configuration file, *runners* contains
-a mapping of runner ids to runner objects. You can specify multiple
-runners, however, if the selector is not set, the one named ``default``
-will be always used. Each runner object has following properties:
+Similarly to other values in this configuration file, *runners*
+contains a mapping of runner ids to runner objects. You can specify
+multiple runners, however, if the selector is not set, the one named
+``default`` will be always used. Each runner object has the following
+properties:
 
 :*type*:
   Type of the runner which is either a class name of one of the
   built-in runners or a path to the custom class implementing Runner
-  interface. Creating custom runners will be covered in advanced usage
-  guide. Available Built-in runners are: ``ShellRunner``,``SlivkaQueueRunner``
-  and ``GridEngineRunner``.
+  interface. Creating custom runners will be covered in the advanced
+  usage guide. Available Built-in runners are ``ShellRunner``,
+  ``SlivkaQueueRunner``, ``GridEngineRunner`` and ``SlurmRunner``.
 
 :*parameters*:
   Extra parameters that will be passed to the runner's constructor
   as keyword arguments.
 
+- ``ShellRunner`` is the simplest of all three. Runs the command as
+  a subprocess in the current shell. Doesn't require any prior setup
+  but is only suitable for very small workloads since spawning many
+  computationally-heavy processes can easily clog the operating system.
+  We do not recommend using it in production.
+
+- ``SlivkaQueueRunner`` is an improvement of the shell runner which delegates
+  process execution to a separate slivka queue. The queue is better
+  suited for handling multiple jobs and can limit the number of simultaneous
+  workers to preserve system resources. It requires running a local-queue
+  process to work.
+
+  Parameters:
+
+  :*address*:
+    The address of the queue server if it is different than the one listed in the
+    main configuration file.
+
+- ``GridEngineRunner`` uses a third-party `Altair Grid Engine`_
+  (formerly Univa Grid Engine) to run the jobs using a :program:`qsub` command.
+  It allows for much more sophisticated resource management capable
+  of serving thousands of jobs. It requires the Grid engine to be
+  available on your system, however.
+
+  Parameters:
+
+  :*qargs*:
+    List of arguments that will be placed directly after :program:`qsub` command.
+    The runner provides ``-V -cwd -o stdout -e stderr`` arguments implicitly
+    and those should not be overridden.
+    The arguments can be a string or an array of strings.
+
+- ``SlurmRunner`` uses a third-party `Slurm Workload Manager`_ to run
+  the processes. The command line programs are wrapped in bash scripts
+  and launched with a :program:`sbatch` command. This solution allows
+  advanced resource management on distributed computing systems
+  running many jobs simultaneously. It requires Slurm to be installed
+  on your system.
+
+  Parameters:
+
+  :*sbatchargs*:
+    List of arguments appended to the :program:`sbatch` command that
+    control execution parameters. The runner provides
+    ``--output=stdout --error=stderr --parsable`` arguments implicitly
+    which should not be overridden. The arguments can be provided
+    as an array of strings or as a string, in which case they will be
+    split into an array with :py:func:`shlex.split` function.
+
+  .. versionadded:: 0.8.1b0
+    Introduced Slurm runner
+
+.. _`Altair Grid Engine`: https://www.altair.com/grid-engine
+.. _`Slurm Workload Manager`: https://slurm.schedmd.com/
+
 Selector
 ========
 
-The main idea behind having multiple runners is that depending on
-the size of the job, we can decide how much resources we want to allocate
-to execute it.
-Selector is a Python function which, given the input parameters,
-can decide and return the identifier of the runner suitable for
-this job. It can also decide the job to be rejected based on the
-parameters.
-You can choose your own selector by setting the value of *selector*
-property to the path to the python function.
-The default selector (if unset) always chooses the *"default"* runner.
+A selector is a Python function that given the input parameters can
+choose a runner suitable for the job. It allows you to pick
+runners allocating different amounts of resources appropriate for
+the size of the job. The *selector* property contains a path to a
+callable that accepts a mapping of parameter ids to argument values
+and returns an id of a runner. The signature is:
 
+.. py:function:: selector(input: dict[str, str | list[str]]) -> str
+
+Declaring the selector is required if you want to use more than one
+runner. A default selector (if unset) always chooses the runner named
+*default*.
 
 ======================
 Command line interface
@@ -668,26 +746,28 @@ Command line interface
 
 Slivka consists of three components: RESTful HTTP server, job
 scheduler (dispatcher) and a simple worker queue running jobs
-on the local machine.
-The separation allows to run those parts independently of each other.
+locally.
+The separation allows running those parts independently of each other.
 In situations when the scheduler is down, the server keeps collecting
-the requests stashing them in the database, so when the scheduler is working
+the requests and stashing them in the database, so when the scheduler is working
 again it can catch up with the server and dispatch all pending requests.
 Similarly, when the server is down, the currently submitted jobs
 are unaffected and can still be processed.
 
-Each component can be started using ``slivka`` executable created during
-Slivka package installation.
+Each component can be started using the :program:`slivka` executable
+created during the slivka package installation.
 
 .. warning::
-  Before you start, make sure that you have access to the running mongodb
-  server which is required but is not part of slivka package.
+  Before you start slivka, make sure that you have access to the
+  running MongoDB server which is required but is not the part of the
+  slivka package.
 
 -----------
 HTTP Server
 -----------
 
-Slivka server can be started from the directory containing configuration file with:
+Slivka server can be started from the directory containing the configuration
+file with:
 
 .. code-block::
 
@@ -712,11 +792,11 @@ A full command line specification is:
     - Description
   * - ``SLIVKA_HOME``
     - Path to the configurations directory.
-      Alternatively a SLIVKA_HOME environment variable can be set.
+      Alternatively, a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
   * - ``TYPE``
-    - The wsgi application used to run the server. Currently available
-      options are: gunicorn, uwsgi and devel. Using devel is discouraged
+    - The WSGI application used to run the server. Currently available
+      options are gunicorn, uwsgi and devel. Using devel is discouraged
       in production as it can only serve one client at the time and may
       potentially leak sensitive data.
   * - ``--daemon/--no-daemon``
@@ -724,19 +804,19 @@ A full command line specification is:
   * - ``PIDFILE``
     - Path to the file where process' pid will be written to.
   * - ``WORKERS``
-    - Number of server processes spawned on startup. Not applicable to
+    - The number of server processes spawned on startup. Not applicable to
       the development server.
   * - ``SOCKET``
     - Specify the socket the server will accept connection from
       overriding the value from the settings file.
 
-If you want to have more control or decided to use different wsgi
+If you want to have more control or decided to use a different WSGI
 application to run the server, you can use *wsgi.py* script provided
-in the project directory which contains a wsgi-compatible application
+in the project directory which contains a WSGI-compatible application
 (see `PEP-3333`_).
-Here is an alternative way of starting slivka server using gunicorn
-(for details how to run the wsgi application with other servers
-refer to their respective documentations).
+Here is an alternative way of starting the slivka server using gunicorn
+(for details on how to run the WSGI application with other servers
+refer to their respective documentation).
 
 .. code-block:: sh
 
@@ -767,7 +847,7 @@ The full command line specification is:
     - Description
   * - ``SLIVKA_HOME``
     - Path to the configurations directory.
-      Alternatively a SLIVKA_HOME environment variable can be set.
+      Alternatively, a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
   * - ``--daemon/--no-daemon``
     - Whether the process should run as a daemon.
@@ -798,7 +878,7 @@ The full command line specification:
     - Description
   * - ``SLIVKA_HOME``
     - Path to the configurations directory.
-      Alternatively a SLIVKA_HOME environment variable can be set.
+      Alternatively, a SLIVKA_HOME environment variable can be set.
       If neither is set, the current working directory is used.
   * - ``ADDR``
     - Address the queue server will bind to. Overrides the value
