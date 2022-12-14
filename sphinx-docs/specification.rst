@@ -444,8 +444,6 @@ Example:
     PYTHONPATH: ${PYTHONPATH}  # pass the existing variable
 
 
-.. _parameters specification:
-
 Outputs
 =======
 
@@ -494,7 +492,7 @@ Example:
     media-type: application/json
 
 
-.. _execution management:
+.. _parameters specification:
 
 ----------------
 Input parameters
@@ -624,6 +622,9 @@ File type
   it will result in an error.
 
 .. _RFC 2045: https://datatracker.ietf.org/doc/html/rfc2045
+
+
+.. _execution management:
 
 --------------------
 Execution management
