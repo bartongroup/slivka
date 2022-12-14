@@ -9,6 +9,8 @@ Changelog:
   present in the command
 - Fixed: use sources from the current commit for building conda package
 - Fixed: include runner.bash.tpl in the manifest file
+- Fix: include media type name in a warning message issued when the
+  media type validator is not defined
 
 ## [0.8.0b20] - 2022-11-11
 
