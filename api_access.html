@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Submit jobs &#8212; slivka 0.8.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Submit jobs</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="submit-jobs">
+<h1>Submit jobs<a class="headerlink" href="#submit-jobs" title="Permalink to this heading">¶</a></h1>
+<section id="view-services">
+<h2>View services<a class="headerlink" href="#view-services" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="submit-job">
+<h2>Submit job<a class="headerlink" href="#submit-job" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="monitor-status">
+<h2>Monitor status<a class="headerlink" href="#monitor-status" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="retrieve-output">
+<h2>Retrieve output<a class="headerlink" href="#retrieve-output" title="Permalink to this heading">¶</a></h2>
+</section>
+</section>
+<section id="running-slivka">
+<h1>Running slivka<a class="headerlink" href="#running-slivka" title="Permalink to this heading">¶</a></h1>
+<section id="submitting-job">
+<h2>Submitting job<a class="headerlink" href="#submitting-job" title="Permalink to this heading">¶</a></h2>
+<p>In this subsection we will take a look at the data exchanged in
+the  client-server communication and submit
+our first job using a terminal. This knowledge is not crucial to manage
+and use slivka services, so feel free to skip to the next section
+if it gets too technical.</p>
+<p>In the following examples we use curl, a command line tool for transferring
+data over network protocols, to send and receive data from the server.
+More information can be found on the <a class="reference external" href="https://curl.se/">cURL website</a>.</p>
+<p>Once the slivka server is up, you can send a GET request (or open the
+url in the web browser) to <a class="reference external" href="http://127.0.0.1:4040/api/services">http://127.0.0.1:4040/api/services</a>
+in order to list currently available services.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>curl http://127.0.0.1:4040/api/services
+</pre></div>
+</div>
+<p>The response will show a JSON formatted list of services, or one
+“Example Service” to be more specific. Information about this one
+service can also be requested from <a class="reference external" href="http://127.0.0.1:4040/api/services/example">/api/services/example</a>.
+The response contains the information
+about the service including the list of input parameters
+for that service. Each parameter needs to have a value supplied when
+the new job is submitted. Seeing all those parameters and their
+properties may be a bit daunting, so we focus on and break
+down the last one for now.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;array&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Required command line argument&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;arg&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Text argument&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;required&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The most important property is parameter’s <em>id</em>. It is used to
+reference the parameter, especially when providing a value for it.
+Second most important property is parameter <em>type</em> which dictates
+what values will be accepted (text, number, file, etc). <em>Array</em> tells
+us whether this parameter takes multiple values which is false in this
+case, and <em>required</em> tells whether the value must be provided for the
+new job to be started as some parameters may be optional.
+<em>Default</em> indicates what value will be used if no other value is supplied.
+Finally, <em>name</em> and <em>description</em> contain human-friendly name of
+the parameter accompanied by a longer commentary.</p>
+<p>In order to create a new job, we send a POST request to the
+<a class="reference external" href="http://127.0.0.1:4040/api/services/example/jobs">/api/services/example/jobs</a> endpoint providing values for the
+parameters in the request body using either urlencoded or multipart form.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>curl -d<span class="s2">&quot;rep=v1&amp;rep=v2&amp;arg=val3&quot;</span> http://localhost:4040/api/services/example/jobs
+</pre></div>
+</div>
+<p>If you followed these instructions, then you’ve just submitted your
+first job to slivka.
+If everything went correctly, the server response should contain
+the id of the new job along with other data such as its status,
+submission time and parameters used.</p>
+<p>You can follow the url specified in the <em>&#64;url</em> property to view the
+job resource along with the current progress status.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Submit jobs</a><ul>
+<li><a class="reference internal" href="#view-services">View services</a></li>
+<li><a class="reference internal" href="#submit-job">Submit job</a></li>
+<li><a class="reference internal" href="#monitor-status">Monitor status</a></li>
+<li><a class="reference internal" href="#retrieve-output">Retrieve output</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#running-slivka">Running slivka</a><ul>
+<li><a class="reference internal" href="#submitting-job">Submitting job</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/api_access.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Submit jobs</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Mateusz Maciej Warowny.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

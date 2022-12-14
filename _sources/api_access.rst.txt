@@ -1,0 +1,107 @@
+
+===========
+Submit jobs
+===========
+
+.. should I use curl or client?
+
+-------------
+View services
+-------------
+
+----------
+Submit job
+----------
+
+--------------
+Monitor status
+--------------
+
+---------------
+Retrieve output
+---------------
+
+
+
+
+==============
+Running slivka
+==============
+
+--------------
+Submitting job
+--------------
+
+In this subsection we will take a look at the data exchanged in
+the  client-server communication and submit
+our first job using a terminal. This knowledge is not crucial to manage
+and use slivka services, so feel free to skip to the next section
+if it gets too technical.
+
+In the following examples we use curl, a command line tool for transferring
+data over network protocols, to send and receive data from the server.
+More information can be found on the `cURL website`_.
+
+.. _`cURL website`: https://curl.se/
+
+Once the slivka server is up, you can send a GET request (or open the
+url in the web browser) to `<http://127.0.0.1:4040/api/services>`_
+in order to list currently available services.
+
+.. code:: sh
+
+  curl http://127.0.0.1:4040/api/services
+
+The response will show a JSON formatted list of services, or one
+"Example Service" to be more specific. Information about this one
+service can also be requested from `/api/services/example`_.
+The response contains the information
+about the service including the list of input parameters
+for that service. Each parameter needs to have a value supplied when
+the new job is submitted. Seeing all those parameters and their
+properties may be a bit daunting, so we focus on and break
+down the last one for now.
+
+.. code:: json
+
+  {
+    "array": false,
+    "default": null,
+    "description": "Required command line argument",
+    "id": "arg",
+    "name": "Text argument",
+    "required": true,
+    "type": "text"
+  }
+
+The most important property is parameter's *id*. It is used to
+reference the parameter, especially when providing a value for it.
+Second most important property is parameter *type* which dictates
+what values will be accepted (text, number, file, etc). *Array* tells
+us whether this parameter takes multiple values which is false in this
+case, and *required* tells whether the value must be provided for the
+new job to be started as some parameters may be optional.
+*Default* indicates what value will be used if no other value is supplied.
+Finally, *name* and *description* contain human-friendly name of
+the parameter accompanied by a longer commentary.
+
+In order to create a new job, we send a POST request to the
+`/api/services/example/jobs`_ endpoint providing values for the
+parameters in the request body using either urlencoded or multipart form.
+
+
+.. _/api/services/example: http://127.0.0.1:4040/api/services/example
+.. _/api/services/example/jobs: http://127.0.0.1:4040/api/services/example/jobs
+
+.. code:: sh
+
+  curl -d"rep=v1&rep=v2&arg=val3" http://localhost:4040/api/services/example/jobs
+
+If you followed these instructions, then you've just submitted your
+first job to slivka.
+If everything went correctly, the server response should contain
+the id of the new job along with other data such as its status,
+submission time and parameters used.
+
+You can follow the url specified in the *@url* property to view the
+job resource along with the current progress status.

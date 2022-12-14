@@ -1,23 +1,25 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Welcome to slivka’s documentation! &#8212; slivka 0.8.0 documentation</title>
+    <title>Welcome to slivka documentation! &#8212; slivka 0.8.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/classic.css" />
     
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting Started" href="getting_started.html" /> 
+    <link rel="next" title="Installation" href="installation.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -26,10 +28,10 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="getting_started.html" title="Getting Started"
+          <a href="installation.html" title="Installation"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.0 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">Welcome to slivka’s documentation!</a></li> 
+        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to slivka documentation!</a></li> 
       </ul>
     </div>  
 
@@ -38,21 +40,34 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <section id="welcome-to-slivka-s-documentation">
-<h1>Welcome to slivka’s documentation!<a class="headerlink" href="#welcome-to-slivka-s-documentation" title="Permalink to this headline">¶</a></h1>
-<p>Slivka is a server application for Python, intended for easy and flexible
-configuration of REST API for various web services. The server is based on the
-<a class="reference external" href="https://github.com/pallets/flask">Flask</a> microframework. The scheduler makes use of the <a class="reference external" href="https://www.mongodb.com/">mongoDB</a> as a storage and request broker.</p>
+  <section id="welcome-to-slivka-documentation">
+<h1>Welcome to slivka documentation!<a class="headerlink" href="#welcome-to-slivka-documentation" title="Permalink to this heading">¶</a></h1>
+<p>Slivka is free software, that assists you in creating web services for
+command-line programs. You can use it to easily let others access the
+tools installed on your local computer, server or computer cluster
+over HTTP through a convenient REST interface. It also integrates with
+SLURM and Univa/Altair Grid Engine workload managers and can use them
+to execute jobs more efficiently on distributed computing systems.
+Slivka is written in Python and is available both as a source code and
+an anaconda package.</p>
 <div class="toctree-wrapper compound">
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#python-version">Python Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#optional-dependencies">Optional Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#id1">Mongo Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installing-slivka-with-conda">Installing slivka with conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installing-slivka-from-sources">Installing slivka from sources</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#running-slivka">Running slivka</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#configuring-services">Configuring services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#a-minimal-application">A Minimal Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#structure-of-slivka">Structure of Slivka</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#example-service">Example Service</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="specification.html">Configuration</a><ul>
@@ -72,7 +87,7 @@ configuration of REST API for various web services. The server is based on the
 </div>
 </section>
 <section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">¶</a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
@@ -87,17 +102,21 @@ configuration of REST API for various web services. The server is based on the
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="#">Table of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Welcome to slivka’s documentation!</a><ul>
+  <div>
+    <h3><a href="#">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Welcome to slivka documentation!</a><ul>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 
-  <h4>Next topic</h4>
-  <p class="topless"><a href="getting_started.html"
-                        title="next chapter">Getting Started</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="installation.html"
+                          title="next chapter">Installation</a></p>
+  </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -109,12 +128,12 @@ configuration of REST API for various web services. The server is based on the
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -126,15 +145,15 @@ configuration of REST API for various web services. The server is based on the
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="getting_started.html" title="Getting Started"
+          <a href="installation.html" title="Installation"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.0 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">Welcome to slivka’s documentation!</a></li> 
+        <li class="nav-item nav-item-0"><a href="#">slivka 0.8.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Welcome to slivka documentation!</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2021, Mateusz Maciej Warowny.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.0.2.
+        &#169; Copyright 2022, Mateusz Maciej Warowny.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
     </div>
   </body>
 </html>

@@ -1,19 +1,21 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Advanced Usage &#8212; slivka 0.8.0 documentation</title>
+    <title>Advanced Usage &#8212; slivka 0.8.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/classic.css" />
     
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -28,7 +30,7 @@
         <li class="right" >
           <a href="specification.html" title="Configuration"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.1 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Advanced Usage</a></li> 
       </ul>
     </div>  
@@ -39,27 +41,27 @@
           <div class="body" role="main">
             
   <section id="advanced-usage">
-<h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permalink to this headline">¶</a></h1>
+<h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permalink to this heading">¶</a></h1>
 <p>This page describes advanced features of slivka which involve extending
 its current functionality. Most of those features require you to
 write Python scripts or classes, therefore
 a good knowledge of Python programming (or programming in general)
-is required.</p>
+is recommended.</p>
 <section id="parameter-conditions">
-<h2>Parameter conditions<a class="headerlink" href="#parameter-conditions" title="Permalink to this headline">¶</a></h2>
-<p>As we mentioned in the <a class="reference internal" href="specification.html#parameters-specification"><span class="std std-ref">Input parameters</span></a>, you can specify
-a logical expression in the <em>condition</em> property to impose constraints
-on the value that depend on other parameters. This feature is currently
-experimental and must be used with care as invalid expressions may
-not be properly detected and cause runtime errors. Additionally,
-expressions involving arrays or files are not supported and can result
-in errors when evaluated.</p>
+<span id="advanced-usage-conditions"></span><h2>Parameter conditions<a class="headerlink" href="#parameter-conditions" title="Permalink to this heading">¶</a></h2>
+<p>As we mentioned in the <a class="reference internal" href="specification.html#parameters-specification"><span class="std std-ref">Input parameters</span></a> section, you
+can provide a logical expression in the <em>condition</em> property to impose
+constraints on the value that depend on other parameters. This feature
+is currently experimental and must be used with care as invalid
+expressions may not be properly detected and cause runtime errors.
+Additionally, expressions involving array elements or files are not
+supported and can result in errors when evaluated.</p>
 <p>The conditional expressions are evaluated after the basic validation
-of the input values passes successfully. If the expression of the
-parameter evaluates to <em>false</em>, its value is assumed to be invalid,
-unless a default value was used. In such case the value is changed
-to <em>null</em> and the validation is run again raising validation error
-if the expression still yields <em>false</em>.</p>
+of the input values passes successfully. If the expression evaluates
+to <em>false</em>, its value is assumed to be invalid, unless the default
+value was used. In such case the value is changed to <em>null</em> and the
+validation is run again raising validation error if the expression
+still yields <em>false</em>.</p>
 <p>A valid expression consists of a constant value, an identifier
 or an operator acting on other expressions e.g.</p>
 <ul class="simple">
@@ -74,20 +76,20 @@ expression.</p></li>
 expressions starting with simple values followed by operators in the
 precedence order (highest priority first).</p>
 <dl class="field-list">
-<dt class="field-odd">identifier</dt>
-<dd class="field-odd"><p>Identifiers are used to refer to other parameters by their id.
+<dt class="field-odd">identifier<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Identifiers are used to refer to other parameters by their ids.
 The value of the referenced parameter will be substituted in place
 of the identifier during evaluation. Referencing a file type is not
 supported and results in an unexpected behaviour.
-Referencing an array type will use an entire array
+Referencing an array type will substitute the entire array
 not its values and only a length operator (<code class="docutils literal notranslate"><span class="pre">#</span></code>) can be used on it.</p>
 </dd>
-<dt class="field-even">null</dt>
+<dt class="field-even">null<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">null</span></code> keyword is equal to an empty value.
 It can only be used with equality and logical operators and
 it’s logical value is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
 </dd>
-<dt class="field-odd">number</dt>
+<dt class="field-odd">number<span class="colon">:</span></dt>
 <dd class="field-odd"><p>An integer or a floating point number optionally preceded by a minus
 sign. Engineering notation is also supported. A valid number has to
 start with a digit or a minus sign immediately followed by a digit.
@@ -96,7 +98,7 @@ They can be used with equality, inequality and logical operators with
 <p>Examples: <code class="docutils literal notranslate"><span class="pre">15</span></code>, <code class="docutils literal notranslate"><span class="pre">0.21</span></code>, <code class="docutils literal notranslate"><span class="pre">-4.41</span></code>, <code class="docutils literal notranslate"><span class="pre">2e-4</span></code>, <code class="docutils literal notranslate"><span class="pre">-8.22E19</span></code>.</p>
 <p>Invalid: <code class="docutils literal notranslate"><span class="pre">e5</span></code>, <code class="docutils literal notranslate"><span class="pre">.5</span></code>.</p>
 </dd>
-<dt class="field-even">text</dt>
+<dt class="field-even">text<span class="colon">:</span></dt>
 <dd class="field-even"><p>String literals can be defined by specifying text inside double quotes
 (<code class="docutils literal notranslate"><span class="pre">&quot;</span></code>). If the text needs to include double quote or backslash character
 they need to be escaped with a backslash character.
@@ -105,77 +107,84 @@ and <code class="docutils literal notranslate"><span class="pre">+</span></code>
 <p>Examples: <code class="docutils literal notranslate"><span class="pre">&quot;slivka&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\&quot;quoted\&quot;</span> <span class="pre">text&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;3.14&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\\&quot;</span></code>.</p>
 <p>Invalid: <code class="docutils literal notranslate"><span class="pre">&quot;&quot;quoted&quot;</span> <span class="pre">text&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;\text&quot;</span></code>.</p>
 </dd>
-<dt class="field-odd">parentheses</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(&lt;expr&gt;)</span></code> Groups together expressions to force their evaluation before
-other operations.</p>
+<dt class="field-odd">parentheses<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(&lt;expr&gt;)</span></code> Groups expressions together to force their evaluation
+before other operations.</p>
 </dd>
-<dt class="field-even">unary minus</dt>
+<dt class="field-even">unary minus<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">-</span> <span class="pre">&lt;expr&gt;</span></code> Must be followed by a number expression and
 returns it’s negative value.</p>
 </dd>
-<dt class="field-odd">logical not</dt>
+<dt class="field-odd">logical not<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">&lt;expr&gt;</span></code> Evaluates and converts the expression following it
-to a truth value and returns its opposite. Every value is equivalent
-to <em>true</em> except <code class="docutils literal notranslate"><span class="pre">0</span></code>, empty text <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">null</span></code> and an empty array
-which are converted to <em>false</em>.</p>
+to a truth value and returns its opposite.</p>
 </dd>
-<dt class="field-even">length</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">&lt;expr&gt;</span></code> Must be followed by a string or array expression and
+<dt class="field-even">length<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">&lt;expr&gt;</span></code> Must be followed by a string or an array expression and
 returns its length as an integer.</p>
 </dd>
-<dt class="field-odd">multiplication</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">*</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">/</span> <span class="pre">&lt;expr&gt;</span></code> Performs multiplication
-or division of two numbers.</p>
+<dt class="field-odd">multiplication<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">*</span> <span class="pre">&lt;expr&gt;</span></code> Performs multiplication of two numbers.</p>
 </dd>
-<dt class="field-even">addition</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">+</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">-</span> <span class="pre">&lt;expr&gt;</span></code> Performs addition or
-subtractions of two numbers. Addition can also act on strings
-concatenating them.</p>
+<dt class="field-even">division<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">/</span> <span class="pre">&lt;expr&gt;</span></code> Performs division of two numbers.</p>
 </dd>
-<dt class="field-odd">inequality</dt>
+<dt class="field-odd">addition<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">+</span> <span class="pre">&lt;expr&gt;</span></code> Performs addition of two numbers or
+concatenation of two strings.</p>
+</dd>
+<dt class="field-even">subtraction<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">-</span> <span class="pre">&lt;expr&gt;</span></code> Performs subtraction of two numbers.</p>
+</dd>
+<dt class="field-odd">inequality<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;</span> <span class="pre">&lt;expr&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&gt;</span> <span class="pre">&lt;expr&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;=</span> <span class="pre">&lt;expr&gt;</span></code> or
 <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">&lt;=</span> <span class="pre">&lt;expr&gt;</span></code>. Tests two numbers for inequality and returns
 a truth value. Comparing two strings tests them for alphabetical
 order.</p>
 </dd>
-<dt class="field-even">equality</dt>
+<dt class="field-even">equality<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">==</span> <span class="pre">&lt;expr&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">!=</span> <span class="pre">&lt;expr&gt;</span></code> Tests two values for
 being equal or non-equal and returns a truth value.</p>
 </dd>
-<dt class="field-odd">logical and</dt>
+<dt class="field-odd">logical and<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">and</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>and</em> of two expressions converting
 them to truth values first.</p>
 </dd>
-<dt class="field-even">logical xor</dt>
+<dt class="field-even">logical xor<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">xor</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>xor</em> of two expressions converting
 them to truth values first.</p>
 </dd>
-<dt class="field-odd">logical or</dt>
+<dt class="field-odd">logical or<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&lt;expr&gt;</span> <span class="pre">or</span> <span class="pre">&lt;expr&gt;</span></code> Performs logical <em>or</em> of two expressions converting
 them to truth values first.</p>
 </dd>
 </dl>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>No type or syntax checks are performed on the expressions.
-Any syntax and value errors may cause uncaught errors in the application.</p>
+<p>No type or syntax checks are performed on the expressions. Any
+syntax and value errors may cause uncaught exceptions in the
+application.</p>
 </div>
 </section>
 <section id="selectors">
-<h2>Selectors<a class="headerlink" href="#selectors" title="Permalink to this headline">¶</a></h2>
+<span id="advanced-usage-selectors"></span><h2>Selectors<a class="headerlink" href="#selectors" title="Permalink to this heading">¶</a></h2>
 <p>Selector is a Python function which chooses a runner based on the
 command parameters. As a quick recap of <a class="reference internal" href="specification.html#execution-management"><span class="std std-ref">Execution management</span></a>,
 each service has one or more runners which are responsible for
-starting and watching jobs running on the system.
-If there is more than one runner available, a selector function
-is used to choose the most appropriate one for the job.
-Since runners may have different configurations, it is possible
-to make different amount of resources available to them and then
-dispatch the jobs depending on their size and needs.</p>
+starting and watching jobs running on the system. If there is more
+than one runner available, a selector function is used to choose the
+most appropriate one for the job. It allows picking runners having
+different amounts of available resources depending of the size of the
+job.</p>
 <p>The selector is a Python function which takes one argument,
 the mapping of input parameter names to their values, and returns
-the identifier of the runner or <code class="docutils literal notranslate"><span class="pre">None</span></code> to reject the job.
-The keys of the mapping consist of the ids of the input parameters
+the identifier of the runner or <code class="docutils literal notranslate"><span class="pre">None</span></code> to reject the job.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="selector">
+<span class="sig-name descname"><span class="pre">selector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#selector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>The keys of the mapping consist of the ids of the input parameters
 as defined in the service configuration. They are mapped to the values
 provided by the user after being converted to the command
 line parameters. Each value can be either of a string type or
@@ -204,7 +213,7 @@ in the <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</
 from the project’s root directory.</p>
 </section>
 <section id="custom-runners">
-<h2>Custom Runners<a class="headerlink" href="#custom-runners" title="Permalink to this headline">¶</a></h2>
+<h2>Custom Runners<a class="headerlink" href="#custom-runners" title="Permalink to this heading">¶</a></h2>
 <p>Although slivka is still expanding, currently existing runners may
 not be sufficient for some use cases. Custom runners may be as simple
 as a script running a program or may involve complex data exchange
@@ -266,19 +275,19 @@ Those variables should be used in favour
 of the system environment variables for job processes.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="Command">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Command</span></span><a class="headerlink" href="#Command" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Command</span></span><a class="headerlink" href="#Command" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents the command to be started by the runner. Provided to the
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method by the scheduler.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="Command.args">
-<span class="sig-name descname"><span class="pre">args</span></span><em class="property"><span class="pre">:</span> <span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#Command.args" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#Command.args" title="Permalink to this definition">¶</a></dt>
 <dd><p>List of command line arguments. The arguments include the base
 command as well the arguments.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="Command.cwd">
-<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#Command.cwd" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></em><a class="headerlink" href="#Command.cwd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Working directory where the process should be started.</p>
 </dd></dl>
 
@@ -296,20 +305,20 @@ job object is the same that will later be used in <code class="xref py py-meth d
 and <code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code> methods.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="Job">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Job</span></span><a class="headerlink" href="#Job" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Job</span></span><a class="headerlink" href="#Job" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents a running job containing the identifier and working directory.
 Object returned by <code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code> method and later used as an
 argument to <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_status()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">cancel()</span></code>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="Job.id">
-<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="pre">:</span> <span class="pre">Any</span></em><a class="headerlink" href="#Job.id" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#Job.id" title="Permalink to this definition">¶</a></dt>
 <dd><p>Job id that allows its runner identify the job.
 Must be JSON serializable.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="Job.cwd">
-<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#Job.cwd" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">cwd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></em><a class="headerlink" href="#Job.cwd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Path to the working directory of the job.</p>
 </dd></dl>
 
@@ -320,7 +329,7 @@ earlier by the <code class="xref py py-meth docutils literal notranslate"><span 
 the job. The status must be one of the <a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code></a> enum values.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="slivka.JobStatus">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">slivka.</span></span><span class="sig-name descname"><span class="pre">JobStatus</span></span><a class="headerlink" href="#slivka.JobStatus" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">slivka.</span></span><span class="sig-name descname"><span class="pre">JobStatus</span></span><a class="headerlink" href="#slivka.JobStatus" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="slivka.JobStatus.PENDING">
 <span class="sig-name descname"><span class="pre">PENDING</span></span><a class="headerlink" href="#slivka.JobStatus.PENDING" title="Permalink to this definition">¶</a></dt>
@@ -415,18 +424,18 @@ and types as in the single-job methods. Default implementations
 call their single-job variants multiple times.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="Runner">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Runner</span></span><a class="headerlink" href="#Runner" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Runner</span></span><a class="headerlink" href="#Runner" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="py method">
 <dt class="sig sig-object py" id="Runner.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runner_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>runner_id</strong> (<em>RunnerID</em>) – pair of service and runner ids</p></li>
-<li><p><strong>command</strong> (<em>str | List</em><em>[</em><em>str</em><em>]</em>) – command passed as a shell command or a list of arguments</p></li>
+<li><p><strong>command</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – command passed as a shell command or a list of arguments</p></li>
 <li><p><strong>args</strong> (<em>List</em><em>[</em><em>Argument</em><em>]</em>) – argument definitions</p></li>
 <li><p><strong>outputs</strong> (<em>List</em><em>[</em><em>OutputFile</em><em>]</em>) – output file definitions</p></li>
-<li><p><strong>env</strong> (<em>Map</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – custom environment variables for this service</p></li>
+<li><p><strong>env</strong> (<em>Map</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – custom environment variables for this service</p></li>
 </ul>
 </dd>
 </dl>
@@ -485,19 +494,19 @@ preparations needed for the new jobs and calls <a class="reference internal" hre
 
 <dl class="py method">
 <dt class="sig sig-object py" id="Runner.submit">
-<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">submit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.submit" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">submit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.submit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits the command to the underlying execution system and returns
 the job wrapper. If an error resulting from the system malfunction
 prevents job from being properly started, an appropriate exception
 should be raised.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>command</strong> (<a class="reference internal" href="#Command" title="Command"><code class="xref py py-class docutils literal notranslate"><span class="pre">Command</span></code></a>) – A command containing arguments and working directory.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A wrapper object containing job id and working directory</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#Job" title="Job">Job</a></p>
 </dd>
 </dl>
@@ -505,20 +514,20 @@ should be raised.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="Runner.check_status">
-<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">check_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.check_status" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.check_status" title="Permalink to this definition">¶</a></dt>
 <dd><p>Checks and returns the current status of the job using one of the
 <a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code></a> values. The argument
 is the same job object as returned by the <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a>
 method. If the status could not be checked due to an error, an
 appropriate exception should be raised.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>job</strong> (<a class="reference internal" href="#Job" title="Job"><em>Job</em></a>) – Job object as returned by <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a></p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Current job status.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus">slivka.JobStatus</a></p>
 </dd>
 </dl>
@@ -526,7 +535,7 @@ appropriate exception should be raised.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="Runner.cancel">
-<em class="property"><span class="pre">abstract</span> </em><span class="sig-name descname"><span class="pre">cancel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.cancel" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cancel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Runner.cancel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cancels currently running job. Does nothing if the job is not
 running. It should only send cancel request to the underlying
 execution system without waiting until the job is actually stopped.
@@ -534,7 +543,7 @@ After successful cancel, consecutive status checks should result in
 <code class="docutils literal notranslate"><span class="pre">CANCELLING</span></code> status and then <code class="docutils literal notranslate"><span class="pre">INTERRUPTED</span></code> or <code class="docutils literal notranslate"><span class="pre">DELETED</span></code>
 once the job is stopped.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>job</strong> (<a class="reference internal" href="#Job" title="Job"><em>Job</em></a>) – Job object as returned by <a class="reference internal" href="#Runner.submit" title="Runner.submit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">submit()</span></code></a></p>
 </dd>
 </dl>
@@ -549,13 +558,13 @@ if there is a way to start multiple jobs at once which offers performance
 benefits. Default implementation makes multiple calls to its single-job
 counterpart.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>commands</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Command" title="Command"><em>Command</em></a><em>]</em>) – List of command tuples containing arguments and working directories.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>List of jobs for each provided command.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List[<a class="reference internal" href="#Job" title="Job">Job</a>]</p>
 </dd>
 </dl>
@@ -571,13 +580,13 @@ this method if checking status in batches provides performance
 improvement. Default implementation makes multiple calls to its
 single-job counterpart.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>jobs</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Job" title="Job"><em>Job</em></a><em>]</em>) – List of jobs to check the status for.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>List of statuses for each passed job.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List[<a class="reference internal" href="#slivka.JobStatus" title="slivka.JobStatus">JobStatus</a>]</p>
 </dd>
 </dl>
@@ -593,7 +602,7 @@ in batches is more efficient than doing it individually.
 Default implementation makes multiple calls to its single-job
 counterpart.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>jobs</strong> (<em>List</em><em>[</em><a class="reference internal" href="#Job" title="Job"><em>Job</em></a><em>]</em>) – List of jobs to be cancelled.</p>
 </dd>
 </dl>
@@ -611,19 +620,70 @@ counterpart.</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table of Contents</a></h3>
-  <ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
 <li><a class="reference internal" href="#">Advanced Usage</a><ul>
 <li><a class="reference internal" href="#parameter-conditions">Parameter conditions</a></li>
-<li><a class="reference internal" href="#selectors">Selectors</a></li>
-<li><a class="reference internal" href="#custom-runners">Custom Runners</a></li>
+<li><a class="reference internal" href="#selectors">Selectors</a><ul>
+<li><a class="reference internal" href="#selector"><code class="docutils literal notranslate"><span class="pre">selector()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#custom-runners">Custom Runners</a><ul>
+<li><a class="reference internal" href="#Command"><code class="docutils literal notranslate"><span class="pre">Command</span></code></a><ul>
+<li><a class="reference internal" href="#Command.args"><code class="docutils literal notranslate"><span class="pre">Command.args</span></code></a></li>
+<li><a class="reference internal" href="#Command.cwd"><code class="docutils literal notranslate"><span class="pre">Command.cwd</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Job"><code class="docutils literal notranslate"><span class="pre">Job</span></code></a><ul>
+<li><a class="reference internal" href="#Job.id"><code class="docutils literal notranslate"><span class="pre">Job.id</span></code></a></li>
+<li><a class="reference internal" href="#Job.cwd"><code class="docutils literal notranslate"><span class="pre">Job.cwd</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#slivka.JobStatus"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus</span></code></a><ul>
+<li><a class="reference internal" href="#slivka.JobStatus.PENDING"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.PENDING</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.REJECTED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.REJECTED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.ACCEPTED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.ACCEPTED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.QUEUED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.QUEUED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.RUNNING"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.RUNNING</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.COMPLETED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.COMPLETED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.CANCELLING"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.CANCELLING</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.INTERRUPTED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.INTERRUPTED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.DELETED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.DELETED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.FAILED"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.FAILED</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.ERROR"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.ERROR</span></code></a></li>
+<li><a class="reference internal" href="#slivka.JobStatus.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">slivka.JobStatus.UNKNOWN</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Runner"><code class="docutils literal notranslate"><span class="pre">Runner</span></code></a><ul>
+<li><a class="reference internal" href="#Runner.__init__"><code class="docutils literal notranslate"><span class="pre">Runner.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.id"><code class="docutils literal notranslate"><span class="pre">Runner.id</span></code></a></li>
+<li><a class="reference internal" href="#Runner.command"><code class="docutils literal notranslate"><span class="pre">Runner.command</span></code></a></li>
+<li><a class="reference internal" href="#Runner.arguments"><code class="docutils literal notranslate"><span class="pre">Runner.arguments</span></code></a></li>
+<li><a class="reference internal" href="#Runner.outputs"><code class="docutils literal notranslate"><span class="pre">Runner.outputs</span></code></a></li>
+<li><a class="reference internal" href="#Runner.env"><code class="docutils literal notranslate"><span class="pre">Runner.env</span></code></a></li>
+<li><a class="reference internal" href="#Runner.start"><code class="docutils literal notranslate"><span class="pre">Runner.start()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.batch_start"><code class="docutils literal notranslate"><span class="pre">Runner.batch_start()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.submit"><code class="docutils literal notranslate"><span class="pre">Runner.submit()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.check_status"><code class="docutils literal notranslate"><span class="pre">Runner.check_status()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.cancel"><code class="docutils literal notranslate"><span class="pre">Runner.cancel()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.batch_submit"><code class="docutils literal notranslate"><span class="pre">Runner.batch_submit()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.batch_check_status"><code class="docutils literal notranslate"><span class="pre">Runner.batch_check_status()</span></code></a></li>
+<li><a class="reference internal" href="#Runner.batch_cancel"><code class="docutils literal notranslate"><span class="pre">Runner.batch_cancel()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="specification.html"
-                        title="previous chapter">Configuration</a></p>
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="specification.html"
+                          title="previous chapter">Configuration</a></p>
+  </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -635,12 +695,12 @@ counterpart.</p>
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -654,13 +714,13 @@ counterpart.</p>
         <li class="right" >
           <a href="specification.html" title="Configuration"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">slivka 0.8.1 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Advanced Usage</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2021, Mateusz Maciej Warowny.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.0.2.
+        &#169; Copyright 2022, Mateusz Maciej Warowny.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
     </div>
   </body>
 </html>
