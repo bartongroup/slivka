@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 from collections import OrderedDict, ChainMap
 from importlib import import_module
 from typing import Optional, Iterator, Mapping, Type
@@ -204,7 +204,7 @@ FIELD_TYPES = {
 }
 
 
-class FormLoader(collections.Mapping):
+class FormLoader(collections.abc.Mapping):
     """
     A helper factory dynamically creating the forms from the configuration.
     Only a single instance of the class is created (subsequent constructor
