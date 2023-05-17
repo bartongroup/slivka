@@ -7,6 +7,8 @@ from collections.abc import Sequence
 from distutils.version import StrictVersion
 from typing import List, Dict
 
+from slivka.compat import resources
+
 try:
     from typing import get_origin, get_args
 except ImportError:
@@ -15,7 +17,6 @@ except ImportError:
 
 import attr
 import jsonschema
-import pkg_resources
 import yaml
 from attr import attrs, attrib
 from frozendict import frozendict
@@ -33,8 +34,8 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     if config['version'] != '0.3':
         raise ImproperlyConfigured("Expected config version 0.3")
     config = flatten_mapping(config)
-    config_schema = json.loads(pkg_resources.resource_string(
-        "slivka.conf", "settings-schema.json").decode())
+    config_schema = json.loads(resources.read_text(
+        "slivka.conf", "settings-schema.json"))
     try:
         jsonschema.validate(config, config_schema, Draft7Validator)
     except jsonschema.ValidationError as e:
@@ -49,8 +50,8 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
             path = os.path.normpath(os.path.join(home, value))
             config[key] = path
 
-    service_schema = json.loads(pkg_resources.resource_string(
-        "slivka.conf", "service-schema.json").decode())
+    service_schema = json.loads(resources.read_text(
+        "slivka.conf", "service-schema.json"))
     services_dir = config['directory.services']
     services = config['services'] = []
     for fn in os.listdir(services_dir):

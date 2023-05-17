@@ -3,7 +3,6 @@ import datetime
 import fnmatch
 import os.path
 import pathlib
-from importlib import resources
 from operator import attrgetter
 from typing import Type
 
@@ -13,6 +12,7 @@ from flask import request, url_for, jsonify, current_app
 from werkzeug.datastructures import FileStorage
 
 import slivka.conf
+from slivka.compat import resources
 from slivka.conf import ServiceConfig
 from slivka.db.documents import ServiceState, JobRequest, CancelRequest, \
     UploadedFile
@@ -285,9 +285,10 @@ def api_reference_view():
         return flask.send_file(path)
     else:
         # load file from the package for backwards compatibility
-        stream = pkg_resources.resource_stream(
+        stream = resources.open_binary(
             'slivka', 'project_template/static/redoc-index.html')
         return flask.send_file(stream, 'text/html')
+
 
 @bp.route('/openapi.yaml')
 def openapi_view():
@@ -297,6 +298,6 @@ def openapi_view():
         return flask.send_file(path)
     else:
         # load file from the package for backwards compatibility
-        stream = pkg_resources.resource_stream(
+        stream = resources.open_binary(
             'slivka', 'project_template/static/openapi.yaml')
         return flask.send_file(stream, 'application/yaml')

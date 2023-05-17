@@ -8,9 +8,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence
 
-import pkg_resources
-
 from slivka import JobStatus
+from slivka.compat import resources
 from slivka.utils import ttl_cache
 from ._bash_lex import bash_quote
 from .grid_engine import _StatusLetterDict
@@ -18,7 +17,7 @@ from .runner import Runner, Job, Command
 
 log = logging.getLogger("slivka.scheduler")
 
-_runner_bash_tpl = pkg_resources.resource_string(__name__, "runner.bash.tpl").decode()
+_runner_bash_tpl = resources.read_text(__name__, "runner.bash.tpl")
 
 
 _status_letters = _StatusLetterDict({

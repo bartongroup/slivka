@@ -10,9 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Sequence, Collection
 
-import pkg_resources
-
 from slivka import JobStatus
+from slivka.compat import resources
 from slivka.utils import ttl_cache
 from .runner import Runner, Job, Command
 
@@ -25,7 +24,7 @@ _job_status_regex = re.compile(
     rb'^\s*(\d+)\s+\d+\.\d*\s+[\w-]+\s+[\w-]+\s+(\w+)',
     re.MULTILINE
 )
-_runner_sh_tpl = pkg_resources.resource_string(__name__, "runner.sh.tpl").decode()
+_runner_sh_tpl = resources.read_text(__name__, "runner.sh.tpl")
 
 
 class _StatusLetterDict(dict):
