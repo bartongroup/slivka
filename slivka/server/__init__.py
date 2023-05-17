@@ -1,4 +1,5 @@
 import flask
+# FIXME: path info methods removed in Werkzeug 2.3+
 from werkzeug.wsgi import peek_path_info, pop_path_info
 
 import slivka
@@ -36,7 +37,7 @@ def create_app(config: SlivkaSettings = None):
         forms=form_loader
     )
     from . import api_views
-    app.register_blueprint(api_views.bp, url_prefix='/api')
+    app.register_blueprint(api_views.bp, name='api', url_prefix='/api')
     app.register_blueprint(api_views.bp)
 
     uploads_route = config.server.uploads_path.rstrip('/') + "/<path:file_path>"

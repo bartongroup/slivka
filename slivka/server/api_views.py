@@ -3,11 +3,11 @@ import datetime
 import fnmatch
 import os.path
 import pathlib
+from importlib import resources
 from operator import attrgetter
 from typing import Type
 
 import flask
-import pkg_resources
 from bson import ObjectId
 from flask import request, url_for, jsonify, current_app
 from werkzeug.datastructures import FileStorage
@@ -19,7 +19,7 @@ from slivka.db.documents import ServiceState, JobRequest, CancelRequest, \
 from slivka.db.helpers import insert_one
 from .forms.form import BaseForm
 
-bp = flask.Blueprint('api', __name__, url_prefix='/api/v1.1')
+bp = flask.Blueprint('api-v1_1', __name__, url_prefix='/api/v1.1')
 
 _DATETIME_STRF = "%Y-%m-%dT%H:%M:%S"
 
