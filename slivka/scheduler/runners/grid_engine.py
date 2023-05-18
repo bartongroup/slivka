@@ -24,7 +24,7 @@ _job_status_regex = re.compile(
     rb'^\s*(\d+)\s+\d+\.\d*\s+[\w-]+\s+[\w-]+\s+(\w+)',
     re.MULTILINE
 )
-_runner_sh_tpl = resources.read_text(__name__, "runner.sh.tpl")
+_runner_sh_tpl = resources.read_text(__package__, "runner.sh.tpl")
 
 
 class _StatusLetterDict(dict):

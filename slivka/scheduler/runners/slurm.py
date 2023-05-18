@@ -17,7 +17,7 @@ from .runner import Runner, Job, Command
 
 log = logging.getLogger("slivka.scheduler")
 
-_runner_bash_tpl = resources.read_text(__name__, "runner.bash.tpl")
+_runner_bash_tpl = resources.read_text(__package__, "runner.bash.tpl")
 
 
 _status_letters = _StatusLetterDict({
