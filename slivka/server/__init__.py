@@ -22,6 +22,23 @@ class PrefixMiddleware:
             pop_path_info(environ)
         return self.app(environ, start_response)
 
+    @staticmethod
+    def pop_prefix(environ, prefix):
+        old_path: str = environ.get('PATH_INFO', "")
+        path = old_path.lstrip("/")
+        if not path.startswith(prefix + "/"):
+            return
+        script_name = environ.get('SCRIPT_NAME', "")
+        # add all leading slashes
+        script_name += "/" * (len(old_path) - len(path))
+        if "/" not in path:
+            environ['PATH_INFO'] = ""
+            environ['SCRIPT_NAME'] = script_name + path
+        else:
+            segment, path = path.split("/", 1)
+            environ['PATH_INFO'] = f"/{path}"
+            environ['SCRIPT_NAME'] = script_name + segment
+
 
 def create_app(config: SlivkaSettings = None):
     config = config or slivka.conf.settings
