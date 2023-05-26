@@ -1,6 +1,4 @@
 import flask
-# FIXME: path info methods removed in Werkzeug 2.3+
-from werkzeug.wsgi import peek_path_info, pop_path_info
 
 import slivka
 from slivka.conf import SlivkaSettings
@@ -15,29 +13,28 @@ except ImportError:
 class PrefixMiddleware:
     def __init__(self, wsgi_app, prefix=''):
         self.app = wsgi_app
-        self.prefix = prefix.strip('/')
+        if prefix and not prefix.startswith('/'):
+            prefix = '/' + prefix
+        self._prefix_parts = prefix.split('/')
+        self._prefix_parts[1:] = [p for p in self._prefix_parts[1:] if p]
 
     def __call__(self, environ, start_response):
-        if peek_path_info(environ) == self.prefix:
-            pop_path_info(environ)
+        PrefixMiddleware.shift_path_prefix(environ, self._prefix_parts)
         return self.app(environ, start_response)
 
     @staticmethod
-    def pop_prefix(environ, prefix):
-        old_path: str = environ.get('PATH_INFO', "")
-        path = old_path.lstrip("/")
-        if not path.startswith(prefix + "/"):
+    def shift_path_prefix(environ, prefix_parts):
+        path_info: str = environ.get('PATH_INFO', "")
+        path_parts = path_info.split('/')
+        # remove empty segments preserving leading and trailing slash
+        path_parts[1:-1] = [p for p in path_parts[1:-1] if p]
+        if (len(path_parts) < len(prefix_parts) or
+                any(p1 != p2 for p1, p2 in zip(path_parts, prefix_parts))):
             return
-        script_name = environ.get('SCRIPT_NAME', "")
-        # add all leading slashes
-        script_name += "/" * (len(old_path) - len(path))
-        if "/" not in path:
-            environ['PATH_INFO'] = ""
-            environ['SCRIPT_NAME'] = script_name + path
-        else:
-            segment, path = path.split("/", 1)
-            environ['PATH_INFO'] = f"/{path}"
-            environ['SCRIPT_NAME'] = script_name + segment
+        del path_parts[1:len(prefix_parts)]  # discard prefix leaving leading slash
+        script_name = environ.get('SCRIPT_NAME', '')
+        environ['SCRIPT_NAME'] = script_name + '/'.join(prefix_parts)
+        environ['PATH_INFO'] = '/'.join(path_parts)
 
 
 def create_app(config: SlivkaSettings = None):
