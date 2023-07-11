@@ -39,12 +39,6 @@ def _load_dict(config):
 
 
 class _ConfModule(ModuleType):
-    def __init__(self):
-        super().__init__(__name__)
-        self.__path__ = __path__
-        self.__file__ = __file__
-        del self.__loader__
-
     @cached_property
     def settings(self):
         return _load()
@@ -55,14 +49,7 @@ class _ConfModule(ModuleType):
     def load_dict(self, config):
         self.settings = _load_dict(config)
 
-    def __getattr__(self, item):
-        try:
-            return globals()[item]
-        except KeyError:
-            raise AttributeError(
-                "module '%s' has no attribute '%s'" % (__name__, item))
 
+settings: loaders.SlivkaSettings
 
-settings = ...  # type: loaders.SlivkaSettings
-
-sys.modules[__name__] = _ConfModule()
+sys.modules[__name__].__class__ = _ConfModule

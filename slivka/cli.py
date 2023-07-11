@@ -35,14 +35,14 @@ def init(path):
 def init_project(base_dir):
     import shutil
     import stat
-    import pkg_resources
+    from slivka.compat import resources
 
     def copy_project_file(src, dst=None):
         if dst is None: dst = src
         dst = os.path.join(base_dir, dst)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         with open(dst, 'wb') as f:
-            stream = pkg_resources.resource_stream(
+            stream = resources.open_binary(
                 'slivka', 'project_template/' + src
             )
             shutil.copyfileobj(stream, f)
