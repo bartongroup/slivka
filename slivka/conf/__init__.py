@@ -21,7 +21,7 @@ def _load():
             'Settings file not found in %s. Check if SLIVKA_HOME environment '
             'variable is set correctly and the directory contains '
             'settings.yaml or config.yaml.' % home
-        )
+        ) from None
 
 
 def _load_file(fp):
