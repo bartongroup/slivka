@@ -1,35 +1,15 @@
 import contextlib
 import os
 
-import mongomock
 import pytest
 from sentinels import Sentinel
 from werkzeug.datastructures import MultiDict, FileStorage
 
-import slivka.db
 from slivka.db.documents import UploadedFile
 from slivka.db.helpers import insert_one, delete_one
-from slivka.server.forms.fields import FileField, ValidationError
-
+from slivka.server.forms.fields import FileField, ValidationError, FileArrayField
 
 data_dir_path = os.path.join(os.path.dirname(__file__), "data")
-
-
-@pytest.fixture(scope="module")
-def mongo_client():
-    slivka.db.mongo = mongomock.MongoClient()
-    with slivka.db.mongo as client:
-        yield client
-    del slivka.db.mongo
-
-
-@pytest.fixture()
-def database(mongo_client):
-    slivka.db.database = mongo_client.slivkadb
-    yield slivka.db.database
-    for collection_name in slivka.db.database.list_collection_names():
-        slivka.db.database.drop_collection(collection_name)
-    del slivka.db.database
 
 
 @pytest.fixture()
