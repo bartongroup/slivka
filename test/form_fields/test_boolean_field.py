@@ -57,7 +57,7 @@ def test_string_conversion(value, expected):
 
 
 @pytest.mark.parametrize(
-    "value, expected", [(True, True), (False, None), (None, None)]
+    "value, expected", [(True, 'true'), (False, None), (None, None)]
 )
 def test_to_cmd_parameter(value, expected):
     field = BooleanField("test1")

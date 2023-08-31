@@ -226,11 +226,11 @@ class TestServiceStatusUpdates:
         )
         assert state.state == ServiceState.DOWN
 
-    @pytest.mark.xfail(reason="service status should not rely on erroneous job")
+    @pytest.mark.xfail(reason="service status should not rely on erroneous jobs")
     def test_service_check_status_returned_all_errors(
         self, database, scheduler, mock_submit, mock_check_status
     ):
-        mock_submit.return_value = lambda cmd: Job("0x00", cmd.cwd)
+        mock_submit.side_effect = lambda cmd: Job("0x00", cmd.cwd)
         mock_check_status.return_value = JobStatus.ERROR
         scheduler.main_loop()
         state = ServiceState.find_one(
@@ -241,7 +241,7 @@ class TestServiceStatusUpdates:
     def test_service_check_status_throws_exception(
         self, database, scheduler, mock_submit, mock_check_status
     ):
-        mock_submit.return_value = lambda cmd: Job("0x00", cmd.cwd)
+        mock_submit.side_effect = lambda cmd: Job("0x00", cmd.cwd)
         mock_check_status.side_effect = Exception
         scheduler.main_loop()
         state = ServiceState.find_one(

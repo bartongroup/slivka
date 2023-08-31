@@ -20,7 +20,7 @@ class MyForm(BaseForm):
 
 
 def test_request_saved_to_database(database, tmp_path):
-    form = MyForm()
+    form = MyForm(MultiDict())
     request_id = form.save(database, tmp_path).b64id
     job_request = JobRequest.find_one(database, id=request_id)
     assert job_request is not None

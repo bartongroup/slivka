@@ -183,7 +183,7 @@ class BaseField:
 class ArrayFieldMixin(BaseField, ABC):
     def fetch_value(self, data: MultiDict, files: MultiDict):
         """ Retrieves multiple values from the request data. """
-        return data.getlist(self.id) or None
+        return [v for v in data.getlist(self.id) if v is not None] or None
 
     def validate(self, value):
         """ Runs validation for each value in the list. """
