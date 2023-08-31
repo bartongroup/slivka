@@ -15,3 +15,23 @@ class _UnorderedListComparator(list):
 
 def in_any_order(*items):
     return _UnorderedListComparator(items)
+
+
+class _EqualsAnything:
+    __slots__ = ()
+
+    def __eq__(self, other):
+        return True
+
+    def __repr__(self):
+        return "<ANYTHING>"
+
+    def __str__(self):
+        return "<ANYTHING>"
+
+
+_equals_anything = _EqualsAnything()
+
+
+def anything():
+    return _equals_anything

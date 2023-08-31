@@ -1,34 +1,15 @@
 import filecmp
 import os
 import tempfile
-from functools import partial
 from unittest import mock
+
 import pytest
 
 from slivka.conf import ServiceConfig
 from slivka.scheduler import Runner
-from slivka.scheduler.runners import Job, Command
+from slivka.scheduler.runners import Command, Job
 
 Argument = ServiceConfig.Argument
-
-
-@pytest.fixture(scope="module", autouse=True)
-def slivka_home(tmp_path_factory):
-    tmp_path = tmp_path_factory.mktemp("slivka-home")
-    with mock.patch.dict(os.environ, SLIVKA_HOME=str(tmp_path)):
-        yield tmp_path
-
-
-@pytest.fixture()
-def job_directory(slivka_home):
-    (slivka_home / "jobs").mkdir(exist_ok=True)
-    yield tempfile.mkdtemp(dir=slivka_home / "jobs")
-
-
-@pytest.fixture()
-def job_directory_factory(slivka_home):
-    (slivka_home / "jobs").mkdir(exist_ok=True)
-    yield partial(tempfile.mkdtemp, dir=slivka_home / "jobs")
 
 
 @pytest.fixture()
