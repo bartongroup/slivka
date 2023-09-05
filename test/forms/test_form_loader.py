@@ -3,7 +3,7 @@ import os.path
 import pytest
 import yaml
 
-from pytests.tools import in_any_order
+from test.tools import in_any_order
 from slivka.server import FormLoader
 from slivka.server.forms.fields import *
 

@@ -3,7 +3,7 @@ from unittest import mock
 import bson
 import pytest
 
-from pytests.tools import anything, in_any_order
+from test.tools import anything, in_any_order
 from slivka import JobStatus
 from slivka.db.documents import JobRequest, ServiceState
 from slivka.db.helpers import delete_many, insert_many, pull_many

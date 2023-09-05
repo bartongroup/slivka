@@ -10,7 +10,7 @@ import yaml
 
 import slivka.compat.resources
 import slivka.server
-from pytests.tools import in_any_order
+from test.tools import in_any_order
 from slivka import JobStatus
 from slivka.conf.loaders import load_settings_0_3
 from slivka.db.documents import ServiceState, UploadedFile, JobRequest
