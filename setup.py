@@ -30,8 +30,11 @@ setup(
         "Werkzeug>=1.0",
     ],
     tests_require=[
+        'mongomock>=3.18',
         'nose>=1.3.7',
-        'mongomock>=3.18,<4.0'
+        'pytest-raises>=0.11',
+        'pytest>=7.4',
+        'sentinels>=1.0.0',
     ],
     extras_require={
         'gunicorn': ["gunicorn>=19.9"],
