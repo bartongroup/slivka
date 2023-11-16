@@ -7,9 +7,12 @@ from importlib import import_module
 from logging.handlers import RotatingFileHandler
 
 import click
+from daemon import DaemonContext
+from daemon.pidfile import TimeoutPIDLockFile
 
 from slivka.__about__ import __version__
-from slivka.utils import nullcontext
+from slivka.compat.contextlib import nullcontext
+from slivka.utils.daemon import DummyDaemonContext
 
 
 @click.group()
@@ -74,7 +77,8 @@ def start(home):
 @click.option('--type', '-t', 'server_type', default='devel',
               type=click.Choice(['gunicorn', 'uwsgi', 'devel']))
 @click.option('--daemon/--no-daemon', '-d')
-@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+@click.option('--pid-file', '-p', default=None,
+              type=click.Path(writable=True, resolve_path=True))
 @click.option('--workers', '-w', default=None, type=click.INT)
 @click.option('--http-socket', '-s')
 def start_server(server_type, daemon, pid_file, workers, http_socket):
@@ -126,73 +130,86 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
 
 @start.command('scheduler')
 @click.option('--daemon/--no-daemon', '-d')
-@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+@click.option('--pid-file', '-p', default=None,
+              type=click.Path(writable=True, resolve_path=True))
 def start_scheduler(daemon, pid_file):
-    import slivka
     from slivka.conf import settings
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
-
-    if daemon:
-        slivka.utils.daemonize()
-    pid_file_cm = slivka.utils.PidFile(pid_file) if pid_file else nullcontext()
-
     import slivka.conf.logging
     import slivka.scheduler
     from slivka.scheduler.factory import runners_from_config
-    slivka.conf.logging.configure_logging()
 
-    def terminate(_signum, _stack): scheduler.stop()
-    signal.signal(signal.SIGINT, terminate)
-    signal.signal(signal.SIGTERM, terminate)
-
-    handler = RotatingFileHandler(
-        os.path.join(settings.directory.logs, 'slivka.log'),
-        maxBytes=10 ** 8
+    def terminate_handler(_signum, _stack): scheduler.stop()
+    signals = {
+        signal.SIGINT: terminate_handler,
+        signal.SIGTERM: terminate_handler,
+    }
+    pidfile_ctx = TimeoutPIDLockFile(pid_file) if pid_file else nullcontext()
+    daemon_args = dict(
+        pidfile=pidfile_ctx,
+        signal_map=signals,
+        stdout=None,
+        stderr=None,
     )
-    listener = slivka.conf.logging.ZMQQueueListener(
-        slivka.conf.logging.get_logging_sock(), (handler,)
-    )
-    with pid_file_cm, listener, closing(handler):
-        scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
-        for service_config in settings.services:
-            selector, runners = runners_from_config(service_config)
-            scheduler.add_selector(service_config.id, selector)
-            for runner in runners:
-                scheduler.add_runner(runner)
-        scheduler.run_forever()
+    daemon_ctx = (DaemonContext(**daemon_args) if daemon
+                  else DummyDaemonContext(**daemon_args))
+    with daemon_ctx:
+        for signum, handler in signals.items():
+            signal.signal(signum, handler)
+        slivka.conf.logging.configure_logging()
+        handler = RotatingFileHandler(
+            os.path.join(settings.directory.logs, 'slivka.log'),
+            maxBytes=10 ** 8
+        )
+        listener = slivka.conf.logging.ZMQQueueListener(
+            slivka.conf.logging.get_logging_sock(), (handler,)
+        )
+        with listener, closing(handler):
+            scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
+            for service_config in settings.services:
+                selector, runners = runners_from_config(service_config)
+                scheduler.add_selector(service_config.id, selector)
+                for runner in runners:
+                    scheduler.add_runner(runner)
+            scheduler.run_forever()
 
 
 @start.command('local-queue')
 @click.option('--address', '-a')
 @click.option('--workers', '-w', default=2)
 @click.option('--daemon/--no-daemon', '-d')
-@click.option('--pid-file', '-p', default=None, type=click.Path(writable=True))
+@click.option('--pid-file', '-p', default=None,
+              type=click.Path(writable=True, resolve_path=True))
 def start_local_queue(address, workers, daemon, pid_file):
-    import slivka
     from slivka.conf import settings
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
-
-    if daemon:
-        slivka.utils.daemonize()
-    pid_file_cm = slivka.utils.PidFile(pid_file) if pid_file else nullcontext()
-
     import asyncio
     import slivka.conf.logging
     from slivka.local_queue import LocalQueue
-    slivka.conf.logging.configure_logging()
 
-    loop = asyncio.get_event_loop()
-    queue = LocalQueue(
-        address=address or settings.local_queue.host, workers=workers
+    pidfile_ctx = TimeoutPIDLockFile(pid_file) if pid_file else nullcontext()
+    daemon_args = dict(
+        pidfile=pidfile_ctx,
+        stdout=None,
+        stderr=None,
     )
-    loop.add_signal_handler(signal.SIGTERM, queue.stop)
-    loop.add_signal_handler(signal.SIGINT, queue.stop)
-    with pid_file_cm, closing(queue):
-        queue.run(loop)
-    loop.run_until_complete(loop.shutdown_asyncgens())
-    loop.close()
+    daemon_ctx = (DaemonContext(**daemon_args) if daemon
+                  else DummyDaemonContext(**daemon_args))
+
+    with daemon_ctx:
+        slivka.conf.logging.configure_logging()
+        loop = asyncio.get_event_loop()
+        queue = LocalQueue(
+            address=address or settings.local_queue.host, workers=workers
+        )
+        loop.add_signal_handler(signal.SIGTERM, queue.stop)
+        loop.add_signal_handler(signal.SIGINT, queue.stop)
+        with closing(queue):
+            queue.run(loop)
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
 
 
 @start.command('shell',
