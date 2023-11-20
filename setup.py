@@ -31,7 +31,6 @@ setup(
     ],
     tests_require=[
         'mongomock>=3.18',
-        'nose>=1.3.7',
         'pytest-raises>=0.11',
         'pytest>=7.4',
         'sentinels>=1.0.0',
