@@ -24,6 +24,7 @@ setup(
         "jsonschema>=3.0",
         "MarkupSafe>=1.0",
         "pymongo>=3.7",
+        "python-daemon>=3.0",
         "PyYAML>=5.4",
         "pyzmq>=19.0",
         "simplejson>=3.16",

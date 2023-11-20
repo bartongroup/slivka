@@ -177,20 +177,6 @@ class class_property:
         return self._getter.__get__(instance, owner)()
 
 
-try:
-    from contextlib import nullcontext
-except ImportError:
-    class nullcontext:
-        def __init__(self, enter_result=None):
-            self.enter_result = enter_result
-
-        def __enter__(self):
-            return self.enter_result
-
-        def __exit__(self, *excinfo):
-            pass
-
-
 def deprecated(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -291,50 +277,3 @@ class JobStatus(enum.IntEnum):
             JobStatus.REJECTED, JobStatus.COMPLETED, JobStatus.INTERRUPTED,
             JobStatus.DELETED, JobStatus.FAILED, JobStatus.ERROR
         )
-
-
-class PidFile:
-    # licensed under the MIT license. by Graham Poulter
-    # http://code.activestate.com/recipes/577911/
-    """Context manager that locks a pid file.  Implemented as class
-    not generator because daemon.py is calling .__exit__() with no parameters
-    instead of the None, None, None specified by PEP-343."""
-    def __init__(self, path):
-        self.path = path
-        self.pidfile = None
-
-    def __enter__(self):
-        pidfile = self.pidfile = open(self.path, 'a+')
-        fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        pidfile.seek(0)
-        pidfile.truncate()
-        pidfile.write(str(os.getpid()))
-        pidfile.flush()
-        pidfile.seek(0)
-        return pidfile
-
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        try:
-            self.pidfile.close()
-        except OSError as e:
-            if e.errno != 9:
-                raise
-        os.remove(self.path)
-
-
-def daemonize():
-    """ Daemonizes the current process. """
-    if os.fork() != 0:
-        os._exit(0)
-    os.setsid()
-    if os.fork() != 0:
-        os._exit(0)
-    os.umask(0o027)
-    os.chdir('/')
-
-    os.closerange(0, 3)
-    null_fd = os.open(os.devnull, os.O_RDWR)
-    if null_fd != 0:
-        os.dup2(null_fd, 0)
-    os.dup2(null_fd, 1)
-    os.dup2(null_fd, 2)

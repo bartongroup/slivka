@@ -35,6 +35,7 @@ requirements:
     - pytest-raises>=0.11
     - pytest>=7.4
     - python>=3.7,<3.11
+    - python-daemon>=3.0
     - pyyaml>=5.4
     - pyzmq>=19.0
     - sentinels>=1.0.0
