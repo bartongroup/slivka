@@ -1,10 +1,10 @@
 field:
   name: field
-  type: pytests.forms.test_form_loader.CustomField
+  type: test.forms.test_form_loader.CustomField
   alpha: 13
   bravo: 97
 
 array-field:
   name: array
-  type: pytests.forms.test_form_loader.CustomField[]
+  type: test.forms.test_form_loader.CustomField[]
   alpha: 0

@@ -239,7 +239,7 @@ class TestJobCreatedView:
         assert job_request.inputs == {
             "text-param": "Hello world",
             "number-param": "12.3",
-            "file-param": uploaded_file.b64id,
+            "file-param": uploaded_file.path,
         }
 
     def test_uploaded_file_content(self, uploaded_file):
