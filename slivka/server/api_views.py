@@ -1,5 +1,5 @@
 import base64
-import datetime
+from datetime import datetime
 import fnmatch
 import os.path
 import pathlib
@@ -62,7 +62,7 @@ def _service_resource(service: ServiceConfig):
         status = {
             'status': 'UNKNOWN',
             'errorMessage': "",
-            'timestamp': datetime.datetime.now().strftime(_DATETIME_STRF)
+            'timestamp': datetime.fromtimestamp(0).strftime(_DATETIME_STRF)
         }
     form: Type[BaseForm] = flask.current_app.config['forms'][service.id]
     return {
