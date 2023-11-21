@@ -1,6 +1,6 @@
 Changelog:
 
-## [0.8.1b2] - 2023-11-21
+## [0.8.2b0] - 2023-11-21
 
 - Changed: migrated all tests from a deprecated nose framework to pytest
 - Removed: nose removed from project dependencies.
