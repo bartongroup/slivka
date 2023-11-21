@@ -1,6 +1,31 @@
 Changelog:
 
-## [0.8.1b0]
+## [0.8.1b2] - 2023-11-21
+
+- Changed: migrated all tests from a deprecated nose framework to pytest
+- Removed: nose removed from project dependencies.
+- Fixed: fixed failures caused by the resource loader being inconsistent
+  across different python versions.
+- Changed: server returns 1970-01-01T01:00:00 (unix timestamp 0) as the service
+  status timestamp when the status is undefined instead of returning the
+  current time.
+- Changed: switched to python-daemon library for managing daemons and pid
+  files.
+- Fixed: automatically resolve pid file path to the absolute path. Fixes
+  permission errors when relative path was combined with a `--daemon` flag.
+
+## [0.8.1b1] - 2023-07-11
+
+- Changed: dependency updates
+    - setuptools dependency changed to >=65.5.1
+    - removed upper version limit from all dependencies
+- Removed: requirements.txt file no longer present in the repository.
+  Install with _editable_ mode during development.
+- Fixed: _api_ blueprint name clash
+- Fixed: replaced usages of deprecated `pkg_resources` with a newer
+  `importlib.resources` module
+
+## [0.8.1b0] - 2022-12-14
 
 - Added: new SlurmRunner which executes jobs using Slurm workload manager.
 - Added: custom parameters can be specified for the sbatch in the
