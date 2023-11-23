@@ -13,8 +13,9 @@ import slivka.server
 from test.tools import in_any_order
 from slivka import JobStatus
 from slivka.conf.loaders import load_settings_0_3
-from slivka.db.documents import ServiceState, UploadedFile, JobRequest
+from slivka.db.documents import UploadedFile, JobRequest
 from slivka.db.helpers import insert_one, delete_one
+from slivka.db.repositories import ServiceStatusInfo, ServiceStatusMongoDBRepository
 
 project_path = os.path.join(os.path.dirname(__file__), "test_project")
 
@@ -138,25 +139,29 @@ class TestFakeServiceView:
         ]
 
 
+@pytest.fixture()
+def service_status_repository(database):
+    return ServiceStatusMongoDBRepository(database)
+
+
 @pytest.fixture(
     params=[
-        (ServiceState.OK, "OK"),
-        (ServiceState.WARNING, "Executor overloaded"),
-        (ServiceState.DOWN, "Critical error"),
+        (ServiceStatusInfo.OK, "OK"),
+        (ServiceStatusInfo.WARNING, "Executor overloaded"),
+        (ServiceStatusInfo.DOWN, "Critical error"),
     ]
 )
-def service_state(request, database):
-    state, message = request.param
-    state_entry = ServiceState(
+def service_state(request, service_status_repository):
+    status, message = request.param
+    status_entry = ServiceStatusInfo(
         service="fake",
         runner="default",
-        state=state,
+        status=status,
         message=message,
         timestamp=datetime(2023, 8, 16, 12, 0),
     )
-    insert_one(database, state_entry)
-    yield state, message
-    delete_one(database, state_entry)
+    service_status_repository.insert(status_entry)
+    return status, message
 
 
 def test_service_view_state_info(app_client, service_state):
