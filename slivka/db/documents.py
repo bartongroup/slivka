@@ -179,6 +179,7 @@ class ServiceState(MongoDocument):
     WARNING = State.WARNING
     DOWN = State.DOWN
 
+    @deprecated
     def __init__(self, *,
                  service,
                  runner,
