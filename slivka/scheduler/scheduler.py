@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import operator
 import os
 import threading
 from collections import defaultdict, namedtuple, OrderedDict
@@ -10,13 +9,11 @@ from typing import (Iterable, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable, Tuple)
 
 import pymongo.errors
-from bson import ObjectId
 
 import slivka.conf
 import slivka.db
+from slivka.db.documents import JobRequest, CancelRequest
 from slivka.db.helpers import delete_many, push_many
-from slivka.db.documents import JobRequest, CancelRequest, ServiceState
-from slivka.db.helpers import push_one, insert_one
 from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
 from .runners import Job as JobTuple
@@ -32,42 +29,6 @@ RunResult = namedtuple('RunResult', 'started, deferred, failed')
 # sentinel valued corresponding to the rejected and error requests
 REJECTED = object()
 ERROR = object()
-
-
-class _ServiceStateHelper:
-    def __init__(self, database=None):
-        self._db = database or slivka.db.database
-        self._states = {}  # type: dict[tuple, ServiceState]
-        self._ids = {}
-
-    def update_state(self, service, runner, tag, state, message):
-        current = self._get_service_state(service, runner, tag)
-        if current.state != state or current.message != message:
-            current.reset_timestamp()
-            current.message = message
-            current.state = state
-            filter_key = (service, runner)
-            most_severe = max(
-                (v for k, v in self._states.items() if k[:2] == filter_key),
-                key=operator.attrgetter('state')
-            )
-            push_one(self._db, most_severe)
-
-    def _get_service_state(self, service, runner, tag) -> ServiceState:
-        try:
-            return self._states[service, runner, tag]
-        except KeyError:
-            _id = self._get_database_id(service, runner)
-            state = ServiceState(_id=_id, service=service, runner=runner)
-            self._states[service, runner, tag] = state
-            return state
-
-    def _get_database_id(self, service, runner) -> ObjectId:
-        state = ServiceState.find_one(self._db, service=service, runner=runner)
-        if state is None:
-            state = ServiceState(service=service, runner=runner)
-            insert_one(self._db, state)
-        return state.id
 
 
 class Scheduler:
@@ -93,7 +54,6 @@ class Scheduler:
         self.selectors: Dict[str, Callable] = defaultdict(lambda: BaseSelector.default)
         self._backoff_counters: DefaultDict[Any, BackoffCounter] = \
             defaultdict(partial(BackoffCounter, max_tries=10))
-        self._service_states = _ServiceStateHelper()
         self._auto_reconnect_handler = partial(_auto_reconnect_handler, self.log)
 
     @property
@@ -295,28 +255,14 @@ class Scheduler:
                 [req.inputs for req in requests],
                 [os.path.join(self.jobs_directory, req.b64id) for req in requests]
             )
-            update_call = partial(
-                self._service_states.update_state, runner.service_name,
-                runner.name, 'start', ServiceState.OK, 'OK'
-            )
-            retry_call(update_call, pymongo.errors.AutoReconnect,
-                       handler=self._auto_reconnect_handler)
             return zip(requests, jobs)
         except Exception as e:
             self.log.exception("Starting jobs with %s failed.", runner)
             counter.failure()
             if counter.give_up:
-                state = ServiceState.State.DOWN
                 exc = ExecutionFailed(runner)
             else:
-                state = ServiceState.State.WARNING
                 exc = ExecutionDeferred(runner)
-            update_call = partial(
-                self._service_states.update_state,
-                runner.service_name, runner.name, 'start', state, str(e)
-            )
-            retry_call(update_call, pymongo.errors.AutoReconnect,
-                       handler=self._auto_reconnect_handler)
             raise exc from e
 
     def _update_running(self, database):
@@ -372,28 +318,13 @@ class Scheduler:
                 self.log.exception(
                     "Jobs of %s exited with error state", runner)
                 counter.failure()
-                service_state = ServiceState.DOWN
-                service_message = 'All jobs reported error status.'
-            else:
-                service_state = ServiceState.OK
-                service_message = 'OK'
-        except Exception as e:
+        except Exception:
             self.log.exception("Checking job status for %s failed.", runner)
             counter.failure()
             if counter.give_up:
                 for request in requests:
                     request.status = JobStatus.ERROR
                 updated.extend(requests)
-                service_state = ServiceState.DOWN
-            else:
-                service_state = ServiceState.WARNING
-            service_message = str(e)
-        update_call = partial(
-            self._service_states.update_state, runner.service_name,
-            runner.name, 'state', service_state, service_message
-        )
-        retry_call(update_call, pymongo.errors.AutoReconnect,
-                   handler=self._auto_reconnect_handler)
         return updated
 
 
