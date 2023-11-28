@@ -16,10 +16,10 @@ from slivka.scheduler.runners import Runner
 
 ServiceTestOutcome = namedtuple("ServiceTestOutcome", "status, message, cause")
 
-_TEST_STATUS_OK = ServiceStatus.OK
-_TEST_STATUS_FAILED = ServiceStatus.DOWN
-_TEST_STATUS_INTERRUPTED = ServiceStatus.WARNING
-_TEST_STATUS_TIMEOUT = ServiceStatus.WARNING
+TEST_STATUS_OK = ServiceStatus.OK
+TEST_STATUS_FAILED = ServiceStatus.DOWN
+TEST_STATUS_INTERRUPTED = ServiceStatus.WARNING
+TEST_STATUS_TIMEOUT = ServiceStatus.WARNING
 
 
 class ServiceTest:
@@ -44,14 +44,14 @@ class ServiceTest:
     def run(self) -> ServiceTestOutcome:
         if self._interrupt.is_set():
             return ServiceTestOutcome(
-                _TEST_STATUS_INTERRUPTED, message="stopped", cause=None
+                TEST_STATUS_INTERRUPTED, message="stopped", cause=None
             )
         with TemporaryDirectory() as dir_name:
             try:
                 job = self._runner.start(self._test_data, dir_name)
             except Exception as e:
                 return ServiceTestOutcome(
-                    _TEST_STATUS_FAILED, message=str(e), cause=e
+                    TEST_STATUS_FAILED, message=str(e), cause=e
                 )
             timeout = time.monotonic() + self._timeout
             while True:
@@ -59,32 +59,32 @@ class ServiceTest:
                     status = self._runner.check_status(job)
                 except Exception as e:
                     return ServiceTestOutcome(
-                        _TEST_STATUS_FAILED, message=str(e), cause=e
+                        TEST_STATUS_FAILED, message=str(e), cause=e
                     )
                 if status.is_finished():
                     if status == JobStatus.COMPLETED:
                         return ServiceTestOutcome(
-                            _TEST_STATUS_OK, message="", cause=None
+                            TEST_STATUS_OK, message="", cause=None
                         )
                     if status in (JobStatus.INTERRUPTED, JobStatus.DELETED):
                         return ServiceTestOutcome(
-                            _TEST_STATUS_INTERRUPTED,
+                            TEST_STATUS_INTERRUPTED,
                             message="removed from the scheduling system",
                             cause=None,
                         )
                     else:
                         return ServiceTestOutcome(
-                            _TEST_STATUS_FAILED,
+                            TEST_STATUS_FAILED,
                             message="completed unsuccessfully",
                             cause=None,
                         )
                 if time.monotonic() > timeout:
                     return ServiceTestOutcome(
-                        _TEST_STATUS_TIMEOUT, message="timeout", cause=None
+                        TEST_STATUS_TIMEOUT, message="timeout", cause=None
                     )
                 if self._interrupt.wait(2):
                     return ServiceTestOutcome(
-                        _TEST_STATUS_INTERRUPTED,
+                        TEST_STATUS_INTERRUPTED,
                         message="interrupted",
                         cause=None,
                     )
@@ -142,7 +142,7 @@ class ServiceTestExecutorThread(threading.Thread):
                     break
                 except Exception as e:
                     outcome = ServiceTestOutcome(
-                        _TEST_STATUS_FAILED,
+                        TEST_STATUS_FAILED,
                         message=f"uncaught error {e!r}",
                         cause=e,
                     )
