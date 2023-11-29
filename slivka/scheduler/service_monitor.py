@@ -31,9 +31,9 @@ class ServiceTest:
     as the scheduler do.
     """
 
-    def __init__(self, runner: Runner, test_data: dict, timeout=900):
+    def __init__(self, runner: Runner, test_parameters: dict, timeout=900):
         self._runner = runner
-        self._test_data = test_data
+        self._test_parameters = test_parameters
         self._timeout = timeout
         self._interrupt = threading.Event()
 
@@ -48,7 +48,7 @@ class ServiceTest:
             )
         with TemporaryDirectory() as dir_name:
             try:
-                job = self._runner.start(self._test_data, dir_name)
+                job = self._runner.start(self._test_parameters, dir_name)
             except Exception as e:
                 return ServiceTestOutcome(
                     TEST_STATUS_FAILED, message=str(e), cause=e

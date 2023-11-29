@@ -16,7 +16,7 @@ def mock_runner():
 def test_service_test_fail_on_start(mock_runner):
     exception = Exception("init error")
     mock_runner.start.side_effect = exception
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_FAILED,
         message="init error",
@@ -27,7 +27,7 @@ def test_service_test_fail_on_start(mock_runner):
 def test_service_test_fail_on_status_check(mock_runner):
     exception = BrokenPipeError("broken pipe")
     mock_runner.check_status.side_effect = exception
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_FAILED,
         message="broken pipe",
@@ -48,7 +48,7 @@ def test_service_test_fail_on_status_check(mock_runner):
 )
 def test_service_test_job_successful(mock_runner, return_status_iterator):
     mock_runner.check_status.side_effect = return_status_iterator
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_OK,
         message="",
@@ -66,7 +66,7 @@ def test_service_test_job_successful(mock_runner, return_status_iterator):
 )
 def test_service_test_job_unsuccessful(mock_runner, return_status):
     mock_runner.check_status.return_value = return_status
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_FAILED,
         message="completed unsuccessfully",
@@ -76,7 +76,7 @@ def test_service_test_job_unsuccessful(mock_runner, return_status):
 
 def test_service_test_job_timeout(mock_runner):
     mock_runner.check_status.return_value = JobStatus.RUNNING
-    test = ServiceTest(runner=mock_runner, test_data={}, timeout=0)
+    test = ServiceTest(runner=mock_runner, test_parameters={}, timeout=0)
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_TIMEOUT,
         message="timeout",
@@ -86,7 +86,7 @@ def test_service_test_job_timeout(mock_runner):
 
 def test_service_test_job_removed_from_system(mock_runner):
     mock_runner.check_status.return_value = JobStatus.DELETED
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_INTERRUPTED,
         message="removed from the scheduling system",
@@ -96,7 +96,7 @@ def test_service_test_job_removed_from_system(mock_runner):
 
 def test_service_test_job_interrupted(mock_runner):
     mock_runner.check_status.return_value = JobStatus.INTERRUPTED
-    test = ServiceTest(runner=mock_runner, test_data={})
+    test = ServiceTest(runner=mock_runner, test_parameters={})
     assert test.run() == ServiceTestOutcome(
         TEST_STATUS_INTERRUPTED,
         message="removed from the scheduling system",
