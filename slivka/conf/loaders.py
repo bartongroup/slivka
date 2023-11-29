@@ -8,6 +8,7 @@ from distutils.version import StrictVersion
 from typing import List, Dict
 
 from slivka.compat import resources
+from slivka.utils.env import expandvars
 
 try:
     from typing import get_origin, get_args
@@ -120,6 +121,21 @@ def _deserialize(cls, obj):
     return obj
 
 
+def _parameters_converter(parameters: dict):
+    converted = {}
+    for key, val in parameters.items():
+        if isinstance(val, str):
+            converted[key] = expandvars(val)
+        elif isinstance(val, list):
+            converted[key] = [expandvars(v) for v in val]
+        else:
+            raise ValueError(
+                "Invalid parameter type %r. Only list or str are allowed"
+                % type(val)
+            )
+    return converted
+
+
 @attrs(kw_only=True)
 class ServiceConfig:
     @attrs
@@ -148,6 +164,12 @@ class ServiceConfig:
         runners = attr.ib(type=Dict[str, Runner])
         selector = attr.ib(type=str, default=None)
 
+    @attrs
+    class ServiceTest:
+        applicable_runners = attrib(type=List[str])
+        parameters = attrib(type=Dict[str, str], converter=_parameters_converter)
+        timeout = attrib(type=int, default=None)
+
     id = attrib(type=str)
     slivka_version = attr.ib(converter=StrictVersion)
     name = attrib(type=str)
@@ -162,6 +184,7 @@ class ServiceConfig:
     env = attrib(type=Dict[str, str], converter=frozendict, factory=dict)
     outputs = attrib(type=List[OutputFile])
     execution = attrib(type=Execution)
+    tests = attrib(type=List[ServiceTest], factory=list)
 
 
 @attrs(kw_only=True)
