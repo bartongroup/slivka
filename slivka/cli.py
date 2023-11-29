@@ -1,3 +1,4 @@
+import datetime
 import multiprocessing
 import os
 import signal
@@ -139,6 +140,8 @@ def start_scheduler(daemon, pid_file):
     import slivka.conf.logging
     import slivka.scheduler
     from slivka.scheduler.factory import runners_from_config
+    from slivka.scheduler.service_monitor import ServiceTest, ServiceTestExecutorThread
+    from slivka.db.repositories import ServiceStatusMongoDBRepository
 
     def terminate_handler(_signum, _stack): scheduler.stop()
     signals = {
@@ -155,8 +158,6 @@ def start_scheduler(daemon, pid_file):
     daemon_ctx = (DaemonContext(**daemon_args) if daemon
                   else DummyDaemonContext(**daemon_args))
     with daemon_ctx:
-        for signum, handler in signals.items():
-            signal.signal(signum, handler)
         slivka.conf.logging.configure_logging()
         handler = RotatingFileHandler(
             os.path.join(settings.directory.logs, 'slivka.log'),
@@ -167,12 +168,28 @@ def start_scheduler(daemon, pid_file):
         )
         with listener, closing(handler):
             scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
+            service_monitor = ServiceTestExecutorThread(
+                ServiceStatusMongoDBRepository(),
+                interval=datetime.timedelta(hours=1),
+            )
             for service_config in settings.services:
                 selector, runners = runners_from_config(service_config)
                 scheduler.add_selector(service_config.id, selector)
                 for runner in runners:
                     scheduler.add_runner(runner)
+                service_monitor.extend_tests(
+                    ServiceTest(
+                        runner=runner,
+                        test_parameters=test_conf.parameters,
+                        timeout=test_conf.timeout or 900
+                    )
+                    for runner in runners
+                    for test_conf in service_config.tests
+                    if runner.name in test_conf.applicable_runners
+                )
+            service_monitor.start()
             scheduler.run_forever()
+            service_monitor.shutdown()
 
 
 @start.command('local-queue')
