@@ -118,17 +118,18 @@ class ServiceTestExecutorThread(threading.Thread):
         self._tests = [*self._tests, *iterable]
 
     def run(self):
-        while not self._finished.wait(self._interval):
+        while not self._finished.is_set():
             run_result = self.run_all_tests()
             with suppress(pymongo.errors.ConnectionFailure):
                 for runner, test_outcome in run_result:
                     info = ServiceStatusInfo(
                         service=runner.service_name,
-                        runner=runner.get_name,
+                        runner=runner.name,
                         status=test_outcome.status,
                         message=test_outcome.message
                     )
                     self._repository.insert(info)
+            self._finished.wait(self._interval)
 
     def run_all_tests(self):
         with ThreadPoolExecutor(max_workers=4) as executor:
