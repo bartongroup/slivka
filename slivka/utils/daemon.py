@@ -26,7 +26,7 @@ class DummyDaemonContext:
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
-        self.signal_map = signal_map
+        self.signal_map = signal_map or {}
         self._is_open = False
 
     def open(self):
