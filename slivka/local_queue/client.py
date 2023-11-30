@@ -1,5 +1,6 @@
 import atexit
 import re
+import threading
 from collections import namedtuple
 
 import zmq
@@ -8,10 +9,11 @@ zmq_ctx = zmq.Context()
 atexit.register(zmq_ctx.destroy, 0)
 
 
-class LocalQueueClient:
+class LocalQueueClient(threading.local):
     JobStatusResponse = namedtuple("JobStatus", 'id, state, returncode')
 
     def __init__(self, address, secret=None):
+        threading.local.__init__(self)
         if not re.match(r'(\w*:)?//', address):
             # if only host given, assume tcp://
             address = "tcp://" + address
