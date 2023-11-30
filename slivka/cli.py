@@ -237,3 +237,33 @@ def start_shell():
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
     code.interact()
+
+
+@main.command('test-services')
+def test_services():
+    home = os.getenv('SLIVKA_HOME', os.getcwd())
+    os.environ['SLIVKA_HOME'] = os.path.abspath(home)
+    from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
+    sys.path.append(settings.directory.home)
+    from slivka.scheduler.factory import runners_from_config
+    from slivka.scheduler.service_monitor import ServiceTest, ServiceTestExecutorThread
+    from slivka.db.repositories import ServiceStatusMongoDBRepository
+    service_monitor = ServiceTestExecutorThread(
+        ServiceStatusMongoDBRepository(),
+        interval=datetime.timedelta(hours=1),
+    )
+    for service_config in settings.services:
+        selector, runners = runners_from_config(service_config)
+        service_monitor.extend_tests(
+            ServiceTest(
+                runner=runner,
+                test_parameters=test_conf.parameters,
+                timeout=test_conf.timeout or 900
+            )
+            for runner in runners
+            for test_conf in service_config.tests
+            if runner.name in test_conf.applicable_runners
+        )
+    for report in service_monitor.run_all_tests():
+        print(report)
