@@ -4,50 +4,16 @@ import filecmp
 import itertools
 import logging
 import os
-import re
 import shlex
 import shutil
 from collections import ChainMap, namedtuple
-from functools import partial
-from typing import List, Match, Union, Dict, Collection, Sequence, Optional
+from typing import List, Union, Dict, Collection, Sequence, Optional
 
 from slivka import JobStatus
 from slivka.conf import ServiceConfig
+from slivka.utils.env import expandvars
 
 log = logging.getLogger('slivka.scheduler')
-
-
-# Regular expression capturing variable names $VAR or ${VAR}
-# and escaped dollar sign $$. Matches should be substituted
-# using _replace_from_env function.
-_var_regex = re.compile(
-    r'\$(?:(\$)|([_a-z]\w*)|{([_a-z]\w*)})',
-    re.UNICODE | re.IGNORECASE
-)
-
-
-def _replace_vars(env: dict, match: Match):
-    """ Replaces matches of _envvar_regex with variables from env
-
-    Given the match from the ``_envvar_regex`` returns the string
-    which should be substituted for the match. Escaped dollar
-    "$$" is substituted for a single dollar. captured variables
-    are substituted for the values from the ``env`` dictionary
-    or nothing if the value is not present.
-    This function is meant to imitate bash variable interpolation.
-
-    Usage:
-
-        _envvar_regex.sub(partial(_replace_from_env, env), cmd)
-
-    :param env: dictionary of variables and values to be substituted
-    :param match: the match object provided by ``re.sub``
-    :return:
-    """
-    if match.group(1):
-        return '$'
-    else:
-        return env.get(match.group(2) or match.group(3))
 
 
 RunnerID = namedtuple('RunnerID', 'service, runner')
@@ -104,22 +70,21 @@ class Runner:
             'SLIVKA_HOME': os.getenv('SLIVKA_HOME', os.getcwd())
         }
         self.env.update(env)
-        replace = partial(_replace_vars, os.environ)
         # substitute variables with the system env vars
         for key, val in self.env.items():
-            self.env[key] = _var_regex.sub(replace, val)
+            self.env[key] = expandvars(val, os.environ)
 
-        replace = partial(_replace_vars, ChainMap(self.env, os.environ))
         if isinstance(command, str):
             command = shlex.split(command)
+        # interpolate any variables in the command
+        environ = ChainMap(self.env, os.environ)
         self.command = [
-            _var_regex.sub(replace, arg) for arg in command
+            expandvars(arg, environ) for arg in command
         ]
         self.arguments = list(map(copy.copy, args))
         for argument in self.arguments:
-            args = _var_regex.sub(replace, argument.arg)
-            args = shlex.split(args)
-            argument.arg = args
+            args = expandvars(argument.arg, environ)
+            argument.arg = shlex.split(args)
 
     def get_name(self): return self.id.runner
     name = property(get_name)

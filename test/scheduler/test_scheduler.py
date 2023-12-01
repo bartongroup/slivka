@@ -3,9 +3,8 @@ from unittest import mock
 import bson
 import pytest
 
-from test.tools import anything, in_any_order
 from slivka import JobStatus
-from slivka.db.documents import JobRequest, ServiceState
+from slivka.db.documents import JobRequest
 from slivka.db.helpers import delete_many, insert_many, pull_many
 from slivka.scheduler import Runner, Scheduler
 from slivka.scheduler.runners import Job, RunnerID
@@ -15,6 +14,7 @@ from slivka.scheduler.scheduler import (
     ExecutionDeferred,
     ExecutionFailed,
 )
+from test.tools import anything, in_any_order
 
 
 def new_runner(service, name, command=None, args=None, env=None):
@@ -181,70 +181,3 @@ class TestJobStatusUpdates:
         scheduler.main_loop()
         pull_many(database, requests)
         assert all(req.state == JobStatus.ERROR for req in requests)
-
-
-class TestServiceStatusUpdates:
-    @pytest.fixture(autouse=True)
-    def requests(self, database):
-        requests = create_requests(5)
-        insert_many(database, requests)
-        yield requests
-        delete_many(database, requests)
-
-    @pytest.fixture()
-    def scheduler(self, job_directory):
-        scheduler = Scheduler(job_directory)
-        runner = new_runner("example", "default")
-        scheduler.add_runner(runner)
-        return scheduler
-
-    def test_service_start_successful(
-        self, database, scheduler, mock_submit, mock_check_status
-    ):
-        mock_submit.side_effect = lambda cmd: Job("0x00", cmd.cwd)
-        mock_check_status.return_value = JobStatus.QUEUED
-        scheduler.main_loop()
-        state = ServiceState.find_one(
-            database, service="example", runner="default"
-        )
-        assert state.state == ServiceState.OK
-
-    def test_service_start_soft_fail(self, database, scheduler, mock_submit):
-        mock_submit.side_effect = OSError
-        scheduler.main_loop()
-        state = ServiceState.find_one(
-            database, service="example", runner="default"
-        )
-        assert state.state == ServiceState.WARNING
-
-    def test_service_start_hard_fail(self, database, scheduler, mock_submit):
-        scheduler.set_failure_limit(0)
-        mock_submit.side_effect = OSError
-        scheduler.main_loop()
-        state = ServiceState.find_one(
-            database, service="example", runner="default"
-        )
-        assert state.state == ServiceState.DOWN
-
-    @pytest.mark.xfail(reason="service status should not rely on erroneous jobs")
-    def test_service_check_status_returned_all_errors(
-        self, database, scheduler, mock_submit, mock_check_status
-    ):
-        mock_submit.side_effect = lambda cmd: Job("0x00", cmd.cwd)
-        mock_check_status.return_value = JobStatus.ERROR
-        scheduler.main_loop()
-        state = ServiceState.find_one(
-            database, service="example", runner="default"
-        )
-        assert state.state == ServiceState.DOWN
-
-    def test_service_check_status_throws_exception(
-        self, database, scheduler, mock_submit, mock_check_status
-    ):
-        mock_submit.side_effect = lambda cmd: Job("0x00", cmd.cwd)
-        mock_check_status.side_effect = Exception
-        scheduler.main_loop()
-        state = ServiceState.find_one(
-            database, service="example", runner="default"
-        )
-        assert state.state == ServiceState.WARNING

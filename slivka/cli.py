@@ -1,7 +1,9 @@
+import datetime
 import multiprocessing
 import os
 import signal
 import sys
+import traceback
 from contextlib import closing
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
@@ -9,9 +11,9 @@ from logging.handlers import RotatingFileHandler
 import click
 from daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
-
 from slivka.__about__ import __version__
 from slivka.compat.contextlib import nullcontext
+from slivka.consts import ServiceStatus
 from slivka.utils.daemon import DummyDaemonContext
 
 
@@ -60,6 +62,7 @@ def init_project(base_dir):
     copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
     os.chmod(os.path.join(base_dir, 'scripts', 'example.py'), stat.S_IRWXU)
+    copy_project_file("testdata/example-input.txt")
     copy_project_file("static/openapi.yaml")
     copy_project_file("static/redoc-index.html")
     click.echo("Done.")
@@ -139,6 +142,8 @@ def start_scheduler(daemon, pid_file):
     import slivka.conf.logging
     import slivka.scheduler
     from slivka.scheduler.factory import runners_from_config
+    from slivka.scheduler.service_monitor import ServiceTest, ServiceTestExecutorThread
+    from slivka.db.repositories import ServiceStatusMongoDBRepository
 
     def terminate_handler(_signum, _stack): scheduler.stop()
     signals = {
@@ -155,8 +160,6 @@ def start_scheduler(daemon, pid_file):
     daemon_ctx = (DaemonContext(**daemon_args) if daemon
                   else DummyDaemonContext(**daemon_args))
     with daemon_ctx:
-        for signum, handler in signals.items():
-            signal.signal(signum, handler)
         slivka.conf.logging.configure_logging()
         handler = RotatingFileHandler(
             os.path.join(settings.directory.logs, 'slivka.log'),
@@ -167,12 +170,28 @@ def start_scheduler(daemon, pid_file):
         )
         with listener, closing(handler):
             scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
+            service_monitor = ServiceTestExecutorThread(
+                ServiceStatusMongoDBRepository(),
+                interval=datetime.timedelta(hours=1),
+            )
             for service_config in settings.services:
                 selector, runners = runners_from_config(service_config)
                 scheduler.add_selector(service_config.id, selector)
                 for runner in runners:
                     scheduler.add_runner(runner)
+                service_monitor.extend_tests(
+                    ServiceTest(
+                        runner=runner,
+                        test_parameters=test_conf.parameters,
+                        timeout=test_conf.timeout or 900
+                    )
+                    for runner in runners
+                    for test_conf in service_config.tests
+                    if runner.name in test_conf.applicable_runners
+                )
+            service_monitor.start()
             scheduler.run_forever()
+            service_monitor.shutdown()
 
 
 @start.command('local-queue')
@@ -220,3 +239,46 @@ def start_shell():
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
     code.interact()
+
+
+@main.command('test-services')
+def test_services():
+    home = os.getenv('SLIVKA_HOME', os.getcwd())
+    os.environ['SLIVKA_HOME'] = os.path.abspath(home)
+    from slivka.conf import settings
+    os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
+    sys.path.append(settings.directory.home)
+    from slivka.scheduler.factory import runners_from_config
+    from slivka.scheduler.service_monitor import ServiceTest, ServiceTestExecutorThread
+    from slivka.db.repositories import ServiceStatusMongoDBRepository
+    service_monitor = ServiceTestExecutorThread(
+        ServiceStatusMongoDBRepository(),
+        interval=datetime.timedelta(hours=1),
+    )
+    for service_config in settings.services:
+        selector, runners = runners_from_config(service_config)
+        service_monitor.extend_tests(
+            ServiceTest(
+                runner=runner,
+                test_parameters=test_conf.parameters,
+                timeout=test_conf.timeout or 900
+            )
+            for runner in runners
+            for test_conf in service_config.tests
+            if runner.name in test_conf.applicable_runners
+        )
+    for runner, outcome in service_monitor.run_all_tests():
+        status_text = (
+            click.style("[OK]  ", fg="green")
+            if outcome.status == ServiceStatus.OK
+            else click.style("[WARN]", fg="yellow")
+            if outcome.status == ServiceStatus.WARNING
+            else click.style("[FAIL]", fg="red")
+            if outcome.status == ServiceStatus.DOWN
+            else click.style("[N/A] ", fg="red")
+        )
+        click.echo(f"{status_text} {runner} {outcome.message}")
+        if outcome.cause is not None:
+            click.echo(
+                "".join(traceback.format_exception(outcome.cause)), nl=False
+            )

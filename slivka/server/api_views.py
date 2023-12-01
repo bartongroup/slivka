@@ -14,9 +14,9 @@ from werkzeug.datastructures import FileStorage
 import slivka.conf
 from slivka.compat import resources
 from slivka.conf import ServiceConfig
-from slivka.db.documents import ServiceState, JobRequest, CancelRequest, \
-    UploadedFile
+from slivka.db.documents import JobRequest, CancelRequest, UploadedFile
 from slivka.db.helpers import insert_one
+from slivka.db.repositories import ServiceStatusMongoDBRepository as ServiceStatusRepository
 from .forms.form import BaseForm
 
 bp = flask.Blueprint('api-v1_1', __name__, url_prefix='/api/v1.1')
@@ -50,8 +50,9 @@ def service_view(service_id):
 
 
 def _service_resource(service: ServiceConfig):
-    cursor = ServiceState.find(slivka.db.database, service=service.id)
-    status = max(cursor, key=attrgetter('status'), default=None)
+    status_repo = ServiceStatusRepository(slivka.db.database)
+    service_statuses = status_repo.list_current(service=service.id)
+    status = max(service_statuses, key=attrgetter('status'), default=None)
     if status is not None:
         status = {
             'status': status.status.name,
@@ -156,9 +157,9 @@ def _job_resource(job_request: JobRequest):
         'parameters': parameters,
         'submissionTime': job_request.submission_time.strftime(_DATETIME_STRF),
         'completionTime': (
-            job_request.status.is_finished() and
-            job_request.completion_time and
-            job_request.completion_time.strftime(_DATETIME_STRF) or None
+                job_request.status.is_finished() and
+                job_request.completion_time and
+                job_request.completion_time.strftime(_DATETIME_STRF) or None
         ),
         'finished': job_request.status.is_finished(),
         'status': job_request.status.name
@@ -195,7 +196,7 @@ def job_files_view(job_id):
     return jsonify(files=files)
 
 
-@bp.route('/jobs/<job_id>/files/<path:file_path>', 
+@bp.route('/jobs/<job_id>/files/<path:file_path>',
           endpoint='job_file', methods=['GET'])
 def job_file_view(job_id, file_path):
     req = JobRequest.find_one(slivka.db.database, id=job_id)
