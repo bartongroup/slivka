@@ -156,4 +156,23 @@ execution:
       type: SlivkaQueueRunner
   # if no selector is given, the runner with id "default" is used
   selector: scripts.selectors.example_selector
+
+tests:
+  # you can define service tests to be run periodically
+  # specify runners the test applies to and input parameters.
+  # the parameters are passed to the runner raw. unlike user input,
+  # they don't pass through validation and conversion to string
+  - applicable-runners: ['local-queue', 'default']
+    parameters:
+      input-file: "${SLIVKA_HOME}/testdata/example-input.txt"  # env variables are allowed
+      rep: ["0", "1", "2", "3"]
+      arg: "foobar"
+    timeout: 1  # timeout in seconds
+  - applicable-runners: ['grid-engine']
+    parameters:
+      intput-file: "${SLIVKA_HOME}/testdata/example-input.txt"
+      rep: ["0", "1", "2"]
+      delay: "5"
+      letter: "C"
+      arg: "foobar"
 ...
