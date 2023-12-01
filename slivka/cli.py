@@ -3,6 +3,7 @@ import multiprocessing
 import os
 import signal
 import sys
+import traceback
 from contextlib import closing
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
@@ -10,9 +11,9 @@ from logging.handlers import RotatingFileHandler
 import click
 from daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
-
 from slivka.__about__ import __version__
 from slivka.compat.contextlib import nullcontext
+from slivka.consts import ServiceStatus
 from slivka.utils.daemon import DummyDaemonContext
 
 
@@ -266,5 +267,18 @@ def test_services():
             for test_conf in service_config.tests
             if runner.name in test_conf.applicable_runners
         )
-    for report in service_monitor.run_all_tests():
-        print(report)
+    for runner, outcome in service_monitor.run_all_tests():
+        status_text = (
+            click.style("[OK]  ", fg="green")
+            if outcome.status == ServiceStatus.OK
+            else click.style("[WARN]", fg="yellow")
+            if outcome.status == ServiceStatus.WARNING
+            else click.style("[FAIL]", fg="red")
+            if outcome.status == ServiceStatus.DOWN
+            else click.style("[N/A] ", fg="red")
+        )
+        click.echo(f"{status_text} {runner} {outcome.message}")
+        if outcome.cause is not None:
+            click.echo(
+                "".join(traceback.format_exception(outcome.cause)), nl=False
+            )
