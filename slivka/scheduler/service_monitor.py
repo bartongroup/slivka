@@ -41,53 +41,52 @@ class ServiceTest:
     def runner(self):
         return self._runner
 
-    def run(self) -> ServiceTestOutcome:
+    def run(self, dir_name) -> ServiceTestOutcome:
         if self._interrupt.is_set():
             return ServiceTestOutcome(
                 TEST_STATUS_INTERRUPTED, message="stopped", cause=None
             )
-        with TemporaryDirectory() as dir_name:
+        try:
+            job = self._runner.start(self._test_parameters, dir_name)
+        except Exception as e:
+            return ServiceTestOutcome(
+                TEST_STATUS_FAILED, message=str(e), cause=e
+            )
+        timeout = time.monotonic() + self._timeout
+        while True:
             try:
-                job = self._runner.start(self._test_parameters, dir_name)
+                status = self._runner.check_status(job)
             except Exception as e:
                 return ServiceTestOutcome(
                     TEST_STATUS_FAILED, message=str(e), cause=e
                 )
-            timeout = time.monotonic() + self._timeout
-            while True:
-                try:
-                    status = self._runner.check_status(job)
-                except Exception as e:
+            if status.is_finished():
+                if status == JobStatus.COMPLETED:
                     return ServiceTestOutcome(
-                        TEST_STATUS_FAILED, message=str(e), cause=e
+                        TEST_STATUS_OK, message="", cause=None
                     )
-                if status.is_finished():
-                    if status == JobStatus.COMPLETED:
-                        return ServiceTestOutcome(
-                            TEST_STATUS_OK, message="", cause=None
-                        )
-                    if status in (JobStatus.INTERRUPTED, JobStatus.DELETED):
-                        return ServiceTestOutcome(
-                            TEST_STATUS_INTERRUPTED,
-                            message="removed from the scheduling system",
-                            cause=None,
-                        )
-                    else:
-                        return ServiceTestOutcome(
-                            TEST_STATUS_FAILED,
-                            message="completed unsuccessfully",
-                            cause=None,
-                        )
-                if time.monotonic() > timeout:
-                    return ServiceTestOutcome(
-                        TEST_STATUS_TIMEOUT, message="timeout", cause=None
-                    )
-                if self._interrupt.wait(2):
+                if status in (JobStatus.INTERRUPTED, JobStatus.DELETED):
                     return ServiceTestOutcome(
                         TEST_STATUS_INTERRUPTED,
-                        message="interrupted",
+                        message="removed from the scheduling system",
                         cause=None,
                     )
+                else:
+                    return ServiceTestOutcome(
+                        TEST_STATUS_FAILED,
+                        message="completed unsuccessfully",
+                        cause=None,
+                    )
+            if time.monotonic() > timeout:
+                return ServiceTestOutcome(
+                    TEST_STATUS_TIMEOUT, message="timeout", cause=None
+                )
+            if self._interrupt.wait(2):
+                return ServiceTestOutcome(
+                    TEST_STATUS_INTERRUPTED,
+                    message="interrupted",
+                    cause=None,
+                )
 
     def interrupt(self):
         """Interrupt the running test.
@@ -100,7 +99,7 @@ class ServiceTest:
 
 
 class ServiceTestExecutorThread(threading.Thread):
-    def __init__(self, repository, interval, name="ServiceTestThread"):
+    def __init__(self, repository, interval, temp_dir, name="ServiceTestThread"):
         threading.Thread.__init__(self, name=name)
         self._interval = (
             interval.total_seconds()
@@ -108,6 +107,7 @@ class ServiceTestExecutorThread(threading.Thread):
             else interval
         )
         self._repository = repository
+        self._dir = temp_dir
         self._finished = threading.Event()
         self._tests: List[ServiceTest] = []
 
@@ -134,7 +134,7 @@ class ServiceTestExecutorThread(threading.Thread):
     def run_all_tests(self):
         with ThreadPoolExecutor(max_workers=4) as executor:
             tests = self._tests
-            outcomes = executor.map(ServiceTest.run, tests)
+            outcomes = executor.map(_run_with_tempdir(self._dir), tests)
             runners = (test.runner for test in tests)
             while True:
                 try:
@@ -154,3 +154,11 @@ class ServiceTestExecutorThread(threading.Thread):
         self._finished.set()
         for test in self._tests:
             test.interrupt()
+
+
+def _run_with_tempdir(parent_dir):
+    def wrapper(test: ServiceTest):
+        with TemporaryDirectory(prefix='test-', dir=parent_dir) as temp_dir:
+            return test.run(temp_dir)
+
+    return wrapper

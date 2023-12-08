@@ -173,6 +173,7 @@ def start_scheduler(daemon, pid_file):
             service_monitor = ServiceTestExecutorThread(
                 ServiceStatusMongoDBRepository(),
                 interval=datetime.timedelta(hours=1),
+                temp_dir=settings.directory.jobs,
             )
             for service_config in settings.services:
                 selector, runners = runners_from_config(service_config)
@@ -255,6 +256,7 @@ def test_services(services):
     service_monitor = ServiceTestExecutorThread(
         ServiceStatusMongoDBRepository(),
         interval=datetime.timedelta(hours=1),
+        temp_dir=settings.directory.jobs,
     )
     for service_config in settings.services:
         if services and service_config.id not in services:
