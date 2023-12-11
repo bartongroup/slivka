@@ -1,5 +1,5 @@
 ---
-version: "0.3"
+version: "0.8"
 
 ## Directories;
 # relative paths are resolved with respect to the SLIVKA_HOME
