@@ -96,3 +96,6 @@ class ServiceStatusMongoDBRepository:
             key=operator.attrgetter('timestamp'),
             reverse=True
         )
+
+
+ServiceStatusRepository = ServiceStatusMongoDBRepository
