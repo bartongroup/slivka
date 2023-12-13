@@ -7,6 +7,7 @@ from datetime import timedelta
 from tempfile import TemporaryDirectory
 from typing import List
 
+import click
 import pymongo.errors
 
 from slivka import JobStatus
@@ -52,7 +53,7 @@ class ServiceTest:
             return ServiceTestOutcome(
                 TEST_STATUS_FAILED, message=str(e), cause=e
             )
-        timeout = time.monotonic() + self._timeout
+        end_time = time.monotonic() + self._timeout
         while True:
             try:
                 status = self._runner.check_status(job)
@@ -77,7 +78,7 @@ class ServiceTest:
                         message="completed unsuccessfully",
                         cause=None,
                     )
-            if time.monotonic() > timeout:
+            if time.monotonic() > end_time:
                 return ServiceTestOutcome(
                     TEST_STATUS_TIMEOUT, message="timeout", cause=None
                 )
