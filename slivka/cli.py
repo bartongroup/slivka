@@ -173,6 +173,7 @@ def start_scheduler(daemon, pid_file):
             service_monitor = ServiceTestExecutorThread(
                 ServiceStatusMongoDBRepository(),
                 interval=datetime.timedelta(hours=1),
+                temp_dir=settings.directory.jobs,
             )
             for service_config in settings.services:
                 selector, runners = runners_from_config(service_config)
@@ -242,7 +243,8 @@ def start_shell():
 
 
 @main.command('test-services')
-def test_services():
+@click.argument('services', nargs=-1)
+def test_services(services):
     home = os.getenv('SLIVKA_HOME', os.getcwd())
     os.environ['SLIVKA_HOME'] = os.path.abspath(home)
     from slivka.conf import settings
@@ -254,8 +256,11 @@ def test_services():
     service_monitor = ServiceTestExecutorThread(
         ServiceStatusMongoDBRepository(),
         interval=datetime.timedelta(hours=1),
+        temp_dir=settings.directory.jobs,
     )
     for service_config in settings.services:
+        if services and service_config.id not in services:
+            continue
         selector, runners = runners_from_config(service_config)
         service_monitor.extend_tests(
             ServiceTest(

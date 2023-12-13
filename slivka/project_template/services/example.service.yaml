@@ -4,7 +4,7 @@
 # in the services directory.
 
 ---
-slivka-version: "0.8"
+slivka-version: "0.8.3"
 name: Example Service
 description: The service description that can even span
   multiple lines. It should provide all necessary details

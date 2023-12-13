@@ -1,5 +1,17 @@
 Changelog:
 
+## [0.8.3b0] - upcoming
+
+- Added: periodic service health checks
+    - added "tests" section to service configuration
+    - tests are run every hour (not currently configurable) and the reports are
+      stored in the database
+    - service status is no longer determined from user jobs
+- Deprecated: `slivka.db.documents.ServiceState` class. Usages should be
+  replaced by `slivka.db.repositories.ServiceStatusRepository`
+- Changed: main configuration and service files version changed to 0.8.3.
+  Versions 0.3 for configuration and 0.8 for services are still supported.
+
 ## [0.8.2b0] - 2023-11-21
 
 - Changed: migrated all tests from a deprecated nose framework to pytest

@@ -12,6 +12,7 @@ from slivka.consts import ServiceStatus as Status
 
 @attr.s()
 class ServiceStatusInfo:
+    UNDEFINED = Status.UNDEFINED
     OK = Status.OK
     WARNING = Status.WARNING
     DOWN = Status.DOWN
@@ -95,3 +96,6 @@ class ServiceStatusMongoDBRepository:
             key=operator.attrgetter('timestamp'),
             reverse=True
         )
+
+
+ServiceStatusRepository = ServiceStatusMongoDBRepository

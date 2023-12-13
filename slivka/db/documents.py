@@ -6,7 +6,7 @@ from datetime import datetime
 import pymongo
 from bson import ObjectId
 
-from slivka import JobStatus
+from slivka import JobStatus, consts
 from slivka.utils import deprecated
 
 
@@ -170,11 +170,9 @@ class UploadedFile(MongoDocument):
 class ServiceState(MongoDocument):
     __collection__ = 'servicestate'
 
-    class State(enum.IntEnum):
-        OK = 0
-        WARNING = 1
-        DOWN = 2
+    State = consts.ServiceStatus
 
+    UNDEFINED = State.UNDEFINED
     OK = State.OK
     WARNING = State.WARNING
     DOWN = State.DOWN

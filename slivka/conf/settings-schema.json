@@ -4,8 +4,11 @@
   "properties": {
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "const": "0.3"
+      "pattern": "^\\d+(\\.\\d+){1,2}$",
+      "anyOf": [
+        {"const": "0.3"},
+        {"pattern": "^0\\.8(\\.[0-3])?$"}
+      ]
     },
     "directory.uploads": {
       "type": "string",
