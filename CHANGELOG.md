@@ -1,6 +1,6 @@
 Changelog:
 
-## [0.8.3b0] - upcoming
+## [0.8.3b0] - 2023-12-13
 
 - Added: periodic service health checks
     - added "tests" section to service configuration
