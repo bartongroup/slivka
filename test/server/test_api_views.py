@@ -136,6 +136,16 @@ class TestFakeServiceView:
                 "array": False,
                 "default": 0.1,
             },
+            {
+                "type": "choice",
+                "id": "choice-param",
+                "name": "Choice parameter",
+                "description": "Description of choice parameter",
+                "required": False,
+                "default": None,
+                "array": False,
+                "choices": ["alpha", "bravo", "charlie"]
+            }
         ]
 
 
@@ -191,6 +201,7 @@ class TestJobCreatedView:
                 "text-param": "Hello world",
                 "number-param": 12.3,
                 "file-param": (io.BytesIO(b"Content"), "input file"),
+                "choice-param": "bravo",
             },
         )
 
@@ -222,6 +233,7 @@ class TestJobCreatedView:
             "text-param": "Hello world",
             "number-param": "12.3",
             "file-param": file.b64id,
+            "choice-param": "bravo"
         }
 
     @pytest.fixture(scope="class")
@@ -245,6 +257,7 @@ class TestJobCreatedView:
             "text-param": "Hello world",
             "number-param": "12.3",
             "file-param": uploaded_file.path,
+            "choice-param": "B",
         }
 
     def test_uploaded_file_content(self, uploaded_file):
@@ -301,7 +314,11 @@ class TestJobViewForExistingJob:
     def job_request(self, database):
         request = JobRequest(
             service="fake",
-            inputs={"text-param": "foobar"},
+            inputs={
+                "text-param": "foobar",
+                "number-param": "3.1415",
+                "choice-param": "C",
+            },
             timestamp=datetime(2023, 6, 18),
         )
         insert_one(database, request)
@@ -331,7 +348,11 @@ class TestJobViewForExistingJob:
         assert job_info["service"] == "fake"
 
     def test_job_parameters(self, job_info):
-        assert job_info["parameters"] == {"text-param": "foobar"}
+        assert job_info["parameters"] == {
+            "text-param": "foobar",
+            "number-param": "3.1415",
+            "choice-param": "charlie",
+        }
 
     def test_job_submission_time(self, job_info):
         assert job_info["submissionTime"] == "2023-06-18T00:00:00"
