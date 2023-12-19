@@ -259,7 +259,7 @@ at the top level of the document tree.
   *(string)* The version of slivka this service was written for. It
   helps slivka detect any compatibility issues related to syntax
   changes. Remember to quote the version number, so it's interpreted
-  as a string and not a float. For the current version use ``"0.8"``.
+  as a string and not a float. For the current version use ``"0.8.3"``.
 
 :*name*:
   *(string)* Service name as displayed to users. It should be concise
@@ -739,6 +739,61 @@ and returns an id of a runner.
 Declaring the selector is required if you want to use more than one
 runner. A default selector (if unset) always chooses the runner named
 *default*.
+
+.. _`specification:Tests`:
+
+-----
+Tests
+-----
+
+.. versionadded:: 0.8.3
+
+In slivka, you can define a series of service tests that are run every
+hour to assess the availability of each runner. The status of the last
+executed test is accessible to the users through the REST API and lets
+them see the current availability of the services.
+
+The tests are defined under the *tests* property and should contain
+a list of objects with the following properties:
+
+:*applicable-runners*:
+  This is the list of runner names that this test is applied to.
+  Currently, having more than one test for a single runner may produce
+  inconsistent results depending on the test execution order.
+  This issue will be addressed in the future.
+
+:*parameters*:
+  It contains the parameters that are provided to the runner during the
+  test. The object keys correspond to argument names given in the *args*
+  section and the values are the command values.
+  Unlike user inputs, those values are not passed through the validation
+  and conversion process and are passed to the command line unchanged,
+  so make sure the values are valid and complete.
+  Only strings or lists of strings are allowed. You can insert environment
+  variables using shell syntax for variables (``$VAR`` or  ``${VAR}``) and
+  they will be expanded.
+
+:*timeout* (optional):
+  You may specify the timeout for the tests. It's a number of seconds after
+  which the tests will be stopped and result in a *WARNING* status.
+  The timeout defaults to 15 minutes if not specified.
+
+*Example:*
+
+.. code-block:: yaml
+
+  tests:
+  - applicable-runners:
+    - default
+    - local
+    parameters:
+      input-file: "$SLIVKA_HOME/testdata/example-input.txt"
+      count: "5"
+      args:
+      - "placeholder0"
+      - "placeholder1"
+      - "placeholder2"
+    timeout: 150
 
 ======================
 Command line interface

@@ -550,3 +550,28 @@ only one runner is used regardless of the inputs, it should be named
 ``"default"`` and the *selector* property may be omitted. In that
 case, a default selector which always selects a default runner is
 used.
+
+-------
+Testing
+-------
+
+.. versionadded:: 0.8.3
+
+No system is 100% reliable. Failures and downtimes are unavoidable and it is
+important to know when one of them happens. Slivka comes bundled with a tool
+that periodically tests the availability of each service. That way users and
+system administrators can see the current status of the services, whether
+they are operational or not.
+
+The tests are defined as a list under the top-level *tests* property
+in the service configuration file. Each element contains the data for test jobs that is run
+automatically every hour whose result is stored in the database.
+The test job definition is an object containing *parameters* property, where
+the mapping of input names to the values is present, and the *applicable-runners*
+property, listing the names of the runners the test is run against.
+Additionally, you can specify an optional *timeout* parameter. It is a number
+of seconds after which the tests will be automatically stopped with a *WARNING*
+status.
+
+More information about defining tests can be found
+in the :ref:`specification:Tests` section on the configuration page.
