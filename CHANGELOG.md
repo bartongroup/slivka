@@ -11,6 +11,7 @@ Changelog:
   replaced by `slivka.db.repositories.ServiceStatusRepository`
 - Changed: main configuration and service files version changed to 0.8.3.
   Versions 0.3 for configuration and 0.8 for services are still supported.
+- Added: new documentation entries describing automated tests feature.
 
 ## [0.8.2b0] - 2023-11-21
 
