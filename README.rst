@@ -81,6 +81,6 @@ slivka version you are going to work on::
 
   conda install --only-deps -c slivka slivka=<target-version>
 
-and, after that, install slivka in editable mode without dependencies using pip
+and, after that, install slivka in editable mode without dependencies using pip::
 
   python -m pip install --no-deps -e <path to slivka>
