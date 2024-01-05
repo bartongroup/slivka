@@ -220,7 +220,7 @@ def test_insert_item_twice(repository, raw_collection):
             [
                 ServiceStatusInfo(
                     f"example{i}",
-                    f"runner0",
+                    "runner0",
                     ServiceStatusInfo.OK,
                     message="",
                     timestamp=datetime(2020, 8, 9),
@@ -661,3 +661,96 @@ def test_list_all_items_sorted_by_timestamp(raw_collection, repository):
         datetime(2020, 8, 12, 8, 0, 4),
         datetime(2020, 7, 5, 14, 24, 51),
     ]
+
+
+def test_list_current_unfiltered(raw_collection, repository):
+    raw_collection.insert_many(
+        [
+            dict(
+                service=f"example{i}",
+                runner=f"runner{j}",
+                state=ServiceStatusInfo.OK.value,
+                message="",
+                timestamp=datetime(2024, 1, day),
+            )
+            for i in range(3)
+            for j in range(2)
+            for day in range(1, 10)
+        ]
+    )
+    expected = [
+        ServiceStatusInfo(
+            f"example{i}",
+            f"runner{j}",
+            ServiceStatusInfo.OK,
+            message="",
+            timestamp=datetime(2024, 1, 9),
+        )
+        for i in range(3)
+        for j in range(2)
+    ]
+    # noinspection PyTypeChecker
+    assert_that(repository.list_current(), contains_inanyorder(*expected))
+
+
+def test_list_current_filter_by_service(raw_collection, repository):
+    raw_collection.insert_many(
+        [
+            dict(
+                service=f"example{i}",
+                runner=f"runner{j}",
+                state=ServiceStatusInfo.OK.value,
+                message="",
+                timestamp=datetime(2024, 1, day),
+            )
+            for i in range(3)
+            for j in range(2)
+            for day in range(1, 10)
+        ]
+    )
+    expected = [
+        ServiceStatusInfo(
+            "example1",
+            f"runner{j}",
+            ServiceStatusInfo.OK,
+            message="",
+            timestamp=datetime(2024, 1, 9),
+        )
+        for j in range(2)
+    ]
+    # noinspection PyTypeChecker
+    assert_that(
+        repository.list_current(service="example1"),
+        contains_inanyorder(*expected),
+    )
+
+
+def test_list_current_filter_by_service_and_runner(raw_collection, repository):
+    raw_collection.insert_many(
+        [
+            dict(
+                service=f"example{i}",
+                runner=f"runner{j}",
+                state=ServiceStatusInfo.OK.value,
+                message="",
+                timestamp=datetime(2024, 1, day),
+            )
+            for i in range(3)
+            for j in range(2)
+            for day in range(1, 10)
+        ]
+    )
+    expected = [
+        ServiceStatusInfo(
+            "example1",
+            "runner0",
+            ServiceStatusInfo.OK,
+            message="",
+            timestamp=datetime(2024, 1, 9),
+        )
+    ]
+    # noinspection PyTypeChecker
+    assert_that(
+        repository.list_current(service="example1", runner="runner0"),
+        contains_inanyorder(*expected),
+    )
