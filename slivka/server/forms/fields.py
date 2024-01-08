@@ -491,7 +491,7 @@ class ChoiceField(BaseField):
         self.choices = OrderedDict(choices)
         self.__validators.append(partial(
             _choice_validator,
-            list(itertools.chain(self.choices.keys(), self.choices.values()))
+            self.choices.keys()
         ))
         self._check_default()
 
@@ -512,11 +512,8 @@ class ChoiceField(BaseField):
         value = super().run_validation(value)
         if value is None:
             return None
-        if value not in self.choices.keys() and value not in self.choices.values():
-            raise ValidationError(
-                "Value \"%s\" is not one of the available choices." % value,
-                'invalid'
-            )
+        for validator in self.__validators:
+            validator(value)
         return value
 
     def to_arg(self, value):

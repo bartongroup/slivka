@@ -28,10 +28,11 @@ def test_validate_if_value_is_choice_key(value, choice_field):
 
 @pytest.mark.parametrize("value", ["FOO", "BAR", "BAZ"])
 def test_validate_if_value_is_choice_value(value, choice_field):
-    assert choice_field.validate(value) == value
+    with pytest.raises(ValidationError):
+        choice_field.validate(value)
 
 
-@pytest.mark.parametrize("value", [1, "22/7", 42, math.pi])
+@pytest.mark.parametrize("value", [1, "22/7", 42])
 def test_validate_numeric_choices(value):
     field = ChoiceField(
         "test1",
@@ -52,7 +53,7 @@ def test_validate_none_if_field_optional():
     assert field.validate(None) is None
 
 
-@pytest.mark.parametrize("value", [None, "none", "empty"])
+@pytest.mark.parametrize("value", [None, "empty"])
 def test_validate_none_if_none_is_a_choice(value):
     field = ChoiceField(
         "test1", choices=[(None, "none"), ("empty", None)], required=False

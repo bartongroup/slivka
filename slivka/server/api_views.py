@@ -17,6 +17,7 @@ from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest, CancelRequest, UploadedFile
 from slivka.db.helpers import insert_one
 from slivka.db.repositories import ServiceStatusMongoDBRepository as ServiceStatusRepository
+from .forms.fields import FileField, ChoiceField
 from .forms.form import BaseForm
 
 bp = flask.Blueprint('api-v1_1', __name__, url_prefix='/api/v1.1')
@@ -132,10 +133,6 @@ def job_view(job_id, service_id=None):
 
 def _job_resource(job_request: JobRequest):
     def convert_path(value):
-        if not value:
-            return value
-        if isinstance(value, list):
-            return list(map(convert_path, value))
         if os.path.isabs(value):
             value = pathlib.Path(value)
             base_path = flask.current_app.config['uploads_dir']
@@ -149,7 +146,31 @@ def _job_resource(job_request: JobRequest):
                     return value
         return value
 
-    parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
+    def convert_choice(choices):
+        def unmap(value):
+            return next((k for k, v in choices.items() if v == value), value)
+
+        return unmap
+
+    def convert_parameter(key, val):
+        if not val:
+            return val
+        field = form[key]
+        if isinstance(field, FileField):
+            convert = convert_path
+        elif isinstance(field, ChoiceField):
+            convert = convert_choice(field.choices)
+        else:
+            return val
+        if isinstance(val, list):
+            return list(map(convert, val))
+        return convert(val)
+
+    form: BaseForm = flask.current_app.config['forms'].get(job_request.service)
+    parameters = {
+        key: convert_parameter(key, val)
+        for key, val in job_request.inputs.items()
+    }
     return {
         '@url': url_for('.job', job_id=job_request.b64id),
         'id': job_request.b64id,
