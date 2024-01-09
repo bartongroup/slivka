@@ -529,6 +529,21 @@ class TestOutputsIfIncompleteResult:
         )
 
 
+class TestOutputsIfJobNotInitialized:
+    @pytest.fixture(scope="class")
+    def job_request_id(self, database, output_directory):
+        job_request = JobRequest(
+            service="fake",
+            inputs={}
+        )
+        insert_one(database, job_request)
+        yield job_request.b64id
+        delete_one(database, job_request)
+
+    def test_files_list(self, job_request_id, outputs_info):
+        assert outputs_info["files"] == []
+
+
 @pytest.fixture()
 def completed_job_request(database, output_directory):
     job_request = JobRequest(
