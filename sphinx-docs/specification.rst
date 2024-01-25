@@ -665,7 +665,8 @@ properties:
   built-in runners or a path to the custom class implementing Runner
   interface. Creating custom runners will be covered in the advanced
   usage guide. Available Built-in runners are ``ShellRunner``,
-  ``SlivkaQueueRunner``, ``GridEngineRunner`` and ``SlurmRunner``.
+  ``SlivkaQueueRunner``, ``GridEngineRunner``, ``SlurmRunner``,
+  and ``LSFRunner``.
 
 :*parameters*:
   Extra parameters that will be passed to the runner's constructor
@@ -723,8 +724,26 @@ properties:
   .. versionadded:: 0.8.1b0
     Introduced Slurm runner
 
+- ``LSFRunner` uses the third-party `IBM Spectrum LSF`_ to run jobs
+  via the :program:`bsub` command.  This solution allows many jobs to
+  be run on large compute clusters.  It requires LSF to be installed on
+  your system.
+
+  Parameters:
+
+  :*bsubargs*:
+    List of arguments appended to the :program:bsub: command that control
+    execution parameters.  The runner always provides ``-o`` and ``-e``
+    arguments, which should not be overridden.  The arguments can be 
+    provided as an array of strings or as a string, in which case they
+    will be split with :py:func:`shelx.split`.
+
+  .. versionadded:: 0.8.3b0
+    Introduced LSF runner
+
 .. _`Altair Grid Engine`: https://www.altair.com/grid-engine
 .. _`Slurm Workload Manager`: https://slurm.schedmd.com/
+.. _`IBM Spectrum LSF`: https://www.ibm.com/docs/en/spectrum-lsf/
 
 Selector
 ========
