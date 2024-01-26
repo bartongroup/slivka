@@ -56,7 +56,7 @@ def init_project(base_dir):
     click.echo("Copying files.")
     copy_project_file("manage.py")
     os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
-    copy_project_file("settings.yaml", "config.yaml")
+    copy_project_file("settings.yaml")
     copy_project_file("wsgi.py")
     copy_project_file("routes.py")
     copy_project_file("services/example.service.yaml")
