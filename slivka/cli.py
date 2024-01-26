@@ -58,6 +58,7 @@ def init_project(base_dir):
     os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
     copy_project_file("settings.yaml", "config.yaml")
     copy_project_file("wsgi.py")
+    copy_project_file("routes.py")
     copy_project_file("services/example.service.yaml")
     copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
@@ -65,6 +66,7 @@ def init_project(base_dir):
     copy_project_file("testdata/example-input.txt")
     copy_project_file("static/openapi.yaml")
     copy_project_file("static/redoc-index.html")
+    copy_project_file("templates/index.html")
     click.echo("Done.")
 
 
