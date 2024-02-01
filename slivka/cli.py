@@ -174,7 +174,6 @@ def start_scheduler(daemon, pid_file):
             scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
             service_monitor = ServiceTestExecutorThread(
                 ServiceStatusMongoDBRepository(),
-                interval=datetime.timedelta(hours=1),
                 temp_dir=settings.directory.jobs,
             )
             for service_config in settings.services:
@@ -257,7 +256,6 @@ def test_services(services):
     from slivka.db.repositories import ServiceStatusMongoDBRepository
     service_monitor = ServiceTestExecutorThread(
         ServiceStatusMongoDBRepository(),
-        interval=datetime.timedelta(hours=1),
         temp_dir=settings.directory.jobs,
     )
     for service_config in settings.services:
@@ -274,7 +272,7 @@ def test_services(services):
             for test_conf in service_config.tests
             if runner.name in test_conf.applicable_runners
         )
-    for runner, outcome in service_monitor.run_all_tests():
+    for test, outcome in service_monitor.run_all_tests():
         status_text = (
             click.style("[OK]  ", fg="green")
             if outcome.status == ServiceStatus.OK
@@ -284,7 +282,7 @@ def test_services(services):
             if outcome.status == ServiceStatus.DOWN
             else click.style("[N/A] ", fg="red")
         )
-        click.echo(f"{status_text} {runner} {outcome.message}")
+        click.echo(f"{status_text} {test.runner} {outcome.message}")
         if outcome.cause is not None:
             click.echo(
                 "".join(traceback.format_exception(outcome.cause)), nl=False
