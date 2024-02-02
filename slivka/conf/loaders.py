@@ -172,6 +172,7 @@ class ServiceConfig:
         applicable_runners = attrib(type=List[str])
         parameters = attrib(type=Dict[str, str], converter=_parameters_converter)
         timeout = attrib(type=int, default=None)
+        interval = attrib(type=int, default=None)
 
     id = attrib(type=str)
     slivka_version = attr.ib(converter=StrictVersion)
