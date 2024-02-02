@@ -59,6 +59,8 @@ class ServiceTest:
             try:
                 status = self._runner.check_status(job)
             except Exception as e:
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_FAILED, message=str(e), cause=e
                 )
@@ -80,10 +82,14 @@ class ServiceTest:
                         cause=None,
                     )
             if time.monotonic() > end_time:
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_TIMEOUT, message="timeout", cause=None
                 )
             if self._interrupt.wait(2):
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_INTERRUPTED,
                     message="interrupted",
