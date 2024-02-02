@@ -185,7 +185,8 @@ def start_scheduler(daemon, pid_file):
                     ServiceTest(
                         runner=runner,
                         test_parameters=test_conf.parameters,
-                        timeout=test_conf.timeout or 900
+                        timeout=test_conf.timeout or 900,
+                        interval=test_conf.interval or 3600,
                     )
                     for runner in runners
                     for test_conf in service_config.tests
