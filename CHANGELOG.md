@@ -1,4 +1,19 @@
-Changelog:
+Changelog: 
+
+## [0.8.4b0] - (upcoming)
+
+- Changed: prefix middleware no longer squashes repeating slashes.
+- Changed: prefix middleware removes single trailing slash in prefix.
+- Fixed: tests of prefix middleware.
+- Changed: the choice field only allows the keys of the `choices` mapping as
+  valid input values.
+- Changed: the JSON response for job resource contains the choice keys instead
+  of values for choice inputs.
+- Changed: name of the settings file changed to *settings.yaml* from
+  *config.yaml* in the documentation.
+- Added: Ability to run jobs with LSF workload manager.
+- Added: Interval parameter for service tests that controls the frequency with
+  which the tests are run.
 
 ## [0.8.3b0] - 2023-12-13
 
