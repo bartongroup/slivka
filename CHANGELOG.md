@@ -1,6 +1,6 @@
 Changelog: 
 
-## [0.8.4b0] - (upcoming)
+## [0.8.4] - (upcoming)
 
 - Changed: prefix middleware no longer squashes repeating slashes.
 - Changed: prefix middleware removes single trailing slash in prefix.
