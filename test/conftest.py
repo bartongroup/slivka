@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 from functools import partial
 from unittest import mock
@@ -7,6 +8,7 @@ import mongomock
 import pytest
 
 import slivka.db
+from slivka.compat.resources import open_binary
 
 
 @pytest.fixture(scope="package")
@@ -43,3 +45,10 @@ def job_directory(slivka_home):
 def job_directory_factory(slivka_home):
     (slivka_home / "jobs").mkdir(exist_ok=True)
     yield partial(tempfile.mkdtemp, dir=slivka_home / "jobs")
+
+
+@pytest.fixture(scope="function")
+def minimal_project(slivka_home):
+    in_stream = open_binary("test", "resources/minimal_project/settings.yaml")
+    with open(slivka_home / "settings.yaml", "wb") as out_file:
+        shutil.copyfileobj(in_stream, out_file)

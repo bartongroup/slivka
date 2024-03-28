@@ -1,0 +1,14 @@
+version: "0.8"
+directory.uploads: ./uploads
+directory.jobs: ./jobs
+directory.logs: ./log
+directory.services: ./
+
+server.host: 127.0.0.1:4040
+server.uploads-path: /media/uploads
+server.jobs-path: /media/jobs
+
+local-queue.host: tcp://127.0.0.1:4041
+
+mongodb.host: 127.0.0.1:27017
+mongodb.database: testdb
