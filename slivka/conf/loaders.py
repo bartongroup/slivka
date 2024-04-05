@@ -4,7 +4,7 @@ import os.path
 import re
 import typing
 from collections.abc import Sequence
-from distutils.version import StrictVersion
+from packaging.version import parse as parse_version
 from typing import List, Dict
 
 from slivka.compat import resources
@@ -45,7 +45,8 @@ compatible_config_ver = [
 def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     home = home or os.getenv('SLIVKA_HOME', os.getcwd())
     home = os.path.realpath(home)
-    if config['version'] not in compatible_config_ver:
+    version = parse_version(config["version"])
+    if version.base_version not in compatible_config_ver:
         raise ImproperlyConfigured("Expected config version 0.8")
     config = flatten_mapping(config)
     config_schema = json.loads(resources.read_text(
@@ -86,6 +87,10 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
         services.append(srvc_conf)
     config = unflatten_mapping(config)
     return _deserialize(SlivkaSettings, config)
+
+
+def load_settings_0_8(config, home=None):
+    return load_settings_0_3(config, home=home)
 
 
 def _deserialize(cls, obj):
@@ -185,7 +190,7 @@ class ServiceConfig:
         interval = attrib(type=int, default=None)
 
     id = attrib(type=str)
-    slivka_version = attr.ib(converter=StrictVersion)
+    slivka_version = attr.ib(converter=parse_version)
     name = attrib(type=str)
     description = attrib(type=str, default="")
     author = attrib(type=str, default="")

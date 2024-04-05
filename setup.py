@@ -1,4 +1,5 @@
 import os
+import sys
 
 try:
     from setuptools import setup, find_packages
@@ -16,13 +17,14 @@ setup(
     name="slivka",
     version=about['__version__'],
     packages=find_packages(exclude=["tests", 'tests.*']),
-    install_requires=[
+    install_requires= [
         "attrs>=19.0",
         "click>=7.0",
         "Flask>=2.0",
         "frozendict>=1.2",
         "jsonschema>=3.0",
         "MarkupSafe>=1.0",
+        "packaging",
         "pymongo>=3.7",
         "python-daemon>=3.0",
         "PyYAML>=5.4",
