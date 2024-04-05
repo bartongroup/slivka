@@ -30,11 +30,21 @@ class ImproperlyConfigured(Exception):
     pass
 
 
-compatible_config_ver = ['0.3', '0.8', '0.8.0', '0.8.1', '0.8.2', '0.8.3']
+compatible_config_ver = [
+    "0.3",
+    "0.8",
+    "0.8.0",
+    "0.8.1",
+    "0.8.2",
+    "0.8.3",
+    "0.8.4",
+    "0.8.5",
+]
 
 
 def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     home = home or os.getenv('SLIVKA_HOME', os.getcwd())
+    home = os.path.realpath(home)
     if config['version'] not in compatible_config_ver:
         raise ImproperlyConfigured("Expected config version 0.8")
     config = flatten_mapping(config)
