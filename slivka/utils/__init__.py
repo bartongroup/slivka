@@ -181,8 +181,9 @@ def deprecated(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         warnings.simplefilter('always', DeprecationWarning)
+        func_type = type(func).__name__.capitalize()
         warnings.warn(
-            "Function %s is deprecated" % func.__name__,
+            "%s %s.%s is deprecated" % (func_type, func.__module__, func.__name__),
             DeprecationWarning, stacklevel=2
         )
         warnings.simplefilter('default', DeprecationWarning)
