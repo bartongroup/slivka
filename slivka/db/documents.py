@@ -1,28 +1,85 @@
-import enum
 import os
 from base64 import urlsafe_b64encode, urlsafe_b64decode
+from collections.abc import MutableMapping
 from datetime import datetime
 
+import attrs
 import pymongo
 from bson import ObjectId
 
+# importing slivka.db.helpers causes circular dependency
+import slivka
 from slivka import JobStatus, consts
-from slivka.utils import deprecated
+from slivka.utils import deprecated, alias_property
 
 
-class MongoDocument(dict):
+class _AttrsDict(MutableMapping):
+    __slots__ = ()
+
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except (AttributeError, TypeError):
+            raise KeyError(key)
+
+    def __setitem__(self, key, value):
+        try:
+            setattr(self, key, value)
+        except (AttributeError, TypeError):
+            raise KeyError(key)
+
+    def __delitem__(self, key):
+        try:
+            delattr(self, key)
+        except (AttributeError, TypeError):
+            raise KeyError(key)
+
+    def __iter__(self):
+        return (
+            field.name
+            for field in attrs.fields(type(self))
+            if hasattr(self, field.name)
+        )
+
+    def __len__(self):
+        return sum(1 for _ in iter(self))
+
+
+@attrs.define(init=False)
+class MongoDocument(_AttrsDict):
+    # MongoDocument and its derivatives must be defined with init=False
+    # and initialization to be delegated to this class' __init__.
+    # Otherwise, attrs does not allow optional _id field to be left
+    # uninitialised.
+    # Missing _id key is required by pymongo to assign _id to new
+    # documents correctly.
+
     __collection__ = None
+    _id: ObjectId = attrs.field(init=False)
 
-    def _get_id(self) -> ObjectId: return self.get('_id')
-    id = property(fget=_get_id)
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        if cls.__collection__ is None:
+            raise AttributeError("Subclasses must specify __collection__ property")
 
-    def _get_b64id(self) -> str:
-        return urlsafe_b64encode(self._get_id().binary).decode()
-    b64id = property(_get_b64id)
+    def __init__(self, *args, _id=attrs.NOTHING, **kwargs):
+        super().__init__()
+        if _id is not attrs.NOTHING:
+            self._id = _id
+        self.__attrs_init__(*args, **kwargs)
+
+    @property
+    def id(self) -> ObjectId:
+        return self._id
+
+    @property
+    def b64id(self) -> str:
+        return urlsafe_b64encode(self._id.binary).decode()
 
     @classmethod
     def get_collection(cls, database) -> pymongo.collection.Collection:
         return database[cls.__collection__]
+
     collection = get_collection
 
     @classmethod
@@ -38,7 +95,8 @@ class MongoDocument(dict):
                 # invalid id, neither raw bytes nor hex string
                 return None
             kwargs['_id'] = ObjectId(_id)
-        item = database[cls.__collection__].find_one(kwargs)
+        collection = database[cls.__collection__]
+        item = collection.find_one(kwargs)
         return cls(**item) if item is not None else None
 
     @classmethod
@@ -49,15 +107,12 @@ class MongoDocument(dict):
 
     @deprecated
     def insert(self, database):
-        database[self.__collection__].insert_one(self)
+        slivka.db.helpers.insert_one(database, self)
 
     @deprecated
     def update_self(self, database, values=(), **kwargs):
         super().update(values, **kwargs)
-        database[self.__collection__].update_one(
-            {'_id': self._get_id()},
-            {'$set': dict(values, **kwargs)}
-        )
+        slivka.db.helpers.push_one(database, self)
 
     @classmethod
     @deprecated
@@ -67,107 +122,64 @@ class MongoDocument(dict):
         )
 
     def __hash__(self):
-        return hash(self['_id'])
+        return hash(self._id)
 
 
-class JobRequest(MongoDocument):
+@attrs.define(kw_only=True, init=False)
+class JobRequest(MongoDocument, _AttrsDict):
     __collection__ = 'requests'
 
-    class Job(dict):
-        def __init__(self, *,
-                     work_dir,
-                     job_id):
-            dict.__init__(
-                self,
-                work_dir=work_dir,
-                job_id=job_id
-            )
+    @attrs.define(kw_only=True)
+    class Job(_AttrsDict):
+        work_dir: str
+        job_id: str
+        cwd = alias_property("work_dir")
 
-        work_dir = property(lambda self: self['work_dir'])
-        cwd = work_dir
-        job_id = property(lambda self: self['job_id'])
+    service: str = attrs.field()
+    inputs: dict = attrs.field()
 
-    def __init__(self, *,
-                 service,
-                 inputs,
-                 timestamp=None,
-                 completion_time=None,
-                 status=None,
-                 runner=None,
-                 job=None,
-                 **kwargs):
-        super().__init__(
-            service=service,
-            inputs=inputs,
-            timestamp=timestamp if timestamp is not None else datetime.now(),
-            completion_time=completion_time,
-            status=status if status is not None else JobStatus.PENDING,
-            runner=runner,
-            job=self.Job(**job) if job else None,
-            **kwargs
-        )
+    timestamp: datetime = attrs.field(factory=datetime.now)
+    submission_time = alias_property("timestamp")
+    completion_time: datetime = attrs.field(default=None)
 
-    service = property(lambda self: self['service'])
-    inputs = property(lambda self: self['inputs'])
-    timestamp = property(lambda self: self['timestamp'])
-    submission_time = property(lambda self: self['timestamp'])
+    status: JobStatus = attrs.field(default=JobStatus.PENDING, converter=JobStatus)
+    state = alias_property("status")
 
-    def _get_completion_time(self): return self['completion_time']
-    def _set_completion_time(self, val): self['completion_time'] = val
-    completion_time = property(_get_completion_time, _set_completion_time)
-
-    def _get_status(self): return JobStatus(self['status'])
-    def _set_status(self, val): self['status'] = val
-    state = property(_get_status, _set_status)
-    status = property(_get_status, _set_status)
-
-    def _get_runner(self): return self['runner']
-    def _set_runner(self, val): self['runner'] = val
-    runner = property(_get_runner, _set_runner)
-
-    def _get_job(self): return self['job'] and JobRequest.Job(**self['job'])
-    def _set_job(self, val): self['job'] = val
-    job = property(_get_job, _set_job)
+    runner: str = attrs.field(default=None)
+    job: Job = attrs.field(
+        default=None,
+        converter=attrs.converters.optional(lambda it: JobRequest.Job(**it))
+    )
 
 
-class CancelRequest(MongoDocument):
+@attrs.define(kw_only=True, init=False)
+class CancelRequest(MongoDocument, _AttrsDict):
     __collection__ = 'cancelrequest'
 
-    def __init__(self, job_id, **kwargs):
-        super().__init__(job_id=job_id, **kwargs)
-
-    job_id = property(lambda self: self['job_id'])
+    job_id: str
 
 
-class UploadedFile(MongoDocument):
+@attrs.define(kw_only=True, init=False)
+class UploadedFile(MongoDocument, _AttrsDict):
     __collection__ = 'files'
 
-    def __init__(self, *,
-                 title=None,
-                 media_type=None,
-                 path,
-                 **kwargs):
-        super().__init__(
-            title=title,
-            media_type=media_type,
-            path=path,
-            **kwargs
-        )
+    title: str
+    media_type: str
+    path: str
 
     @property
     @deprecated
     def uuid(self):
         return self.b64id
 
-    title = property(lambda self: self['title'])
-    media_type = property(lambda self: self['media_type'])
-    path = property(lambda self: self['path'])
-
-    def get_basename(self): return os.path.basename(self['path'])
-    basename = property(get_basename)
+    @property
+    def basename(self):
+        return os.path.basename(self.path)
 
 
-class ServiceState(MongoDocument):
+@deprecated
+@attrs.define(kw_only=True, init=False)
+class ServiceState(MongoDocument, _AttrsDict):
     __collection__ = 'servicestate'
 
     State = consts.ServiceStatus
@@ -177,36 +189,9 @@ class ServiceState(MongoDocument):
     WARNING = State.WARNING
     DOWN = State.DOWN
 
-    @deprecated
-    def __init__(self, *,
-                 service,
-                 runner,
-                 state=State.OK,
-                 message="",
-                 timestamp=None,
-                 **kwargs):
-        super().__init__(
-            service=service,
-            runner=runner,
-            state=state,
-            message=message,
-            timestamp=timestamp or datetime.now(),
-            **kwargs
-        )
-
-    service = property(lambda self: self['service'])
-    runner = property(lambda self: self['runner'])
-
-    def _get_state(self): return self.State(self['state'])
-    def _set_state(self, val): self['state'] = val
-    state = property(_get_state, _set_state)
-    status = property(_get_state, _set_state)
-
-    def _get_timestamp(self): return self['timestamp']
-    def _set_timestamp(self, val): self['timestamp'] = val
-    def reset_timestamp(self): self['timestamp'] = datetime.now()
-    timestamp = property(_get_timestamp, _set_timestamp)
-
-    def _get_message(self): return self['message']
-    def _set_message(self, val): self['message'] = val
-    message = property(_get_message, _set_message)
+    service: str
+    runner: str
+    state: State = attrs.field(default=State.OK, converter=State)
+    status = alias_property("state")
+    message: str = attrs.field(default="")
+    timestamp: datetime = attrs.field(factory=datetime.now)
