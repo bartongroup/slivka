@@ -8,13 +8,19 @@ from .documents import MongoDocument
 
 
 def insert_one(database: pymongo.database.Database, item: MongoDocument):
-    database[item.__collection__].insert_one(item)
+    # FIXME: converting to dict sub-optimal
+    insert_result = database[item.__collection__].insert_one(dict(item))
+    item._id = insert_result.inserted_id
 
 
 def insert_many(database: pymongo.database.Database, items: List[MongoDocument]):
     if not items:
         return
-    database[items[0].__collection__].insert_many(items)
+    # FIXME: converting to dict sub-optimal
+    insert_many_result = (database[items[0].__collection__]
+                          .insert_many([dict(it) for it in items]))
+    for item, inserted_id in zip(items, insert_many_result.inserted_ids):
+        item._id = inserted_id
 
 
 def replace_one(
