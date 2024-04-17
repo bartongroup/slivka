@@ -177,6 +177,13 @@ class class_property:
         return self._getter.__get__(instance, owner)()
 
 
+def alias_property(name):
+    def getter(self): return getattr(self, name)
+    def setter(self, value): setattr(self, name, value)
+    def deleter(self): delattr(self, name)
+    return property(getter, setter, deleter)
+
+
 def deprecated(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
