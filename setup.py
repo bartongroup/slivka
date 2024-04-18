@@ -19,6 +19,7 @@ setup(
     packages=find_packages(exclude=["tests", 'tests.*']),
     install_requires= [
         "attrs>=19.0",
+        "cachetools>=5.3.3",
         "click>=7.0",
         "Flask>=2.0",
         "frozendict>=1.2",

@@ -1,6 +1,5 @@
 import logging
 import os
-import pwd
 import re
 import shlex
 import subprocess
@@ -8,9 +7,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence
 
+from cachetools import cached, TTLCache
+
 from slivka import JobStatus
 from slivka.compat import resources
-from slivka.utils import ttl_cache
 from ._bash_lex import bash_quote
 from .grid_engine import _StatusLetterDict
 from .runner import Runner, Job, Command
@@ -34,7 +34,8 @@ _status_letters = _StatusLetterDict({
     'ZOMBI': JobStatus.ERROR
 })
 
-@ttl_cache(ttl=5)
+
+@cached(TTLCache(maxsize=1, ttl=5))
 def _job_stat():
     stdout = subprocess.check_output(
         ['bjobs', '-noheader', '-w'],
@@ -80,6 +81,7 @@ class LSFRunner(Runner):
             encoding='ascii'
         )
         proc.check_returncode()
+        _job_stat.cache_clear()
         match = re.match(r'^Job <(\d+)>', proc.stdout)
         return Job(match.group(1), command.cwd)
 

@@ -24,6 +24,7 @@ requirements:
     - python>=3.7
   run:
     - attrs>=19
+    - cachetools>=5.3.3
     - click>=7.0
     - flask>=2.0
     - frozendict>=1.2
