@@ -1,6 +1,19 @@
-Changelog: 
+Changelog:
 
-## [0.8.4] - (upcoming)
+## [0.8.5] - (upcoming)
+
+- Added: support for Python 3.11 and 3.12
+- Fixed: logging configuration crashing on Python 3.12.
+- Fixed: invalid file path resolution when the path contained symlinks and the
+  SLIVKA_HOME was provided explicitly.
+- Updated: transition from using *distutils* to *packaging* for package version
+  information.
+- Added: database documents tests
+- Fixed: missing status entries in job status cache for up to 5 seconds after
+  new jobs are submitted. Now, every time a new job is submitted, the cache is
+  invalidated.
+
+## [0.8.4] - 2024-02-05
 
 - Changed: prefix middleware no longer squashes repeating slashes.
 - Changed: prefix middleware removes single trailing slash in prefix.
