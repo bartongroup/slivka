@@ -138,8 +138,7 @@ class Runner:
         return args
 
     def _prepare_job(self, inputs, cwd):
-        with contextlib.suppress(FileExistsError):
-            os.mkdir(cwd)
+        os.makedirs(cwd, exist_ok=True)
         for argument in self.arguments:
             if argument.symlink:
                 val = inputs.get(argument.id)
