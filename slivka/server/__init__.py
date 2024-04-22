@@ -53,7 +53,7 @@ def create_app(config: SlivkaSettings = None):
     app.register_blueprint(api_views.bp)
 
     uploads_route = config.server.uploads_path.rstrip('/') + "/<path:file_path>"
-    results_route = config.server.jobs_path.rstrip('/') + "/<job_id>/<path:file_path>"
+    results_route = config.server.jobs_path.rstrip('/') + "/<path:file_path>"
     if app.debug:
         from . import media_views
         uploads_view = media_views.serve_uploads_view
