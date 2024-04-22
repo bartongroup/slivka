@@ -1,3 +1,4 @@
+import os.path
 from unittest import mock
 
 import bson
@@ -128,6 +129,25 @@ def test_start_request_failed_execution_if_too_many_errors_raised(
     mock_batch_start.side_effect = OSError
     with pytest.raises(ExecutionFailed):
         scheduler._start_requests(runner, requests)
+
+
+def test_start_request_job_directory_is_job_id(
+    job_directory, mock_batch_start
+):
+    scheduler = Scheduler(job_directory)
+    runner = new_runner("example", "example")
+    requests = create_requests(1)
+    mock_batch_start.side_effect = lambda inputs, cwds: (
+        [Job("%04x" % i, cwd) for i, cwd in enumerate(cwds)]
+    )
+    scheduler._start_requests(runner, requests)
+    request_id = requests[0].b64id
+    path = [request_id[i:i+4] for i in range(0, len(request_id), 4)]
+    path = os.path.join(job_directory, *path)
+    mock_batch_start.assert_called_with(
+        [{"input": "val0"}],
+        [path]
+    )
 
 
 class TestJobStatusUpdates:
