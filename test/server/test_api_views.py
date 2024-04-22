@@ -447,11 +447,12 @@ class TestOutputsIfCompleteResults:
         yield job_request.b64id
         delete_one(database, job_request)
 
-    def test_files_list(self, job_request_id, outputs_info):
+    def test_files_list(self, job_request_id, outputs_info, output_directory, jobs_directory):
+        output_path = os.path.relpath(output_directory, jobs_directory)
         assert outputs_info["files"] == in_any_order(
             {
                 "@url": f"/api/jobs/{job_request_id}/files/stdout",
-                "@content": f"/media/jobs/{job_request_id}/stdout",
+                "@content": f"/media/jobs/{output_path}/stdout",
                 "id": f"{job_request_id}/stdout",
                 "jobId": job_request_id,
                 "path": "stdout",
@@ -460,7 +461,7 @@ class TestOutputsIfCompleteResults:
             },
             {
                 "@url": f"/api/jobs/{job_request_id}/files/stderr",
-                "@content": f"/media/jobs/{job_request_id}/stderr",
+                "@content": f"/media/jobs/{output_path}/stderr",
                 "id": f"{job_request_id}/stderr",
                 "jobId": job_request_id,
                 "path": "stderr",
@@ -469,7 +470,7 @@ class TestOutputsIfCompleteResults:
             },
             {
                 "@url": f"/api/jobs/{job_request_id}/files/dummy/d00.txt",
-                "@content": f"/media/jobs/{job_request_id}/dummy/d00.txt",
+                "@content": f"/media/jobs/{output_path}/dummy/d00.txt",
                 "id": f"{job_request_id}/dummy/d00.txt",
                 "jobId": job_request_id,
                 "path": "dummy/d00.txt",
@@ -478,7 +479,7 @@ class TestOutputsIfCompleteResults:
             },
             {
                 "@url": f"/api/jobs/{job_request_id}/files/dummy/d01.txt",
-                "@content": f"/media/jobs/{job_request_id}/dummy/d01.txt",
+                "@content": f"/media/jobs/{output_path}/dummy/d01.txt",
                 "id": f"{job_request_id}/dummy/d01.txt",
                 "jobId": job_request_id,
                 "path": "dummy/d01.txt",
@@ -487,7 +488,7 @@ class TestOutputsIfCompleteResults:
             },
             {
                 "@url": f"/api/jobs/{job_request_id}/files/dummy/d02.txt",
-                "@content": f"/media/jobs/{job_request_id}/dummy/d02.txt",
+                "@content": f"/media/jobs/{output_path}/dummy/d02.txt",
                 "id": f"{job_request_id}/dummy/d02.txt",
                 "jobId": job_request_id,
                 "path": "dummy/d02.txt",
@@ -515,11 +516,12 @@ class TestOutputsIfIncompleteResult:
         yield job_request.b64id
         delete_one(database, job_request)
 
-    def test_files_list(self, job_request_id, outputs_info):
+    def test_files_list(self, job_request_id, outputs_info, output_directory, jobs_directory):
+        output_path = os.path.relpath(output_directory, jobs_directory)
         assert outputs_info["files"] == in_any_order(
             {
                 "@url": f"/api/jobs/{job_request_id}/files/stderr",
-                "@content": f"/media/jobs/{job_request_id}/stderr",
+                "@content": f"/media/jobs/{output_path}/stderr",
                 "id": f"{job_request_id}/stderr",
                 "jobId": job_request_id,
                 "path": "stderr",
@@ -586,11 +588,12 @@ class TestOutputFileView:
     def test_response_status_code(self, view_response):
         assert view_response.status_code == 200
 
-    def test_file_info(self, completed_job_request, file_info):
+    def test_file_info(self, completed_job_request, file_info, output_directory, jobs_directory):
+        output_path = os.path.relpath(output_directory, jobs_directory)
         job_id = completed_job_request.b64id
         assert file_info == {
             "@url": f"/api/jobs/{job_id}/files/stderr",
-            "@content": f"/media/jobs/{job_id}/stderr",
+            "@content": f"/media/jobs/{output_path}/stderr",
             "id": f"{job_id}/stderr",
             "jobId": job_id,
             "path": "stderr",
@@ -598,9 +601,6 @@ class TestOutputFileView:
             "mediaType": "text/plain",
         }
 
-    @pytest.mark.xfail(
-        reason="current implementation requires directory name match job request id"
-    )
     def test_file_content(self, app_client, file_info):
         rep = app_client.get(file_info["@content"])
         assert rep.text == "ERROR: failed\n"
