@@ -1,7 +1,6 @@
 import os
 import shutil
-import tempfile
-from functools import partial
+from random import randint
 from unittest import mock
 
 import mongomock
@@ -38,13 +37,31 @@ def slivka_home(tmp_path_factory):
 @pytest.fixture()
 def job_directory(slivka_home):
     (slivka_home / "jobs").mkdir(exist_ok=True)
-    yield tempfile.mkdtemp(dir=slivka_home / "jobs")
+    max_uint16 = (1 << 16) - 1
+    path = (slivka_home / "jobs"
+            / f"{randint(0, max_uint16):04x}"
+            / f"{randint(0, max_uint16):04x}")
+    yield str(path)
+    shutil.rmtree(path, ignore_errors=True)
 
 
 @pytest.fixture()
 def job_directory_factory(slivka_home):
     (slivka_home / "jobs").mkdir(exist_ok=True)
-    yield partial(tempfile.mkdtemp, dir=slivka_home / "jobs")
+    generated_paths = []
+
+    def path_factory():
+        nonlocal generated_paths
+        max_uint16 = (1 << 16) - 1
+        job_path = (slivka_home / "jobs"
+                    / f"{randint(0, max_uint16):04x}"
+                    / f"{randint(0, max_uint16):04x}")
+        generated_paths.append(job_path)
+        return str(job_path)
+
+    yield path_factory
+    for path in generated_paths:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 @pytest.fixture(scope="function")

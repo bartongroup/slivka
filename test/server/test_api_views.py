@@ -10,6 +10,7 @@ import yaml
 
 import slivka.compat.resources
 import slivka.server
+from slivka.conf import SlivkaSettings
 from test.tools import in_any_order
 from slivka import JobStatus
 from slivka.conf.loaders import load_settings_0_3
@@ -17,30 +18,35 @@ from slivka.db.documents import UploadedFile, JobRequest
 from slivka.db.helpers import insert_one, delete_one
 from slivka.db.repositories import ServiceStatusInfo, ServiceStatusMongoDBRepository
 
-project_path = os.path.join(os.path.dirname(__file__), "test_project")
+
+@pytest.fixture(scope="module")
+def project_config(slivka_home) -> SlivkaSettings:
+    template_path = os.path.join(os.path.dirname(__file__), "test_project")
+    shutil.copytree(template_path, slivka_home, dirs_exist_ok=True)
+    with open(os.path.join(slivka_home, "config.yml")) as config_file:
+        config = load_settings_0_3(yaml.safe_load(config_file), slivka_home)
+    return config
 
 
 @pytest.fixture(scope="module")
-def flask_app():
+def flask_app(project_config):
     os.environ["FLASK_DEBUG"] = "1"
-    with open(os.path.join(project_path, "config.yml")) as config_file:
-        config = load_settings_0_3(yaml.safe_load(config_file), project_path)
-    app = slivka.server.create_app(config)
+    app = slivka.server.create_app(project_config)
     app.config["TESTING"] = True
     return app
 
 
 @pytest.fixture(scope="module", autouse=True)
-def uploads_directory(flask_app):
-    path = flask_app.config["uploads_dir"]
+def uploads_directory(project_config: SlivkaSettings):
+    path = project_config.directory.uploads
     os.makedirs(path, exist_ok=False)
     yield path
     shutil.rmtree(path)
 
 
 @pytest.fixture(scope="module", autouse=True)
-def jobs_directory(flask_app):
-    path = flask_app.config["jobs_dir"]
+def jobs_directory(project_config: SlivkaSettings):
+    path = project_config.directory.jobs
     os.makedirs(path, exist_ok=False)
     yield path
     shutil.rmtree(path)
