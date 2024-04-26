@@ -139,11 +139,21 @@ def _job_resource(job_request: JobRequest):
             try:
                 return value.relative_to(base_path).as_posix()
             except ValueError:
-                base_path = flask.current_app.config['jobs_dir']
-                try:
-                    return value.relative_to(base_path).as_posix()
-                except ValueError:
-                    return value
+                pass
+            base_path = flask.current_app.config['jobs_dir']
+            try:
+                rel_path = value.relative_to(base_path)
+                # job id can be the first part of the path or may be split
+                # across several parts. This hack gets it from the path
+                parts = iter(rel_path.parts)
+                job_id = ''
+                while len(job_id) < 16:
+                    job_id += next(parts)
+                if len(job_id) != 16:
+                    raise ValueError
+                return f"{job_id}/{str.join('/', parts)}"
+            except ValueError:
+                return value
         return value
 
     def convert_choice(choices):
@@ -155,6 +165,7 @@ def _job_resource(job_request: JobRequest):
     def convert_parameter(key, val):
         if not val:
             return val
+        nonlocal form
         field = form[key]
         if isinstance(field, FileField):
             convert = convert_path
