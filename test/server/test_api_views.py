@@ -2,21 +2,24 @@ import io
 import os.path
 import pathlib
 import shutil
-import tempfile
 from datetime import datetime
+from test.tools import in_any_order
 
 import pytest
 import yaml
+from bson import ObjectId
 
 import slivka.compat.resources
 import slivka.server
-from slivka.conf import SlivkaSettings
-from test.tools import in_any_order
 from slivka import JobStatus
+from slivka.conf import SlivkaSettings
 from slivka.conf.loaders import load_settings_0_3
-from slivka.db.documents import UploadedFile, JobRequest
-from slivka.db.helpers import insert_one, delete_one
-from slivka.db.repositories import ServiceStatusInfo, ServiceStatusMongoDBRepository
+from slivka.db.documents import JobRequest, UploadedFile
+from slivka.db.helpers import delete_one, insert_one
+from slivka.db.repositories import (
+    ServiceStatusInfo,
+    ServiceStatusMongoDBRepository,
+)
 
 
 @pytest.fixture(scope="module")
@@ -150,8 +153,8 @@ class TestFakeServiceView:
                 "required": False,
                 "default": None,
                 "array": False,
-                "choices": ["alpha", "bravo", "charlie"]
-            }
+                "choices": ["alpha", "bravo", "charlie"],
+            },
         ]
 
 
@@ -239,7 +242,7 @@ class TestJobCreatedView:
             "text-param": "Hello world",
             "number-param": "12.3",
             "file-param": file.b64id,
-            "choice-param": "bravo"
+            "choice-param": "bravo",
         }
 
     @pytest.fixture(scope="class")
@@ -411,10 +414,51 @@ class TestJobViewStatus:
 
 
 @pytest.fixture(scope="class")
-def output_directory(flask_app, jobs_directory):
-    jobs_dir = tempfile.TemporaryDirectory(dir=jobs_directory)
-    with jobs_dir as path:
-        yield path
+def output_directory_factory(jobs_directory):
+    created_dirs = []
+
+    def make_dir(path):
+        full_path = os.path.join(jobs_directory, *path.split("/"))
+        os.makedirs(full_path)
+        created_dirs.append(full_path)
+        return full_path
+
+    yield make_dir
+    for path in created_dirs:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(
+    scope="class",
+    params=[
+        (ObjectId("662a49a5f7e1108a2a260877"), "ZipJpffhEIoqJgh3"),
+        (ObjectId("662a49a5f7e1108a2a260877"), "ZipJ/pffh/EIoq/Jgh3"),
+        pytest.param(
+            (ObjectId("662a49a5f7e1108a2a260877"), "AsfTSbcDEIoqJgh3"),
+            marks=[pytest.mark.xfail(reason="arbitrary paths not supported")],
+        ),
+        pytest.param(
+            (ObjectId("662a49a5f7e1108a2a260877"), "arbitrary/dir"),
+            marks=[pytest.mark.xfail(reason="arbitrary paths not supported")],
+        ),
+    ],
+)
+def completed_job_request(request, database, output_directory_factory):
+    oid = request.param[0]
+    path = output_directory_factory(request.param[1])
+    job_request = JobRequest(
+        _id=oid,
+        service="fake",
+        inputs={},
+        timestamp=datetime(2022, 6, 11, 8, 50),
+        completion_time=datetime(2022, 6, 11, 8, 54),
+        status=JobStatus.COMPLETED,
+        runner="default",
+        job={"work_dir": path, "job_id": 0},
+    )
+    insert_one(database, job_request)
+    yield job_request
+    delete_one(database, job_request)
 
 
 @pytest.fixture(scope="class")
@@ -428,15 +472,9 @@ def outputs_info(outputs_view_response):
 
 
 class TestOutputsIfCompleteResults:
-    @pytest.fixture(scope="class")
-    def job_request_id(self, database, output_directory):
-        job_request = JobRequest(
-            service="fake",
-            inputs={},
-            job={"work_dir": output_directory, "job_id": 0},
-        )
-
-        out_path = pathlib.Path(output_directory)
+    @pytest.fixture(scope="class", autouse=True)
+    def job_request_id(self, database, completed_job_request):
+        out_path = pathlib.Path(completed_job_request.job.cwd)
         with open(out_path / "stdout", "w") as f:
             print("Hello world", file=f)
         with open(out_path / "stderr", "w") as f:
@@ -448,13 +486,15 @@ class TestOutputsIfCompleteResults:
         (dummy_out_path / "d02.txt").touch()
         (dummy_out_path / "d00.md").touch()
         (dummy_out_path / "f00.txt").touch()
+        return completed_job_request.b64id
 
-        insert_one(database, job_request)
-        yield job_request.b64id
-        delete_one(database, job_request)
-
-    def test_files_list(self, job_request_id, outputs_info, output_directory, jobs_directory):
-        output_path = os.path.relpath(output_directory, jobs_directory)
+    def test_files_list(
+        self, completed_job_request, outputs_info, jobs_directory
+    ):
+        job_request_id = completed_job_request.b64id
+        output_path = os.path.relpath(
+            completed_job_request.job.cwd, jobs_directory
+        )
         assert outputs_info["files"] == in_any_order(
             {
                 "@url": f"/api/jobs/{job_request_id}/files/stdout",
@@ -508,22 +548,22 @@ class TestOutputsIfCompleteResults:
 
 
 class TestOutputsIfIncompleteResult:
-    @pytest.fixture(scope="class")
-    def job_request_id(self, database, output_directory):
-        job_request = JobRequest(
-            service="fake",
-            inputs={},
-            job={"work_dir": output_directory, "job_id": 0},
-        )
-        out_path = pathlib.Path(output_directory)
+    @pytest.fixture(scope="class", autouse=True)
+    def create_job_files(self, database, completed_job_request):
+        out_path = pathlib.Path(completed_job_request.job.cwd)
         with open(out_path / "stderr", "w") as f:
             print("ERROR: failed", file=f)
-        insert_one(database, job_request)
-        yield job_request.b64id
-        delete_one(database, job_request)
 
-    def test_files_list(self, job_request_id, outputs_info, output_directory, jobs_directory):
-        output_path = os.path.relpath(output_directory, jobs_directory)
+    @pytest.fixture(scope="class")
+    def job_request_id(self, completed_job_request):
+        return completed_job_request.b64id
+
+    def test_files_list(
+        self, completed_job_request, jobs_directory, outputs_info
+    ):
+        job_request = completed_job_request
+        job_request_id = completed_job_request.b64id
+        output_path = os.path.relpath(job_request.job.cwd, jobs_directory)
         assert outputs_info["files"] == in_any_order(
             {
                 "@url": f"/api/jobs/{job_request_id}/files/stderr",
@@ -539,11 +579,8 @@ class TestOutputsIfIncompleteResult:
 
 class TestOutputsIfJobNotInitialized:
     @pytest.fixture(scope="class")
-    def job_request_id(self, database, output_directory):
-        job_request = JobRequest(
-            service="fake",
-            inputs={}
-        )
+    def job_request_id(self, database):
+        job_request = JobRequest(service="fake", inputs={})
         insert_one(database, job_request)
         yield job_request.b64id
         delete_one(database, job_request)
@@ -552,28 +589,12 @@ class TestOutputsIfJobNotInitialized:
         assert outputs_info["files"] == []
 
 
-@pytest.fixture()
-def completed_job_request(database, output_directory):
-    job_request = JobRequest(
-        service="fake",
-        inputs={},
-        timestamp=datetime(2022, 6, 11, 8, 50),
-        completion_time=datetime(2022, 6, 11, 8, 54),
-        status=JobStatus.COMPLETED,
-        runner="default",
-        job={"work_dir": output_directory, "job_id": 0},
-    )
-    insert_one(database, job_request)
-    yield job_request
-    delete_one(database, job_request)
-
-
 class TestOutputFileView:
     @pytest.fixture()
-    def view_response(
-        self, app_client, completed_job_request, output_directory
-    ):
-        with open(os.path.join(output_directory, "stderr"), "w") as f:
+    def view_response(self, app_client, completed_job_request):
+        with open(
+            os.path.join(completed_job_request.job.cwd, "stderr"), "w"
+        ) as f:
             print("ERROR: failed", file=f)
         job_id = completed_job_request.b64id
         return app_client.get(f"/api/jobs/{job_id}/files/stderr")
@@ -594,8 +615,10 @@ class TestOutputFileView:
     def test_response_status_code(self, view_response):
         assert view_response.status_code == 200
 
-    def test_file_info(self, completed_job_request, file_info, output_directory, jobs_directory):
-        output_path = os.path.relpath(output_directory, jobs_directory)
+    def test_file_info(self, completed_job_request, file_info, jobs_directory):
+        output_path = os.path.relpath(
+            completed_job_request.job.cwd, jobs_directory
+        )
         job_id = completed_job_request.b64id
         assert file_info == {
             "@url": f"/api/jobs/{job_id}/files/stderr",
@@ -610,3 +633,21 @@ class TestOutputFileView:
     def test_file_content(self, app_client, file_info):
         rep = app_client.get(file_info["@content"])
         assert rep.text == "ERROR: failed\n"
+
+
+def test_job_view_parameters_output_used_as_input(
+    app_client, completed_job_request
+):
+    with open(os.path.join(completed_job_request.job.cwd, "stdout"), "w") as f:
+        print(file=f)
+    response = app_client.post(
+        "/api/services/fake/jobs",
+        data={
+            "text-param": "Hello world",
+            "file-param": f"{completed_job_request.b64id}/stdout",
+        },
+    )
+    assert (
+        response.json["parameters"]["file-param"]
+        == f"{completed_job_request.b64id}/stdout"
+    )
