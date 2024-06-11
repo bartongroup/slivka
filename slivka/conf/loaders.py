@@ -4,8 +4,9 @@ import os.path
 import re
 import typing
 from collections.abc import Sequence
-from packaging.version import parse as parse_version
 from typing import List, Dict
+
+from packaging.version import parse as parse_version
 
 from slivka.compat import resources
 from slivka.utils.env import expandvars
@@ -235,6 +236,7 @@ class SlivkaSettings:
         password = attrib(default=None)
         database = attrib(default="slivka")
 
+    settings_file = attrib(default=None, init=False)
     version = attrib(type=str)
     directory = attrib(type=Directory)
     server = attrib(type=Server)

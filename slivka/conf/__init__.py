@@ -25,9 +25,13 @@ def _load():
 
 
 def _load_file(fp):
+    file_name = None
     if isinstance(fp, str):
+        file_name = fp
         fp = open(fp)
-    return _load_dict(yaml.safe_load(fp))
+    config = _load_dict(yaml.safe_load(fp))
+    config.settings_file = file_name
+    return config
 
 
 def _load_dict(config):
