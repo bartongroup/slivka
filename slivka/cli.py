@@ -1,4 +1,3 @@
-import datetime
 import multiprocessing
 import os
 import signal
@@ -11,6 +10,8 @@ from logging.handlers import RotatingFileHandler
 import click
 from daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
+
+import slivka.migrations.cli
 from slivka.__about__ import __version__
 from slivka.compat.contextlib import nullcontext
 from slivka.consts import ServiceStatus
@@ -288,3 +289,6 @@ def test_services(services):
             click.echo(
                 "".join(traceback.format_exception(outcome.cause)), nl=False
             )
+
+
+main.add_command(slivka.migrations.cli.migrate)
