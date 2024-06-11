@@ -1,5 +1,4 @@
 import os
-import sys
 
 try:
     from setuptools import setup, find_packages
@@ -30,6 +29,7 @@ setup(
         "python-daemon>=3.0",
         "PyYAML>=5.4",
         "pyzmq>=19.0",
+        "ruamel.yaml",
         "simplejson>=3.16",
         "Werkzeug>=1.0",
     ],

@@ -27,7 +27,7 @@ def database(mongo_client):
     del slivka.db.database
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="class", autouse=True)
 def slivka_home(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("slivka-home")
     with mock.patch.dict(os.environ, SLIVKA_HOME=str(tmp_path)):

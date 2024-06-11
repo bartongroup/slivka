@@ -1,0 +1,26 @@
+---
+slivka-version: "0.8.5"
+name: Example
+
+parameters:
+  text:
+    type: text
+    name: Text
+    required: no
+
+command: echo
+
+args:
+  text:
+    arg: $(value)
+
+outputs:
+  text-output:
+    path: stdout
+    media-type: text/plain
+
+execution:
+  runners:
+    default:
+      type: SlivkaQueueRunner
+...

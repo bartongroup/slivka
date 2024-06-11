@@ -1,0 +1,23 @@
+- _id: 6662eca5c9d3327ca5fb2d81
+  service: example
+  inputs:
+    text: Hello world
+  timestamp: 2023-10-24 10:03:49
+  completion_time: 2023-10-24 10:04:12
+  status: 6
+  runner: default
+  job:
+    work_dir: "ZmLspcnTMnyl-y2B"
+    job_id: "1234"
+
+- _id: 6662f0adc9d3327ca5fb2d82
+  service: example
+  inputs:
+    text: Hello world
+  timestamp: 2023-10-24 10:05:49
+  completion_time: 2023-10-24 10:06:12
+  status: 6
+  runner: default
+  job:
+    work_dir: "ZmLwrcnTMnyl-y2C"
+    job_id: "1234"
