@@ -31,7 +31,7 @@ setup(
         "pyzmq>=19.0",
         "ruamel.yaml",
         "simplejson>=3.16",
-        "Werkzeug>=1.0",
+        "Werkzeug>=2.0",
     ],
     tests_require=[
         'mongomock>=3.18',
@@ -64,6 +64,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Lnaguage :: Python :: 3.12",
         "Programming Language :: Python :: 3 :: Only",
         "Framework :: Flask",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
