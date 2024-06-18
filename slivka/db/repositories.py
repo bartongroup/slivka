@@ -1,9 +1,10 @@
 import datetime
 import operator
-from datetime import datetime
+from datetime import datetime, date
 from typing import List
 
 import attr
+import attrs
 import pymongo
 
 import slivka.db
@@ -99,3 +100,49 @@ class ServiceStatusMongoDBRepository:
 
 
 ServiceStatusRepository = ServiceStatusMongoDBRepository
+
+
+@attrs.define
+class UsageStats:
+    month: date
+    service: str
+    count: int
+
+
+class UsageStatsMongoDBRepository:
+    __requests_collection = "requests"
+
+    def __init__(self, database=None):
+        if database is None:
+            database = slivka.db.database
+        self._database = database
+
+    def list_all(self) -> List[UsageStats]:
+        collection = self._database[self.__requests_collection]
+        aggregation = collection.aggregate([
+            {"$group": {
+                "_id": {
+                    "month": {
+                        "$dateTrunc": {"date": "$timestamp", "unit": "month"}
+                    },
+                    "service": "$service",
+                },
+                "count": {"$count": {}}
+            }},
+            {"$sort": {"_id.month": 1}}
+        ])
+        return [
+            UsageStats(
+                month=date(
+                    entry["_id"]["month"].year,
+                    entry["_id"]["month"].month,
+                    1
+                ),
+                service=entry["_id"]["service"],
+                count=entry["count"]
+            )
+            for entry in aggregation
+        ]
+
+
+UsageStatsRepository = UsageStatsMongoDBRepository
