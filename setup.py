@@ -25,6 +25,7 @@ setup(
         "MarkupSafe>=1.0",
         "pymongo>=3.7",
         "python-daemon>=3.0",
+        "python-dateutil>=2.8",
         "PyYAML>=5.4",
         "pyzmq>=19.0",
         "simplejson>=3.16",

@@ -1,0 +1,24 @@
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-10-01 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-10-01 12:00:00
+- inputs: {}
+  service: example-0
+  status: 7
+  timestamp: 2020-10-01 12:00:00
+- inputs: {}
+  service: example-0
+  status: 9
+  timestamp: 2020-10-01 12:00:00
+- inputs: {}
+  service: example-0
+  status: 9
+  timestamp: 2020-10-01 12:00:00
+- inputs: {}
+  service: example-0
+  status: 10
+  timestamp: 2020-10-01 12:00:00
