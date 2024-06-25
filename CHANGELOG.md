@@ -1,5 +1,21 @@
 Changelog:
 
+## [0.8.3b2] - 2024-06-25
+
+- Added: filtering options to the usage statistics repository. Entries can be
+  filtered by service name, date ranges and completion status.
+- Added: tests of the filtering option.
+- Added: python-dateutil dependency which provides rich datetime manipulation
+  functions.
+- Added: OpenAPI documentation of the `/stats` endpoint
+
+## [0.8.3b1] - 2024-06-18
+
+- Added: service usage statistics repository which reads the number of jobs run
+  each month
+- Added: service usage view API endpoint
+- Added: tests of the usage statistics repository
+
 ## [0.8.3b0] - 2023-12-13
 
 - Added: periodic service health checks
