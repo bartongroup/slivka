@@ -24,6 +24,37 @@ paths:
                     description: REST API version
                     type: string
 
+  /api/stats:
+    get:
+      summary: Show service usage statistics.
+      responses:
+        '200':
+          description:
+            List of records of the number of times each service was used on
+            a monthly basis.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usageStatistics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          description: Date in a YYYY-MM format.
+                          type: string
+                          example: 2020-04
+                        service:
+                          description: Name of the service.
+                          type: string
+                          example: example-service
+                        count:
+                          description: Number of times the service was used.
+                          type: number
+                          example: 259
+
   /api/services:
     get:
       summary: Show list of all services.
