@@ -28,6 +28,7 @@ def runners_from_config(config: ServiceConfig) -> Tuple[Callable, List[Runner]]:
             RunnerID(config.id, runner_conf.id),
             command=config.command,
             args=config.args,
+            consts=runner_conf.consts,
             outputs=config.outputs,
             env=config.env,
             **runner_conf.parameters

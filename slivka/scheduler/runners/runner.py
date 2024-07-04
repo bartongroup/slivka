@@ -7,7 +7,7 @@ import os
 import shlex
 import shutil
 from collections import ChainMap, namedtuple
-from typing import List, Union, Dict, Collection, Sequence, Optional
+from typing import List, Union, Dict, Collection, Sequence, Optional, Any
 
 from slivka import JobStatus
 from slivka.conf import ServiceConfig
@@ -60,6 +60,7 @@ class Runner:
                  runner_id: Optional[RunnerID],
                  command: Union[str, List[str]],
                  args: List[ServiceConfig.Argument],
+                 consts: Dict[str, Any],
                  outputs: List[ServiceConfig.OutputFile],
                  env: Dict[str, str]):
         self.id = runner_id or self._next_id()
@@ -85,6 +86,8 @@ class Runner:
         for argument in self.arguments:
             args = expandvars(argument.arg, environ)
             argument.arg = shlex.split(args)
+            if argument.id in consts:
+                argument.default = consts[argument.id]
 
     def get_name(self): return self.id.runner
     name = property(get_name)

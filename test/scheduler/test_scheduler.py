@@ -17,11 +17,12 @@ from slivka.scheduler.scheduler import (
 from test.tools import anything, in_any_order
 
 
-def new_runner(service, name, command=None, args=None, env=None):
+def new_runner(service, name, command=None, args=None, consts=None, env=None):
     return Runner(
         RunnerID(service, name),
         command=command or [],
         args=args or [],
+        consts=consts or {},
         outputs=[],
         env=env or {},
     )
