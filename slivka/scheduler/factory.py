@@ -30,7 +30,7 @@ def runners_from_config(config: ServiceConfig) -> Tuple[Callable, List[Runner]]:
             args=config.args,
             consts=runner_conf.consts,
             outputs=config.outputs,
-            env=config.env,
+            env={**config.env, **runner_conf.env},
             **runner_conf.parameters
         )
         runners.append(runner)
