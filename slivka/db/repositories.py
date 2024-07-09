@@ -1,12 +1,16 @@
 import datetime
 import operator
-from datetime import datetime
+import re
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 from typing import List
 
 import attr
+import attrs
 import pymongo
 
 import slivka.db
+from slivka import JobStatus
 from slivka.consts import ServiceStatus as Status
 
 
@@ -99,3 +103,97 @@ class ServiceStatusMongoDBRepository:
 
 
 ServiceStatusRepository = ServiceStatusMongoDBRepository
+
+
+@attrs.define
+class UsageStats:
+    month: date
+    service: str
+    count: int
+
+
+_mongodb_op_map = {
+    "==": "$eq",
+    ">=": "$gte",
+    ">": "$gt",
+    "<=": "$lte",
+    "<": "$lt",
+}
+
+
+def _create_date_matcher(expression):
+    match = re.match(r"([=><!]{1,2})(\d{4}-\d{2})$", expression)
+    if match is None:
+        raise ValueError(f"invalid expression {expression}")
+    val = datetime.strptime(match.group(2), "%Y-%m")
+    try:
+        op = _mongodb_op_map[match.group(1)]
+    except KeyError:
+        raise ValueError(f"invalid expression {expression}")
+    if op == "$eq":
+        # eq means equal month, not equal date
+        return {"timestamp": {"$gte": val,
+                              "$lt": val + relativedelta(months=+1)}}
+    elif op == "$lte":
+        # lte must include entire month, not just the first of the month
+        return {"timestamp": {"$lt": val + relativedelta(months=+1)}}
+    elif op == "$gt":
+        # gt must not include the specified month
+        return {"timestamp": {"$gte": val + relativedelta(months=+1)}}
+    return {"timestamp": {op: val}}
+
+
+class UsageStatsMongoDBRepository:
+    __requests_collection = "requests"
+
+    def __init__(self, database=None):
+        if database is None:
+            database = slivka.db.database
+        self._database = database
+
+    def list_all(self, filters=()) -> List[UsageStats]:
+        collection = self._database[self.__requests_collection]
+        matchers = []
+        for name, expr in filters:
+            if name == "service":
+                matchers.append({"service": expr})
+            elif name == "month":
+                matchers.append(_create_date_matcher(expr))
+            elif name == "status":
+                if expr == "completed":
+                    matchers.append({"status": JobStatus.COMPLETED.value})
+                elif expr == "incomplete":
+                    matchers.append({"status": {"$ne": JobStatus.COMPLETED.value}})
+                else:
+                    raise ValueError(f"invalid expression {expr}")
+            else:
+                raise ValueError(f"invalid name {name}")
+
+        pipeline = [{"$match": {"$and": matchers}}] if matchers else []
+        pipeline += [
+            {"$group": {
+                "_id": {
+                    "month": {
+                        "$dateTrunc": {"date": "$timestamp", "unit": "month"}
+                    },
+                    "service": "$service",
+                },
+                "count": {"$count": {}}
+            }},
+            {"$sort": {"_id.month": 1}}
+        ]
+        return [
+            UsageStats(
+                month=date(
+                    entry["_id"]["month"].year,
+                    entry["_id"]["month"].month,
+                    1
+                ),
+                service=entry["_id"]["service"],
+                count=entry["count"]
+            )
+            for entry in collection.aggregate(pipeline)
+        ]
+
+
+UsageStatsRepository = UsageStatsMongoDBRepository

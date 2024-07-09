@@ -398,20 +398,29 @@ a present or an absent state. Under the hood, flags do actually have a
 value of ``"true"`` literal if enabled or nothing if disabled which
 results in the parameter being skipped.
 
-Although every input parameter must be reflected in the arguments, the
+Although every input parameter should be reflected in the arguments, the
 opposite is not true. You may add arguments which are not defined in
 the list of parameters. We recommend naming those arguments starting
 with an underscore to differentiate them from "regular" arguments.
 Those arguments have no way to fetch their value from the input
 parameters and therefore are always omitted unless a *default*
-constant value is provided explicitly in the argument definition. They
-can be used to supply constants to the command line which should not
-be altered by users. In the example, we specified a *_separator*
+constant value is provided explicitly in the argument definition.
+The constant values for those parameters can also be specified in the
+runner definition (more on that later).
+They can be used to supply constants to the command line which should not
+be altered by users. In the example service, we specified a *_separator*
 argument which inserts ``--`` between options and positional
-arguments. In order to not be skipped, we gave it a constant
-placeholder value "present". The ``$(value)`` placeholder can also
-be used in those constant arguments and will be set to the default
-value e.g.
+arguments. In order for it to not be skipped, we gave it a constant
+dummy value "present".
+
+.. code:: yaml
+
+  _separator:
+    arg: --
+    default: present
+
+The constant argument may also make use of the ``$(value)`` placeholder
+and read its value form the *default* property or runner constants e.g.
 
 .. code:: yaml
 
@@ -432,10 +441,10 @@ variables in the variable values using the ``${VARIABLE}`` syntax.
 However, you can't include other variables from this mapping to avoid
 circular dependencies and ambiguity.
 
-In the example, we stored a ``/usr/bin/env python`` command in the
-``PYTHON`` variable which could be re-used in the command as
-``$PYTHON``. We also redefined the ``PATH`` variable prepending the
-path to a :file:`bin` directory from the project's root directory to
+In the example service, we stored a ``/usr/bin/env python`` command in the
+``PYTHON`` variable which will be available to the command.
+We also redefined the ``PATH`` variable prepending the
+path to a :file:`bin` directory located in the the project to
 it.
 
 Every process is executed in a modified environment with all system
@@ -477,60 +486,88 @@ Execution Management
 --------------------
 
 The last bit of the service configuration is not strictly about the
-command line program, but the way it is launched on a computer. Once the
-command line arguments and environment variables are sorted out, the
-scheduler sends it to one of the ``Runner`` implementations. The
+command line program, but the way it is launched on a computer. Once
+the command line arguments and environment variables are sorted out,
+the scheduler sends it to one of the ``Runner`` implementations. The
 runner takes a list of arguments and spawns a new process on the
-system. Runners available for the service are listed under the
-*runners* property under the top-level *execution* property.
-The runners' definition is a mapping where each key is an identifier
-of the runner and each value is an object defining the runner.
-It needs to contain at least a *type* property defining the class
-of the runner. The type can be accompanied by a *parameters* property
-containing keyword arguments that will be passed to the runner's
+system. Available runners for the service are listed under the
+*runners* property within the top-level *execution* property.  The
+runners' definition is a mapping where each key is an identifier for
+the runner and each value is an object defining the runner.
+
+Each runner definition must include a *type* property that specifies
+the class of the runner. Additionally, it can include a *parameters*
+property containing keyword arguments passed to the runner's
 initializer. The available parameters vary depending on the runner
-class. If no selector is specified, a runner having a *"default"*
-identifier is always selected.
+class.  Optionally, you can define *consts* and *env* properties.  The
+*consts* property contains the values for arguments without
+corresponding inputs, allowing you to define constant arguments based
+on the execution system used.  It can be particularly useful if the
+program needs information about the execution environment passed as a
+command line argument.  Here is an example configuration for a program
+that takes as an argument the number of cpu cores.
+
+.. code:: yaml
+
+  args:
+    cpu-count:
+      arg: --cpus=$(value)
+      default: "1"
+  execution:
+    runners:
+      small-jobs:
+        type: GridEngineRunner
+        consts:
+          cpu-count: "1"
+      large-jobs:
+        type: GridEngineRunner
+        consts:
+          cpu-count: "8"
+
+
+The *env* property contains environment variables appended to the
+current environment for that runner.
 
 Currently, slivka supports four execution methods: *shell*, *slivka
 queue*, *univa grid engine* and *slurm*.
 
-The simplest of them, the ``ShellRunner`` runs programs in a default
-shell as child processes. It is simple and sufficient for very low
-workloads and few simultaneous jobs, however, it can easily exhaust
-all system resources if too many processes are running at once.
+The simplest method, the ``ShellRunner``, runs programs by spawning
+a child process and running a new shell within it.
+This method is simple and sufficient for very low
+workloads and few simultaneous jobs. However, it can easily exhaust
+system resources if too many jobs run simultaneously.
 The use of the ``ShellRunner`` is highly discouraged in production
 or outside small internal networks.
 
-A *local-queue* and an accompanying ``SlivkaQueueRunner`` offer an
-improved way to spawn processes. The local queue is a separate
-process which maintains a queue of pending jobs and starts new child
-processes only if there is an available slot, making sure that only a
-limited number of subprocesses are running at the time. The local
-queues can be moved to different nodes or VMs (as long as they share
-the file system with the main slivka process). The
-``SlivkaQueueRunner`` accepts one parameter: ``address`` locating the
-socket the local queue is listening on. If not provided, the address
-from the main configuration file is used.
+A *local-queue* and an accompanying ``SlivkaQueueRunner`` class offers
+an improved way to spawn processes. The local queue is a separate
+process that maintains a queue of pending jobs, starting new child
+processes only if there is an available slot. This ensures that only a
+limited number of subprocesses run at any given time. Local queues can
+be moved to different computing nodes or VMs, as long as they share
+the file system with the main slivka process. The
+``SlivkaQueueRunner`` accepts one parameter: ``address``, which
+specifies the socket the local queue is listening on. If not provided,
+the address from the main configuration file is used.
 
 A ``GridEngineRunner`` utilizes `Univa/Altair Grid Engine`_, a
 third-party queuing system, to execute jobs. It wraps received
-commands in shell scripts and sends them to the grid engine using a
-:program:`qsub` command. ``GridEngineRunner`` accepts a single
-``qargs`` parameter containing a list of arguments that will be
-directly appended to the :program:`qsub` command. Note that slivka
-always adds ``-V --cwd -o stdout -e stderr`` arguments to the command
-line and they should not be overridden.
+commands in shell scripts and sends them to the grid engine using the
+:program:`qsub` command. The ``GridEngineRunner`` accepts a single
+``qargs`` parameter which is a list of arguments directly appended to
+the :program:`qsub` command. Note that slivka implicitly adds ``-V
+--cwd -o stdout -e stderr`` arguments, which should not be overridden
+in the configuration.
 
 .. _`Univa/Altair Grid Engine`: https://www.altair.com/grid-engine/
 
-A ``SlurmRunner`` uses a Slurm_ workload manager to execute jobs. It
+A ``SlurmRunner`` uses the Slurm_ workload manager to execute jobs. It
 wraps received commands in bash scripts and submits them to Slurm
-using a :program:`sbatch` command. ``SlurmRunner`` accepts a single
-``sbatchargs`` parameters containing a list of arguments that will be
-directly appended to the :program:`sbatch` command. Slivka
-automatically includes ``--output=stdout --error=stderr --parsable``
-arguments which should not be overridden.
+using the :program:`sbatch` command. The ``SlurmRunner`` accepts a
+single ``sbatchargs`` parameter, which is a list of arguments directly
+appended to the :program:`sbatch` command. Slivka includes
+``--output=stdout --error=stderr --parsable`` arguments implicitly,
+and these should not be overridden in the configuration.
 
 .. _Slurm: https://slurm.schedmd.com/
 
@@ -547,9 +584,8 @@ those runners based on the job inputs. It allows the allocation of
 different resources depending on the size or nature of the submitted
 job. If no identifier is returned then the job request is rejected. If
 only one runner is used regardless of the inputs, it should be named
-``"default"`` and the *selector* property may be omitted. In that
-case, a default selector which always selects a default runner is
-used.
+``"default"`` and the *selector* property may be omitted. In such
+case, a runner having a *"default"* identifier is always selected.
 
 -------
 Testing
@@ -557,21 +593,21 @@ Testing
 
 .. versionadded:: 0.8.3
 
-No system is 100% reliable. Failures and downtimes are unavoidable and it is
-important to know when one of them happens. Slivka comes bundled with a tool
-that periodically tests the availability of each service. That way users and
-system administrators can see the current status of the services, whether
-they are operational or not.
+No system is 100% reliable. Failures and downtimes are unavoidable and
+it is important to know when one of them happens. Slivka comes bundled
+with a tool that periodically tests the availability of each service.
+That way users and system administrators can see the current status of
+the services, whether they are operational or not.
 
 The tests are defined as a list under the top-level *tests* property
-in the service configuration file. Each element contains the data for test jobs that is run
-automatically every hour whose result is stored in the database.
-The test job definition is an object containing *parameters* property, where
-the mapping of input names to the values is present, and the *applicable-runners*
-property, listing the names of the runners the test is run against.
-Additionally, you can specify an optional *timeout* parameter. It is a number
-of seconds after which the tests will be automatically stopped with a *WARNING*
-status.
+in the service configuration file. Each element contains the data for
+test jobs that is run automatically every hour whose result is stored
+in the database.  The test job definition is an object containing
+*parameters* property, where the mapping of input names to the values
+is present, and the *applicable-runners* property, listing the names
+of the runners the test is run against.  Additionally, you can specify
+an optional *timeout* parameter. It is a number of seconds after which
+the tests will be automatically stopped with a *WARNING* status.
 
-More information about defining tests can be found
-in the :ref:`specification:Tests` section on the configuration page.
+More information about defining tests can be found in the
+:ref:`specification:Tests` section on the configuration page.

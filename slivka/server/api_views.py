@@ -16,7 +16,7 @@ from slivka.compat import resources
 from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest, CancelRequest, UploadedFile
 from slivka.db.helpers import insert_one
-from slivka.db.repositories import ServiceStatusMongoDBRepository as ServiceStatusRepository
+from slivka.db.repositories import ServiceStatusRepository, UsageStatsRepository
 from .forms.form import BaseForm
 
 bp = flask.Blueprint('api-v1_1', __name__, url_prefix='/api/v1.1')
@@ -30,6 +30,19 @@ def version_view():
         slivkaVersion=slivka.__version__,
         APIVersion="1.1"
     )
+
+
+@bp.route('/stats', endpoint='stats', methods=['GET'])
+def usage_stats_view():
+    stats_repo = UsageStatsRepository(slivka.db.database)
+    return jsonify(usageStatictics=[
+        {
+            "month": entry.month.strftime("%Y-%m"),
+            "service": entry.service,
+            "count": entry.count,
+        }
+        for entry in stats_repo.list_all()
+    ])
 
 
 @bp.route('/services', endpoint='services', methods=['GET'])

@@ -1,0 +1,109 @@
+# same service, many months, all completed
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-03-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-03-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-03-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-04-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-04-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-04-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-05-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-05-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2020-05-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-03-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-03-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-03-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-04-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-04-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-04-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-05-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-05-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2021-05-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-03-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-03-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-03-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-04-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-04-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-04-23 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-05-21 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-05-22 12:00:00
+- inputs: {}
+  service: example-0
+  status: 6
+  timestamp: 2022-05-23 12:00:00

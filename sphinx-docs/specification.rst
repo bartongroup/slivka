@@ -328,8 +328,8 @@ function. If given as a string, they are split into a list of arguments
 using :py:func:`shlex.split` first.
 
 If you are concerned about special characters and whitespaces and want
-to make sure that the command is parsed properly, you can enumerate
-the arguments using a list as shown in the following examples.
+to make sure that the command is parsed properly, you should specify
+arguments using the list syntax.
 
 .. code-block:: yaml
 
@@ -670,6 +670,15 @@ properties:
 :*parameters*:
   Extra parameters that will be passed to the runner's constructor
   as keyword arguments.
+
+:*consts*:
+  Constant values for command arguments not associated with any input.
+  These values are substituted for default values if the runner is
+  selected for executing the command.
+
+:*env*:
+  Additional variables added to the program environment if the runner is
+  selected for executing the program.
 
 - ``ShellRunner`` is the simplest of all three. Runs the command as
   a subprocess in the current shell. Doesn't require any prior setup

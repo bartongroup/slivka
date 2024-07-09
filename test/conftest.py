@@ -19,7 +19,7 @@ def mongo_client():
 
 @pytest.fixture(scope="class", autouse=True)
 def database(mongo_client):
-    slivka.db.database = mongo_client.slivkadb
+    slivka.db.database = mongo_client["slivka-test"]
     yield slivka.db.database
     for collection_name in slivka.db.database.list_collection_names():
         slivka.db.database.drop_collection(collection_name)

@@ -165,6 +165,21 @@
                 "propertyNames": {
                   "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 }
+              },
+              "consts": {
+                "type": "object",
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
               }
             },
             "additionalProperties": false

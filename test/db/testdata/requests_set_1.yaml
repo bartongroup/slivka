@@ -1,0 +1,13 @@
+# same service, same month, all completed
+- service: example-0
+  inputs: {}
+  timestamp: 2020-03-21 12:00:00
+  status: 6
+- service: example-0
+  inputs: {}
+  timestamp: 2020-03-22 12:00:00
+  status: 6
+- service: example-0
+  inputs: {}
+  timestamp: 2020-03-23 12:00:00
+  status: 6

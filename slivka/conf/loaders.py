@@ -163,6 +163,8 @@ class ServiceConfig:
             id = attr.ib(type=str)
             type = attr.ib(type=str)
             parameters = attr.ib(type=dict, factory=dict)
+            consts = attr.ib(type=dict, factory=dict)
+            env = attr.ib(type=dict, factory=dict)
 
         runners = attr.ib(type=Dict[str, Runner])
         selector = attr.ib(type=str, default=None)

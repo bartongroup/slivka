@@ -41,11 +41,22 @@ def command_env(request):
 
 
 @pytest.fixture()
-def runner(global_env, command_arguments, command_env):
+def command_consts(request):
+    mark = request.node.get_closest_marker("runner")
+    if mark and "consts" in mark.kwargs:
+        return mark.kwargs["consts"]
+    if hasattr(request, "param"):
+        return request.param
+    return {}
+
+
+@pytest.fixture()
+def runner(global_env, command_arguments, command_consts, command_env):
     return Runner(
         runner_id=None,
         command="example",
         args=command_arguments,
+        consts=command_consts,
         outputs=[],
         env=command_env,
     )
@@ -265,6 +276,30 @@ def test_multiple_arguments_interpolation(runner, values, expected_command):
     assert runner.build_args(values) == expected_command
 
 
+@pytest.mark.parametrize(
+    "command_arguments, command_consts, expected_command",
+    [
+        (
+            [Argument("myarg", "-a=$(value)")],
+            {"myarg": "const-val"},
+            ["-a=const-val"]
+        ),
+        (
+            [Argument("myarg", "-a=$(value)")],
+            {},
+            []
+        ),
+        (
+            [Argument("myarg", "-a=$(value)", default="def-value")],
+            {"myarg": "const-val"},
+            ["-a=const-val"]
+        )
+    ]
+)
+def test_constant_arguments(runner, expected_command):
+    assert runner.build_args({}) == expected_command
+
+
 class TestEnvVariables:
     def test_slivka_home_variable_set(self, slivka_home, runner):
         assert runner.env["SLIVKA_HOME"] == str(slivka_home)
@@ -341,6 +376,20 @@ def test_start_submit_command_if_parameters_present(
             ["example", "-p0", "foo", "-p1", "bar", "xxx", "out.txt"],
             job_directory,
         )
+    )
+
+@pytest.mark.runner(
+    args=[Argument("_const",  "-c=$(value)")],
+    consts={"_const": "const-val"}
+)
+def test_start_submit_using_runner_constants(
+    job_directory, runner, mock_submit
+):
+    assert runner.submit is mock_submit
+    mock_submit.return_value = Job("0x00000", job_directory)
+    runner.start({}, job_directory)
+    mock_submit.assert_called_once_with(
+        Command(["example", "-c=const-val"], job_directory)
     )
 
 
