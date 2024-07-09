@@ -1,5 +1,12 @@
 Changelog:
 
+## [0.8.3b3] - (upcoming)
+
+- Added: argument constants can be specified in the runner definition and
+  applied conditionally to the command line when that runner is selected.
+- Added: additional environment variables can be specified in the runner
+  definition and applied conditionally when that runner is selected.
+
 ## [0.8.3b2] - 2024-06-25
 
 - Added: filtering options to the usage statistics repository. Entries can be
