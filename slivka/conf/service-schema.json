@@ -180,6 +180,12 @@
                 "additionalProperties": {
                   "type": "string"
                 }
+              },
+              "selector-options": {
+                "type": "object",
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                }
               }
             },
             "additionalProperties": false
