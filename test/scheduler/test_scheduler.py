@@ -1,3 +1,4 @@
+from test.tools import anything, in_any_order
 from unittest import mock
 
 import bson
@@ -13,11 +14,19 @@ from slivka.scheduler.scheduler import (
     REJECTED,
     ExecutionDeferred,
     ExecutionFailed,
+    SelectorContext,
 )
-from test.tools import anything, in_any_order
 
 
-def new_runner(service, name, command=None, args=None, consts=None, env=None):
+def new_runner(
+    service,
+    name,
+    command=None,
+    args=None,
+    consts=None,
+    env=None,
+    selector_options=None,
+):
     return Runner(
         RunnerID(service, name),
         command=command or [],
@@ -25,6 +34,7 @@ def new_runner(service, name, command=None, args=None, consts=None, env=None):
         consts=consts or {},
         outputs=[],
         env=env or {},
+        selector_options=selector_options or {},
     )
 
 
@@ -59,6 +69,36 @@ def test_group_requests(job_directory):
         JobRequest(service="example", inputs={"use": "runner2"}),
         JobRequest(service="example", inputs={"use": None}),
         JobRequest(service="example", inputs={"use": "runner1"}),
+    ]
+    grouped = scheduler.group_requests(requests)
+    assert grouped == {
+        runner1: in_any_order(requests[0], requests[3]),
+        runner2: in_any_order(requests[1]),
+        REJECTED: in_any_order(requests[2]),
+    }
+
+
+def test_group_requests_with_context_data(job_directory):
+    scheduler = Scheduler(job_directory)
+    runner1 = new_runner("example", "runner1", selector_options={"strlen": 3})
+    runner2 = new_runner("example", "runner2", selector_options={"strlen": 5})
+
+    def selector(inputs, context: SelectorContext):
+        strlen = len(inputs["str"])
+        for runner in context.runners:
+            ctx_data = context.runner_options[runner]
+            if strlen <= ctx_data["strlen"]:
+                return runner
+
+    scheduler.add_runner(runner1)
+    scheduler.add_runner(runner2)
+    scheduler.add_selector("example", selector)
+
+    requests = [
+        JobRequest(service="example", inputs={"str": "xyz"}),
+        JobRequest(service="example", inputs={"str": "xyzt"}),
+        JobRequest(service="example", inputs={"str": "abcxyz"}),
+        JobRequest(service="example", inputs={"str": "abc"}),
     ]
     grouped = scheduler.group_requests(requests)
     assert grouped == {

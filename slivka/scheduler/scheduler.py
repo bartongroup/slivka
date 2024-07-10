@@ -1,4 +1,5 @@
 import contextlib
+import inspect
 import logging
 import os
 import threading
@@ -8,6 +9,7 @@ from functools import partial
 from typing import (Iterable, Dict, List, Any, Union, DefaultDict,
                     Sequence, Callable, Tuple)
 
+import attrs
 import pymongo.errors
 
 import slivka.conf
@@ -70,6 +72,12 @@ class Scheduler:
 
     def add_runner(self, runner: Runner):
         self.runners[runner.id] = runner
+
+    def list_runners(self, service: str):
+        return [
+            runner for runner_id, runner in self.runners.items()
+            if runner_id.service == service
+        ]
 
     def add_selector(self, service: str, selector: Callable):
         self.selectors[service] = selector
@@ -145,7 +153,18 @@ class Scheduler:
         grouped = defaultdict(list)
         for request in requests:
             selector = self.selectors[request.service]
-            runner_name = selector(request.inputs)
+            kwargs = {}
+            if "context" in inspect.signature(selector).parameters:
+                runners = self.list_runners(request.service)
+                kwargs["context"] = SelectorContext(
+                    service=request.service,
+                    runners=[r.name for r in runners],
+                    runner_options={
+                        r.name: r.selector_options
+                        for r in runners
+                    }
+                )
+            runner_name = selector(request.inputs, **kwargs)
             if runner_name is None:
                 grouped[REJECTED].append(request)
             else:
@@ -404,6 +423,13 @@ class IntervalThread(threading.Thread):
             del self._target, self._args, self._kwargs
 
 
+@attrs.define(frozen=True)
+class SelectorContext:
+    service: str
+    runners: List[str]
+    runner_options: Dict[str, Dict[str, Any]]
+
+
 class SelectorMeta(type):
     @classmethod
     def __prepare__(mcs, name, bases):
@@ -430,11 +456,14 @@ class BaseSelector(metaclass=SelectorMeta):
     and the first one to return True is selected. Otherwise,
     the job is rejected.
     """
-    def __call__(self, inputs):
+    def __call__(self, inputs, context):
         try:
             self.setup(inputs)
             return next(
-                (name for name, func in self.__limits__ if func(self, inputs)),
+                (
+                    name for name, func in self.__limits__
+                    if func(self, inputs, **(context.runner_options.get(name, {})))
+                ),
                 None
             )
         finally:
