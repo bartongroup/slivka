@@ -462,7 +462,7 @@ class BaseSelector(metaclass=SelectorMeta):
             return next(
                 (
                     name for name, func in self.__limits__
-                    if func(self, inputs, **(context.runner_options[name]))
+                    if func(self, inputs, **(context.runner_options.get(name, {})))
                 ),
                 None
             )
