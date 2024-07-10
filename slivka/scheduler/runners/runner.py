@@ -63,10 +63,10 @@ class Runner:
                  consts: Dict[str, Any],
                  outputs: List[ServiceConfig.OutputFile],
                  env: Dict[str, str],
-                 selector_options: Dict[str, Any]):
+                 selector_options: Dict[str, Any] = None):
         self.id = runner_id or self._next_id()
         self.outputs = outputs
-        self.selector_options = selector_options
+        self.selector_options = selector_options or {}
 
         self.env = {
             'PATH': os.getenv('PATH'),
