@@ -6,6 +6,11 @@ Changelog:
   applied conditionally to the command line when that runner is selected.
 - Added: additional environment variables can be specified in the runner
   definition and applied conditionally when that runner is selected.
+- Added: selectors can be additionally parametrized from the runner
+  config. Selector functions can take an extra *context* argument where
+  there are given the service name, list of runner names and additional
+  values associated with each runner. It allows writing reusable selectors
+  and moves constraints from code to config file.
 
 ## [0.8.3b2] - 2024-06-25
 
