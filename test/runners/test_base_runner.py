@@ -353,7 +353,7 @@ def test_start_submit_command_if_no_parameters(
     runner, job_directory, mock_submit
 ):
     assert runner.submit is mock_submit
-    mock_submit.return_value = Job("0xc0ffee", job_directory)
+    mock_submit.side_effect = lambda cmd: Job("0xc0ffee", cmd.cwd)
     runner.start({}, job_directory)
     mock_submit.assert_called_once_with(Command(["example"], job_directory))
 

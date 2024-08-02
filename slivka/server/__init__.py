@@ -13,10 +13,10 @@ except ImportError:
 class PrefixMiddleware:
     def __init__(self, wsgi_app, prefix=''):
         self.app = wsgi_app
-        if prefix and not prefix.startswith('/'):
+        if not prefix.startswith('/'):
             prefix = '/' + prefix
         self._prefix_parts = prefix.split('/')
-        self._prefix_parts[1:] = [p for p in self._prefix_parts[1:] if p]
+        if not self._prefix_parts[-1]: del self._prefix_parts[-1]
 
     def __call__(self, environ, start_response):
         PrefixMiddleware.shift_path_prefix(environ, self._prefix_parts)
@@ -26,8 +26,6 @@ class PrefixMiddleware:
     def shift_path_prefix(environ, prefix_parts):
         path_info: str = environ.get('PATH_INFO', "")
         path_parts = path_info.split('/')
-        # remove empty segments preserving leading and trailing slash
-        path_parts[1:-1] = [p for p in path_parts[1:-1] if p]
         if (len(path_parts) < len(prefix_parts) or
                 any(p1 != p2 for p1, p2 in zip(path_parts, prefix_parts))):
             return
@@ -55,7 +53,7 @@ def create_app(config: SlivkaSettings = None):
     app.register_blueprint(api_views.bp)
 
     uploads_route = config.server.uploads_path.rstrip('/') + "/<path:file_path>"
-    results_route = config.server.jobs_path.rstrip('/') + "/<job_id>/<path:file_path>"
+    results_route = config.server.jobs_path.rstrip('/') + "/<path:file_path>"
     if app.debug:
         from . import media_views
         uploads_view = media_views.serve_uploads_view

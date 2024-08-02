@@ -87,7 +87,7 @@ class FileProxy:
     def save_as(self, path, fp=None):
         """
         Saves the file at the specified location. If ``fp`` is specified it
-        will be used to write the content. Otherwise, a new file at ``path``
+        will be used as a write destination. Otherwise, a new file at ``path``
         will be created.
 
         :param path: Path to the destination file

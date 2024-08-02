@@ -7,7 +7,7 @@
       "pattern": "^\\d+(\\.\\d+){1,2}$",
       "anyOf": [
         {"const": "0.3"},
-        {"pattern": "^0\\.8(\\.[0-3])?$"}
+        {"pattern": "^0\\.8(\\.[0-5])?$"}
       ]
     },
     "directory.uploads": {

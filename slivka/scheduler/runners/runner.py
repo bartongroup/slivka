@@ -143,20 +143,19 @@ class Runner:
         return args
 
     def _prepare_job(self, inputs, cwd):
-        with contextlib.suppress(FileExistsError):
-            os.mkdir(cwd)
+        os.makedirs(cwd, exist_ok=True)
         for argument in self.arguments:
             if argument.symlink:
                 val = inputs.get(argument.id)
                 if isinstance(val, list):
                     for i, src in enumerate(val):
                         if not os.path.isfile(src):
-                            raise FileNotFoundError("file '%s' does not exist")
+                            raise FileNotFoundError("file '%s' does not exist" % src)
                         dst = self._symlink_name(argument.symlink, i)
                         _mklink(src, os.path.join(cwd, dst))
                 elif isinstance(val, str):
                     if not os.path.isfile(val):
-                        raise FileNotFoundError("file '%s' does not exist")
+                        raise FileNotFoundError("file '%s' does not exist" % val)
                     _mklink(val, os.path.join(cwd, argument.symlink))
                 # None is also an option here and should be ignored
 

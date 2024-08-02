@@ -4,8 +4,9 @@ import os.path
 import re
 import typing
 from collections.abc import Sequence
-from distutils.version import StrictVersion
 from typing import List, Dict
+
+from packaging.version import parse as parse_version
 
 from slivka.compat import resources
 from slivka.utils.env import expandvars
@@ -30,12 +31,23 @@ class ImproperlyConfigured(Exception):
     pass
 
 
-compatible_config_ver = ['0.3', '0.8', '0.8.0', '0.8.1', '0.8.2', '0.8.3']
+compatible_config_ver = [
+    "0.3",
+    "0.8",
+    "0.8.0",
+    "0.8.1",
+    "0.8.2",
+    "0.8.3",
+    "0.8.4",
+    "0.8.5",
+]
 
 
 def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     home = home or os.getenv('SLIVKA_HOME', os.getcwd())
-    if config['version'] not in compatible_config_ver:
+    home = os.path.realpath(home)
+    version = parse_version(config["version"])
+    if version.base_version not in compatible_config_ver:
         raise ImproperlyConfigured("Expected config version 0.8")
     config = flatten_mapping(config)
     config_schema = json.loads(resources.read_text(
@@ -76,6 +88,10 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
         services.append(srvc_conf)
     config = unflatten_mapping(config)
     return _deserialize(SlivkaSettings, config)
+
+
+def load_settings_0_8(config, home=None):
+    return load_settings_0_3(config, home=home)
 
 
 def _deserialize(cls, obj):
@@ -175,9 +191,10 @@ class ServiceConfig:
         applicable_runners = attrib(type=List[str])
         parameters = attrib(type=Dict[str, str], converter=_parameters_converter)
         timeout = attrib(type=int, default=None)
+        interval = attrib(type=int, default=None)
 
     id = attrib(type=str)
-    slivka_version = attr.ib(converter=StrictVersion)
+    slivka_version = attr.ib(converter=parse_version)
     name = attrib(type=str)
     description = attrib(type=str, default="")
     author = attrib(type=str, default="")
@@ -222,6 +239,7 @@ class SlivkaSettings:
         password = attrib(default=None)
         database = attrib(default="slivka")
 
+    settings_file = attrib(default=None, init=False)
     version = attrib(type=str)
     directory = attrib(type=Directory)
     server = attrib(type=Server)

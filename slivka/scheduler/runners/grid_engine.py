@@ -10,9 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Sequence, Collection
 
+from cachetools import cached, TTLCache
+
 from slivka import JobStatus
 from slivka.compat import resources
-from slivka.utils import ttl_cache
 from .runner import Runner, Job, Command
 
 log = logging.getLogger('slivka.scheduler')
@@ -50,7 +51,7 @@ _executor = ThreadPoolExecutor()
 atexit.register(_executor.shutdown)
 
 
-@ttl_cache(ttl=5)
+@cached(TTLCache(maxsize=1, ttl=5))
 def _job_stat():
     stdout = subprocess.check_output('qstat')
     return {
@@ -102,6 +103,7 @@ class GridEngineRunner(Runner):
             universal_newlines=False
         )
         proc.check_returncode()
+        _job_stat.cache_clear()
         match = _job_submitted_regex.match(proc.stdout)
         return Job(match.group(1), command.cwd)
 

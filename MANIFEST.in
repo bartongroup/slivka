@@ -8,5 +8,6 @@ include slivka/conf/*.json
 graft slivka/project_template
 include slivka/scheduler/runners/runner.sh.tpl
 include slivka/scheduler/runners/runner.bash.tpl
+include slivka/scheduler/runners/lsf-runner.bash.tpl
 
 global-exclude *.py[co]

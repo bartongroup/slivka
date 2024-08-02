@@ -8,9 +8,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence
 
+from cachetools import cached, TTLCache
+
 from slivka import JobStatus
 from slivka.compat import resources
-from slivka.utils import ttl_cache
 from ._bash_lex import bash_quote
 from .grid_engine import _StatusLetterDict
 from .runner import Runner, Job, Command
@@ -18,7 +19,6 @@ from .runner import Runner, Job, Command
 log = logging.getLogger("slivka.scheduler")
 
 _runner_bash_tpl = resources.read_text(__package__, "runner.bash.tpl")
-
 
 _status_letters = _StatusLetterDict({
     'BF': JobStatus.ERROR,
@@ -50,7 +50,7 @@ _status_letters = _StatusLetterDict({
 username = pwd.getpwuid(os.getuid()).pw_name
 
 
-@ttl_cache(ttl=5)
+@cached(TTLCache(maxsize=1, ttl=5))
 def _job_stat():
     stdout = subprocess.check_output(
         ['squeue', '--array', '--format=%i %t', '--noheader', '--states=all',
@@ -90,6 +90,7 @@ class SlurmRunner(Runner):
             encoding='ascii'
         )
         proc.check_returncode()
+        _job_stat.cache_clear()
         match = re.match(r'^(\w+)', proc.stdout)
         return Job(match.group(0), command.cwd)
 

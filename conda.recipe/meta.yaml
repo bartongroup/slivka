@@ -1,4 +1,4 @@
-{% set version="0.8.3b3" %}
+{% set version="0.8.5b0" %}
 
 package:
   name: slivka
@@ -21,27 +21,30 @@ channels:
 
 requirements:
   host:
-    - python>=3.7,<3.11
+    - python>=3.7
   run:
     - attrs>=19
+    - cachetools>=5.3.3
     - click>=7.0
     - flask>=2.0
     - frozendict>=1.2
     - jsonschema>=3.0
     - markupsafe>=1.0
     - mongomock>=3.18
+    - packaging
     - pip>=18.0
     - pymongo>=3.7
     - pytest-raises>=0.11
     - pytest>=7.4
-    - python>=3.7,<3.11
+    - python>=3.7
     - python-daemon>=3.0
     - python-dateutil>=2.8
     - pyyaml>=5.4
     - pyzmq>=19.0
+    - ruamel.yaml
     - sentinels>=1.0.0
     - simplejson>=3.16
-    - werkzeug>=1.0,<2.3.0
+    - werkzeug>=2.0
 
 tests:
   imports:

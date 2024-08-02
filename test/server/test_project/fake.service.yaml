@@ -27,6 +27,16 @@ parameters:
     default: 0.1
     required: false
 
+  choice-param:
+    type: choice
+    name: "Choice parameter"
+    description: "Description of choice parameter"
+    required: false
+    choices:
+      alpha: A
+      bravo: B
+      charlie: C
+
 command: "echo"
 
 args:

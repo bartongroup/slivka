@@ -1,5 +1,40 @@
 Changelog:
 
+## [0.8.5] - (upcoming)
+
+- Added: support for Python 3.11 and 3.12
+- Fixed: logging configuration crashing on Python 3.12.
+- Fixed: invalid file path resolution when the path contained symlinks and the
+  SLIVKA_HOME was provided explicitly.
+- Updated: transition from using *distutils* to *packaging* for package version
+  information.
+- Added: database documents tests
+- Fixed: missing status entries in job status cache for up to 5 seconds after
+  new jobs are submitted. Now, every time a new job is submitted, the cache is
+  invalidated.
+- Fixed: API responses involving result file return actual location of the
+  resource instead of the path inferred form the job id
+- Changed: the flat structire of job directories is changed into a tree with
+  each level containing four consecutive characters making the job id
+- Changed: bumped the version of werkzeug library used
+- Fixed: explicitly defined pytest.marks used in tests internally
+- Added: migration tool converting old project structure to the new one
+
+## [0.8.4] - 2024-02-05
+
+- Changed: prefix middleware no longer squashes repeating slashes.
+- Changed: prefix middleware removes single trailing slash in prefix.
+- Fixed: tests of prefix middleware.
+- Changed: the choice field only allows the keys of the `choices` mapping as
+  valid input values.
+- Changed: the JSON response for job resource contains the choice keys instead
+  of values for choice inputs.
+- Changed: name of the settings file changed to *settings.yaml* from
+  *config.yaml* in the documentation.
+- Added: Ability to run jobs with LSF workload manager.
+- Added: Interval parameter for service tests that controls the frequency with
+  which the tests are run.
+
 ## [0.8.3b3] - (upcoming)
 
 - Added: argument constants can be specified in the runner definition and

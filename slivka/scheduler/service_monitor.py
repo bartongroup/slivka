@@ -3,11 +3,9 @@ import time
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from datetime import timedelta
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import Iterator, List, Tuple
 
-import click
 import pymongo.errors
 
 from slivka import JobStatus
@@ -32,17 +30,20 @@ class ServiceTest:
     as the scheduler do.
     """
 
-    def __init__(self, runner: Runner, test_parameters: dict, timeout=900):
+    def __init__(self, runner: Runner, test_parameters: dict, timeout=900, interval=3600):
         self._runner = runner
         self._test_parameters = test_parameters
         self._timeout = timeout
+        self.interval = interval
         self._interrupt = threading.Event()
+        self.last_started = float("-inf")
 
     @property
     def runner(self):
         return self._runner
 
     def run(self, dir_name) -> ServiceTestOutcome:
+        self.last_started = time.monotonic()
         if self._interrupt.is_set():
             return ServiceTestOutcome(
                 TEST_STATUS_INTERRUPTED, message="stopped", cause=None
@@ -58,6 +59,8 @@ class ServiceTest:
             try:
                 status = self._runner.check_status(job)
             except Exception as e:
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_FAILED, message=str(e), cause=e
                 )
@@ -79,10 +82,14 @@ class ServiceTest:
                         cause=None,
                     )
             if time.monotonic() > end_time:
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_TIMEOUT, message="timeout", cause=None
                 )
             if self._interrupt.wait(2):
+                with suppress(Exception):
+                    self._runner.cancel(job)
                 return ServiceTestOutcome(
                     TEST_STATUS_INTERRUPTED,
                     message="interrupted",
@@ -100,15 +107,18 @@ class ServiceTest:
 
 
 class ServiceTestExecutorThread(threading.Thread):
-    def __init__(self, repository, interval, temp_dir, name="ServiceTestThread"):
+    def __init__(
+        self,
+        repository,
+        temp_dir,
+        *,
+        poll_interval=300,
+        name="ServiceTestThread",
+    ):
         threading.Thread.__init__(self, name=name)
-        self._interval = (
-            interval.total_seconds()
-            if isinstance(interval, timedelta)
-            else interval
-        )
         self._repository = repository
         self._dir = temp_dir
+        self._interval = poll_interval
         self._finished = threading.Event()
         self._tests: List[ServiceTest] = []
 
@@ -120,23 +130,29 @@ class ServiceTestExecutorThread(threading.Thread):
 
     def run(self):
         while not self._finished.is_set():
-            run_result = self.run_all_tests()
+            current_time = time.monotonic()
+            tests = [
+                test for test in self._tests
+                if current_time > test.last_started + test.interval
+            ]
+            run_result = self.run_tests(tests)
             with suppress(pymongo.errors.ConnectionFailure):
-                for runner, test_outcome in run_result:
+                for test, outcome in run_result:
                     info = ServiceStatusInfo(
-                        service=runner.service_name,
-                        runner=runner.name,
-                        status=test_outcome.status,
-                        message=test_outcome.message
+                        service=test.runner.service_name,
+                        runner=test.runner.name,
+                        status=outcome.status,
+                        message=outcome.message
                     )
                     self._repository.insert(info)
             self._finished.wait(self._interval)
 
-    def run_all_tests(self):
+    def run_tests(self, tests) -> Iterator[Tuple[ServiceTest, ServiceTestOutcome]]:
+        if not tests:
+            return
         with ThreadPoolExecutor(max_workers=4) as executor:
-            tests = self._tests
             outcomes = executor.map(_run_with_tempdir(self._dir), tests)
-            runners = (test.runner for test in tests)
+            tests_iter = iter(tests)
             while True:
                 try:
                     outcome = next(outcomes)
@@ -148,8 +164,11 @@ class ServiceTestExecutorThread(threading.Thread):
                         message=f"uncaught error {e!r}",
                         cause=e,
                     )
-                runner = next(runners)
-                yield runner, outcome
+                test = next(tests_iter)
+                yield test, outcome
+
+    def run_all_tests(self) -> Iterator[Tuple[ServiceTest, ServiceTestOutcome]]:
+        yield from self.run_tests(self._tests)
 
     def shutdown(self):
         self._finished.set()
@@ -159,7 +178,7 @@ class ServiceTestExecutorThread(threading.Thread):
 
 def _run_with_tempdir(parent_dir):
     def wrapper(test: ServiceTest):
-        with TemporaryDirectory(prefix='test-', dir=parent_dir) as temp_dir:
+        with TemporaryDirectory(prefix="test-", dir=parent_dir) as temp_dir:
             return test.run(temp_dir)
 
     return wrapper

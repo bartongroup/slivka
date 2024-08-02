@@ -125,7 +125,7 @@ class JobRequest(MongoDocument):
     def _set_runner(self, val): self['runner'] = val
     runner = property(_get_runner, _set_runner)
 
-    def _get_job(self): return JobRequest.Job(**self['job'])
+    def _get_job(self): return self['job'] and JobRequest.Job(**self['job'])
     def _set_job(self, val): self['job'] = val
     job = property(_get_job, _set_job)
 

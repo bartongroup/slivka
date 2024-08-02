@@ -1,8 +1,8 @@
 import base64
-from datetime import datetime
 import fnmatch
 import os.path
 import pathlib
+from datetime import datetime
 from operator import attrgetter
 from typing import Type
 
@@ -17,6 +17,7 @@ from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest, CancelRequest, UploadedFile
 from slivka.db.helpers import insert_one
 from slivka.db.repositories import ServiceStatusRepository, UsageStatsRepository
+from .forms.fields import FileField, ChoiceField
 from .forms.form import BaseForm
 
 bp = flask.Blueprint('api-v1_1', __name__, url_prefix='/api/v1.1')
@@ -145,24 +146,55 @@ def job_view(job_id, service_id=None):
 
 def _job_resource(job_request: JobRequest):
     def convert_path(value):
-        if not value:
-            return value
-        if isinstance(value, list):
-            return list(map(convert_path, value))
         if os.path.isabs(value):
             value = pathlib.Path(value)
             base_path = flask.current_app.config['uploads_dir']
             try:
                 return value.relative_to(base_path).as_posix()
             except ValueError:
-                base_path = flask.current_app.config['jobs_dir']
-                try:
-                    return value.relative_to(base_path).as_posix()
-                except ValueError:
-                    return value
+                pass
+            base_path = flask.current_app.config['jobs_dir']
+            try:
+                rel_path = value.relative_to(base_path)
+                # job id can be the first part of the path or may be split
+                # across several parts. This hack gets it from the path
+                parts = iter(rel_path.parts)
+                job_id = ''
+                while len(job_id) < 16:
+                    job_id += next(parts)
+                if len(job_id) != 16:
+                    raise ValueError
+                return f"{job_id}/{str.join('/', parts)}"
+            except ValueError:
+                return value
         return value
 
-    parameters = {key: convert_path(val) for key, val in job_request.inputs.items()}
+    def convert_choice(choices):
+        def unmap(value):
+            return next((k for k, v in choices.items() if v == value), value)
+
+        return unmap
+
+    def convert_parameter(key, val):
+        if not val:
+            return val
+        nonlocal form
+        field = form[key]
+        if isinstance(field, FileField):
+            convert = convert_path
+        elif isinstance(field, ChoiceField):
+            convert = convert_choice(field.choices)
+        else:
+            return val
+        if isinstance(val, list):
+            return list(map(convert, val))
+        return convert(val)
+
+    form: BaseForm = flask.current_app.config['forms'].get(job_request.service)
+    parameters = {
+        key: convert_parameter(key, val)
+        for key, val in job_request.inputs.items()
+    }
     return {
         '@url': url_for('.job', job_id=job_request.b64id),
         'id': job_request.b64id,
@@ -194,15 +226,7 @@ def job_files_view(job_id):
         for fn in file_names
     ]
     files = [
-        {
-            '@url': url_for('.job_file', job_id=job_id, file_path=path),
-            '@content': url_for('media.jobs', job_id=job_id, file_path=path),
-            'id': f"{job_id}/{path}",
-            'jobId': job_id,
-            'path': path,
-            'label': output.name or output.id,
-            'mediaType': output.media_type
-        }
+        _job_file_resource(job_request=req, output_def=output, rel_path=path)
         for output in service.outputs
         for path in fnmatch.filter(dir_list, output.path)
     ]
@@ -227,18 +251,35 @@ def job_file_view(job_id, file_path):
     )
     if output_file is None:
         flask.abort(404)
-    location = url_for('.job_file', job_id=job_id, file_path=file_path)
-    response = jsonify({
-        '@url': location,
-        '@content': url_for('media.jobs', job_id=job_id, file_path=file_path),
-        'id': f"{job_id}/{file_path}",
-        'jobId': job_id,
-        'path': file_path,
-        'label': output_file.name or output_file.id,
-        'mediaType': output_file.media_type
-    })
-    response.headers['Location'] = location
+
+    body = _job_file_resource(
+        job_request=req, output_def=output_file, rel_path=file_path
+    )
+    response = jsonify(body)
+    response.headers['Location'] = body["@url"]
     return response
+
+
+def _job_file_resource(job_request: JobRequest,
+                       output_def: ServiceConfig.OutputFile,
+                       rel_path: str):
+    job_id = job_request.b64id
+    resource_location = url_for(".job_file", job_id=job_id, file_path=rel_path)
+    jobs_dir = flask.current_app.config["jobs_dir"]
+    full_path = os.path.relpath(os.path.join(job_request.job.cwd, rel_path), jobs_dir)
+    if os.path.sep == "\\":
+        rel_path = rel_path.replace("\\", "/")
+        full_path = full_path.replace("\\", "/")
+    content_location = url_for("media.jobs", file_path=full_path)
+    return {
+        "@url": resource_location,
+        "@content": content_location,
+        "id": f"{job_id}/{rel_path}",
+        "jobId": job_id,
+        "path": rel_path,
+        "label": output_def.name or output_def.id,
+        "mediaType": output_def.media_type,
+    }
 
 
 @bp.route('/files', endpoint='files', methods=['POST'])
@@ -256,18 +297,11 @@ def files_view():
     file.seek(0)
     file.save(path)
     insert_one(slivka.db.database, UploadedFile(_id=oid, path=path))
-    location = url_for('.file', file_id=filename)
-    response = jsonify({
-        '@url': location,
-        '@content': url_for('media.uploads', file_path=filename),
-        'id': filename,
-        'jobId': None,
-        'path': filename,
-        'label': 'uploaded',
-        'mediaType': ""
-    })
+
+    body = _uploaded_file_resource(filename)
+    response = jsonify(body)
     response.status_code = 201
-    response.headers['Location'] = location
+    response.headers['Location'] = body["@url"]
     return response
 
 
@@ -276,18 +310,22 @@ def file_view(file_id):
     path = os.path.join(flask.current_app.config['uploads_dir'], file_id)
     if not os.path.isfile(path):
         flask.abort(404)
-    location = url_for('.file', file_id=file_id)
-    response = jsonify({
-        '@url': location,
-        '@content': url_for('media.uploads', file_path=file_id),
-        'id': file_id,
-        'jobId': None,
-        'path': file_id,
-        'label': 'uploaded',
-        'mediaType': ""
-    })
-    response.headers['Location'] = location
+    body = _uploaded_file_resource(file_id)
+    response = jsonify(body)
+    response.headers['Location'] = body["@url"]
     return response
+
+
+def _uploaded_file_resource(file_id):
+    return {
+        "@url": url_for(".file", file_id=file_id),
+        "@content": url_for("media.uploads", file_path=file_id),
+        "id": file_id,
+        "jobId": None,
+        "path": file_id,
+        "label": "uploaded",
+        "mediaType": "",
+    }
 
 
 @bp.route('/')

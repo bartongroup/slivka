@@ -571,6 +571,14 @@ and these should not be overridden in the configuration.
 
 .. _Slurm: https://slurm.schedmd.com/
 
+An ``LSFRunner` uses an LSF_ workload manager to execute jobs.  It
+wraps commands in bash scripts and submits them to LSF using a
+:program:`bsub` command.  ``LSFRunner`` accepts a single ``bsubargs``
+parameter containing a list of arguments that will be appended to the
+:program:`bsub` command.
+
+.. _LSF: https://www.ibm.com/docs/en/spectrum-lsf/
+
 Selector
 ========
 

@@ -1,4 +1,3 @@
-import datetime
 import multiprocessing
 import os
 import signal
@@ -11,6 +10,8 @@ from logging.handlers import RotatingFileHandler
 import click
 from daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
+
+import slivka.migrations.cli
 from slivka.__about__ import __version__
 from slivka.compat.contextlib import nullcontext
 from slivka.consts import ServiceStatus
@@ -56,8 +57,9 @@ def init_project(base_dir):
     click.echo("Copying files.")
     copy_project_file("manage.py")
     os.chmod(os.path.join(base_dir, "manage.py"), stat.S_IRWXU)
-    copy_project_file("settings.yaml", "config.yaml")
+    copy_project_file("settings.yaml")
     copy_project_file("wsgi.py")
+    copy_project_file("routes.py")
     copy_project_file("services/example.service.yaml")
     copy_project_file("scripts/selectors.py")
     copy_project_file("scripts/example.py")
@@ -65,6 +67,7 @@ def init_project(base_dir):
     copy_project_file("testdata/example-input.txt")
     copy_project_file("static/openapi.yaml")
     copy_project_file("static/redoc-index.html")
+    copy_project_file("templates/index.html")
     click.echo("Done.")
 
 
@@ -172,7 +175,6 @@ def start_scheduler(daemon, pid_file):
             scheduler = slivka.scheduler.Scheduler(settings.directory.jobs)
             service_monitor = ServiceTestExecutorThread(
                 ServiceStatusMongoDBRepository(),
-                interval=datetime.timedelta(hours=1),
                 temp_dir=settings.directory.jobs,
             )
             for service_config in settings.services:
@@ -184,7 +186,8 @@ def start_scheduler(daemon, pid_file):
                     ServiceTest(
                         runner=runner,
                         test_parameters=test_conf.parameters,
-                        timeout=test_conf.timeout or 900
+                        timeout=test_conf.timeout or 900,
+                        interval=test_conf.interval or 3600,
                     )
                     for runner in runners
                     for test_conf in service_config.tests
@@ -255,7 +258,6 @@ def test_services(services):
     from slivka.db.repositories import ServiceStatusMongoDBRepository
     service_monitor = ServiceTestExecutorThread(
         ServiceStatusMongoDBRepository(),
-        interval=datetime.timedelta(hours=1),
         temp_dir=settings.directory.jobs,
     )
     for service_config in settings.services:
@@ -272,7 +274,7 @@ def test_services(services):
             for test_conf in service_config.tests
             if runner.name in test_conf.applicable_runners
         )
-    for runner, outcome in service_monitor.run_all_tests():
+    for test, outcome in service_monitor.run_all_tests():
         status_text = (
             click.style("[OK]  ", fg="green")
             if outcome.status == ServiceStatus.OK
@@ -282,8 +284,11 @@ def test_services(services):
             if outcome.status == ServiceStatus.DOWN
             else click.style("[N/A] ", fg="red")
         )
-        click.echo(f"{status_text} {runner} {outcome.message}")
+        click.echo(f"{status_text} {test.runner} {outcome.message}")
         if outcome.cause is not None:
             click.echo(
                 "".join(traceback.format_exception(outcome.cause)), nl=False
             )
+
+
+main.add_command(slivka.migrations.cli.migrate)

@@ -231,6 +231,9 @@
           },
           "timeout": {
             "type": "integer"
+          },
+          "interval": {
+            "type": "integer"
           }
         },
         "required": ["applicable-runners", "parameters"],

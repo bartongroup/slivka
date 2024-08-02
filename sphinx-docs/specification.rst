@@ -14,7 +14,7 @@ New slivka projects initialized by the :program:`slivka init` command
 start with the following directory structure::
 
   <project-root>/
-  ├── config.yaml
+  ├── settings.yaml
   ├── manage.py
   ├── wsgi.py
   ├── scripts/
@@ -27,18 +27,17 @@ start with the following directory structure::
      └── redoc-index.html
 
 The topmost directory in the structure, one containing a
-:file:`config.yaml` file is a project root or project home directory.
+:file:`settings.yaml` file is a project root or project home directory.
 The collection of configuration files in that directory used by slivka
 is referred to as a slivka project. The directory contains several
 files essential for the operation of the slivka application.
 
-:config.yaml:
+:settings.yaml:
   The main configuration file required for the proper functioning of
   slivka. Typically, slivka recognises the project directory as the
   one containing this file. It can alternatively be named
-  *settings.yaml* and either *.yaml* or *.yml* extension is allowed.
-  Detailed information about the file syntax and parameters is
-  provided in the `configuration file`_ section.
+  *config.yaml*. Detailed information about the file syntax and
+  parameters is provided in the `configuration file`_ section.
 :wsgi.py:
   A python module file containing a WSGI-compatible application as
   specified by `PEP-3333`_. This file is used by a WSGI middleware to
@@ -87,7 +86,7 @@ you are an advanced user and you know what you are doing.
 Configuration file
 ==================
 
-*config.yaml* is the main configuration file of the project that
+*settings.yaml* is the main configuration file of the project that
 stores variables used across the application. The properties in the
 file can be structured as a tree or a flat mapping as shown in the
 following snippets. Both forms are equivalent.
@@ -665,7 +664,8 @@ properties:
   built-in runners or a path to the custom class implementing Runner
   interface. Creating custom runners will be covered in the advanced
   usage guide. Available Built-in runners are ``ShellRunner``,
-  ``SlivkaQueueRunner``, ``GridEngineRunner`` and ``SlurmRunner``.
+  ``SlivkaQueueRunner``, ``GridEngineRunner``, ``SlurmRunner``,
+  and ``LSFRunner``.
 
 :*parameters*:
   Extra parameters that will be passed to the runner's constructor
@@ -732,8 +732,26 @@ properties:
   .. versionadded:: 0.8.1b0
     Introduced Slurm runner
 
+- ``LSFRunner` uses the third-party `IBM Spectrum LSF`_ to run jobs
+  via the :program:`bsub` command.  This solution allows many jobs to
+  be run on large compute clusters.  It requires LSF to be installed on
+  your system.
+
+  Parameters:
+
+  :*bsubargs*:
+    List of arguments appended to the :program:bsub: command that control
+    execution parameters.  The runner always provides ``-o`` and ``-e``
+    arguments, which should not be overridden.  The arguments can be 
+    provided as an array of strings or as a string, in which case they
+    will be split with :py:func:`shelx.split`.
+
+  .. versionadded:: 0.8.3b0
+    Introduced LSF runner
+
 .. _`Altair Grid Engine`: https://www.altair.com/grid-engine
 .. _`Slurm Workload Manager`: https://slurm.schedmd.com/
+.. _`IBM Spectrum LSF`: https://www.ibm.com/docs/en/spectrum-lsf/
 
 Selector
 ========
