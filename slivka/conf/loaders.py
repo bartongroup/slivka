@@ -63,7 +63,7 @@ def load_settings_0_3(config, home=None) -> 'SlivkaSettings':
     config['directory.home'] = os.path.abspath(home)
     for key, value in config.items():
         if key.startswith('directory.'):
-            path = os.path.normpath(os.path.join(home, value))
+            path = os.path.realpath(os.path.join(home, value))
             config[key] = path
 
     service_schema = json.loads(resources.read_text(
