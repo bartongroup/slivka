@@ -21,6 +21,7 @@ channels:
 
 requirements:
   host:
+    - setuptools
     - python>=3.7
   run:
     - attrs>=19
