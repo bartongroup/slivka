@@ -2,7 +2,7 @@ Changelog:
 
 ## [0.8.5] - (upcoming)
 
-- Added: support for Python 3.11 and 3.12
+- Added: support for Python 3.11, 3.12 and 3.13
 - Fixed: logging configuration crashing on Python 3.12.
 - Fixed: invalid file path resolution when the path contained symlinks and the
   SLIVKA_HOME was provided explicitly.
