@@ -36,7 +36,7 @@ def test_directory_migration(slivka_home, database, job_requests):
     ))
     expected_wds = [
         str(slivka_home / "jobs" / item)
-        for item in ["ZmLs/pcnT/Mnyl/-y2B", "ZmLw/rcnT/Mnyl/-y2C"]
+        for item in ["2B/-y/ZmLspcnTMnyl", "2C/-y/ZmLwrcnTMnyl"]
     ]
     for request, expected_wd in zip(requests, expected_wds):
         assert request['job']['work_dir'] == expected_wd

@@ -5,8 +5,10 @@ import ruamel.yaml
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
+from slivka.utils.path import request_id_to_job_path
+
 name = "Nested job directory structure"
-applicable_versions = SpecifierSet("<=0.8.4", prereleases=True)
+from_versions = SpecifierSet("<=0.8.4", prereleases=True)
 to_version = Version("0.8.5")
 
 
@@ -24,7 +26,7 @@ def apply():
             print(f"Missing directory of job {request.b64id}. Skipping.")
             continue
         new_wd = os.path.abspath(
-            slivka.scheduler.scheduler._create_job_path(jobs_directory, request)
+            request_id_to_job_path(jobs_directory, request.b64id)
         )
         requests_collection.update_one(
             {"_id": request['_id']},
