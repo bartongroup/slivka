@@ -1,6 +1,10 @@
 Changelog:
 
-## [0.8.3b3] - (upcoming)
+## [0.8.3b4]
+
+- Fixed: added missing --threads arguments to the example script
+
+## [0.8.3b3] - 2024-08-08
 
 - Added: argument constants can be specified in the runner definition and
   applied conditionally to the command line when that runner is selected.
