@@ -432,14 +432,20 @@ def output_directory_factory(jobs_directory):
     scope="class",
     params=[
         (ObjectId("662a49a5f7e1108a2a260877"), "ZipJpffhEIoqJgh3"),
-        (ObjectId("662a49a5f7e1108a2a260877"), "ZipJ/pffh/EIoq/Jgh3"),
+        (ObjectId("662a49a5f7e1108a2a260877"), "h3/Jg/ZipJpffhEIoq"),
+        (ObjectId('6718f583e07eff184c688fdb'), "Zxj1g-B-_xhMaI_b"),
+        (ObjectId('6718f583e07eff184c688fdb'), "_b/aI/Zxj1g-B-_xhM"),
+        pytest.param(
+            (ObjectId("662a49a5f7e1108a2a260877"), "ZipJ/pffh/EIoq/Jgh3"),
+            marks=[pytest.mark.xfail(reason="current format has parts backwards")]
+        ),
         pytest.param(
             (ObjectId("662a49a5f7e1108a2a260877"), "AsfTSbcDEIoqJgh3"),
             marks=[pytest.mark.xfail(reason="arbitrary paths not supported")],
         ),
         pytest.param(
             (ObjectId("662a49a5f7e1108a2a260877"), "arbitrary/dir"),
-            marks=[pytest.mark.xfail(reason="arbitrary paths not supported")],
+            marks=[pytest.mark.xfail(reason="arbitrary paths not supported")]
         ),
     ],
 )

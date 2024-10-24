@@ -15,7 +15,8 @@ Changelog:
 - Fixed: API responses involving result file return actual location of the
   resource instead of the path inferred form the job id
 - Changed: the flat structire of job directories is changed into a tree with
-  each level containing four consecutive characters making the job id
+  the first two levels consisting of the counter part of the object id and
+  the last level of the remaining part.
 - Changed: bumped the version of werkzeug library used
 - Fixed: explicitly defined pytest.marks used in tests internally
 - Added: migration tool converting old project structure to the new one
@@ -35,7 +36,7 @@ Changelog:
 - Added: Interval parameter for service tests that controls the frequency with
   which the tests are run.
 
-## [0.8.3b3] - (upcoming)
+## [0.8.3b3] - 2024-08-08
 
 - Added: argument constants can be specified in the runner definition and
   applied conditionally to the command line when that runner is selected.

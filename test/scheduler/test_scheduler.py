@@ -182,9 +182,8 @@ def test_start_request_job_directory_is_job_id(
         [Job("%04x" % i, cwd) for i, cwd in enumerate(cwds)]
     )
     scheduler._start_requests(runner, requests)
-    request_id = requests[0].b64id
-    path = [request_id[i:i+4] for i in range(0, len(request_id), 4)]
-    path = os.path.join(job_directory, *path)
+    req_id = requests[0].b64id
+    path = os.path.join(job_directory, req_id[-2:], req_id[-4:-2], req_id[:-4])
     mock_batch_start.assert_called_with(
         [{"input": "val0"}],
         [path]

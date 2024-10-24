@@ -20,6 +20,7 @@ from slivka.utils import JobStatus, BackoffCounter
 from slivka.utils import retry_call
 from .runners import Job as JobTuple
 from .runners.runner import RunnerID, Runner
+from ..utils.path import request_id_to_job_path
 
 
 def get_classpath(cls):
@@ -272,7 +273,7 @@ class Scheduler:
         try:
             jobs = runner.batch_start(
                 [req.inputs for req in requests],
-                [_create_job_path(self.jobs_directory, req) for req in requests]
+                [request_id_to_job_path(self.jobs_directory, req.b64id) for req in requests]
             )
             return zip(requests, jobs)
         except Exception as e:
@@ -397,13 +398,6 @@ def _fetch_requests_for_status(database, filter):
             'requests': {'$push': '$$CURRENT'}
         }}
     ]))
-
-
-def _create_job_path(base_path: str, request: JobRequest) -> str:
-    chunk_size = 4
-    job_id = request.b64id
-    chunks = [job_id[i:i + chunk_size] for i in range(0, len(job_id), chunk_size)]
-    return os.path.join(base_path, *chunks)
 
 
 class IntervalThread(threading.Thread):

@@ -17,6 +17,7 @@ from slivka.conf import ServiceConfig
 from slivka.db.documents import JobRequest, CancelRequest, UploadedFile
 from slivka.db.helpers import insert_one
 from slivka.db.repositories import ServiceStatusRepository, UsageStatsRepository
+from slivka.utils.path import *
 from .forms.fields import FileField, ChoiceField
 from .forms.form import BaseForm
 
@@ -147,24 +148,15 @@ def job_view(job_id, service_id=None):
 def _job_resource(job_request: JobRequest):
     def convert_path(value):
         if os.path.isabs(value):
-            value = pathlib.Path(value)
+            path = pathlib.Path(value)
             base_path = flask.current_app.config['uploads_dir']
             try:
-                return value.relative_to(base_path).as_posix()
+                return path.relative_to(base_path).as_posix()
             except ValueError:
                 pass
             base_path = flask.current_app.config['jobs_dir']
             try:
-                rel_path = value.relative_to(base_path)
-                # job id can be the first part of the path or may be split
-                # across several parts. This hack gets it from the path
-                parts = iter(rel_path.parts)
-                job_id = ''
-                while len(job_id) < 16:
-                    job_id += next(parts)
-                if len(job_id) != 16:
-                    raise ValueError
-                return f"{job_id}/{str.join('/', parts)}"
+                return job_file_path_to_file_id(base_path, path)
             except ValueError:
                 return value
         return value

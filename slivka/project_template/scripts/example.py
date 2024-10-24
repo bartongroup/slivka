@@ -14,16 +14,18 @@ parser.add_argument('--rep', )
 parser.add_argument('--delay', metavar='SECONDS', type=int, default=0)
 parser.add_argument('--letter', metavar='LETTER', choices='ABCD')
 parser.add_argument('--flag', action='store_true')
+parser.add_argument('--threads', metavar='THREADS', type=int, default=1)
 parser.add_argument('arg')
 args = parser.parse_args()
 
+print(f"INFO: Pretending to run using {args.threads} threads", file=sys.stderr)
 line = "\n"
 if args.infile:
     print(f"reading from file {args.infile}")
     try:
         line = next(open(args.infile))
     except StopIteration:
-        print("Input file is empty", file=sys.stderr)
+        print("ERROR: Input file is empty", file=sys.stderr)
 with open('output.txt', 'w') as f:
     f.write(line)
 
