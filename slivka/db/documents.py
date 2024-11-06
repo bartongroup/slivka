@@ -3,7 +3,7 @@ import os
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from datetime import datetime
 
-import pymongo
+import pymongo.collection
 from bson import ObjectId
 
 from slivka import JobStatus, consts
