@@ -10,12 +10,12 @@ log = logging.getLogger('slivka.scheduler')
 
 
 class ShellRunner(Runner):
-    """ Implementation of the :py:class:`Runner` for shell.
+    """ Implementation of the :py:class:`Runner` using subprocesses.
 
     This is the most primitive approach that runs the job
-    in a new shell process. Useful, if you are handling
+    as a subprocess. Useful, if you are handling
     very few jobs and want to run them on the same system as
-    the server with minimal overhead and no queueing system.
+    the scheduler with minimal overhead and no queueing system.
 
     The number of processes running simultaneously is not controlled
     so care must be taken not to exhaust all system resources.
@@ -32,7 +32,7 @@ class ShellRunner(Runner):
             stderr=open(os.path.join(command.cwd, 'stderr'), 'wb'),
             cwd=command.cwd,
             env=self.env,
-            shell=True
+            shell=False
         )
         self.procs[proc.pid] = proc
         return Job(proc.pid, command.cwd)
