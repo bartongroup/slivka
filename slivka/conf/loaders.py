@@ -12,7 +12,9 @@ from jsonschema.validators import Draft202012Validator
 from packaging.version import parse as parse_version
 
 from slivka.compat import resources
-from slivka.utils.env import expandvars
+
+from . import service_loader
+from .service_loader import ServiceConfig, ServiceConfigError
 
 try:
     from typing import get_origin, get_args
@@ -24,7 +26,6 @@ import attr
 import jsonschema
 import yaml
 from attr import attrs, attrib
-from frozendict import frozendict
 from jsonschema import Draft7Validator
 
 from slivka.utils import ConfigYamlLoader, flatten_mapping, unflatten_mapping
@@ -194,9 +195,6 @@ class SettingsLoader_0_8_5b5:
             if key.startswith("directory."):
                 config[key] = os.path.realpath(os.path.join(home, value))
 
-        service_schema = json.load(resources.open_text(
-            "slivka.conf", "service-schema.json"
-        ))
         services_dir = config["directory.services"]
         services = config['services'] = []
         for fn in os.listdir(services_dir):
@@ -204,17 +202,13 @@ class SettingsLoader_0_8_5b5:
             if not fnmatch:
                 continue
             fn = os.path.join(services_dir, fn)
-            srvc_conf = yaml.load(open(fn), ConfigYamlLoader)
             try:
-                jsonschema.validate(srvc_conf, service_schema, Draft7Validator)
-            except jsonschema.ValidationError as e:
+                service_config = service_loader.read_yaml(fn)
+            except ServiceConfigError as e:
                 raise ImproperlyConfigured(
-                    'Error in file "{file}" at \'{path}\'. {reason}'.format(
-                        file=fn, path='/'.join(map(str, e.path)), reason=e.message
-                    )
+                    f"Error in file '{fn}' at '{e.path_string}': {e.message}"
                 )
-            srvc_conf['id'] = fnmatch.group(1)
-            services.append(srvc_conf)
+            services.append(service_config)
         config = unflatten_mapping(config)
         return _deserialize(SlivkaSettings, config)
 
@@ -267,76 +261,6 @@ def _build_mongodb_uri(
         else:
             query = urlencode(options)
     return urlunsplit((scheme, authority, "", query, ""))
-
-
-def _parameters_converter(parameters: dict):
-    converted = {}
-    for key, val in parameters.items():
-        if isinstance(val, str):
-            converted[key] = expandvars(val)
-        elif isinstance(val, list):
-            converted[key] = [expandvars(v) for v in val]
-        else:
-            raise ValueError(
-                "Invalid parameter type %r. Only list or str are allowed"
-                % type(val)
-            )
-    return converted
-
-
-@attrs(kw_only=True)
-class ServiceConfig:
-    @attrs
-    class Argument:
-        id = attrib(type=str)
-        arg = attrib(type=str)
-        symlink = attrib(type=str, default=None)
-        default = attrib(type=str, default=None)
-        join = attrib(type=str, default=None)
-
-    @attrs
-    class OutputFile:
-        id = attrib(type=str)
-        path = attrib(type=str)
-        name = attrib(type=str, default="")
-        media_type = attrib(type=str, default="")
-
-    @attrs
-    class Execution:
-        @attrs
-        class Runner:
-            id = attr.ib(type=str)
-            type = attr.ib(type=str)
-            parameters = attr.ib(type=dict, factory=dict)
-            consts = attr.ib(type=dict, factory=dict)
-            env = attr.ib(type=dict, factory=dict)
-            selector_options = attr.ib(type=dict, factory=dict)
-
-        runners = attr.ib(type=Dict[str, Runner])
-        selector = attr.ib(type=str, default=None)
-
-    @attrs
-    class ServiceTest:
-        applicable_runners = attrib(type=List[str])
-        parameters = attrib(type=Dict[str, str], converter=_parameters_converter)
-        timeout = attrib(type=int, default=None)
-        interval = attrib(type=int, default=None)
-
-    id = attrib(type=str)
-    slivka_version = attr.ib(converter=parse_version)
-    name = attrib(type=str)
-    description = attrib(type=str, default="")
-    author = attrib(type=str, default="")
-    version = attrib(type=str, default="")
-    license = attrib(type=str, default="")
-    classifiers = attrib(type=List[str], factory=list)
-    parameters = attrib(type=dict, converter=frozendict)
-    command = attrib()
-    args = attrib(type=List[Argument])
-    env = attrib(type=Dict[str, str], converter=frozendict, factory=dict)
-    outputs = attrib(type=List[OutputFile])
-    execution = attrib(type=Execution)
-    tests = attrib(type=List[ServiceTest], factory=list)
 
 
 @attrs(kw_only=True)
