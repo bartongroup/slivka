@@ -36,11 +36,17 @@ class ServiceYAMLLoader(ruamel.yaml.YAML):
         root_path = os.path.realpath(
             os.path.dirname(loader.reader.name) if loader.reader.name else os.getcwd()
         )
-        file_name = constructor.construct_scalar(node)
+        value = constructor.construct_scalar(node)
+        # value can be either <file> or <file>::<node_path>
+        value = value.split("::", maxsplit=1)
+        file_name, node_path = value if len(value) == 2 else (value[0], "/")
         file_path = os.path.join(root_path, file_name)
-        yaml = type(loader)(typ=loader.typ, pure=loader.pure)
+        yaml_loader = type(loader)(typ=loader.typ, pure=loader.pure)
         with open(file_path, "r") as f:
-            return yaml.load(f)
+            obj = yaml_loader.load(f)
+        for key in filter(None, node_path.split("/")):
+            obj = obj[key]
+        return obj
 
 
 def read_yaml(path):
