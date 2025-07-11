@@ -339,7 +339,7 @@ def job_requests(request, database):
                         "id": "Z5oiTQoaTox_k8PF",
                         "service": "test0",
                         "parameters": {},
-                        "submissionTime": "2025-01-20T20:10:00",
+                        "submissionTime": datetime(2025, 1, 20, 20, 10, tzinfo=timezone.utc).astimezone().isoformat(),
                         "completionTime": None,
                         "finished": True,
                         "status": "FAILED"
@@ -349,7 +349,7 @@ def job_requests(request, database):
                         "id": "Z5oiTQoaTox_k8PD",
                         "service": "test0",
                         "parameters": {},
-                        "submissionTime": "2025-01-20T20:00:00",
+                        "submissionTime": datetime(2025, 1, 20, 20, 0, tzinfo=timezone.utc).astimezone().isoformat(),
                         "completionTime": None,
                         "finished": True,
                         "status": "COMPLETED"
@@ -359,7 +359,7 @@ def job_requests(request, database):
                         "id": "Z5oiTQoaTox_k8PC",
                         "service": "test0",
                         "parameters": {},
-                        "submissionTime": "2025-01-20T19:30:00",
+                        "submissionTime": datetime(2025, 1, 20, 19, 30, tzinfo=timezone.utc).astimezone().isoformat(),
                         "completionTime": None,
                         "finished": True,
                         "status": "COMPLETED"
@@ -369,7 +369,7 @@ def job_requests(request, database):
                         "id": "Z5oiTQoaTox_k8PB",
                         "service": "test0",
                         "parameters": {},
-                        "submissionTime": "2025-01-20T19:00:00",
+                        "submissionTime": datetime(2025, 1, 20, 19, 0, tzinfo=timezone.utc).astimezone().isoformat(),
                         "completionTime": None,
                         "finished": True,
                         "status": "COMPLETED"
@@ -388,7 +388,7 @@ def job_requests(request, database):
                         "id": "Z5oiTQoaTox_k8PE",
                         "service": "test1",
                         "parameters": {},
-                        "submissionTime": "2025-01-20T20:10:00",
+                        "submissionTime": datetime(2025, 1, 20, 20, 10, tzinfo=timezone.utc).astimezone().isoformat(),
                         "completionTime": None,
                         "finished": True,
                         "status": "FAILED"
