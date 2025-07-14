@@ -1,5 +1,10 @@
 Changelog:
 
+## [0.8.5b7]
+- Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.
+- Fixed: disallow absolute paths and references to parent directories in uploaded file names.
+- Fixed: make sure input files are staged in the working directory specific to the job.
+
 ## [0.8.5b6]
 
 - Added: you can use $(filename), $(filename.stem) and $(filename.ext)
