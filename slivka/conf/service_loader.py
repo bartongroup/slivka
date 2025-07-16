@@ -95,8 +95,8 @@ def read_dict(service_id, config_dict) -> 'ServiceConfig':
 
     if "tests" in config_dict:
         kwargs["tests"] = [
-            _parse_attrs_dict(ServiceConfig.ServiceTest, key, val)
-            for key, val in config_dict["tests"].items()
+            _parse_attrs_dict(ServiceConfig.ServiceTest, None, val)
+            for val in config_dict["tests"]
         ]
 
     return _parse_attrs_dict(ServiceConfig, service_id, kwargs)
