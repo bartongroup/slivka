@@ -1,7 +1,6 @@
 import os.path
 import sys
 from base64 import urlsafe_b64encode
-from pathlib import Path
 from typing import List, Tuple, Iterable
 
 import bson
@@ -19,7 +18,7 @@ def apply(database: pymongo.database.Database, jobs_top_dir: str):
     moved_dirs = move_job_directories(requests_collection, jobs_top_dir)
     temp_symlinks = []
     for old, new in moved_dirs:
-        os.symlink(new, old)
+        os.symlink(new, old, target_is_directory=True)
         temp_symlinks.append(old)
     normalize_file_inputs(requests_collection, jobs_top_dir)
     normalize_symlinks(jobs_top_dir)
@@ -27,19 +26,18 @@ def apply(database: pymongo.database.Database, jobs_top_dir: str):
         os.unlink(link)
 
 
-def move_job_directories(requests_collection: pymongo.database.Collection, jobs_top_dir: str) -> Iterable[Tuple[Path, Path]]:
+def move_job_directories(requests_collection: pymongo.database.Collection, jobs_top_dir: str) -> Iterable[Tuple[str, str]]:
     """Moves job directories and updates the database accordingly.
 
     :return: list of old and new location pairs"""
     for request in requests_collection.find({"job.work_dir": {"$exists": True}}):
-        old_wd = Path(request['job']['work_dir'])
+        old_wd = request['job']['work_dir']
         new_wd = make_job_path(jobs_top_dir, request['_id'])
         try:
-            new_wd = move_directory(old_wd, new_wd)
+            move_directory(old_wd, new_wd)
         except FileNotFoundError:
             print(f"File not found: {old_wd}", file=sys.stderr)
             continue
-        old_wd.symlink_to(new_wd, target_is_directory=True)
         requests_collection.update_one(
             {"_id": request['_id']},
             {"$set": {"job.work_dir": new_wd}}
@@ -47,12 +45,12 @@ def move_job_directories(requests_collection: pymongo.database.Collection, jobs_
         yield old_wd, new_wd
 
 
-def move_directory(old_wd: Path, new_wd: str):
+def move_directory(old_wd: str, new_wd: str):
     """Moves directory tree to a new location?"""
-    if not old_wd.is_dir():
+    if not os.path.isdir(old_wd):
         raise FileNotFoundError(str(old_wd))
     os.makedirs(new_wd)
-    return old_wd.replace(new_wd)
+    os.replace(old_wd, new_wd)
 
 
 def make_job_path(base_path, object_id: bson.ObjectId) -> str:
@@ -69,7 +67,7 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
     `jobs_top_dir` to point to their real locations.
     """
     for request in requests_collection.find():
-        for name, value in request['inputs']:
+        for name, value in request['inputs'].items():
             if not value.startswith(jobs_top_dir):
                 continue
             new_value = os.path.realpath(value)
@@ -95,33 +93,3 @@ def normalize_symlinks(top: str):
         os.symlink(os.path.realpath(link), temp_name)
         os.replace(temp_name, link)
 
-
-def apply():
-    import slivka.db
-    import slivka.db.documents
-    import slivka.conf
-    import slivka.scheduler.scheduler
-    requests_collection = slivka.db.database['requests']
-    jobs_directory = slivka.conf.settings.directory.jobs
-    for request in requests_collection.find():
-        request = slivka.db.documents.JobRequest(**request)
-        old_wd = pathlib.Path(request.job.work_dir)
-        if not old_wd.is_dir():
-            print(f"Missing directory of job {request.b64id}. Skipping.")
-            continue
-        new_wd = os.path.abspath(
-            request_id_to_job_path(jobs_directory, request.b64id)
-        )
-        requests_collection.update_one(
-            {"_id": request['_id']},
-            {"$set": {"job.work_dir": new_wd}}
-        )
-        os.makedirs(new_wd)
-        old_wd.replace(new_wd)
-    if slivka.conf.settings.settings_file:
-        yaml = ruamel.yaml.YAML()
-        with open(slivka.conf.settings.settings_file) as f:
-            settings = yaml.load(f)
-        settings["version"] = "0.8.5b1"
-        with open(slivka.conf.settings.settings_file, "w") as f:
-            yaml.dump(settings, f)
