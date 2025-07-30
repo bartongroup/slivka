@@ -15,7 +15,7 @@ from slivka.compat.resources import open_binary
 def mongo_client():
     slivka.db.mongo = mongomock.MongoClient()
     # uncomment the following line to use real mongodb in tests
-    slivka.db.mongo = pymongo.MongoClient()
+    # slivka.db.mongo = pymongo.MongoClient()
     with slivka.db.mongo as client:
         yield client
     del slivka.db.mongo

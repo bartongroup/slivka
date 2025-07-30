@@ -7,11 +7,17 @@ parameters:
     type: text
     name: Text
     required: no
+  infile:
+    type: file
+    name: File
+    required: no
 
 command: echo
 
 args:
   text:
+    arg: $(value)
+  infile:
     arg: $(value)
 
 outputs:

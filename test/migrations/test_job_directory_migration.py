@@ -1,3 +1,4 @@
+import os
 import shutil
 from importlib import resources
 
@@ -8,14 +9,14 @@ from bson import ObjectId
 import slivka.migrations.migration_1
 
 
-@pytest.fixture(autouse=True)
-def project_files(slivka_home):
-    traversable = resources.files(__package__) / '0.8.5-flat-directory-project'
+@pytest.fixture(scope="class")
+def project_files(request, slivka_home):
+    traversable = request.param
     with resources.as_file(traversable) as path:
         shutil.copytree(path, slivka_home, dirs_exist_ok=True)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def job_requests(slivka_home, database):
     resource_location = (
             resources.files(__package__) /
@@ -28,16 +29,30 @@ def job_requests(slivka_home, database):
     return database['requests'].insert_many(requests)
 
 
-# WARNING! slivka_home has module scope. multiple tests may conflict
-def test_directory_migration(slivka_home, database, job_requests):
-    slivka.migrations.migration_1.apply()
-    requests = list(database['requests'].find(
-        {'_id': {"$in": job_requests.inserted_ids}}
-    ))
-    expected_wds = [
-        str(slivka_home / "jobs" / item)
-        for item in ["2B/-y/ZmLspcnTMnyl", "2C/-y/ZmLwrcnTMnyl"]
-    ]
-    for request, expected_wd in zip(requests, expected_wds):
-        assert request['job']['work_dir'] == expected_wd
-        assert (slivka_home / "jobs" / expected_wd).is_dir()
+
+@pytest.mark.parametrize(
+    'project_files',
+    [
+        resources.files(__package__) / '0.8.5-flat-directory-project',
+    ],
+    indirect=['project_files']
+)
+@pytest.mark.usefixtures('job_requests')
+class TestApplyMigration:
+    @pytest.fixture(scope="class", autouse=True)
+    def run_migration(self, slivka_home, database):
+        slivka.migrations.migration_1.apply(database, str(slivka_home / "jobs"))
+
+    def test_directory_moved(self, slivka_home):
+        assert (slivka_home / "jobs" / "AA" / "AA" / "AAAAAAAAAAAA").is_dir()
+        assert (slivka_home / "jobs" / "AB" / "AA" / "AAAAAAAAAAAA").is_dir()
+
+    def test_files_moved(self, slivka_home):
+        assert (slivka_home / "jobs" / "AA" / "AA" / "AAAAAAAAAAAA" / "stdout").is_file()
+        assert (slivka_home / "jobs" / "AB" / "AA" / "AAAAAAAAAAAA" / "stdout").is_file()
+
+    def test_work_dir_updated(self, database, slivka_home, job_requests):
+        request_0 = database['requests'].find_one({'_id': ObjectId('000000000000000000000000')})
+        assert request_0['job']['work_dir'] == str(slivka_home / 'jobs' / 'AA' / 'AA' / 'AAAAAAAAAAAA')
+        request_1 = database['requests'].find_one({'_id': ObjectId('000000000000000000000001')})
+        assert request_1['job']['work_dir'] == str(slivka_home / 'jobs' / 'AB' / 'AA' / 'AAAAAAAAAAAA')
