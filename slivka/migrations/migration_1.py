@@ -4,9 +4,12 @@ from base64 import urlsafe_b64encode
 from typing import List, Tuple, Iterable
 
 import bson
+import click
 import pymongo.database
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
+from pymongo import MongoClient
+from ruamel.yaml import YAML
 
 name = "Nested job directory structure"
 from_versions = SpecifierSet("<0.8.5b1", prereleases=True)
@@ -93,3 +96,68 @@ def normalize_symlinks(top: str):
         os.symlink(os.path.realpath(link), temp_name)
         os.replace(temp_name, link)
 
+
+@click.command(
+    short_help=f"(ver. {to_version}) {name}"
+)
+@click.argument(
+    "mongodb-uri",
+    envvar=["SLIVKA_MONGODB_URI", "MONGODB_URI"],
+    metavar="CONNECTION_STRING"
+)
+@click.argument(
+    "database",
+    envvar=["SLIVKA_MONGODB_DATABASE", "MONGODB_DATABASE"],
+    metavar="DATABASE"
+)
+@click.option(
+    "--slivka-home",
+    envvar=["SLIVKA_HOME"],
+    metavar="SLIVKA_HOME",
+    help="Directory containing slivka config file.",
+    show_default="current directory"
+)
+@click.option(
+    "--jobs-dir",
+    metavar="DIR",
+    help="Specify jobs directory other than the default."
+)
+def command(mongodb_uri, database, slivka_home, jobs_dir):
+    """Introduce two extra levels to jobs directory hierarchy.
+
+    This migration reorganises job file directories to avoid a single
+    directory with a massive number of subdirectories and updates the
+    database entries accordingly. Instead of a single directory named
+    after the jobs id, like `/jobs/12345678ABCD`, the new structure
+    introduces two additional levels. The additional levels are named
+    using the last four letters of the ID, two characters each, like
+    `jobs/CD/AB/12345678`.
+
+    Specify the mongodb server with CONNECTION_STRING and the database
+    name with DATABASE arguments.
+    """
+    mongo = MongoClient(mongodb_uri)
+    if jobs_dir is None:
+        if slivka_home is None: slivka_home = os.getcwd()
+        fnames = ['settings.yaml', 'settings.yml', 'conf.yaml', 'conf.yml']
+        paths = (os.path.join(slivka_home, fn) for fn in fnames)
+        try:
+            config_path = next(filter(os.path.isfile, paths))
+        except StopIteration:
+            raise click.Abort(f"Configuration not found in {slivka_home}")
+        yaml = YAML(typ="safe")
+        config = yaml.load(open(config_path, 'r'))
+        slivka_home = (
+            config.get('directory.home') or
+            config.get('directory', {}).get('home') or
+            slivka_home
+        )
+        jobs_dir = (
+            config.get('directory.jobs') or
+            config.get('directory', {}).get('jobs')
+        )
+        jobs_dir = os.path.join(slivka_home, jobs_dir)
+    apply(database=mongo[database], jobs_top_dir=jobs_dir)
+
+if __name__ == '__main__':
+    command()
