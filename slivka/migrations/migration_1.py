@@ -11,7 +11,7 @@ from packaging.version import Version
 from pymongo import MongoClient
 from ruamel.yaml import YAML
 
-name = "Nested job directory structure"
+name = "Nested job directory structure."
 from_versions = SpecifierSet("<0.8.5b1", prereleases=True)
 to_version = Version("0.8.5b1")
 
@@ -98,6 +98,7 @@ def normalize_symlinks(top: str):
 
 
 @click.command(
+    "1-nested-job-dirs",
     short_help=f"(ver. {to_version}) {name}"
 )
 @click.argument(

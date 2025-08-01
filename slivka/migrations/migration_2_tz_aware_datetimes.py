@@ -34,6 +34,7 @@ def apply(database, from_tz=None):
 
 
 @click.command(
+    "2-tz-aware-timestamps",
     short_help=f"(ver. {to_version}) {name}",
 )
 @click.option(

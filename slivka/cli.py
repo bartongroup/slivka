@@ -327,4 +327,4 @@ def validate(home):
         runners_from_config(service, files_repository=files_repository)
 
 
-main.add_command(slivka.migrations.cli.migrate)
+main.add_command(slivka.migrations.cli.migration_cli)
