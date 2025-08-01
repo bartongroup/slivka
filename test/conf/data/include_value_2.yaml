@@ -1,0 +1,2 @@
+key1: !include "external_2.yaml::profile-x/key1"
+key2: !include "external_2.yaml::profile-y/key2"

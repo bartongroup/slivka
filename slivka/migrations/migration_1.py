@@ -1,43 +1,164 @@
 import os.path
-import pathlib
+import sys
+from base64 import urlsafe_b64encode
+from typing import List, Tuple, Iterable
 
-import ruamel.yaml
+import bson
+import click
+import pymongo.database
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
+from pymongo import MongoClient
+from ruamel.yaml import YAML
 
-from slivka.utils.path import request_id_to_job_path
-
-name = "Nested job directory structure"
+name = "Nested job directory structure."
 from_versions = SpecifierSet("<0.8.5b1", prereleases=True)
 to_version = Version("0.8.5b1")
 
 
-def apply():
-    import slivka.db
-    import slivka.db.documents
-    import slivka.conf
-    import slivka.scheduler.scheduler
-    requests_collection = slivka.db.database['requests']
-    jobs_directory = slivka.conf.settings.directory.jobs
-    for request in requests_collection.find():
-        request = slivka.db.documents.JobRequest(**request)
-        old_wd = pathlib.Path(request.job.work_dir)
-        if not old_wd.is_dir():
-            print(f"Missing directory of job {request.b64id}. Skipping.")
+def apply(database: pymongo.database.Database, jobs_top_dir: str):
+    requests_collection = database['requests']
+    moved_dirs = move_job_directories(requests_collection, jobs_top_dir)
+    temp_symlinks = []
+    for old, new in moved_dirs:
+        os.symlink(new, old, target_is_directory=True)
+        temp_symlinks.append(old)
+    normalize_file_inputs(requests_collection, jobs_top_dir)
+    normalize_symlinks(jobs_top_dir)
+    for link in temp_symlinks:
+        os.unlink(link)
+
+
+def move_job_directories(requests_collection: pymongo.database.Collection, jobs_top_dir: str) -> Iterable[Tuple[str, str]]:
+    """Moves job directories and updates the database accordingly.
+
+    :return: list of old and new location pairs"""
+    for request in requests_collection.find({"job.work_dir": {"$exists": True}}):
+        old_wd = request['job']['work_dir']
+        new_wd = make_job_path(jobs_top_dir, request['_id'])
+        try:
+            move_directory(old_wd, new_wd)
+        except FileNotFoundError:
+            print(f"File not found: {old_wd}", file=sys.stderr)
             continue
-        new_wd = os.path.abspath(
-            request_id_to_job_path(jobs_directory, request.b64id)
-        )
         requests_collection.update_one(
             {"_id": request['_id']},
             {"$set": {"job.work_dir": new_wd}}
         )
-        os.makedirs(new_wd)
-        old_wd.replace(new_wd)
-    if slivka.conf.settings.settings_file:
-        yaml = ruamel.yaml.YAML()
-        with open(slivka.conf.settings.settings_file) as f:
-            settings = yaml.load(f)
-        settings["version"] = "0.8.5b1"
-        with open(slivka.conf.settings.settings_file, "w") as f:
-            yaml.dump(settings, f)
+        yield old_wd, new_wd
+
+
+def move_directory(old_wd: str, new_wd: str):
+    """Moves directory tree to a new location?"""
+    if not os.path.isdir(old_wd):
+        raise FileNotFoundError(str(old_wd))
+    os.makedirs(new_wd)
+    os.replace(old_wd, new_wd)
+
+
+def make_job_path(base_path, object_id: bson.ObjectId) -> str:
+    """Creates a new job path from the object id"""
+    b64id = urlsafe_b64encode(object_id.binary).decode()
+    return os.path.abspath(
+        os.path.join(base_path, b64id[-2:], b64id[-4:-2], b64id[:-4])
+    )
+
+
+def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs_top_dir: str):
+    """
+    Changes all inputs in the collection that are paths under the
+    `jobs_top_dir` to point to their real locations.
+    """
+    for request in requests_collection.find():
+        for name, value in request['inputs'].items():
+            if not value.startswith(jobs_top_dir):
+                continue
+            new_value = os.path.realpath(value)
+            if new_value == value:
+                continue
+            requests_collection.update_one(
+                {'_id': request['_id']},
+                {'$set': {f'inputs.{name}': new_value}}
+            )
+
+
+def normalize_symlinks(top: str):
+    """Update all symlinks under the `top` directory to point to their target directly"""
+    top = os.path.abspath(top)
+    all_files = (
+        os.path.join(base, fn)
+        for base, _dirnames, filenames in os.walk(top)
+        for fn in filenames
+    )
+    for link in filter(os.path.islink, all_files):
+        # os.unlink followed by os.symlink causes race conditions
+        temp_name = link + ".temp.symlink"
+        os.symlink(os.path.realpath(link), temp_name)
+        os.replace(temp_name, link)
+
+
+@click.command(
+    "1-nested-job-dirs",
+    short_help=f"(ver. {to_version}) {name}"
+)
+@click.argument(
+    "mongodb-uri",
+    envvar=["SLIVKA_MONGODB_URI", "MONGODB_URI"],
+    metavar="CONNECTION_STRING"
+)
+@click.argument(
+    "database",
+    envvar=["SLIVKA_MONGODB_DATABASE", "MONGODB_DATABASE"],
+    metavar="DATABASE"
+)
+@click.option(
+    "--slivka-home",
+    envvar=["SLIVKA_HOME"],
+    metavar="SLIVKA_HOME",
+    help="Directory containing slivka config file.",
+    show_default="current directory"
+)
+@click.option(
+    "--jobs-dir",
+    metavar="DIR",
+    help="Specify jobs directory other than the default."
+)
+def command(mongodb_uri, database, slivka_home, jobs_dir):
+    """Introduce two extra levels to jobs directory hierarchy.
+
+    This migration reorganises job file directories to avoid a single
+    directory with a massive number of subdirectories and updates the
+    database entries accordingly. Instead of a single directory named
+    after the jobs id, like `/jobs/12345678ABCD`, the new structure
+    introduces two additional levels. The additional levels are named
+    using the last four letters of the ID, two characters each, like
+    `jobs/CD/AB/12345678`.
+
+    Specify the mongodb server with CONNECTION_STRING and the database
+    name with DATABASE arguments.
+    """
+    mongo = MongoClient(mongodb_uri)
+    if jobs_dir is None:
+        if slivka_home is None: slivka_home = os.getcwd()
+        fnames = ['settings.yaml', 'settings.yml', 'conf.yaml', 'conf.yml']
+        paths = (os.path.join(slivka_home, fn) for fn in fnames)
+        try:
+            config_path = next(filter(os.path.isfile, paths))
+        except StopIteration:
+            raise click.Abort(f"Configuration not found in {slivka_home}")
+        yaml = YAML(typ="safe")
+        config = yaml.load(open(config_path, 'r'))
+        slivka_home = (
+            config.get('directory.home') or
+            config.get('directory', {}).get('home') or
+            slivka_home
+        )
+        jobs_dir = (
+            config.get('directory.jobs') or
+            config.get('directory', {}).get('jobs')
+        )
+        jobs_dir = os.path.join(slivka_home, jobs_dir)
+    apply(database=mongo[database], jobs_top_dir=jobs_dir)
+
+if __name__ == '__main__':
+    command()

@@ -1,4 +1,4 @@
 import slivka.migrations.cli
 
 
-slivka.migrations.cli.migrate()
+slivka.migrations.cli.migration_cli()

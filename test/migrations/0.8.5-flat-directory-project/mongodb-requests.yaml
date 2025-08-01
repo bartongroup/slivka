@@ -1,4 +1,4 @@
-- _id: 6662eca5c9d3327ca5fb2d81
+- _id: '000000000000000000000000'
   service: example
   inputs:
     text: Hello world
@@ -7,10 +7,10 @@
   status: 6
   runner: default
   job:
-    work_dir: "ZmLspcnTMnyl-y2B"
+    work_dir: "AAAAAAAAAAAAAAAA"
     job_id: "1234"
 
-- _id: 6662f0adc9d3327ca5fb2d82
+- _id: '000000000000000000000001'
   service: example
   inputs:
     text: Hello world
@@ -19,5 +19,5 @@
   status: 6
   runner: default
   job:
-    work_dir: "ZmLwrcnTMnyl-y2C"
+    work_dir: "AAAAAAAAAAAAAAAB"
     job_id: "1234"
