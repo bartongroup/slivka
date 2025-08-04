@@ -1,3 +1,4 @@
+import logging
 import os.path
 import sys
 from base64 import urlsafe_b64encode
@@ -10,6 +11,9 @@ from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from pymongo import MongoClient
 from ruamel.yaml import YAML
+
+
+logger = logging.getLogger(__name__)
 
 name = "Nested job directory structure."
 from_versions = SpecifierSet("<0.8.5b1", prereleases=True)
@@ -33,18 +37,29 @@ def move_job_directories(requests_collection: pymongo.database.Collection, jobs_
     """Moves job directories and updates the database accordingly.
 
     :return: list of old and new location pairs"""
-    for request in requests_collection.find({"job.work_dir": {"$exists": True}}):
+    cursor_len = requests_collection.count_documents({"job.work_dir": {"$exists": True}})
+    cursor = requests_collection.find({"job.work_dir": {"$exists": True}})
+    logger.info("Moving %d jobs to new locations", cursor_len)
+    for counter, request in enumerate(cursor, start=1):
         old_wd = request['job']['work_dir']
-        new_wd = make_job_path(jobs_top_dir, request['_id'])
+        req_id = request['_id']
+        b64_req_id = urlsafe_b64encode(req_id.binary).decode()
+        new_wd = make_job_path(jobs_top_dir, req_id)
         try:
+            logger.info(
+                "Moving directory '%s' to '%s' (%d of %d)",
+                old_wd, new_wd, counter, cursor_len
+            )
             move_directory(old_wd, new_wd)
         except FileNotFoundError:
-            print(f"File not found: {old_wd}", file=sys.stderr)
+            logger.exception("File not found '%s'", old_wd)
             continue
+        logger.info("Updating job record: %s", b64_req_id)
         requests_collection.update_one(
-            {"_id": request['_id']},
+            {"_id": req_id},
             {"$set": {"job.work_dir": new_wd}}
         )
+        logger.info("Job '%s' moved", b64_req_id)
         yield old_wd, new_wd
 
 
@@ -69,6 +84,7 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
     Changes all inputs in the collection that are paths under the
     `jobs_top_dir` to point to their real locations.
     """
+    logger.info("Updating job inputs to new paths")
     for request in requests_collection.find():
         for name, value in request['inputs'].items():
             if not value.startswith(jobs_top_dir):
@@ -76,6 +92,10 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
             new_value = os.path.realpath(value)
             if new_value == value:
                 continue
+            logger.info(
+                "Changing 'inputs.%s' to '%s' from '%s' for job %s",
+                name, new_value, value, urlsafe_b64encode(request['_id'].binary).decode()
+            )
             requests_collection.update_one(
                 {'_id': request['_id']},
                 {'$set': {f'inputs.{name}': new_value}}
@@ -84,6 +104,7 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
 
 def normalize_symlinks(top: str):
     """Update all symlinks under the `top` directory to point to their target directly"""
+    logger.info("Fixing existing symlinks")
     top = os.path.abspath(top)
     all_files = (
         os.path.join(base, fn)
@@ -93,6 +114,7 @@ def normalize_symlinks(top: str):
     for link in filter(os.path.islink, all_files):
         # os.unlink followed by os.symlink causes race conditions
         temp_name = link + ".temp.symlink"
+        logger.info("Fixing link %s", link)
         os.symlink(os.path.realpath(link), temp_name)
         os.replace(temp_name, link)
 
@@ -161,4 +183,5 @@ def command(mongodb_uri, database, slivka_home, jobs_dir):
     apply(database=mongo[database], jobs_top_dir=jobs_dir)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     command()
