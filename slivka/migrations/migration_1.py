@@ -159,6 +159,7 @@ def command(mongodb_uri, database, slivka_home, jobs_dir):
     Specify the mongodb server with CONNECTION_STRING and the database
     name with DATABASE arguments.
     """
+    logging.basicConfig(level=logging.INFO)
     mongo = MongoClient(mongodb_uri)
     if jobs_dir is None:
         if slivka_home is None: slivka_home = os.getcwd()
@@ -183,5 +184,4 @@ def command(mongodb_uri, database, slivka_home, jobs_dir):
     apply(database=mongo[database], jobs_top_dir=jobs_dir)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     command()
