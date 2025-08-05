@@ -45,6 +45,9 @@ def move_job_directories(requests_collection: pymongo.database.Collection, jobs_
         req_id = request['_id']
         b64_req_id = urlsafe_b64encode(req_id.binary).decode()
         new_wd = make_job_path(jobs_top_dir, req_id)
+        if old_wd == new_wd:
+            logger.info("Identical source and target directories: %s", old_wd)
+            continue
         try:
             logger.info(
                 "Moving directory '%s' to '%s' (%d of %d)",
