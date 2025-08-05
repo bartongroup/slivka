@@ -90,13 +90,19 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
     logger.info("Updating job inputs to new paths")
     for request in requests_collection.find():
         for name, value in request['inputs'].items():
-            if value is None or not value.startswith(jobs_top_dir):
+            if value is None:
                 continue
-            new_value = os.path.realpath(value)
+            if isinstance(value, str):
+                new_value = os.path.realpath(value) if value.startswith(jobs_top_dir) else value
+            elif isinstance(value, list):
+                new_value = [os.path.realpath(v) if v.startswith(jobs_top_dir) else v for v in value]
+            else:
+                logger.warning("Parameter value is neither list or str: %r", value)
+                continue
             if new_value == value:
                 continue
             logger.info(
-                "Changing 'inputs.%s' to '%s' from '%s' for job %s",
+                "Changing 'inputs.%s' to %r from %r for job %s",
                 name, new_value, value, urlsafe_b64encode(request['_id'].binary).decode()
             )
             requests_collection.update_one(
