@@ -163,3 +163,39 @@ def test_input_parameters_updated(database, slivka_home, project_files):
     request = collection.find_one({'_id': insert_result_1.inserted_id})
     assert request['inputs']['infile'] == str(slivka_home / 'jobs' / 'AA' / 'AA' / 'AAAAAAAAAAAA' / 'stdout')
 
+
+@pytest.mark.parametrize(
+    'project_files',
+    [
+        resources.files(__package__) / '0.8.5-flat-directory-project',
+    ],
+    indirect=['project_files']
+)
+def test_input_parameters_updated_when_param_is_null(database, slivka_home, project_files):
+    collection = database['requests']
+    collection.insert_one({
+        '_id': ObjectId(urlsafe_b64decode('AAAAAAAAAAAAAAAA')),
+        'service': 'example',
+        'inputs': {
+            'text': 'example'
+        },
+        'job': {
+            'work_dir': str(slivka_home / 'jobs' / 'AAAAAAAAAAAAAAAA'),
+            'job_id': '0'
+        }
+    })
+    insert_result_1 = collection.insert_one({
+        '_id': ObjectId(urlsafe_b64decode('AAAAAAAAAAAAAAAB')),
+        'service': 'example',
+        'inputs': {
+            'text': None,
+            'infile': str(slivka_home / 'jobs' / 'AAAAAAAAAAAAAAAA' / 'stdout')
+        },
+        'job': {
+            'work_dir': str(slivka_home / 'jobs' / 'AAAAAAAAAAAAAAAB'),
+            'job_id': '1'
+        }
+    })
+    migration_1.apply(database, str(slivka_home / 'jobs'))
+    request = collection.find_one({'_id': insert_result_1.inserted_id})
+    assert request['inputs']['infile'] == str(slivka_home / 'jobs' / 'AA' / 'AA' / 'AAAAAAAAAAAA' / 'stdout')

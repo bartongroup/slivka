@@ -87,7 +87,7 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
     logger.info("Updating job inputs to new paths")
     for request in requests_collection.find():
         for name, value in request['inputs'].items():
-            if not value.startswith(jobs_top_dir):
+            if value is None or not value.startswith(jobs_top_dir):
                 continue
             new_value = os.path.realpath(value)
             if new_value == value:
