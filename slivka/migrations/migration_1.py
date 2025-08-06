@@ -172,7 +172,7 @@ def command(mongodb_uri, database, slivka_home, jobs_dir):
     mongo = MongoClient(mongodb_uri)
     if jobs_dir is None:
         if slivka_home is None: slivka_home = os.getcwd()
-        fnames = ['settings.yaml', 'settings.yml', 'conf.yaml', 'conf.yml']
+        fnames = ['settings.yaml', 'settings.yml', 'config.yaml', 'config.yml']
         paths = (os.path.join(slivka_home, fn) for fn in fnames)
         try:
             config_path = next(filter(os.path.isfile, paths))
