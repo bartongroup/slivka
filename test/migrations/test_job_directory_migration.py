@@ -70,6 +70,13 @@ def test_make_job_path(base_path, object_id, expected_path):
     assert make_job_path(base_path=base_path, object_id=object_id) == expected_path
 
 
+@pytest.fixture(scope='class')
+def slivka_home(request, tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp('slivka_home')
+    yield tmp_path
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 @pytest.fixture(scope="class")
 def project_files(request, slivka_home):
     traversable = request.param
