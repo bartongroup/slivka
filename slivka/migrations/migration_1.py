@@ -22,6 +22,7 @@ to_version = Version("0.8.5b1")
 
 def apply(database: pymongo.database.Database, jobs_top_dir: str):
     requests_collection = database['requests']
+    jobs_top_dir = os.path.normpath(jobs_top_dir)
     moved_dirs = move_job_directories(requests_collection, jobs_top_dir)
     temp_symlinks = []
     for old, new in moved_dirs:
@@ -87,15 +88,23 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
     Changes all inputs in the collection that are paths under the
     `jobs_top_dir` to point to their real locations.
     """
+    def _ensure_new_path_wrapper(val):
+        if os.path.commonprefix([jobs_top_dir, val]) != jobs_top_dir:
+            return val
+        try:
+            return ensure_new_style_path(val, jobs_top_dir)
+        except ValueError:
+            return val
+
     logger.info("Updating job inputs to new paths")
     for request in requests_collection.find():
         for name, value in request['inputs'].items():
             if value is None:
                 continue
             if isinstance(value, str):
-                new_value = os.path.realpath(value) if value.startswith(jobs_top_dir) else value
+                new_value = _ensure_new_path_wrapper(value)
             elif isinstance(value, list):
-                new_value = [os.path.realpath(v) if v.startswith(jobs_top_dir) else v for v in value]
+                new_value = [_ensure_new_path_wrapper(v) for v in value]
             else:
                 logger.warning("Parameter value is neither list or str: %r", value)
                 continue
@@ -126,6 +135,17 @@ def normalize_symlinks(top: str):
         logger.info("Fixing link %s", link)
         os.symlink(os.path.realpath(link), temp_name)
         os.replace(temp_name, link)
+
+
+def ensure_new_style_path(path, top_dir):
+    relative = os.path.relpath(path, top_dir)
+    if relative.startswith('..'):
+        raise ValueError(f"Path '{path}' is not relative to '{top_dir}'")
+    (dir_name, remaining) = relative.split(os.sep, 1)
+    if len(dir_name) != 16:
+        # not an old style path
+        return path
+    return os.path.join(top_dir, dir_name[-2:], dir_name[-4:-2], dir_name[:-4], remaining)
 
 
 @click.command(
