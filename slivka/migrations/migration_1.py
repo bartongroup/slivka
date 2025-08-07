@@ -38,7 +38,7 @@ def apply(
     if not skip_resolve_inputs:
         normalize_file_inputs(requests_collection, jobs_top_dir)
     if not skip_resolve_links:
-        normalize_symlinks(jobs_top_dir)
+        resolve_symlinks(jobs_top_dir)
     for link in temp_symlinks:
         os.unlink(link)
 
@@ -129,7 +129,7 @@ def normalize_file_inputs(requests_collection: pymongo.database.Collection, jobs
             )
 
 
-def normalize_symlinks(top: str):
+def resolve_symlinks(top: str):
     """Update all symlinks under the `top` directory to point to their target directly"""
     logger.info("Fixing existing symlinks")
     top = os.path.abspath(top)
@@ -141,9 +141,12 @@ def normalize_symlinks(top: str):
     for link in filter(os.path.islink, all_files):
         # os.unlink followed by os.symlink causes race conditions
         temp_name = link + ".temp.symlink"
-        logger.info("Fixing link %s", link)
-        os.symlink(os.path.realpath(link), temp_name)
-        os.replace(temp_name, link)
+        logger.info("Resolving link %s", link)
+        try:
+            os.symlink(os.path.realpath(link), temp_name)
+            os.replace(temp_name, link)
+        except OSError:
+            logger.exception("Failed to resolve %s", link)
 
 
 def ensure_new_style_path(path, top_dir):

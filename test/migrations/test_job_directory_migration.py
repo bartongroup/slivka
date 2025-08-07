@@ -9,7 +9,7 @@ import yaml
 from bson import ObjectId
 
 from slivka.migrations import migration_1
-from slivka.migrations.migration_1 import make_job_path, move_job_directories, normalize_symlinks, ensure_new_style_path
+from slivka.migrations.migration_1 import make_job_path, move_job_directories, resolve_symlinks, ensure_new_style_path
 
 
 def test_move_job_directories(database, tmp_path):
@@ -47,7 +47,7 @@ def test_normalize_symlinks(tmp_path):
     indirect_link = tmp_path / 'indirect'
     indirect_link.symlink_to(direct_link)
     assert indirect_link.readlink() != target
-    normalize_symlinks(str(tmp_path))
+    resolve_symlinks(str(tmp_path))
     assert indirect_link.readlink() == target
 
 
