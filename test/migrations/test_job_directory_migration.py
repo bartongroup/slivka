@@ -9,7 +9,7 @@ import yaml
 from bson import ObjectId
 
 from slivka.migrations import migration_1
-from slivka.migrations.migration_1 import make_job_path, move_job_directories, normalize_symlinks
+from slivka.migrations.migration_1 import make_job_path, move_job_directories, normalize_symlinks, ensure_new_style_path
 
 
 def test_move_job_directories(database, tmp_path):
@@ -243,3 +243,38 @@ def test_input_parameters_updated_when_param_is_list(database, slivka_home, proj
     migration_1.apply(database, str(slivka_home / 'jobs'))
     request = collection.find_one({'_id': insert_result.inserted_id})
     assert request['inputs']['infile'] == [str(slivka_home / 'jobs' / 'AA' / 'AA' / 'AAAAAAAAAAAA' / 'stdout')]
+
+
+@pytest.mark.parametrize(
+    ('path', 'top', 'expected_path'),
+    [
+        pytest.param(
+            "/data/jobs/CCCCCCCCCCCCBBAA/stdout",
+            "/data/jobs",
+            "/data/jobs/AA/BB/CCCCCCCCCCCC/stdout",
+            id="old-style path"
+        ),
+        pytest.param(
+            "/data/jobs/AA/BB/CCCCCCCCCCCC/stdout",
+            "/data/jobs",
+            "/data/jobs/AA/BB/CCCCCCCCCCCC/stdout",
+            id="new-style path"
+        ),
+        pytest.param(
+            "/store/data/file.txt",
+            "/data/jobs",
+            "",
+            marks=[pytest.mark.raises(exception=ValueError)],
+            id="outside path"
+        ),
+        pytest.param(
+            "input.txt",
+            "/data/jobs",
+            "",
+            marks=[pytest.mark.raises(exception=ValueError)],
+            id="not absolute path"
+        )
+    ]
+)
+def test_ensure_new_style_path(path, top, expected_path):
+    assert ensure_new_style_path(path, top) == expected_path
