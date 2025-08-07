@@ -20,16 +20,25 @@ from_versions = SpecifierSet("<0.8.5b1", prereleases=True)
 to_version = Version("0.8.5b1")
 
 
-def apply(database: pymongo.database.Database, jobs_top_dir: str):
+def apply(
+        database: pymongo.database.Database,
+        jobs_top_dir: str,
+        skip_move_dirs: bool = False,
+        skip_resolve_inputs: bool = False,
+        skip_resolve_links: bool = False,
+):
     requests_collection = database['requests']
     jobs_top_dir = os.path.normpath(jobs_top_dir)
-    moved_dirs = move_job_directories(requests_collection, jobs_top_dir)
     temp_symlinks = []
-    for old, new in moved_dirs:
-        os.symlink(new, old, target_is_directory=True)
-        temp_symlinks.append(old)
-    normalize_file_inputs(requests_collection, jobs_top_dir)
-    normalize_symlinks(jobs_top_dir)
+    if not skip_move_dirs:
+        moved_dirs = move_job_directories(requests_collection, jobs_top_dir)
+        for old, new in moved_dirs:
+            os.symlink(new, old, target_is_directory=True)
+            temp_symlinks.append(old)
+    if not skip_resolve_inputs:
+        normalize_file_inputs(requests_collection, jobs_top_dir)
+    if not skip_resolve_links:
+        normalize_symlinks(jobs_top_dir)
     for link in temp_symlinks:
         os.unlink(link)
 
@@ -174,7 +183,30 @@ def ensure_new_style_path(path, top_dir):
     metavar="DIR",
     help="Specify jobs directory other than the default."
 )
-def command(mongodb_uri, database, slivka_home, jobs_dir):
+@click.option(
+    "--skip-move-dirs",
+    is_flag=True,
+    hidden=True
+)
+@click.option(
+    "--skip-resolve-inputs",
+    is_flag=True,
+    hidden=True
+)
+@click.option(
+    "--skip-resolve-links",
+    is_flag=True,
+    hidden=True
+)
+def command(
+        mongodb_uri,
+        database,
+        slivka_home,
+        jobs_dir,
+        skip_move_dirs,
+        skip_resolve_inputs,
+        skip_resolve_links,
+):
     """Introduce two extra levels to jobs directory hierarchy.
 
     This migration reorganises job file directories to avoid a single
@@ -210,7 +242,13 @@ def command(mongodb_uri, database, slivka_home, jobs_dir):
             config.get('directory', {}).get('jobs')
         )
         jobs_dir = os.path.join(slivka_home, jobs_dir)
-    apply(database=mongo[database], jobs_top_dir=jobs_dir)
+    apply(
+        database=mongo[database],
+        jobs_top_dir=jobs_dir,
+        skip_move_dirs=skip_move_dirs,
+        skip_resolve_inputs=skip_resolve_inputs,
+        skip_resolve_links=skip_resolve_links
+    )
 
 if __name__ == '__main__':
     command()
