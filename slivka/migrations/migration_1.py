@@ -134,9 +134,10 @@ def resolve_symlinks(top: str):
     logger.info("Fixing existing symlinks")
     top = os.path.abspath(top)
     all_files = (
-        os.path.join(base, fn)
-        for base, _dirnames, filenames in os.walk(top)
-        for fn in filenames
+        os.path.join(base, name)
+        for job_dir in _iter_job_dirs(top)
+        for base, dir_names, file_names in os.walk(job_dir)
+        for name in dir_names + file_names
     )
     for link in filter(os.path.islink, all_files):
         # os.unlink followed by os.symlink causes race conditions
@@ -147,6 +148,25 @@ def resolve_symlinks(top: str):
             os.replace(temp_name, link)
         except OSError:
             logger.exception("Failed to resolve %s", link)
+
+
+def _iter_job_dirs(top: str) -> Iterable[os.DirEntry]:
+    """Iterates all directories matching ??/??/????????????.
+
+    This implementation is significantly faster than os.walk or glob.iglob
+    as it does not collect entries or use expensive pattern matching.
+    """
+    for level1 in os.scandir(top):
+        if not level1.is_dir(follow_symlinks=False) or len(level1.name) != 2:
+            continue
+        for level2 in os.scandir(level1):
+            if not level2.is_dir(follow_symlinks=False) or len(level2.name) != 2:
+                continue
+            for level3 in os.scandir(level2):
+                if not level3.is_dir(follow_symlinks=False) or len(level3.name) != 12:
+                    continue
+                yield level3
+
 
 
 def ensure_new_style_path(path, top_dir):
