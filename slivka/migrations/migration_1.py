@@ -1,8 +1,7 @@
 import logging
 import os.path
-import sys
 from base64 import urlsafe_b64encode
-from typing import List, Tuple, Iterable
+from typing import Tuple, Iterable
 
 import bson
 import click
@@ -11,7 +10,6 @@ from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from pymongo import MongoClient
 from ruamel.yaml import YAML
-
 
 logger = logging.getLogger(__name__)
 
@@ -141,13 +139,26 @@ def resolve_symlinks(top: str):
     )
     for link in filter(os.path.islink, all_files):
         # os.unlink followed by os.symlink causes race conditions
+        target = os.readlink(link)
+        if not os.path.isabs(target):
+            logger.warning(f"The target of '%s' is relative: %s", link, target)
+            continue
+        if os.path.commonprefix([top, target]) != top:
+            logger.debug("Skipping '%s': target outside the top dir: %s", link, target)
+            continue
+        new_target = ensure_new_style_path(target, top)
+        if target == new_target:
+            logger.debug("Link '%s' already fixed.", link)
+            continue
+        if not os.path.exists(new_target):
+            logger.warning("New target does not exist: %s", new_target)
         temp_name = link + ".temp.symlink"
         logger.info("Resolving link %s", link)
         try:
-            os.symlink(os.path.realpath(link), temp_name)
+            os.symlink(new_target, temp_name)
             os.replace(temp_name, link)
         except OSError:
-            logger.exception("Failed to resolve %s", link)
+            logger.exception("Failed to resolve '%s'", link)
 
 
 def _iter_job_dirs(top: str) -> Iterable[os.DirEntry]:
