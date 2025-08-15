@@ -115,7 +115,7 @@ def service_jobs_view(service_id):
         file_proxy_to_file_storage.append((file_proxy, file_storage))
     file_proxy_to_file_name = []
     for name, value in flask.request.form.items(multi=True):
-        if not isinstance(form_cls[name], FileField):
+        if not isinstance(form_cls.get(name), FileField):
             form_data.add(name, value)
             continue
         file_id, *options = value.split(';')

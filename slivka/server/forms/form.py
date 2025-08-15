@@ -37,6 +37,9 @@ class DeclarativeFormMetaclass(type):
     def __getitem__(cls, item):
         return cls.fields[item]
 
+    def get(cls, key, default=None):
+        return cls.fields.get(key, default)
+
 
 class BaseForm(metaclass=DeclarativeFormMetaclass):
     """
@@ -110,6 +113,11 @@ class BaseForm(metaclass=DeclarativeFormMetaclass):
         if not self.is_bound:
             return
         errors = {}
+        for unexpected_name in (set(self.data) | set(self.files)) - set(self.fields):
+            errors[unexpected_name] = ValidationError(
+                f"Unexpected input name: '{unexpected_name}'", 'unexpected'
+            )
+
         default_values = {
             field.id: field.default for field in self.fields.values()
         }

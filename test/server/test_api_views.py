@@ -12,6 +12,7 @@ import mongomock
 import pytest
 import yaml
 from bson import ObjectId
+from werkzeug.datastructures import FileStorage
 
 import slivka.server
 from slivka import JobStatus
@@ -310,6 +311,26 @@ class TestJobInvalidView:
 
     def test_no_job_request_created(self, database):
         assert JobRequest.find_one(database) is None
+
+
+def test_job_unexpected_input(app_client):
+    response = app_client.post(
+        "/api/services/fake/jobs",
+        content_type="multipart/form-data",
+        data={
+            "text-param": "hello",
+            "i-do-not-exist": "val"
+        }
+    )
+    assert response.status_code == 422
+    json_content = response.get_json()
+    errors = json_content["errors"]
+    assert len(errors) == 1
+    assert errors[0] == {
+        "parameter": "i-do-not-exist",
+        "errorCode": "unexpected",
+        "message": "Unexpected input name: 'i-do-not-exist'"
+    }
 
 
 # >>> Jobs listing tests >>>
