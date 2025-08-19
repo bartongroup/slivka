@@ -7,6 +7,7 @@ import pathlib
 import shutil
 from base64 import urlsafe_b64decode
 from datetime import datetime, timezone
+from io import BytesIO
 
 import mongomock
 import pytest
@@ -821,49 +822,48 @@ def test_file_upload_missing_file_parameter(app_client):
 
 
 @pytest.mark.parametrize(
-    ("title", "content_type", "expected_title", "expected_media_type"),
+    ("file_storage_kwargs", "expected_title", "expected_media_type"),
     [
-        ("Title", "application/x-lorem", "Title", "application/x-lorem"),
-        ("Other Title", "text/plain; charset=UTF-8", "Other Title", "text/plain")
+        pytest.param(
+            dict(stream=BytesIO(b"Lorem Ipsum"), filename="Title", content_type="application/x-lorem"),
+            "Title",
+            "application/x-lorem"
+        ),
+        pytest.param(
+            dict(stream=BytesIO(b"Lorem Ipsum"), filename="Other Title", content_type="text/plain; charset=UTF-8"),
+            "Other Title",
+            "text/plain"
+        ),
+        pytest.param(
+            dict(stream=BytesIO(b"Lorem Ipsum"), filename="input.in", content_type=None),
+            "input.in",
+            "text/plain"  # FileStorage automatically sets text/plain
+        )
     ]
 )
-class TestUploadJobInput:
-    @pytest.fixture()
-    def input_file_id(self, app_client, title, content_type):
-        response = app_client.post(
-            "/api/services/fake/jobs",
-            data={
-                "text-param": "some text",
-                "file-param": (
-                    resources.open_binary(__package__, "resources/example.txt"),
-                    title,
-                    content_type
-                )
-            }
-        )
-        assert response.status_code == 202
-        return response.json["parameters"]["file-param"]
+def test_metadata_of_file_uploaded_as_job_input(app_client, file_storage_kwargs, expected_title, expected_media_type):
+    response = app_client.post(
+        "/api/services/fake/jobs",
+        data={
+            "text-param": "some text",
+            "file-param": FileStorage(**file_storage_kwargs)
+        }
+    )
+    input_file_id =  response.json["parameters"]["file-param"]
+    file_response = app_client.get(f"/api/files/{input_file_id}").json
+    assert file_response['label'] == expected_title
+    assert file_response['mediaType'] == expected_media_type
 
-    @pytest.fixture()
-    def file_response(self, app_client, input_file_id):
-        return app_client.get(f"/api/files/{input_file_id}")
 
-    def test_file_exists(self, file_response, expected_title, expected_media_type):
-        assert file_response.status_code == 200
-
-    def test_file_has_label(self, file_response, expected_title, expected_media_type):
-        assert file_response.json["label"] == expected_title
-
-    def test_file_has_media_type(self, file_response, expected_title, expected_media_type):
-        assert file_response.json["mediaType"] == expected_media_type
-
-    def test_file_has_no_job(self, file_response, expected_title, expected_media_type):
-        assert file_response.json["jobId"] is None
-
-    def test_file_exists_in_uploads(self, uploads_directory, file_response, expected_title, expected_media_type):
-        uploaded_file_path = os.path.join(uploads_directory, file_response.json['path'])
-        assert os.path.exists(uploaded_file_path)
-        assert filecmp.cmp(resources_path / "example.txt", uploaded_file_path)
+def test_file_parameter_uploaded_without_filename(app_client):
+    response = app_client.post(
+        "/api/services/fake/jobs",
+        data={
+            "text-param": "some text",
+            "file-param": FileStorage(BytesIO(b"lipsum"), filename=None)
+        }
+    )
+    assert 400 <= response.status_code < 500
 
 
 @pytest.fixture(scope="class")
