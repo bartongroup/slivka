@@ -863,7 +863,12 @@ def test_file_parameter_uploaded_without_filename(app_client):
             "file-param": FileStorage(BytesIO(b"lipsum"), filename=None)
         }
     )
-    assert 400 <= response.status_code < 500
+    assert response.status_code == 422
+    assert response.get_json() == {
+        'errors': [
+            {'errorCode': 'file_id', 'message': "Invalid file id: 'lipsum'", "parameter": 'file-param'}
+        ]
+    }
 
 
 @pytest.fixture(scope="class")

@@ -1,3 +1,4 @@
+import binascii
 import io
 import os
 import shutil
@@ -6,6 +7,19 @@ from base64 import urlsafe_b64decode
 from bson import ObjectId
 
 from slivka.db.documents import UploadedFile, JobRequest
+
+
+class InvalidFileId(ValueError):
+    def __init__(self, file_id, *args):
+        super().__init__(self, *args)
+        self.file_id = file_id
+
+    def __str__(self):
+        return self.file_id
+
+    def __repr__(self):
+        return f"Invalid file id: {self.file_id}"
+
 
 
 class FileProxy:
@@ -33,7 +47,10 @@ class FileProxy:
         tokens = file_id.split('/', 1)
         if len(tokens) == 1:
             # user uploaded file
-            _id = ObjectId(urlsafe_b64decode(file_id))
+            try:
+                _id = ObjectId(urlsafe_b64decode(file_id))
+            except binascii.Error:
+                raise InvalidFileId(file_id) from None
             uf = UploadedFile.find_one(database, _id=_id)
             if uf is None: return None
             return FileProxy(path=uf.path)

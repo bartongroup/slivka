@@ -1,3 +1,4 @@
+import binascii
 import itertools
 import os
 import typing
@@ -16,7 +17,7 @@ import slivka.db
 from slivka.db.documents import UploadedFile
 from slivka.db.helpers import insert_one
 from slivka.utils import expression_parser, media_types
-from .file_proxy import FileProxy
+from .file_proxy import FileProxy, InvalidFileId
 from .widgets import *
 
 __all__ = [
@@ -596,7 +597,10 @@ class FileField(BaseField):
         elif isinstance(value, FileStorage):
             file = FileProxy(file=value)
         elif isinstance(value, str):
-            file = FileProxy.from_id(value, slivka.db.database)
+            try:
+                file = FileProxy.from_id(value, slivka.db.database)
+            except InvalidFileId:
+                raise ValidationError("Invalid file id: '%s'" % value, "file_id")
             if file is None:
                 raise ValidationError("File not found.", 'not_found')
         elif isinstance(value, FileProxy):
