@@ -32,22 +32,11 @@ classifiers = [
 ]
 keywords = [
     "slivka",
-	"bioinformatics",
-	"science",
 	"scientific-computing",
-	"web",
-	"api",
-	"rest",
 	"framework",
 	"REST-API",
 	"command-line-tools",
-	"cli",
-	"command-line",
 	"hpc",
-	"slurm",
-	"lsf",
-	"sge",
-	"grid-engine",
 ]
 
 # Project dependencies
