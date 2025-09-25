@@ -102,10 +102,6 @@ slivka = [
 	"scheduler/runners/*.tpl",
 ]
 
-[tool.setuptools.packages.find]
-# This section is equivalent to `find_packages(exclude=...)`
-exclude = ["test", "test.*"]
-
 [tool.setuptools.dynamic]
 version = { attr = "slivka.__about__.__version__" }
 
