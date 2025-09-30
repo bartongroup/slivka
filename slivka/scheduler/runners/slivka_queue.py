@@ -25,17 +25,19 @@ class SlivkaQueueRunner(Runner):
     controlling the number of simultaneous jobs and preserving jobs
     between scheduler restarts.
     """
-    def __init__(self, *args, address=None, **kwargs):
+    def __init__(self, *args, address=None, timeout=None, **kwargs):
         super().__init__(*args, **kwargs)
         if address is None:
             address = slivka.conf.settings.local_queue.host
+        self.timeout = timeout
         self.client = _get_client(address)
 
     def submit(self, command: Command) -> Job:
         response = self.client.submit_job(
             cmd=str.join(' ', map(shlex.quote, command.args)),
             cwd=command.cwd,
-            env=self.env
+            env=self.env,
+            timeout=self.timeout,
         )
         return Job(response.id, command.cwd)
 
