@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+dynamic = ["version"]
+name = "slivka"
+authors = [
+    { name = "Mateusz Maciej Warowny", email = "warowny.mateusz@gene.com" },
+	{ name = "James Procter", email = "j.procter@dundee.ac.uk" },
+]
+maintainers = [
+    { name = "Mateusz Maciej Warowny", email = "warowny.mateusz@gene.com" },
+]
+description = "A toolkit for deploying command-line tools as web services."
+readme = "README.rst"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Flask",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: System :: Distributed Computing",
+]
+keywords = [
+    "slivka",
+	"scientific-computing",
+	"framework",
+	"REST-API",
+	"command-line-tools",
+	"hpc",
+]
+
+# Project dependencies
+requires-python = ">=3.7"
+dependencies = [
+    "attrs>=19.0",
+    "cachetools>=5.3.3",
+    "click>=7.0",
+    "Flask>=2.0",
+    "frozendict>=1.2",
+    "jsonschema>=3.0",
+    "MarkupSafe>=1.0",
+    "packaging",
+    "pymongo>=3.7",
+    "python-daemon>=3.0",
+    "python-dateutil>=2.8",
+    "PyYAML>=5.4",
+    "pyzmq>=19.0",
+    "ruamel.yaml",
+    "simplejson>=3.16",
+    "Werkzeug>=2.0",
+]
+
+# Optional dependencies (extras)
+[project.optional-dependencies]
+gunicorn = ["gunicorn>=19.9"]
+uwsgi = ["uWSGI>=2.0"]
+bioinformatics = ["biopython>=1.72"]
+test = [
+    "mongomock>=3.18",
+    "PyHamcrest>=2.0.4",
+    "pytest-raises>=0.11",
+    "pytest>=7.4",
+    "sentinels>=1.0.0",
+]
+
+# Project URLs
+[project.urls]
+Repository = "https://github.com/proteinverse/slivka"
+
+# Console scripts
+[project.scripts]
+slivka = "slivka.cli:main"
+
+
+# Setuptools-specific configuration
+[tool.setuptools]
+[tool.setuptools.package-data]
+slivka = [
+    "conf/*.json",
+	"project_template/**",
+	"scheduler/runners/*.tpl",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "slivka.__about__.__version__" }
+
