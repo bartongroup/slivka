@@ -99,6 +99,7 @@ class LocalQueue:
             self.logger.info('%r completed with status %d', job, return_code)
         except asyncio.TimeoutError:
             self.logger.info('process timed out')
+            job.return_code = -9
             job.state = JobStatus.INTERRUPTED
         except asyncio.CancelledError:
             self.logger.info('terminating a running process')
