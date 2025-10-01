@@ -26,10 +26,10 @@ class LocalQueueClient(threading.local):
         self.socket.setsockopt(zmq.REQ_RELAXED, 1)
         self.socket.connect(self.address)
 
-    def submit_job(self, cmd, cwd, env):
+    def submit_job(self, cmd, cwd, env, timeout=None):
         try:
             self.socket.send_json(
-                {'method': 'POST', 'cmd': cmd, 'cwd': cwd, 'env': env},
+                {'method': 'POST', 'cmd': cmd, 'cwd': cwd, 'env': env, 'timeout': timeout},
                 flags=zmq.NOBLOCK
             )
             response = self.socket.recv_json()

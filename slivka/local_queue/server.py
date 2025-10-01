@@ -37,6 +37,7 @@ class Job:
     cmd = attr.ib(type=str)
     cwd = attr.ib(type=str)
     env = attr.ib(default={}, type=dict, converter=_job_env_converter, repr=False)
+    timeout = attr.ib(default=None, type=int, repr=False)
     state = attr.ib(default=JobStatus.QUEUED)
     return_code = attr.ib(default=255, type=int, init=False)
     worker = attr.ib(default=None, type=asyncio.Task, init=False, repr=False)
@@ -87,7 +88,7 @@ class LocalQueue:
             job.state = JobStatus.INTERRUPTED
             return
         try:
-            return_code = await proc.wait()
+            return_code = await asyncio.wait_for(proc.wait(), job.timeout)
             job.return_code = return_code
             job.state = (
                 JobStatus.COMPLETED if return_code == 0 else
@@ -96,10 +97,15 @@ class LocalQueue:
                 JobStatus.INTERRUPTED
             )
             self.logger.info('%r completed with status %d', job, return_code)
+        except asyncio.TimeoutError:
+            self.logger.info('process timed out')
+            job.return_code = -9
+            job.state = JobStatus.INTERRUPTED
         except asyncio.CancelledError:
             self.logger.info('terminating a running process')
             proc.terminate()
-            job.return_code = await proc.wait()
+            try: job.return_code = await asyncio.wait_for(proc.wait(), 60)
+            except asyncio.TimeoutError: pass
             job.state = JobStatus.INTERRUPTED
         finally:
             try:
@@ -176,7 +182,8 @@ class LocalQueue:
         job = Job(
             cmd=msg['cmd'],
             cwd=msg['cwd'],
-            env=msg.get('env', {})
+            env=msg.get('env', {}),
+            timeout=msg.get('timeout', None),
         )
         self.jobs[job.id] = job
         get_running_loop().call_soon(self.queue.put_nowait, job)
