@@ -271,7 +271,7 @@ class Scheduler:
                         pymongo.errors.AutoReconnect, handler=auto_reconnect_handler
                     )
             except ExecutionDeferred as e:
-                self.log.warning(
+                self.log.exception(
                     "Runner %s did not start jobs. Retrying.", e.runner
                 )
             except ExecutionFailed as e:
