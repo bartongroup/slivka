@@ -21,9 +21,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: Flask",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -40,7 +37,7 @@ keywords = [
 ]
 
 # Project dependencies
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 dependencies = [
     "attrs>=19.0",
     "cachetools>=5.3.3",
