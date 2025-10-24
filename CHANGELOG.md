@@ -1,5 +1,11 @@
 Changelog:
 
+## [0.8.5b8]
+- Changed: use pyproject.toml instead of setup.py
+- Updated: migration scripts are modular, each module file being a standalone migration cli.
+- Fixed: make invalid file id a validation error
+- Changed: providing additional inputs to the service is now an error.
+
 ## [0.8.5b7]
 - Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.
 - Fixed: disallow absolute paths and references to parent directories in uploaded file names.
