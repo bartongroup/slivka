@@ -15,7 +15,7 @@ from slivka.db import repositories
 from slivka.utils import safe_format
 from slivka.utils.env import expandvars
 
-log = logging.getLogger('slivka.scheduler')
+log = logging.getLogger(__name__)
 
 
 RunnerID = namedtuple('RunnerID', 'service, runner')
@@ -112,28 +112,39 @@ class Runner:
         :type values: dict[str, Any]
         :return: list of command line arguments
         """
+        log.info(
+            "Building arguments for %s; values = %s",
+            self.service_name, values
+        )
         args = []
         for argument in self.arguments:
+            log.debug("Processing argument: %s", argument)
             value = values.get(argument.id)
+            log.debug("Retrieved for the argument: %r", value)
             if value is None:
                 value = argument.default
+                log.debug("Using the default: %r", value)
             if value is None or value is False:
+                log.debug("Missing value. Skipping.")
                 continue
 
             if isinstance(value, list) and argument.join is not None:
                 value = str.join(argument.join, value)
+                log.debug("Joining the list: '%s'", value)
 
             if isinstance(value, list):
-                args.extend(
+                interpolated_args = [
                     arg.replace('$(value)', val)
                     for val in value
                     for arg in argument.arg
-                )
+                ]
             else:
-                args.extend(
+                interpolated_args = [
                     arg.replace('$(value)', value)
                     for arg in argument.arg
-                )
+                ]
+            log.debug("Interpolated args: %s", interpolated_args)
+            args.extend(interpolated_args)
         return args
 
     def _prepare_job(self, inputs, cwd) -> dict:
