@@ -345,6 +345,8 @@ def format_symlink_name(
 
 
 def _mklink(src, dst):
+    if os.path.dirname(dst):
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
     try:
         os.symlink(src, dst)
     except FileExistsError as e:
