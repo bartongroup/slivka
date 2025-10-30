@@ -1,5 +1,6 @@
 import collections.abc
 import json
+import logging
 import os.path
 import re
 import typing
@@ -197,11 +198,7 @@ class SettingsLoader_0_8_5b5:
 
         services_dir = config["directory.services"]
         services = config['services'] = []
-        for fn in os.listdir(services_dir):
-            fnmatch = re.match(r'([a-zA-Z0-9_\-.]+)\.service\.ya?ml$', fn)
-            if not fnmatch:
-                continue
-            fn = os.path.join(services_dir, fn)
+        for fn in self.find_service_files(services_dir):
             try:
                 service_config = service_loader.read_yaml(fn)
             except ServiceConfigError as e:
@@ -211,6 +208,15 @@ class SettingsLoader_0_8_5b5:
             services.append(service_config)
         config = unflatten_mapping(config)
         return _deserialize(SlivkaSettings, config)
+
+    @staticmethod
+    def find_service_files(base_dir):
+        return (
+            os.path.join(base, fn)
+            for base, _dirs, files in os.walk(base_dir)
+            for fn in files
+            if fn.endswith(".service.yaml") or fn.endswith(".service.yml")
+        )
 
 
 def _build_mongodb_uri(
