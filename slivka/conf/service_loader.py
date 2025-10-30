@@ -1,6 +1,7 @@
 import collections.abc
 import json
 import os.path
+import re
 from typing import Dict, List, Type, Optional
 
 import attr
@@ -53,8 +54,20 @@ def read_yaml(path):
     basename = os.path.basename(path)
     basename, pri_ext = os.path.splitext(basename)
     basename, sec_ext = os.path.splitext(basename)
-    if not basename or pri_ext != ".yaml" or sec_ext != ".service":
-        raise ValueError(f"Invalid service file name: {path}")
+    if (
+        not basename
+        or (pri_ext != ".yaml" and pri_ext != ".yml")
+        or sec_ext != ".service"
+    ):
+        raise ValueError(
+            f"Invalid service file name: {basename}. "
+            f"The name must end with '.service.yaml'"
+        )
+    if m := re.search(r"[^a-zA-Z0-9_\-.]", basename):
+        raise ValueError(
+            f"Invalid service file name: {basename}. "
+            f"It contains an illegal character {m.group()}"
+        )
     with open(path, 'rb') as f:
         config_dict = ServiceYAMLLoader().load(f)
     return read_dict(basename, config_dict)
