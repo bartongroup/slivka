@@ -5,6 +5,10 @@ Changelog:
 - Updated: migration scripts are modular, each module file being a standalone migration cli.
 - Fixed: make invalid file id a validation error
 - Changed: providing additional inputs to the service is now an error.
+- Added: local-queue jobs timeout.
+- Fixed: create intermediate directories if "symlink" parameter requires it.
+- Changed: minimal python version set to 3.10
+- Changed: services directory is scanned recursively searching for service files.
 
 ## [0.8.5b7]
 - Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.
