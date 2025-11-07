@@ -211,10 +211,22 @@ class SettingsLoader_0_8_5b5:
         return _deserialize(SlivkaSettings, config)
 
     @staticmethod
-    def find_service_files(base_dir):
+    def find_service_files(path):
+        """
+        Recursively finds paths of service definition files
+        within directories specified in the path string.
+
+        The path string is treated as a list of root directories separated by the
+        platform-specific path separator (e.g., ':' on POSIX, ';' on Windows),
+        similar to the PATH environment variable.
+
+        :param path: A string containing one or more directory paths.
+        :return: The path of each found service file.
+        """
         return (
             os.path.join(base, fn)
-            for base, _dirs, files in os.walk(base_dir)
+            for root in path.split(os.pathsep)
+            for base, _dirs, files in os.walk(root)
             for fn in files
             if fn.endswith(".service.yaml") or fn.endswith(".service.yml")
         )

@@ -10,6 +10,7 @@ Changelog:
 - Changed: minimal python version set to 3.10
 - Changed: services directory is scanned recursively searching for service files.
 - Added: services directory can be set using SLIVKA\_DIR\_SERVICES environment variable.
+- Added: allow multiple service directories by separating them with ":" or ";" (system-specific) in the configuration. 
 
 ## [0.8.5b7]
 - Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.
