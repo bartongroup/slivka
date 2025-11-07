@@ -149,6 +149,7 @@ class SettingsLoader_0_8_5b5:
                 ("SLIVKA_HOME", "directory.home"),
                 ("SLIVKA_DIR_UPLOADS", "directory.uploads"),
                 ("SLIVKA_DIR_JOBS", "directory.jobs"),
+                ("SLIVKA_DIR_SERVICES", "directory.services"),
                 ("SLIVKA_SERVER_PREFIX", "server.prefix"),
                 ("SLIVKA_SERVER_HOST", "server.host"),
                 ("SLIVKA_LOCAL_QUEUE_HOST", "local-queue.host"),
