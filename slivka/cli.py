@@ -28,10 +28,11 @@ def main():
 @main.command('init')
 @click.argument("path", type=click.Path(writable=True))
 @click.option("--example/--no-example", default=True)
-def init(path, example):
+@click.option("--force", is_flag=True)
+def init(path, example, force):
     """Initialize a new project in the directory specified."""
     path = os.path.abspath(os.path.join(os.curdir, path))
-    if os.path.isdir(path):
+    if not force and os.path.isdir(path):
         click.confirm(
             "Directory %s already exists. "
             "Do you want to overwrite its content?" % path,
