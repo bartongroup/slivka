@@ -1,4 +1,7 @@
 .DS_Store
+*~
+*.swp
+*.swo
 .idea/
 .cache/
 __pycache__/
