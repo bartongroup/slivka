@@ -1,24 +1,36 @@
 Changelog:
 
 ## [0.8.5b8]
+
 - Changed: use pyproject.toml instead of setup.py
-- Updated: migration scripts are modular, each module file being a standalone migration cli.
+- Updated: migration scripts are modular, each module file being a standalone
+  migration cli.
 - Fixed: make invalid file id a validation error
 - Changed: providing additional inputs to the service is now an error.
 - Added: local-queue jobs timeout.
 - Fixed: create intermediate directories if "symlink" parameter requires it.
 - Changed: minimal python version set to 3.10
-- Changed: services directory is scanned recursively searching for service files.
-- Added: services directory can be set using SLIVKA\_DIR\_SERVICES environment variable.
-- Added: allow multiple service directories by separating them with ":" or ";" (system-specific) in the configuration. 
-- Added: --example/--no-example option to the init command that control adding example files to the new project.
-- Added: --force option to the init command to overwrite existing project directory.
-- Added: ability to define name aliases for services within configuration files. Services can now be accessed via the web API using the aliases. 
+- Changed: services directory is scanned recursively searching for service
+  files.
+- Added: services directory can be set using SLIVKA\_DIR\_SERVICES environment
+  variable.
+- Added: allow multiple service directories by separating them with ":"
+  or ";" (system-specific) in the configuration.
+- Added: --example/--no-example option to the init command that control adding
+  example files to the new project.
+- Added: --force option to the init command to overwrite existing project
+  directory.
+- Added: ability to define name aliases for services within configuration
+  files. Services can now be accessed via the web API using the aliases.
 
 ## [0.8.5b7]
-- Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.
-- Fixed: disallow absolute paths and references to parent directories in uploaded file names.
-- Fixed: make sure input files are staged in the working directory specific to the job.
+
+- Added: filename can be specified when referring to a file using its id by
+  appending `;filename=<name>` option to the id.
+- Fixed: disallow absolute paths and references to parent directories in
+  uploaded file names.
+- Fixed: make sure input files are staged in the working directory specific to
+  the job.
 
 ## [0.8.5b6]
 
