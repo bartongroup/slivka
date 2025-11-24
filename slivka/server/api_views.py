@@ -104,7 +104,7 @@ def service_jobs_view(service_id):
     service = flask.current_app.config['services'].get(service_id)
     if service is None:
         flask.abort(404)
-    form_cls: Type[BaseForm] = flask.current_app.config['forms'][service_id]
+    form_cls: Type[BaseForm] = flask.current_app.config['forms'][service.id]
 
     form_data = MultiDict()
     files = MultiDict()
@@ -173,7 +173,8 @@ def jobs_list_view(service_id=None):
     repo = RequestsRepository(slivka.db.database)
     filters = []
     if service_id:
-        filters.append(('service', service_id))
+        service = flask.current_app.config['services'].get(service_id)
+        filters.append(('service', service.id))
     limit = None
     skip = 0
     try:
@@ -206,7 +207,8 @@ def jobs_list_view(service_id=None):
 def job_view(job_id, service_id=None):
     query = {'id': job_id}
     if service_id is not None:
-        query['service'] = service_id
+        service = flask.current_app.config['services'].get(service_id)
+        query['service'] = service.id
     job_request = JobRequest.find_one(slivka.db.database, **query)
     if job_request is None:
         flask.abort(404)
