@@ -27,6 +27,12 @@
         "type": "string"
       }
     },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "parameters": {
       "type": "object",
       "propertyNames": {

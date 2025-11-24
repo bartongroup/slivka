@@ -13,6 +13,7 @@ Changelog:
 - Added: allow multiple service directories by separating them with ":" or ";" (system-specific) in the configuration. 
 - Added: --example/--no-example option to the init command that control adding example files to the new project.
 - Added: --force option to the init command to overwrite existing project directory.
+- Added: ability to define name aliases for services within configuration files. Services can now be accessed via the web API using the aliases. 
 
 ## [0.8.5b7]
 - Added: filename can be specified when referring to a file using its id by appending `;filename=<name>` option to the id.

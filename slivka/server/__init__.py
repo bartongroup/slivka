@@ -41,11 +41,17 @@ def create_app(config: SlivkaSettings = None):
     for service in config.services:
         form_loader.read_config(service)
     app = flask.Flask('slivka', static_url_path='')
+    services = {srv.id: srv for srv in config.services}
+    service_aliases = {
+        alias: srv
+        for srv in config.services
+        for alias in srv.aliases
+    }
     app.config.update(
         home=config.directory.home,
         jobs_dir=config.directory.jobs,
         uploads_dir=config.directory.uploads,
-        services={srv.id: srv for srv in config.services},
+        services={**service_aliases, **services},
         forms=form_loader
     )
     from . import api_views

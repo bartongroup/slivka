@@ -227,6 +227,7 @@ class ServiceConfig:
     version = attrib(type=str, default="")
     license = attrib(type=str, default="")
     classifiers = attrib(type=List[str], factory=list)
+    aliases = attrib(type=List[str], factory=list)
     parameters = attrib(type=dict, converter=frozendict)
     command = attrib()
     args = attrib(type=List[Argument])
