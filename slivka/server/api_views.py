@@ -336,7 +336,10 @@ def _job_file_resource(job_request: JobRequest,
     job_id = job_request.b64id
     resource_location = url_for(".job_file", job_id=job_id, file_path=rel_path)
     jobs_dir = flask.current_app.config["jobs_dir"]
-    full_path = os.path.relpath(os.path.join(job_request.job.cwd, rel_path), jobs_dir)
+    # make job_cwd canonical for consistency with "jobs_dir" config
+    job_cwd: str = os.path.realpath(job_request.job.cwd)
+    base_path = os.path.relpath(job_cwd, jobs_dir)
+    full_path = os.path.join(base_path, rel_path)
     if os.path.sep == "\\":
         rel_path = rel_path.replace("\\", "/")
         full_path = full_path.replace("\\", "/")
