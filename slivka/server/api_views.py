@@ -226,7 +226,7 @@ def job_view(job_id, service_id=None):
 def _job_resource(job_request: JobRequest):
     def convert_path(value):
         if os.path.isabs(value):
-            path = pathlib.Path(value)
+            path = pathlib.Path(value).resolve()
             base_path = flask.current_app.config['uploads_dir']
             try:
                 return path.relative_to(base_path).as_posix()
