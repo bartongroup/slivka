@@ -3,6 +3,7 @@ import os
 import signal
 import sys
 import traceback
+import warnings
 from contextlib import closing
 from importlib import import_module
 from logging.handlers import RotatingFileHandler
@@ -92,6 +93,10 @@ def start(home):
 @click.option('--workers', '-w', default=None, type=click.INT)
 @click.option('--http-socket', '-s')
 def start_server(server_type, daemon, pid_file, workers, http_socket):
+    if pid_file:
+        warnings.warn("Using --pid-file is not recommended.")
+    if daemon:
+        warnings.warn("Using --daemon is not recommended")
     from slivka.conf import settings
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
 
@@ -143,6 +148,10 @@ def start_server(server_type, daemon, pid_file, workers, http_socket):
 @click.option('--pid-file', '-p', default=None,
               type=click.Path(writable=True, resolve_path=True))
 def start_scheduler(daemon, pid_file):
+    if pid_file:
+        warnings.warn("Using --pid-file is not recommended.")
+    if daemon:
+        warnings.warn("Using --daemon is not recommended")
     from slivka.conf import settings
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
@@ -219,6 +228,10 @@ def start_scheduler(daemon, pid_file):
 @click.option('--pid-file', '-p', default=None,
               type=click.Path(writable=True, resolve_path=True))
 def start_local_queue(address, workers, daemon, pid_file):
+    if pid_file:
+        warnings.warn("Using --pid-file is not recommended.")
+    if daemon:
+        warnings.warn("Using --daemon is not recommended")
     from slivka.conf import settings
     os.environ.setdefault('SLIVKA_HOME', settings.directory.home)
     sys.path.append(settings.directory.home)
