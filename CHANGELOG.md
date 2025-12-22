@@ -22,6 +22,11 @@ Changelog:
   directory.
 - Added: ability to define name aliases for services within configuration
   files. Services can now be accessed via the web API using the aliases.
+- Fixed: Canonicalize stored paths before computing paths relative to jobs or
+  uploads directory.
+- Deprecated: --daemon and --pid-file command line arguments because they did
+  not work reliably. Using supervisord or systemd is a preferred way of
+  creating and managing daemon processes.
 
 ## [0.8.5b7]
 
