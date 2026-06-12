@@ -1,0 +1,38 @@
+name: "true-false-service"
+description: "Description of fake service"
+author: "author"
+slivka-version: 0.8.3
+license: "Apache 2.0"
+classifiers:
+  - "Class::Test"
+  - "Group::Dummy"
+parameters:
+  choice-param:
+    type: choice
+    name: "Choice parameter"
+    description: "Description of choice parameter"
+    required: true
+    choices:
+      True: True
+      False: False
+
+command: "echo"
+
+args:
+  choice-param:
+    arg: "Choice was '$(value)'"
+
+outputs:
+  output:
+    name: "Standard output"
+    path: "stdout"
+    media-type: "text/plain"
+  log:
+    name: "Error log"
+    path: "stderr"
+    media-type: "text/plain"
+
+execution:
+  runners:
+    local-queue:
+      type: SlivkaQueueRunner

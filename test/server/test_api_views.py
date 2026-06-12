@@ -84,7 +84,20 @@ def test_services_list_view(app_client):
     assert rep.status_code == 200
     rep = rep.get_json()
     assert "services" in rep
-    assert len(rep["services"]) == 1
+    assert len(rep["services"]) == 2
+
+def call_tf_choice(app_client):
+    return app_client.post(
+        "/api/services/fake_tf/jobs",
+        content_type="multipart/form-data",
+        data={
+            "choice-param":"False",
+        },
+    )
+
+def test_TestJobTFChoice(app_client):
+    server_response = call_tf_choice(app_client)
+    assert (server_response.status_code>=200 and server_response.status_code<300)
 
 
 class TestFakeServiceView:
