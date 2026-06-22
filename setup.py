@@ -12,6 +12,14 @@ about = {}
 _about_file = os.path.join(os.path.dirname(__file__), 'slivka', '__about__.py')
 exec(open(_about_file).read(), about)
 
+test_dependencies = [
+    'mongomock>=3.18',
+    'PyHamcrest>=2.0.4',
+    'pytest-raises>=0.11',
+    'pytest>=7.4',
+    'sentinels>=1.0.0',
+]
+
 setup(
     name="slivka",
     version=about['__version__'],
@@ -25,7 +33,7 @@ setup(
         "jsonschema>=3.0",
         "MarkupSafe>=1.0",
         "packaging",
-        "pymongo>=3.7",
+        "pymongo>=3.7,<4",
         "python-daemon>=3.0",
         "python-dateutil>=2.8",
         "PyYAML>=5.4",
@@ -34,17 +42,12 @@ setup(
         "simplejson>=3.16",
         "Werkzeug>=2.0",
     ],
-    tests_require=[
-        'mongomock>=3.18',
-        'PyHamcrest>=2.0.4',
-        'pytest-raises>=0.11',
-        'pytest>=7.4',
-        'sentinels>=1.0.0',
-    ],
+    tests_require=test_dependencies,
     extras_require={
         'gunicorn': ["gunicorn>=19.9"],
         'uwsgi': ['uWSGI>=2.0'],
-        'bioinformatics': ['biopython>=1.72']
+        'bioinformatics': ['biopython>=1.72'],
+        'test': test_dependencies,
     },
     include_package_data=True,
 

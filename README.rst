@@ -84,3 +84,18 @@ slivka version you are going to work on::
 and, after that, install slivka in editable mode without dependencies using pip::
 
   python -m pip install --no-deps -e <path to slivka>
+
+Running tests
+-------------
+
+To run the test suite from a source checkout, create a local virtual
+environment and install slivka in editable mode with its test dependencies::
+
+  python3.10 -m venv .venv
+  . .venv/bin/activate
+  python -m pip install -e ".[test]"
+  python -m pytest -q
+
+The repository includes VS Code settings for pytest discovery. Open the
+repository root in VS Code and select the ``.venv`` interpreter if it is not
+selected automatically.
