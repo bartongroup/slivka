@@ -69,10 +69,15 @@ _structured_fields = (
     "time_limit",
     "cpus_per_task",
     "nodes",
-    "ntasks",
+    "tasks",
     "memory_per_node",
-    "job_name",
+    "name",
 )
+
+_structured_aliases = {
+    "ntasks": "tasks",
+    "job_name": "name",
+}
 
 
 class SlurmApiError(RuntimeError):
@@ -102,6 +107,11 @@ class SlurmApiRunner(Runner):
             for field in _structured_fields
             if field in kwargs and kwargs[field] is not None
         }
+        self.job_options.update(
+            (target, kwargs.pop(source))
+            for source, target in _structured_aliases.items()
+            if source in kwargs and kwargs[source] is not None
+        )
         super().__init__(*args, **kwargs)
         if not base_url:
             raise SlurmApiConfigurationError("Slurm API base_url is required")
@@ -115,12 +125,12 @@ class SlurmApiRunner(Runner):
 
     def submit(self, command: Command) -> Job:
         cmd = str.join(" ", map(bash_quote, command.args))
-        script = _runner_bash_tpl.format(cmd=cmd)
+        script = self._build_script(cmd)
         job_desc = {
             "current_working_directory": command.cwd,
             "standard_output": "stdout",
             "standard_error": "stderr",
-            "environment": self.env,
+            "environment": self._environment(),
             **self.job_options,
         }
         data = self._request(
@@ -203,6 +213,23 @@ class SlurmApiRunner(Runner):
         if state is None:
             return None
         return str(state)
+
+    def _build_script(self, cmd):
+        exports = "\n".join(
+            f"export {key}={bash_quote(value)}"
+            for key, value in self.env.items()
+            if value is not None
+        )
+        if exports:
+            cmd = exports + "\n" + cmd
+        return _runner_bash_tpl.format(cmd=cmd)
+
+    def _environment(self):
+        return [
+            f"{key}={value}"
+            for key, value in self.env.items()
+            if value is not None
+        ]
 
     def _request(self, method, path, allow_not_found=False, **kwargs):
         response = self.session.request(

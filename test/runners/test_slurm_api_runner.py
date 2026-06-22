@@ -76,20 +76,25 @@ def test_submit_sends_batch_script_and_job_description(runner, session):
     }
     payload = kwargs["json"]
     assert "echo 'hello world'" in payload["script"]
+    assert "export EXAMPLE=1" in payload["script"]
     assert payload["job"] == {
         "current_working_directory": "/cluster/jobs/1",
         "standard_output": "stdout",
         "standard_error": "stderr",
-        "environment": runner.env,
+        "environment": [
+            f"{key}={value}"
+            for key, value in runner.env.items()
+            if value is not None
+        ],
         "partition": "webservices",
         "qos": "immediate",
         "account": "web",
         "time_limit": 60,
         "cpus_per_task": 2,
         "nodes": "node[1-2]",
-        "ntasks": 4,
+        "tasks": 4,
         "memory_per_node": 2048,
-        "job_name": "slivka-test",
+        "name": "slivka-test",
     }
     assert kwargs["timeout"] == 30
     assert kwargs["verify"] is True
