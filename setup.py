@@ -38,6 +38,7 @@ setup(
         "python-dateutil>=2.8",
         "PyYAML>=5.4",
         "pyzmq>=19.0",
+        "requests>=2.31,<3",
         "ruamel.yaml",
         "simplejson>=3.16",
         "Werkzeug>=2.0",
