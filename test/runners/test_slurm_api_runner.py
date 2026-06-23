@@ -1,4 +1,5 @@
 import os
+import json
 from unittest import mock
 
 import pytest
@@ -61,12 +62,14 @@ def runner(credentials, session):
     )
 
 
-def test_submit_sends_batch_script_and_job_description(runner, session):
+def test_submit_sends_batch_script_and_job_description(
+    runner, session, job_directory
+):
     session.request.return_value = Response({"job_id": 12345})
 
-    job = runner.submit(Command(["echo", "hello world"], "/cluster/jobs/1"))
+    job = runner.submit(Command(["echo", "hello world"], job_directory))
 
-    assert job == Job("12345", "/cluster/jobs/1")
+    assert job == Job("12345", job_directory)
     _, url = session.request.call_args.args
     assert url == "https://slurm.example.org/v0.0.45/job/submit"
     kwargs = session.request.call_args.kwargs
@@ -78,7 +81,7 @@ def test_submit_sends_batch_script_and_job_description(runner, session):
     assert "echo 'hello world'" in payload["script"]
     assert "export EXAMPLE=1" in payload["script"]
     assert payload["job"] == {
-        "current_working_directory": "/cluster/jobs/1",
+        "current_working_directory": job_directory,
         "standard_output": "stdout",
         "standard_error": "stderr",
         "environment": [
@@ -98,6 +101,13 @@ def test_submit_sends_batch_script_and_job_description(runner, session):
     }
     assert kwargs["timeout"] == 30
     assert kwargs["verify"] is True
+    with open(os.path.join(job_directory, "slurm-api-script.sh")) as fp:
+        assert fp.read() == payload["script"]
+    with open(os.path.join(job_directory, "slurm-api-request.json")) as fp:
+        assert json.load(fp) == payload
+    with open(os.path.join(job_directory, "slurm-api-response.json")) as fp:
+        assert json.load(fp) == {"job_id": 12345}
+    assert not os.path.exists(os.path.join(job_directory, "slurm-api-error.txt"))
 
 
 @pytest.mark.parametrize(
@@ -160,7 +170,7 @@ def test_cancel_sends_delete(runner, session):
     assert url == "https://slurm.example.org/v0.0.45/job/123"
 
 
-def test_missing_credentials_fail_before_request(session):
+def test_missing_credentials_fail_before_request(session, job_directory):
     with mock.patch.dict(
         os.environ,
         {"SLURM_API_USER": "", "SLURM_API_TOKEN": ""},
@@ -175,7 +185,7 @@ def test_missing_credentials_fail_before_request(session):
             base_url="https://slurm.example.org",
         )
         with pytest.raises(SlurmApiConfigurationError) as exc_info:
-            runner.submit(Command(["echo", "hello"], "/cluster/jobs/1"))
+            runner.submit(Command(["echo", "hello"], job_directory))
 
     assert "SLURM_API_USER" in str(exc_info.value)
     assert "SLURM_API_TOKEN" in str(exc_info.value)
@@ -190,3 +200,19 @@ def test_http_error_includes_status_and_body(runner, session):
 
     assert "500" in str(exc_info.value)
     assert "boom" in str(exc_info.value)
+
+
+def test_submit_http_error_writes_error_artifact(runner, session, job_directory):
+    session.request.return_value = Response(status_code=500, text="boom")
+
+    with pytest.raises(SlurmApiError):
+        runner.submit(Command(["echo", "hello"], job_directory))
+
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        error = fp.read()
+    assert "500" in error
+    assert "boom" in error
+    assert "secret" not in error
+    assert os.path.exists(os.path.join(job_directory, "slurm-api-script.sh"))
+    assert os.path.exists(os.path.join(job_directory, "slurm-api-request.json"))
+    assert not os.path.exists(os.path.join(job_directory, "slurm-api-response.json"))

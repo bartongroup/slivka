@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, Sequence
@@ -133,11 +134,14 @@ class SlurmApiRunner(Runner):
             "environment": self._environment(),
             **self.job_options,
         }
-        data = self._request(
-            "POST",
-            "job/submit",
-            json={"script": script, "job": job_desc},
-        )
+        payload = {"script": script, "job": job_desc}
+        self._write_submit_artifacts(command.cwd, script, payload)
+        try:
+            data = self._request("POST", "job/submit", json=payload)
+        except SlurmApiError as e:
+            self._write_text(command.cwd, "slurm-api-error.txt", str(e))
+            raise
+        self._write_json(command.cwd, "slurm-api-response.json", data)
         job_id = data.get("job_id")
         if job_id is None:
             raise SlurmApiError("Slurm API submit response did not include job_id")
@@ -230,6 +234,23 @@ class SlurmApiRunner(Runner):
             for key, value in self.env.items()
             if value is not None
         ]
+
+    def _write_submit_artifacts(self, cwd, script, payload):
+        self._write_text(cwd, "slurm-api-script.sh", script)
+        self._write_json(cwd, "slurm-api-request.json", payload)
+
+    @staticmethod
+    def _write_text(cwd, filename, text):
+        os.makedirs(cwd, exist_ok=True)
+        with open(os.path.join(cwd, filename), "w") as fp:
+            fp.write(text)
+
+    @staticmethod
+    def _write_json(cwd, filename, data):
+        os.makedirs(cwd, exist_ok=True)
+        with open(os.path.join(cwd, filename), "w") as fp:
+            json.dump(data, fp, indent=2, sort_keys=True)
+            fp.write("\n")
 
     def _request(self, method, path, allow_not_found=False, **kwargs):
         response = self.session.request(
