@@ -1,6 +1,6 @@
+import json
 import logging
 import os
-import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, Sequence
@@ -135,16 +135,18 @@ class SlurmApiRunner(Runner):
             **self.job_options,
         }
         payload = {"script": script, "job": job_desc}
-        self._write_submit_artifacts(command.cwd, script, payload)
+        self._write_submit_artifacts(command.cwd, script, job_desc)
         try:
             data = self._request("POST", "job/submit", json=payload)
         except SlurmApiError as e:
-            self._write_text(command.cwd, "slurm-api-error.txt", str(e))
+            self._write_submit_error(command.cwd, str(e))
             raise
         self._write_json(command.cwd, "slurm-api-response.json", data)
         job_id = data.get("job_id")
         if job_id is None:
-            raise SlurmApiError("Slurm API submit response did not include job_id")
+            error = "Slurm API submit response did not include job_id"
+            self._write_submit_error(command.cwd, error)
+            raise SlurmApiError(error)
         return Job(str(job_id), command.cwd)
 
     def batch_submit(self, commands: Sequence[Command]) -> Sequence[Job]:
@@ -219,13 +221,6 @@ class SlurmApiRunner(Runner):
         return str(state)
 
     def _build_script(self, cmd):
-        exports = "\n".join(
-            f"export {key}={bash_quote(value)}"
-            for key, value in self.env.items()
-            if value is not None
-        )
-        if exports:
-            cmd = exports + "\n" + cmd
         return _runner_bash_tpl.format(cmd=cmd)
 
     def _environment(self):
@@ -235,9 +230,46 @@ class SlurmApiRunner(Runner):
             if value is not None
         ]
 
-    def _write_submit_artifacts(self, cwd, script, payload):
+    def _write_submit_artifacts(self, cwd, script, job_desc):
         self._write_text(cwd, "slurm-api-script.sh", script)
-        self._write_json(cwd, "slurm-api-request.json", payload)
+        self._write_json(
+            cwd,
+            "slurm-api-request.json",
+            self._submit_request_artifact(job_desc),
+        )
+
+    def _submit_request_artifact(self, job_desc):
+        safe_job_desc = {
+            key: value for key, value in job_desc.items()
+            if key != "environment"
+        }
+        return {
+            "method": "POST",
+            "path": f"{self.api_version}/job/submit",
+            "script": "slurm-api-script.sh",
+            "job": safe_job_desc,
+        }
+
+    def _write_submit_error(self, cwd, error):
+        self._write_text(
+            cwd,
+            "slurm-api-error.txt",
+            self._sanitize_artifact_text(error),
+        )
+
+    def _sanitize_artifact_text(self, text):
+        secrets = [
+            self.username_env,
+            self.token_env,
+            os.getenv(self.username_env),
+            os.getenv(self.token_env),
+            *self.env.values(),
+        ]
+        sanitized = text
+        for secret in secrets:
+            if secret:
+                sanitized = sanitized.replace(str(secret), "<redacted>")
+        return sanitized
 
     @staticmethod
     def _write_text(cwd, filename, text):

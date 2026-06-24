@@ -79,7 +79,7 @@ def test_submit_sends_batch_script_and_job_description(
     }
     payload = kwargs["json"]
     assert "echo 'hello world'" in payload["script"]
-    assert "export EXAMPLE=1" in payload["script"]
+    assert "export EXAMPLE=1" not in payload["script"]
     assert payload["job"] == {
         "current_working_directory": job_directory,
         "standard_output": "stdout",
@@ -104,7 +104,28 @@ def test_submit_sends_batch_script_and_job_description(
     with open(os.path.join(job_directory, "slurm-api-script.sh")) as fp:
         assert fp.read() == payload["script"]
     with open(os.path.join(job_directory, "slurm-api-request.json")) as fp:
-        assert json.load(fp) == payload
+        request_artifact = json.load(fp)
+    assert request_artifact == {
+        "method": "POST",
+        "path": "v0.0.45/job/submit",
+        "script": "slurm-api-script.sh",
+        "job": {
+            "current_working_directory": job_directory,
+            "standard_output": "stdout",
+            "standard_error": "stderr",
+            "partition": "webservices",
+            "qos": "immediate",
+            "account": "web",
+            "time_limit": 60,
+            "cpus_per_task": 2,
+            "nodes": "node[1-2]",
+            "tasks": 4,
+            "memory_per_node": 2048,
+            "name": "slivka-test",
+        },
+    }
+    assert "environment" not in request_artifact["job"]
+    assert "EXAMPLE=1" not in json.dumps(request_artifact)
     with open(os.path.join(job_directory, "slurm-api-response.json")) as fp:
         assert json.load(fp) == {"job_id": 12345}
     assert not os.path.exists(os.path.join(job_directory, "slurm-api-error.txt"))
@@ -190,6 +211,10 @@ def test_missing_credentials_fail_before_request(session, job_directory):
     assert "SLURM_API_USER" in str(exc_info.value)
     assert "SLURM_API_TOKEN" in str(exc_info.value)
     session.request.assert_not_called()
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        error = fp.read()
+    assert "SLURM_API_USER" not in error
+    assert "SLURM_API_TOKEN" not in error
 
 
 def test_http_error_includes_status_and_body(runner, session):
@@ -203,7 +228,10 @@ def test_http_error_includes_status_and_body(runner, session):
 
 
 def test_submit_http_error_writes_error_artifact(runner, session, job_directory):
-    session.request.return_value = Response(status_code=500, text="boom")
+    session.request.return_value = Response(
+        status_code=500,
+        text="boom EXAMPLE=1 secret",
+    )
 
     with pytest.raises(SlurmApiError):
         runner.submit(Command(["echo", "hello"], job_directory))
@@ -213,6 +241,22 @@ def test_submit_http_error_writes_error_artifact(runner, session, job_directory)
     assert "500" in error
     assert "boom" in error
     assert "secret" not in error
+    assert "EXAMPLE=1" not in error
     assert os.path.exists(os.path.join(job_directory, "slurm-api-script.sh"))
     assert os.path.exists(os.path.join(job_directory, "slurm-api-request.json"))
     assert not os.path.exists(os.path.join(job_directory, "slurm-api-response.json"))
+
+
+def test_submit_response_without_job_id_writes_response_and_error_artifacts(
+    runner, session, job_directory
+):
+    session.request.return_value = Response({"errors": ["job id missing"]})
+
+    with pytest.raises(SlurmApiError) as exc_info:
+        runner.submit(Command(["echo", "hello"], job_directory))
+
+    assert "job_id" in str(exc_info.value)
+    with open(os.path.join(job_directory, "slurm-api-response.json")) as fp:
+        assert json.load(fp) == {"errors": ["job id missing"]}
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        assert "job_id" in fp.read()
