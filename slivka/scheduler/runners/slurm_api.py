@@ -14,71 +14,71 @@ from ._bash_lex import bash_quote
 from .grid_engine import _StatusLetterDict
 from .runner import Runner, Job, Command
 
-log = logging.getLogger("slivka.scheduler")
+log = logging.getLogger('slivka.scheduler')
 
-_runner_bash_tpl = resources.read_text(__package__, "runner.bash.tpl")
+_runner_bash_tpl = resources.read_text(__package__, 'runner.bash.tpl')
 
 _status_states = _StatusLetterDict({
-    "BOOT_FAIL": JobStatus.ERROR,
-    "CANCELLED": JobStatus.INTERRUPTED,
-    "COMPLETED": JobStatus.COMPLETED,
-    "CONFIGURING": JobStatus.QUEUED,
-    "COMPLETING": JobStatus.RUNNING,
-    "DEADLINE": JobStatus.DELETED,
-    "FAILED": JobStatus.FAILED,
-    "NODE_FAIL": JobStatus.ERROR,
-    "OUT_OF_MEMORY": JobStatus.ERROR,
-    "PENDING": JobStatus.QUEUED,
-    "PREEMPTED": JobStatus.DELETED,
-    "RUNNING": JobStatus.RUNNING,
-    "RESV_DEL_HOLD": JobStatus.QUEUED,
-    "REQUEUE_FED": JobStatus.QUEUED,
-    "REQUEUE_HOLD": JobStatus.QUEUED,
-    "REQUEUED": JobStatus.QUEUED,
-    "RESIZING": JobStatus.QUEUED,
-    "SIGNALING": JobStatus.CANCELLING,
-    "STOPPED": JobStatus.INTERRUPTED,
-    "SUSPENDED": JobStatus.QUEUED,
-    "TIMEOUT": JobStatus.INTERRUPTED,
+    'BOOT_FAIL': JobStatus.ERROR,
+    'CANCELLED': JobStatus.INTERRUPTED,
+    'COMPLETED': JobStatus.COMPLETED,
+    'CONFIGURING': JobStatus.QUEUED,
+    'COMPLETING': JobStatus.RUNNING,
+    'DEADLINE': JobStatus.DELETED,
+    'FAILED': JobStatus.FAILED,
+    'NODE_FAIL': JobStatus.ERROR,
+    'OUT_OF_MEMORY': JobStatus.ERROR,
+    'PENDING': JobStatus.QUEUED,
+    'PREEMPTED': JobStatus.DELETED,
+    'RUNNING': JobStatus.RUNNING,
+    'RESV_DEL_HOLD': JobStatus.QUEUED,
+    'REQUEUE_FED': JobStatus.QUEUED,
+    'REQUEUE_HOLD': JobStatus.QUEUED,
+    'REQUEUED': JobStatus.QUEUED,
+    'RESIZING': JobStatus.QUEUED,
+    'SIGNALING': JobStatus.CANCELLING,
+    'STOPPED': JobStatus.INTERRUPTED,
+    'SUSPENDED': JobStatus.QUEUED,
+    'TIMEOUT': JobStatus.INTERRUPTED,
     # Keep compatibility with compact Slurm state codes used by squeue.
-    "BF": JobStatus.ERROR,
-    "CA": JobStatus.INTERRUPTED,
-    "CD": JobStatus.COMPLETED,
-    "CF": JobStatus.QUEUED,
-    "CG": JobStatus.RUNNING,
-    "DL": JobStatus.DELETED,
-    "F": JobStatus.FAILED,
-    "NF": JobStatus.ERROR,
-    "OOM": JobStatus.ERROR,
-    "PD": JobStatus.QUEUED,
-    "PR": JobStatus.DELETED,
-    "R": JobStatus.RUNNING,
-    "RD": JobStatus.QUEUED,
-    "RF": JobStatus.QUEUED,
-    "RH": JobStatus.QUEUED,
-    "RQ": JobStatus.QUEUED,
-    "RS": JobStatus.QUEUED,
-    "SI": JobStatus.CANCELLING,
-    "ST": JobStatus.INTERRUPTED,
-    "S": JobStatus.QUEUED,
-    "TO": JobStatus.INTERRUPTED,
+    'BF': JobStatus.ERROR,
+    'CA': JobStatus.INTERRUPTED,
+    'CD': JobStatus.COMPLETED,
+    'CF': JobStatus.QUEUED,
+    'CG': JobStatus.RUNNING,
+    'DL': JobStatus.DELETED,
+    'F': JobStatus.FAILED,
+    'NF': JobStatus.ERROR,
+    'OOM': JobStatus.ERROR,
+    'PD': JobStatus.QUEUED,
+    'PR': JobStatus.DELETED,
+    'R': JobStatus.RUNNING,
+    'RD': JobStatus.QUEUED,
+    'RF': JobStatus.QUEUED,
+    'RH': JobStatus.QUEUED,
+    'RQ': JobStatus.QUEUED,
+    'RS': JobStatus.QUEUED,
+    'SI': JobStatus.CANCELLING,
+    'ST': JobStatus.INTERRUPTED,
+    'S': JobStatus.QUEUED,
+    'TO': JobStatus.INTERRUPTED,
 })
 
 _structured_fields = (
-    "partition",
-    "qos",
-    "account",
-    "time_limit",
-    "cpus_per_task",
-    "nodes",
-    "tasks",
-    "memory_per_node",
-    "name",
+    'partition',
+    'qos',
+    'account',
+    'time_limit',
+    'cpus_per_task',
+    'nodes',
+    'tasks',
+    'memory_per_node',
+    'name',
 )
 
 _structured_aliases = {
-    "ntasks": "tasks",
-    "job_name": "name",
+    'ntasks': 'tasks',
+    'job_name': 'name',
 }
 
 
@@ -97,10 +97,10 @@ class SlurmApiRunner(Runner):
         self,
         *args,
         base_url=None,
-        url_prefix="",
-        api_version="v0.0.45",
-        username_env="SLURM_API_USER",
-        token_env="SLURM_API_TOKEN",
+        url_prefix='',
+        api_version='v0.0.45',
+        username_env='SLURM_API_USER',
+        token_env='SLURM_API_TOKEN',
         timeout=30,
         verify=True,
         **kwargs
@@ -117,12 +117,12 @@ class SlurmApiRunner(Runner):
         )
         super().__init__(*args, **kwargs)
         if not base_url:
-            raise SlurmApiConfigurationError("Slurm API base_url is required")
+            raise SlurmApiConfigurationError('Slurm API base_url is required')
         self.base_url = self._normalize_base_url(base_url)
         self.url_prefix = self._normalize_url_prefix(url_prefix)
         self.api_path = self._api_path()
-        self.api_root = f"{self.base_url}/{self.api_path}"
-        self.api_version = api_version.strip("/")
+        self.api_root = f'{self.base_url}/{self.api_path}'
+        self.api_version = api_version.strip('/')
         self.username_env = username_env
         self.token_env = token_env
         self.timeout = timeout
@@ -130,26 +130,26 @@ class SlurmApiRunner(Runner):
         self.session = requests.Session()
 
     def submit(self, command: Command) -> Job:
-        cmd = str.join(" ", map(bash_quote, command.args))
+        cmd = str.join(' ', map(bash_quote, command.args))
         script = self._build_script(cmd)
         job_desc = {
-            "current_working_directory": command.cwd,
-            "standard_output": "stdout",
-            "standard_error": "stderr",
-            "environment": self._environment(),
+            'current_working_directory': command.cwd,
+            'standard_output': 'stdout',
+            'standard_error': 'stderr',
+            'environment': self._environment(),
             **self.job_options,
         }
-        payload = {"script": script, "job": job_desc}
+        payload = {'script': script, 'job': job_desc}
         self._write_submit_artifacts(command.cwd, script, job_desc)
         try:
-            data = self._request("POST", "job/submit", json=payload)
+            data = self._request('POST', 'job/submit', json=payload)
         except SlurmApiError as e:
             self._write_submit_error(command.cwd, str(e))
             raise
-        self._write_json(command.cwd, "slurm-api-response.json", data)
-        job_id = data.get("job_id")
+        self._write_json(command.cwd, 'slurm-api-response.json', data)
+        job_id = data.get('job_id')
         if job_id is None:
-            error = "Slurm API submit response did not include job_id"
+            error = 'Slurm API submit response did not include job_id'
             self._write_submit_error(command.cwd, error)
             raise SlurmApiError(error)
         return Job(str(job_id), command.cwd)
@@ -172,17 +172,17 @@ class SlurmApiRunner(Runner):
         return result
 
     def cancel(self, job: Job):
-        self._request("DELETE", f"job/{job.id}")
+        self._request('DELETE', f'job/{job.id}')
 
     def batch_cancel(self, jobs: Sequence[Job]):
         for job in jobs:
             self.cancel(job)
 
     def _job_states(self) -> Dict[str, Any]:
-        data = self._request("GET", "jobs")
+        data = self._request('GET', 'jobs')
         states = {}
-        for job_data in data.get("jobs", []):
-            job_id = job_data.get("job_id")
+        for job_data in data.get('jobs', []):
+            job_id = job_data.get('job_id')
             if job_id is not None:
                 states[str(job_id)] = self._extract_state(job_data)
         return states
@@ -190,7 +190,7 @@ class SlurmApiRunner(Runner):
     def _status_from_finished_file(
         self, job: Job, default: JobStatus = None
     ) -> JobStatus:
-        fn = os.path.join(job.cwd, "finished")
+        fn = os.path.join(job.cwd, 'finished')
         try:
             with open(fn) as fp:
                 return_code = int(fp.read())
@@ -213,9 +213,9 @@ class SlurmApiRunner(Runner):
 
     @staticmethod
     def _extract_state(job_data: Dict[str, Any]):
-        state = job_data.get("job_state") or job_data.get("state")
+        state = job_data.get('job_state') or job_data.get('state')
         if isinstance(state, dict):
-            state = state.get("current")
+            state = state.get('current')
         if isinstance(state, list):
             state = state[0] if state else None
         if state is None:
@@ -227,35 +227,35 @@ class SlurmApiRunner(Runner):
 
     def _environment(self):
         return [
-            f"{key}={value}"
+            f'{key}={value}'
             for key, value in self.env.items()
             if value is not None
         ]
 
     def _write_submit_artifacts(self, cwd, script, job_desc):
-        self._write_text(cwd, "slurm-api-script.sh", script)
+        self._write_text(cwd, 'slurm-api-script.sh', script)
         self._write_json(
             cwd,
-            "slurm-api-request.json",
+            'slurm-api-request.json',
             self._submit_request_artifact(job_desc),
         )
 
     def _submit_request_artifact(self, job_desc):
         safe_job_desc = {
             key: value for key, value in job_desc.items()
-            if key != "environment"
+            if key != 'environment'
         }
         return {
-            "method": "POST",
-            "path": f"/{self.api_path}/{self.api_version}/job/submit",
-            "script": "slurm-api-script.sh",
-            "job": safe_job_desc,
+            'method': 'POST',
+            'path': f'/{self.api_path}/{self.api_version}/job/submit',
+            'script': 'slurm-api-script.sh',
+            'job': safe_job_desc,
         }
 
     def _write_submit_error(self, cwd, error):
         self._write_text(
             cwd,
-            "slurm-api-error.txt",
+            'slurm-api-error.txt',
             self._sanitize_artifact_text(error),
         )
 
@@ -270,21 +270,21 @@ class SlurmApiRunner(Runner):
         sanitized = text
         for secret in secrets:
             if secret:
-                sanitized = sanitized.replace(str(secret), "<redacted>")
+                sanitized = sanitized.replace(str(secret), '<redacted>')
         return sanitized
 
     @staticmethod
     def _write_text(cwd, filename, text):
         os.makedirs(cwd, exist_ok=True)
-        with open(os.path.join(cwd, filename), "w") as fp:
+        with open(os.path.join(cwd, filename), 'w') as fp:
             fp.write(text)
 
     @staticmethod
     def _write_json(cwd, filename, data):
         os.makedirs(cwd, exist_ok=True)
-        with open(os.path.join(cwd, filename), "w") as fp:
+        with open(os.path.join(cwd, filename), 'w') as fp:
             json.dump(data, fp, indent=2, sort_keys=True)
-            fp.write("\n")
+            fp.write('\n')
 
     def _request(self, method, path, **kwargs):
         response = self.session.request(
@@ -298,8 +298,8 @@ class SlurmApiRunner(Runner):
         if not response.ok:
             text = response.text[:500]
             raise SlurmApiError(
-                f"Slurm API {method} {path} failed with "
-                f"{response.status_code}: {text}"
+                f'Slurm API {method} {path} failed with '
+                f'{response.status_code}: {text}'
             )
         if not response.content:
             return {}
@@ -317,37 +317,37 @@ class SlurmApiRunner(Runner):
         ]
         if missing:
             raise SlurmApiConfigurationError(
-                "Missing Slurm API credential environment variable(s): "
-                + ", ".join(missing)
+                'Missing Slurm API credential environment variable(s): '
+                + ', '.join(missing)
             )
         return {
-            "X-SLURM-USER-NAME": username,
-            "X-SLURM-USER-TOKEN": token,
+            'X-SLURM-USER-NAME': username,
+            'X-SLURM-USER-TOKEN': token,
         }
 
     @staticmethod
     def _normalize_base_url(base_url):
         parts = urlsplit(base_url)
-        path = parts.path.rstrip("/")
+        path = parts.path.rstrip('/')
         if not parts.scheme or not parts.netloc:
             raise SlurmApiConfigurationError(
-                "Slurm API base_url must include scheme and host, "
-                "such as http://host:6820"
+                'Slurm API base_url must include scheme and host, '
+                'such as http://host:6820'
             )
         if path or parts.query or parts.fragment:
             raise SlurmApiConfigurationError(
-                "Slurm API base_url must be the slurmrestd origin only; "
-                "move reverse-proxy paths to url_prefix"
+                'Slurm API base_url must be the slurmrestd origin only; '
+                'move reverse-proxy paths to url_prefix'
             )
-        return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+        return urlunsplit((parts.scheme, parts.netloc, '', '', ''))
 
     @staticmethod
     def _normalize_url_prefix(url_prefix):
-        return (url_prefix or "").strip("/")
+        return (url_prefix or '').strip('/')
 
     def _api_path(self):
-        return "/".join(
-            part for part in (self.url_prefix, "slurm")
+        return '/'.join(
+            part for part in (self.url_prefix, 'slurm')
             if part
         )
 
