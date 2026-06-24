@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, Sequence
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -96,6 +97,7 @@ class SlurmApiRunner(Runner):
         self,
         *args,
         base_url=None,
+        url_prefix="",
         api_version="v0.0.45",
         username_env="SLURM_API_USER",
         token_env="SLURM_API_TOKEN",
@@ -116,7 +118,10 @@ class SlurmApiRunner(Runner):
         super().__init__(*args, **kwargs)
         if not base_url:
             raise SlurmApiConfigurationError("Slurm API base_url is required")
-        self.base_url = base_url.rstrip("/")
+        self.base_url = self._normalize_base_url(base_url)
+        self.url_prefix = self._normalize_url_prefix(url_prefix)
+        self.api_path = self._api_path()
+        self.api_root = f"{self.base_url}/{self.api_path}"
         self.api_version = api_version.strip("/")
         self.username_env = username_env
         self.token_env = token_env
@@ -245,7 +250,7 @@ class SlurmApiRunner(Runner):
         }
         return {
             "method": "POST",
-            "path": f"{self.api_version}/job/submit",
+            "path": f"/{self.api_path}/{self.api_version}/job/submit",
             "script": "slurm-api-script.sh",
             "job": safe_job_desc,
         }
@@ -325,5 +330,31 @@ class SlurmApiRunner(Runner):
             "X-SLURM-USER-TOKEN": token,
         }
 
+    @staticmethod
+    def _normalize_base_url(base_url):
+        parts = urlsplit(base_url)
+        path = parts.path.rstrip("/")
+        if not parts.scheme or not parts.netloc:
+            raise SlurmApiConfigurationError(
+                "Slurm API base_url must include scheme and host, "
+                "such as http://host:6820"
+            )
+        if path or parts.query or parts.fragment:
+            raise SlurmApiConfigurationError(
+                "Slurm API base_url must be the slurmrestd origin only; "
+                "move reverse-proxy paths to url_prefix"
+            )
+        return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
+    @staticmethod
+    def _normalize_url_prefix(url_prefix):
+        return (url_prefix or "").strip("/")
+
+    def _api_path(self):
+        return "/".join(
+            part for part in (self.url_prefix, "slurm")
+            if part
+        )
+
     def _url(self, path):
-        return f"{self.base_url}/{self.api_version}/{path.lstrip('/')}"
+        return f"{self.api_root}/{self.api_version}/{path.lstrip('/')}"

@@ -71,7 +71,7 @@ def test_submit_sends_batch_script_and_job_description(
 
     assert job == Job("12345", job_directory)
     _, url = session.request.call_args.args
-    assert url == "https://slurm.example.org/v0.0.45/job/submit"
+    assert url == "https://slurm.example.org/slurm/v0.0.45/job/submit"
     kwargs = session.request.call_args.kwargs
     assert kwargs["headers"] == {
         "X-SLURM-USER-NAME": "alice",
@@ -107,7 +107,7 @@ def test_submit_sends_batch_script_and_job_description(
         request_artifact = json.load(fp)
     assert request_artifact == {
         "method": "POST",
-        "path": "v0.0.45/job/submit",
+        "path": "/slurm/v0.0.45/job/submit",
         "script": "slurm-api-script.sh",
         "job": {
             "current_working_directory": job_directory,
@@ -188,7 +188,7 @@ def test_cancel_sends_delete(runner, session):
 
     method, url = session.request.call_args.args
     assert method == "DELETE"
-    assert url == "https://slurm.example.org/v0.0.45/job/123"
+    assert url == "https://slurm.example.org/slurm/v0.0.45/job/123"
 
 
 def test_missing_credentials_fail_before_request(session, job_directory):
@@ -260,3 +260,91 @@ def test_submit_response_without_job_id_writes_response_and_error_artifacts(
         assert json.load(fp) == {"errors": ["job id missing"]}
     with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
         assert "job_id" in fp.read()
+
+
+@pytest.mark.parametrize(
+    "base_url, url_prefix, expected",
+    [
+        (
+            "https://slurm.example.org",
+            "",
+            "https://slurm.example.org/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org/",
+            "",
+            "https://slurm.example.org/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org",
+            "gateway",
+            "https://slurm.example.org/gateway/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org",
+            "/gateway/",
+            "https://slurm.example.org/gateway/slurm/v0.0.45/job/submit",
+        ),
+    ],
+)
+def test_url_builds_from_origin_and_optional_prefix(
+    credentials, session, base_url, url_prefix, expected
+):
+    runner = SlurmApiRunner(
+        RunnerID("example", "slurm-api"),
+        command="example",
+        args=[],
+        consts={},
+        outputs=[],
+        env={},
+        base_url=base_url,
+        url_prefix=url_prefix,
+    )
+
+    assert runner._url("job/submit") == expected
+
+
+@pytest.mark.parametrize(
+    "api_version",
+    ["v0.0.41", "v0.0.42", "v0.0.43", "v0.0.44"],
+)
+def test_url_supports_target_cluster_api_versions(
+    credentials, session, api_version
+):
+    runner = SlurmApiRunner(
+        RunnerID("example", "slurm-api"),
+        command="example",
+        args=[],
+        consts={},
+        outputs=[],
+        env={},
+        base_url="https://slurm.example.org",
+        api_version=api_version,
+    )
+
+    assert (
+        runner._url("job/submit") ==
+        f"https://slurm.example.org/slurm/{api_version}/job/submit"
+    )
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://slurm.example.org/slurm",
+        "https://slurm.example.org/api",
+    ],
+)
+def test_base_url_rejects_paths(credentials, session, base_url):
+    with pytest.raises(SlurmApiConfigurationError) as exc_info:
+        SlurmApiRunner(
+            RunnerID("example", "slurm-api"),
+            command="example",
+            args=[],
+            consts={},
+            outputs=[],
+            env={},
+            base_url=base_url,
+        )
+
+    assert "url_prefix" in str(exc_info.value)
