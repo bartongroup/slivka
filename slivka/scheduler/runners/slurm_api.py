@@ -40,28 +40,6 @@ _status_states = _StatusLetterDict({
     'STOPPED': JobStatus.INTERRUPTED,
     'SUSPENDED': JobStatus.QUEUED,
     'TIMEOUT': JobStatus.INTERRUPTED,
-    # Keep compatibility with compact Slurm state codes used by squeue.
-    'BF': JobStatus.ERROR,
-    'CA': JobStatus.INTERRUPTED,
-    'CD': JobStatus.COMPLETED,
-    'CF': JobStatus.QUEUED,
-    'CG': JobStatus.RUNNING,
-    'DL': JobStatus.DELETED,
-    'F': JobStatus.FAILED,
-    'NF': JobStatus.ERROR,
-    'OOM': JobStatus.ERROR,
-    'PD': JobStatus.QUEUED,
-    'PR': JobStatus.DELETED,
-    'R': JobStatus.RUNNING,
-    'RD': JobStatus.QUEUED,
-    'RF': JobStatus.QUEUED,
-    'RH': JobStatus.QUEUED,
-    'RQ': JobStatus.QUEUED,
-    'RS': JobStatus.QUEUED,
-    'SI': JobStatus.CANCELLING,
-    'ST': JobStatus.INTERRUPTED,
-    'S': JobStatus.QUEUED,
-    'TO': JobStatus.INTERRUPTED,
 })
 
 _structured_fields = (
