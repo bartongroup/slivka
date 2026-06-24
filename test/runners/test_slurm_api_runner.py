@@ -176,9 +176,47 @@ def test_check_status_falls_back_to_finished_file_if_job_is_not_found(
     os.makedirs(job_directory)
     with open(os.path.join(job_directory, "finished"), "w") as fp:
         fp.write("0")
-    session.request.return_value = Response(status_code=404, text="not found")
+    session.request.return_value = Response({"jobs": []})
 
     assert runner.check_status(Job("123", job_directory)) == JobStatus.COMPLETED
+
+
+def test_check_status_handles_list_shaped_job_state(runner, session):
+    session.request.return_value = Response(
+        {"jobs": [{"job_id": 123, "job_state": ["RUNNING"]}]}
+    )
+
+    assert runner.check_status(Job("123", "/missing")) == JobStatus.RUNNING
+
+
+def test_batch_check_status_uses_single_request(runner, session, job_directory):
+    os.makedirs(job_directory)
+    with open(os.path.join(job_directory, "finished"), "w") as fp:
+        fp.write("0")
+    session.request.return_value = Response(
+        {
+            "jobs": [
+                {"job_id": 1, "job_state": ["RUNNING"]},
+                {"job_id": 2, "job_state": ["PENDING"]},
+            ]
+        }
+    )
+
+    statuses = runner.batch_check_status([
+        Job("1", "/missing"),
+        Job("2", "/missing"),
+        Job("3", job_directory),
+    ])
+
+    assert statuses == [
+        JobStatus.RUNNING,
+        JobStatus.QUEUED,
+        JobStatus.COMPLETED,
+    ]
+    assert session.request.call_count == 1
+    method, url = session.request.call_args.args
+    assert method == "GET"
+    assert url == "https://slurm.example.org/slurm/v0.0.45/jobs"
 
 
 def test_cancel_sends_delete(runner, session):

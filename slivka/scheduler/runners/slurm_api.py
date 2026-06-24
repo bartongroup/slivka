@@ -161,7 +161,15 @@ class SlurmApiRunner(Runner):
         return self.batch_check_status([job])[0]
 
     def batch_check_status(self, jobs: Sequence[Job]) -> Sequence[JobStatus]:
-        return [self._check_job_status(job) for job in jobs]
+        states = self._job_states()
+        result = []
+        for job in jobs:
+            state = states.get(job.id)
+            status = _status_states[state] if state else None
+            if status is None or status == JobStatus.COMPLETED:
+                status = self._status_from_finished_file(job, default=status)
+            result.append(status)
+        return result
 
     def cancel(self, job: Job):
         self._request("DELETE", f"job/{job.id}")
@@ -170,14 +178,14 @@ class SlurmApiRunner(Runner):
         for job in jobs:
             self.cancel(job)
 
-    def _check_job_status(self, job: Job) -> JobStatus:
-        data = self._request("GET", f"job/{job.id}", allow_not_found=True)
-        job_data = self._find_job(data, job.id)
-        state = self._extract_state(job_data)
-        status = _status_states[state] if state else None
-        if status is None or status == JobStatus.COMPLETED:
-            return self._status_from_finished_file(job, default=status)
-        return status
+    def _job_states(self) -> Dict[str, Any]:
+        data = self._request("GET", "jobs")
+        states = {}
+        for job_data in data.get("jobs", []):
+            job_id = job_data.get("job_id")
+            if job_id is not None:
+                states[str(job_id)] = self._extract_state(job_data)
+        return states
 
     def _status_from_finished_file(
         self, job: Job, default: JobStatus = None
@@ -202,17 +210,6 @@ class SlurmApiRunner(Runner):
                 return JobStatus.RUNNING
             del self.finished_job_timestamp[job.id]
             return JobStatus.INTERRUPTED
-
-    @staticmethod
-    def _find_job(data: Dict[str, Any], job_id: str) -> Dict[str, Any]:
-        if "jobs" in data:
-            for job in data["jobs"]:
-                if str(job.get("job_id")) == str(job_id):
-                    return job
-            return {}
-        if "job" in data:
-            return data["job"]
-        return data
 
     @staticmethod
     def _extract_state(job_data: Dict[str, Any]):
@@ -289,7 +286,7 @@ class SlurmApiRunner(Runner):
             json.dump(data, fp, indent=2, sort_keys=True)
             fp.write("\n")
 
-    def _request(self, method, path, allow_not_found=False, **kwargs):
+    def _request(self, method, path, **kwargs):
         response = self.session.request(
             method,
             self._url(path),
@@ -298,8 +295,6 @@ class SlurmApiRunner(Runner):
             verify=self.verify,
             **kwargs,
         )
-        if allow_not_found and response.status_code == 404:
-            return {}
         if not response.ok:
             text = response.text[:500]
             raise SlurmApiError(
