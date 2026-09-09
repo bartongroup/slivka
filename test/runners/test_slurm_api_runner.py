@@ -6,11 +6,14 @@ import pytest
 import requests
 
 from slivka import JobStatus
+from slivka.db.repositories import FilesRepository
 from slivka.scheduler.runners import Command, Job, RunnerID, SlurmApiRunner
 from slivka.scheduler.runners.slurm_api import (
     SlurmApiConfigurationError,
     SlurmApiError,
 )
+from test.conftest import database
+
 
 
 class Response:
@@ -43,7 +46,12 @@ def session():
 @pytest.fixture()
 def runner(credentials, session):
     return SlurmApiRunner(
-        RunnerID("example", "slurm-api"),
+        runner_id=None,
+        files_repository=FilesRepository(
+            "uploads",
+            "jobs",
+            database
+        ),
         command="example",
         args=[],
         consts={},
@@ -235,7 +243,12 @@ def test_missing_credentials_fail_before_request(session, job_directory):
         {"SLURM_API_USER": "", "SLURM_API_TOKEN": ""},
     ):
         runner = SlurmApiRunner(
-            RunnerID("example", "slurm-api"),
+        runner_id=None,
+        files_repository=FilesRepository(
+            "uploads",
+            "jobs",
+            database
+        ),
             command="example",
             args=[],
             consts={},
@@ -329,7 +342,12 @@ def test_url_builds_from_origin_and_optional_prefix(
     credentials, session, base_url, url_prefix, expected
 ):
     runner = SlurmApiRunner(
-        RunnerID("example", "slurm-api"),
+        runner_id=None,
+        files_repository=FilesRepository(
+            "uploads",
+            "jobs",
+            database
+        ),
         command="example",
         args=[],
         consts={},
@@ -350,7 +368,12 @@ def test_url_supports_target_cluster_api_versions(
     credentials, session, api_version
 ):
     runner = SlurmApiRunner(
-        RunnerID("example", "slurm-api"),
+        runner_id=None,
+        files_repository=FilesRepository(
+            "uploads",
+            "jobs",
+            database
+        ),
         command="example",
         args=[],
         consts={},
@@ -376,7 +399,12 @@ def test_url_supports_target_cluster_api_versions(
 def test_base_url_rejects_paths(credentials, session, base_url):
     with pytest.raises(SlurmApiConfigurationError) as exc_info:
         SlurmApiRunner(
-            RunnerID("example", "slurm-api"),
+            runner_id=None,
+        files_repository=FilesRepository(
+            "uploads",
+            "jobs",
+            database
+        ),
             command="example",
             args=[],
             consts={},
