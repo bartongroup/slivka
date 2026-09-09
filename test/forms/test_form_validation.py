@@ -91,3 +91,14 @@ def test_cleaned_data_for_conditions_if_valid_values(form2, expected_cleaned):
 )
 def test_invalid_form_for_conditions(form2):
     assert not form2.is_valid()
+
+
+class MyFormTFChoice(BaseForm):
+    field1 = ChoiceField('tf_choice',choices=[('True','True'),('False','False')])
+
+def test_valid_formTFChoice():
+    form = MyFormTFChoice(MultiDict([
+        ('tf_choice', "True")
+    ]))
+    assert form.is_valid()
+    return form

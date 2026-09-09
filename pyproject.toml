@@ -15,8 +15,8 @@ maintainers = [
 ]
 description = "A toolkit for deploying command-line tools as web services."
 readme = "README.rst"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+# // license = "Apache-2.0"
+# license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: Flask",

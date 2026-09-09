@@ -15,3 +15,11 @@ array-field:
   name: array
   type: choice[]
   choices: []
+
+true-false-field:
+  name: trueorfalse
+  type: choice
+  choices:
+    True: True
+    False: False
+

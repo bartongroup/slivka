@@ -492,7 +492,7 @@ class ChoiceField(BaseField):
         self.choices = OrderedDict(choices)
         self.__validators.append(partial(
             _choice_validator,
-            self.choices.keys()
+            map(str,self.choices.keys())
         ))
         self._check_default()
 
@@ -684,7 +684,7 @@ def _max_length_validator(limit, value):
 
 
 def _choice_validator(choices, value):
-    if value not in choices:
+    if str(value) not in choices:
         raise ValidationError(
             "Value \"%s\" is not one of the available choices." % value,
             'invalid'
