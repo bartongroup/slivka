@@ -1,0 +1,388 @@
+import os
+import json
+from unittest import mock
+
+import pytest
+import requests
+
+from slivka import JobStatus
+from slivka.scheduler.runners import Command, Job, RunnerID, SlurmApiRunner
+from slivka.scheduler.runners.slurm_api import (
+    SlurmApiConfigurationError,
+    SlurmApiError,
+)
+
+
+class Response:
+    def __init__(self, data=None, status_code=200, text=""):
+        self.data = data or {}
+        self.status_code = status_code
+        self.text = text
+        self.ok = 200 <= status_code < 400
+        self.content = b"{}" if data is not None else b""
+
+    def json(self):
+        return self.data
+
+
+@pytest.fixture()
+def credentials():
+    with mock.patch.dict(
+        os.environ,
+        {"SLURM_API_USER": "alice", "SLURM_API_TOKEN": "secret"},
+    ):
+        yield
+
+
+@pytest.fixture()
+def session():
+    with mock.patch.object(requests, "Session") as session_cls:
+        yield session_cls.return_value
+
+
+@pytest.fixture()
+def runner(credentials, session):
+    return SlurmApiRunner(
+        RunnerID("example", "slurm-api"),
+        command="example",
+        args=[],
+        consts={},
+        outputs=[],
+        env={"EXAMPLE": "1"},
+        base_url="https://slurm.example.org/",
+        partition="webservices",
+        qos="immediate",
+        account="web",
+        time_limit=60,
+        cpus_per_task=2,
+        nodes="node[1-2]",
+        ntasks=4,
+        memory_per_node=2048,
+        job_name="slivka-test",
+    )
+
+
+def test_submit_sends_batch_script_and_job_description(
+    runner, session, job_directory
+):
+    session.request.return_value = Response({"job_id": 12345})
+
+    job = runner.submit(Command(["echo", "hello world"], job_directory))
+
+    assert job == Job("12345", job_directory)
+    _, url = session.request.call_args.args
+    assert url == "https://slurm.example.org/slurm/v0.0.45/job/submit"
+    kwargs = session.request.call_args.kwargs
+    assert kwargs["headers"] == {
+        "X-SLURM-USER-NAME": "alice",
+        "X-SLURM-USER-TOKEN": "secret",
+    }
+    payload = kwargs["json"]
+    assert "echo 'hello world'" in payload["script"]
+    assert "export EXAMPLE=1" not in payload["script"]
+    assert payload["job"] == {
+        "current_working_directory": job_directory,
+        "standard_output": "stdout",
+        "standard_error": "stderr",
+        "environment": [
+            f"{key}={value}"
+            for key, value in runner.env.items()
+            if value is not None
+        ],
+        "partition": "webservices",
+        "qos": "immediate",
+        "account": "web",
+        "time_limit": 60,
+        "cpus_per_task": 2,
+        "nodes": "node[1-2]",
+        "tasks": 4,
+        "memory_per_node": 2048,
+        "name": "slivka-test",
+    }
+    assert kwargs["timeout"] == 30
+    assert kwargs["verify"] is True
+    with open(os.path.join(job_directory, "slurm-api-script.sh")) as fp:
+        assert fp.read() == payload["script"]
+    with open(os.path.join(job_directory, "slurm-api-request.json")) as fp:
+        request_artifact = json.load(fp)
+    assert request_artifact == {
+        "method": "POST",
+        "path": "/slurm/v0.0.45/job/submit",
+        "script": "slurm-api-script.sh",
+        "job": {
+            "current_working_directory": job_directory,
+            "standard_output": "stdout",
+            "standard_error": "stderr",
+            "partition": "webservices",
+            "qos": "immediate",
+            "account": "web",
+            "time_limit": 60,
+            "cpus_per_task": 2,
+            "nodes": "node[1-2]",
+            "tasks": 4,
+            "memory_per_node": 2048,
+            "name": "slivka-test",
+        },
+    }
+    assert "environment" not in request_artifact["job"]
+    assert "EXAMPLE=1" not in json.dumps(request_artifact)
+    with open(os.path.join(job_directory, "slurm-api-response.json")) as fp:
+        assert json.load(fp) == {"job_id": 12345}
+    assert not os.path.exists(os.path.join(job_directory, "slurm-api-error.txt"))
+
+
+@pytest.mark.parametrize(
+    "state, expected",
+    [
+        ("PENDING", JobStatus.QUEUED),
+        ("RUNNING", JobStatus.RUNNING),
+        ("FAILED", JobStatus.FAILED),
+        ("CANCELLED", JobStatus.INTERRUPTED),
+        ("UNKNOWN_STATE", JobStatus.UNKNOWN),
+    ],
+)
+def test_check_status_maps_slurm_state(runner, session, state, expected):
+    session.request.return_value = Response(
+        {"jobs": [{"job_id": "123", "job_state": state}]}
+    )
+
+    assert runner.check_status(Job("123", "/missing")) == expected
+
+
+def test_check_status_reads_finished_file_for_completed_job(
+    runner, session, job_directory
+):
+    os.makedirs(job_directory)
+    with open(os.path.join(job_directory, "finished"), "w") as fp:
+        fp.write("1")
+    session.request.return_value = Response(
+        {"jobs": [{"job_id": "123", "job_state": "COMPLETED"}]}
+    )
+
+    assert runner.check_status(Job("123", job_directory)) == JobStatus.FAILED
+
+
+def test_check_status_treats_missing_completed_file_as_running(runner, session):
+    session.request.return_value = Response(
+        {"jobs": [{"job_id": "123", "job_state": "COMPLETED"}]}
+    )
+
+    assert runner.check_status(Job("123", "/missing")) == JobStatus.RUNNING
+
+
+def test_check_status_falls_back_to_finished_file_if_job_is_not_found(
+    runner, session, job_directory
+):
+    os.makedirs(job_directory)
+    with open(os.path.join(job_directory, "finished"), "w") as fp:
+        fp.write("0")
+    session.request.return_value = Response({"jobs": []})
+
+    assert runner.check_status(Job("123", job_directory)) == JobStatus.COMPLETED
+
+
+def test_check_status_handles_list_shaped_job_state(runner, session):
+    session.request.return_value = Response(
+        {"jobs": [{"job_id": 123, "job_state": ["RUNNING"]}]}
+    )
+
+    assert runner.check_status(Job("123", "/missing")) == JobStatus.RUNNING
+
+
+def test_batch_check_status_uses_single_request(runner, session, job_directory):
+    os.makedirs(job_directory)
+    with open(os.path.join(job_directory, "finished"), "w") as fp:
+        fp.write("0")
+    session.request.return_value = Response(
+        {
+            "jobs": [
+                {"job_id": 1, "job_state": ["RUNNING"]},
+                {"job_id": 2, "job_state": ["PENDING"]},
+            ]
+        }
+    )
+
+    statuses = runner.batch_check_status([
+        Job("1", "/missing"),
+        Job("2", "/missing"),
+        Job("3", job_directory),
+    ])
+
+    assert statuses == [
+        JobStatus.RUNNING,
+        JobStatus.QUEUED,
+        JobStatus.COMPLETED,
+    ]
+    assert session.request.call_count == 1
+    method, url = session.request.call_args.args
+    assert method == "GET"
+    assert url == "https://slurm.example.org/slurm/v0.0.45/jobs"
+
+
+def test_cancel_sends_delete(runner, session):
+    session.request.return_value = Response({})
+
+    runner.cancel(Job("123", "/cluster/jobs/1"))
+
+    method, url = session.request.call_args.args
+    assert method == "DELETE"
+    assert url == "https://slurm.example.org/slurm/v0.0.45/job/123"
+
+
+def test_missing_credentials_fail_before_request(session, job_directory):
+    with mock.patch.dict(
+        os.environ,
+        {"SLURM_API_USER": "", "SLURM_API_TOKEN": ""},
+    ):
+        runner = SlurmApiRunner(
+            RunnerID("example", "slurm-api"),
+            command="example",
+            args=[],
+            consts={},
+            outputs=[],
+            env={},
+            base_url="https://slurm.example.org",
+        )
+        with pytest.raises(SlurmApiConfigurationError) as exc_info:
+            runner.submit(Command(["echo", "hello"], job_directory))
+
+    assert "SLURM_API_USER" in str(exc_info.value)
+    assert "SLURM_API_TOKEN" in str(exc_info.value)
+    session.request.assert_not_called()
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        error = fp.read()
+    assert "SLURM_API_USER" not in error
+    assert "SLURM_API_TOKEN" not in error
+
+
+def test_http_error_includes_status_and_body(runner, session):
+    session.request.return_value = Response(status_code=500, text="boom")
+
+    with pytest.raises(SlurmApiError) as exc_info:
+        runner.cancel(Job("123", "/cluster/jobs/1"))
+
+    assert "500" in str(exc_info.value)
+    assert "boom" in str(exc_info.value)
+
+
+def test_submit_http_error_writes_error_artifact(runner, session, job_directory):
+    session.request.return_value = Response(
+        status_code=500,
+        text="boom EXAMPLE=1 secret",
+    )
+
+    with pytest.raises(SlurmApiError):
+        runner.submit(Command(["echo", "hello"], job_directory))
+
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        error = fp.read()
+    assert "500" in error
+    assert "boom" in error
+    assert "secret" not in error
+    assert "EXAMPLE=1" not in error
+    assert os.path.exists(os.path.join(job_directory, "slurm-api-script.sh"))
+    assert os.path.exists(os.path.join(job_directory, "slurm-api-request.json"))
+    assert not os.path.exists(os.path.join(job_directory, "slurm-api-response.json"))
+
+
+def test_submit_response_without_job_id_writes_response_and_error_artifacts(
+    runner, session, job_directory
+):
+    session.request.return_value = Response({"errors": ["job id missing"]})
+
+    with pytest.raises(SlurmApiError) as exc_info:
+        runner.submit(Command(["echo", "hello"], job_directory))
+
+    assert "job_id" in str(exc_info.value)
+    with open(os.path.join(job_directory, "slurm-api-response.json")) as fp:
+        assert json.load(fp) == {"errors": ["job id missing"]}
+    with open(os.path.join(job_directory, "slurm-api-error.txt")) as fp:
+        assert "job_id" in fp.read()
+
+
+@pytest.mark.parametrize(
+    "base_url, url_prefix, expected",
+    [
+        (
+            "https://slurm.example.org",
+            "",
+            "https://slurm.example.org/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org/",
+            "",
+            "https://slurm.example.org/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org",
+            "gateway",
+            "https://slurm.example.org/gateway/slurm/v0.0.45/job/submit",
+        ),
+        (
+            "https://slurm.example.org",
+            "/gateway/",
+            "https://slurm.example.org/gateway/slurm/v0.0.45/job/submit",
+        ),
+    ],
+)
+def test_url_builds_from_origin_and_optional_prefix(
+    credentials, session, base_url, url_prefix, expected
+):
+    runner = SlurmApiRunner(
+        RunnerID("example", "slurm-api"),
+        command="example",
+        args=[],
+        consts={},
+        outputs=[],
+        env={},
+        base_url=base_url,
+        url_prefix=url_prefix,
+    )
+
+    assert runner._url("job/submit") == expected
+
+
+@pytest.mark.parametrize(
+    "api_version",
+    ["v0.0.41", "v0.0.42", "v0.0.43", "v0.0.44"],
+)
+def test_url_supports_target_cluster_api_versions(
+    credentials, session, api_version
+):
+    runner = SlurmApiRunner(
+        RunnerID("example", "slurm-api"),
+        command="example",
+        args=[],
+        consts={},
+        outputs=[],
+        env={},
+        base_url="https://slurm.example.org",
+        api_version=api_version,
+    )
+
+    assert (
+        runner._url("job/submit") ==
+        f"https://slurm.example.org/slurm/{api_version}/job/submit"
+    )
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://slurm.example.org/slurm",
+        "https://slurm.example.org/api",
+    ],
+)
+def test_base_url_rejects_paths(credentials, session, base_url):
+    with pytest.raises(SlurmApiConfigurationError) as exc_info:
+        SlurmApiRunner(
+            RunnerID("example", "slurm-api"),
+            command="example",
+            args=[],
+            consts={},
+            outputs=[],
+            env={},
+            base_url=base_url,
+        )
+
+    assert "url_prefix" in str(exc_info.value)

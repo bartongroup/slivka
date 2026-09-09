@@ -34,7 +34,7 @@ requirements:
     - mongomock>=3.18
     - packaging
     - pip>=18.0
-    - pymongo>=3.7
+    - pymongo>=3.7,<4
     - pytest-raises>=0.11
     - pytest>=7.4
     - python>=3.7
@@ -42,6 +42,7 @@ requirements:
     - python-dateutil>=2.8
     - pyyaml>=5.4
     - pyzmq>=19.0
+    - requests>=2.31,<3
     - ruamel.yaml
     - sentinels>=1.0.0
     - simplejson>=3.16
@@ -50,4 +51,3 @@ requirements:
 tests:
   imports:
     - slivka
-
