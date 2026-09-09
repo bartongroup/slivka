@@ -101,4 +101,3 @@ def test_valid_formTFChoice():
         ('tf_choice', "True")
     ]))
     assert form.is_valid()
-    return form
