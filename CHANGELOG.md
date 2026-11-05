@@ -1,5 +1,11 @@
 Changelog:
 
+## [0.8.5b9]
+
+- Added: slurm_api_runner for more secure slurm job management
+- Added: tests execution/reports via github actions
+- Fixed: correctly handle parameters taking choice values of 'True' or 'False'
+ 
 ## [0.8.5b8]
 
 - Changed: use pyproject.toml instead of setup.py
