@@ -82,6 +82,8 @@ slivka = "slivka.cli:main"
 
 # Setuptools-specific configuration
 [tool.setuptools]
+[tool.setuptools.packages.find]
+include = ["slivka","slivka.*"]
 [tool.setuptools.package-data]
 slivka = [
     "conf/*.json",
